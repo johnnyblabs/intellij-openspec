@@ -1,5 +1,8 @@
 package com.johnnyb.openspec.toolwindow;
 
+import com.intellij.openapi.actionSystem.ActionManager;
+import com.intellij.openapi.actionSystem.ActionToolbar;
+import com.intellij.openapi.actionSystem.DefaultActionGroup;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.LocalFileSystem;
@@ -43,9 +46,23 @@ public class OpenSpecToolWindowPanel extends JPanel {
         });
 
         add(new JScrollPane(tree), BorderLayout.CENTER);
-        add(createToolbar(), BorderLayout.NORTH);
+        add(createActionToolbar(), BorderLayout.NORTH);
 
         registerFileListener();
+    }
+
+    private JComponent createActionToolbar() {
+        DefaultActionGroup group = (DefaultActionGroup) ActionManager.getInstance()
+                .getAction("OpenSpec.ToolWindowToolbar");
+
+        if (group == null) {
+            group = new DefaultActionGroup();
+        }
+
+        ActionToolbar toolbar = ActionManager.getInstance()
+                .createActionToolbar("OpenSpecToolWindow", group, true);
+        toolbar.setTargetComponent(this);
+        return toolbar.getComponent();
     }
 
     private void handleDoubleClick() {
@@ -63,39 +80,9 @@ public class OpenSpecToolWindowPanel extends JPanel {
         }
     }
 
-    private JPanel createToolbar() {
-        JPanel toolbar = new JPanel(new FlowLayout(FlowLayout.LEFT));
-
-        JButton refreshButton = new JButton("Refresh");
-        refreshButton.addActionListener(e -> refresh());
-        toolbar.add(refreshButton);
-
-        JButton expandButton = new JButton("Expand All");
-        expandButton.addActionListener(e -> expandAll());
-        toolbar.add(expandButton);
-
-        JButton collapseButton = new JButton("Collapse All");
-        collapseButton.addActionListener(e -> collapseAll());
-        toolbar.add(collapseButton);
-
-        return toolbar;
-    }
-
     public void refresh() {
         SpecTreeModel treeModel = new SpecTreeModel(project);
         tree.setModel(treeModel.buildModel());
-    }
-
-    private void expandAll() {
-        for (int i = 0; i < tree.getRowCount(); i++) {
-            tree.expandRow(i);
-        }
-    }
-
-    private void collapseAll() {
-        for (int i = tree.getRowCount() - 1; i >= 0; i--) {
-            tree.collapseRow(i);
-        }
     }
 
     private void registerFileListener() {

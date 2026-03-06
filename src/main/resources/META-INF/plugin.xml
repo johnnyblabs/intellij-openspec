@@ -53,15 +53,18 @@
     </extensions>
 
     <actions>
+        <!-- Top-level menu bar entry -->
         <group id="OpenSpec.MainMenu" text="OpenSpec" description="OpenSpec workflow actions" popup="true">
             <action id="OpenSpec.Init"
                     class="com.johnnyb.openspec.actions.OpenSpecInitAction"
                     text="Init"
-                    description="Initialize OpenSpec in this project"/>
+                    description="Initialize OpenSpec in this project"
+                    icon="/icons/openspec.svg"/>
             <action id="OpenSpec.Propose"
                     class="com.johnnyb.openspec.actions.OpenSpecProposeAction"
                     text="Propose..."
-                    description="Propose a new change"/>
+                    description="Propose a new change"
+                    icon="/icons/change.svg"/>
             <action id="OpenSpec.Apply"
                     class="com.johnnyb.openspec.actions.OpenSpecApplyAction"
                     text="Apply"
@@ -69,22 +72,35 @@
             <action id="OpenSpec.Archive"
                     class="com.johnnyb.openspec.actions.OpenSpecArchiveAction"
                     text="Archive"
-                    description="Archive the current change"/>
+                    description="Archive the current change"
+                    icon="/icons/archive.svg"/>
             <separator/>
             <action id="OpenSpec.Validate"
                     class="com.johnnyb.openspec.actions.OpenSpecValidateAction"
                     text="Validate"
-                    description="Validate specs and config"/>
+                    description="Validate specs and config"
+                    icon="/icons/requirement.svg"/>
             <action id="OpenSpec.List"
                     class="com.johnnyb.openspec.actions.OpenSpecListAction"
                     text="List"
-                    description="List specs and changes"/>
+                    description="List specs and changes"
+                    icon="/icons/spec.svg"/>
             <separator/>
             <action id="OpenSpec.Refresh"
                     class="com.johnnyb.openspec.actions.OpenSpecRefreshAction"
                     text="Refresh Tree"
                     description="Refresh the OpenSpec tool window"/>
-            <add-to-group group-id="ToolsMenu" anchor="last"/>
+            <add-to-group group-id="MainMenu" anchor="before" relative-to-action="ToolsMenu"/>
+        </group>
+
+        <!-- Tool window toolbar actions -->
+        <group id="OpenSpec.ToolWindowToolbar">
+            <reference ref="OpenSpec.Refresh"/>
+            <reference ref="OpenSpec.Validate"/>
+            <reference ref="OpenSpec.Propose"/>
+            <separator/>
+            <reference ref="OpenSpec.Apply"/>
+            <reference ref="OpenSpec.Archive"/>
         </group>
     </actions>
 </idea-plugin>

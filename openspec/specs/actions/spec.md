@@ -29,7 +29,7 @@ The plugin SHALL provide a "Propose" action that prompts the user for a change d
 
 **Scenario: Propose with description**
 - GIVEN an OpenSpec project is open
-- WHEN the user selects Tools > OpenSpec > Propose
+- WHEN the user selects OpenSpec > Propose from the main menu bar
 - THEN a dialog SHALL appear requesting a change description
 - AND the plugin SHALL run `openspec propose` with the provided description
 
@@ -43,5 +43,5 @@ Actions SHALL only be enabled when the current project is an OpenSpec project.
 
 **Scenario: Non-OpenSpec project**
 - GIVEN a project without an `openspec/` directory
-- WHEN the user opens the Tools menu
+- WHEN the user opens the OpenSpec menu
 - THEN OpenSpec actions SHALL be disabled
