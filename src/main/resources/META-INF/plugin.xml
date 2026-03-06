@@ -1,0 +1,90 @@
+<idea-plugin>
+    <id>com.johnnyb.openspec</id>
+    <name>OpenSpec</name>
+    <vendor>johnnyb</vendor>
+    <description><![CDATA[
+        IntelliJ IDEA plugin for the OpenSpec spec-driven development framework.
+        Provides spec browsing, workflow automation, and validation.
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+    <depends>org.jetbrains.plugins.yaml</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <projectService serviceImplementation="com.johnnyb.openspec.services.OpenSpecProjectService"/>
+        <projectService serviceImplementation="com.johnnyb.openspec.services.ConfigService"/>
+        <projectService serviceImplementation="com.johnnyb.openspec.services.SpecParsingService"/>
+        <projectService serviceImplementation="com.johnnyb.openspec.services.ChangeService"/>
+
+        <toolWindow id="OpenSpec" anchor="right"
+                    factoryClass="com.johnnyb.openspec.toolwindow.OpenSpecToolWindowFactory"
+                    icon="/icons/openspec.svg"/>
+
+        <!-- Inspections -->
+        <localInspection language=""
+                         groupName="OpenSpec"
+                         shortName="SpecFormatInspection"
+                         displayName="Spec format validation"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.johnnyb.openspec.validation.SpecFormatInspection"/>
+        <localInspection language=""
+                         groupName="OpenSpec"
+                         shortName="DeltaSpecInspection"
+                         displayName="Delta spec validation"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.johnnyb.openspec.validation.DeltaSpecInspection"/>
+        <localInspection language="yaml"
+                         groupName="OpenSpec"
+                         shortName="ConfigValidationInspection"
+                         displayName="OpenSpec config validation"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.johnnyb.openspec.validation.ConfigValidationInspection"/>
+
+        <!-- Annotators -->
+        <annotator language="" implementationClass="com.johnnyb.openspec.editor.SpecAnnotator"/>
+        <annotator language="" implementationClass="com.johnnyb.openspec.editor.ScenarioAnnotator"/>
+
+        <!-- Line Markers -->
+        <codeInsight.lineMarkerProvider language=""
+                                         implementationClass="com.johnnyb.openspec.editor.OpenSpecLineMarkerProvider"/>
+    </extensions>
+
+    <actions>
+        <group id="OpenSpec.MainMenu" text="OpenSpec" description="OpenSpec workflow actions" popup="true">
+            <action id="OpenSpec.Init"
+                    class="com.johnnyb.openspec.actions.OpenSpecInitAction"
+                    text="Init"
+                    description="Initialize OpenSpec in this project"/>
+            <action id="OpenSpec.Propose"
+                    class="com.johnnyb.openspec.actions.OpenSpecProposeAction"
+                    text="Propose..."
+                    description="Propose a new change"/>
+            <action id="OpenSpec.Apply"
+                    class="com.johnnyb.openspec.actions.OpenSpecApplyAction"
+                    text="Apply"
+                    description="Apply the current change"/>
+            <action id="OpenSpec.Archive"
+                    class="com.johnnyb.openspec.actions.OpenSpecArchiveAction"
+                    text="Archive"
+                    description="Archive the current change"/>
+            <separator/>
+            <action id="OpenSpec.Validate"
+                    class="com.johnnyb.openspec.actions.OpenSpecValidateAction"
+                    text="Validate"
+                    description="Validate specs and config"/>
+            <action id="OpenSpec.List"
+                    class="com.johnnyb.openspec.actions.OpenSpecListAction"
+                    text="List"
+                    description="List specs and changes"/>
+            <separator/>
+            <action id="OpenSpec.Refresh"
+                    class="com.johnnyb.openspec.actions.OpenSpecRefreshAction"
+                    text="Refresh Tree"
+                    description="Refresh the OpenSpec tool window"/>
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </group>
+    </actions>
+</idea-plugin>
