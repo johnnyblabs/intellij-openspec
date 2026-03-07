@@ -108,11 +108,12 @@ api_call() {
 
     if [[ "$http_code" -ge 200 && "$http_code" -lt 300 ]]; then
       return 0
-    elif [[ "$http_code" == "409" || "$http_code" == "422" ]]; then
+    elif [[ "$http_code" == "400" || "$http_code" == "409" || "$http_code" == "422" ]]; then
       # Conflict / already exists — caller can handle idempotently
+      # Includes 400 because Forgejo returns 400 instead of 409 for some endpoints
       return 2
     elif [[ "$http_code" == "429" && $attempt -lt $max_retries ]]; then
-      local wait_secs=$(( attempt * 5 ))
+      local wait_secs=$(( attempt * 2 ))
       log_warn "Rate limited — waiting ${wait_secs}s (retry ${attempt}/${max_retries})"
       sleep "$wait_secs"
       continue

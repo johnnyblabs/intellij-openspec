@@ -34,7 +34,8 @@ forgejo_create_wiki_page() {
 
   if api_call POST "${FORGEJO_REPO_API}/wiki/new" "$payload"; then
     log_success "Wiki: created '${title}'"
-  elif [[ "$API_RESPONSE_CODE" == "409" || "$API_RESPONSE_CODE" == "422" ]]; then
+  elif [[ "$API_RESPONSE_CODE" == "400" || "$API_RESPONSE_CODE" == "409" || "$API_RESPONSE_CODE" == "422" ]]; then
+    # Forgejo returns 400 (not 409) for "wiki page already exists"
     log_warn "Wiki: '${title}' already exists — updating"
     forgejo_update_wiki_page "$title" "$content_file"
   else
