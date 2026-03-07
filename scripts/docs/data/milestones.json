@@ -1,17 +1,17 @@
 [
   {
     "title": "v0.1.0 - Initial Release",
-    "description": "Stabilization, test coverage, critical bug fixes. Ensure core workflows (init, propose, generate, apply, archive) are solid.",
+    "description": "Ship It Clean. Stable, beautiful, intuitive first impression. A user installs the plugin, opens a project, and immediately understands the workflow without reading docs. Core workflows solid, test coverage in place, onboarding experience polished.",
     "due_date": "2026-04-01T00:00:00Z"
   },
   {
     "title": "v0.2.0 - Polish & Testing",
-    "description": "UX improvements, integration tests, dark theme support, keyboard shortcuts, and validation enhancements.",
+    "description": "Spec Intelligence. Features no other OpenSpec tool has. Code-to-spec traceability via gutter markers, spec coverage indicators, inline quick-fixes, change diff viewer. This is the moat that differentiates us from every VS Code extension.",
     "due_date": "2026-05-01T00:00:00Z"
   },
   {
     "title": "v0.3.0 - Advanced Features",
-    "description": "Multi-project support, marketplace publishing, local AI models (Ollama), streaming API responses, spec search.",
+    "description": "Ecosystem and Publishing. JetBrains Marketplace listing, engagement with OpenSpec/Fission AI for official integration status, multi-project support, local AI via Ollama, streaming responses. Community adoption and visibility.",
     "due_date": "2026-07-01T00:00:00Z"
   }
 ]

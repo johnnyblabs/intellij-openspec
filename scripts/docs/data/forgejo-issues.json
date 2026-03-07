@@ -172,5 +172,71 @@
     "body": "## Description\n\nProvide code completion for known fields in `config.yaml` (schema, version, profile, context, rules).\n\n## Acceptance Criteria\n\n- [ ] Completion for top-level keys\n- [ ] Completion for schema version values\n- [ ] Completion for profile names\n- [ ] Works in both YAML and config.yaml contexts\n\n## Technical Notes\n\nImplement `CompletionContributor` for YAML files. Check file is `config.yaml` in openspec/ directory.",
     "labels": ["enhancement", "editor", "priority:low"],
     "milestone": "v0.3.0 - Advanced Features"
+  },
+  {
+    "title": "Welcome panel and onboarding experience",
+    "body": "## Description\n\nCreate a polished first-time user experience. When no `openspec/` directory exists, the tool window should show a clean welcome state instead of an empty tree.\n\n## Acceptance Criteria\n\n- [ ] Tool window shows welcome panel when no `openspec/` directory detected\n- [ ] Welcome panel has 'Initialize Project' button\n- [ ] 3-step visual explainer: Init -> Propose -> Generate\n- [ ] After init, auto-prompt to create first change\n- [ ] All panels have meaningful empty states (never blank)\n- [ ] Empty states include contextual hints\n\n## Technical Notes\n\nAdd `CardLayout` to `OpenSpecToolWindowPanel` to switch between welcome and main views. Welcome panel uses `JBLabel` with HTML formatting for the visual explainer.",
+    "labels": ["onboarding", "ux", "priority:high"],
+    "milestone": "v0.1.0 - Initial Release"
+  },
+  {
+    "title": "Custom plugin icon and visual identity",
+    "body": "## Description\n\nDesign and implement a recognizable plugin icon for use in the tool window, menu, and marketplace.\n\n## Acceptance Criteria\n\n- [ ] Icon works at 13x13 (tool window tab)\n- [ ] Icon works at 16x16 (menu items)\n- [ ] Icon works at 40x40 (marketplace listing)\n- [ ] SVG format for retina/HiDPI support\n- [ ] Icon registered in `plugin.xml` for tool window\n- [ ] Looks good in both light and dark themes\n\n## Technical Notes\n\nPlace icons in `src/main/resources/icons/`. Reference in `plugin.xml` via `icon` attribute. Use `IconLoader.getIcon()` in code.",
+    "labels": ["ux", "priority:high"],
+    "milestone": "v0.1.0 - Initial Release"
+  },
+  {
+    "title": "Polish artifact pipeline with proper icons and theme support",
+    "body": "## Description\n\nReplace text-only pipeline status chips with proper icons and ensure dark/light theme compatibility throughout.\n\n## Acceptance Criteria\n\n- [ ] Done artifacts show green checkmark icon\n- [ ] Ready artifacts show blue filled circle icon\n- [ ] Blocked artifacts show gray empty circle icon\n- [ ] All icons use `AllIcons` or custom SVGs with `JBColor` awareness\n- [ ] Pipeline arrows render correctly in both themes\n- [ ] Tested in Darcula and New UI dark theme\n- [ ] `SpecTreeCellRenderer` uses `JBColor` for all colors\n\n## Technical Notes\n\nReplace `Color` with `JBColor` in `SpecTreeCellRenderer` and `WorkflowActionPanel`. Use `AllIcons.Actions.*` for standard icons or create custom SVGs in `resources/icons/`.",
+    "labels": ["ux", "toolwindow", "priority:high"],
+    "milestone": "v0.1.0 - Initial Release"
+  },
+  {
+    "title": "Generate All button in workflow panel",
+    "body": "## Description\n\nAdd a prominent 'Generate All' button to the workflow panel that walks the entire artifact DAG via Direct API, showing real-time progress.\n\n## Acceptance Criteria\n\n- [ ] 'Generate All' button visible in workflow panel when Direct API is configured\n- [ ] Button disabled when no ready artifacts or no API key\n- [ ] Progress panel shows each artifact being generated in real-time\n- [ ] Pipeline chips update as each artifact completes\n- [ ] Cancellation support (stop mid-generation)\n- [ ] Error handling: if one artifact fails, show error and stop\n- [ ] On completion, pipeline shows all green and guidance for next steps\n\n## Technical Notes\n\nUse `Task.Backgroundable` with `ProgressIndicator`. Loop: get status -> find ready -> generate via DirectApiService -> write file -> invalidate cache -> repeat. Show progress fraction as `completed/total`.",
+    "labels": ["enhancement", "ai", "ux", "priority:high"],
+    "milestone": "v0.1.0 - Initial Release"
+  },
+  {
+    "title": "Guided first proposal flow",
+    "body": "## Description\n\nAfter initializing a project, guide the user through creating their first change with helpful defaults and contextual tips.\n\n## Acceptance Criteria\n\n- [ ] After init, notification suggests creating first change\n- [ ] ProposeChangeDialog shows helpful placeholder text for first-time users\n- [ ] First workflow cycle shows contextual tips (e.g., 'Click Generate to create your design')\n- [ ] Tips dismissible and don't show again after first complete cycle\n\n## Technical Notes\n\nUse `OpenSpecSettings` to track `firstRunComplete` boolean. Show tips via `JBLabel` in workflow panel. Use `PropertiesComponent` for persistent dismissal.",
+    "labels": ["onboarding", "ux", "priority:medium"],
+    "milestone": "v0.1.0 - Initial Release"
+  },
+  {
+    "title": "Spec gutter markers for code-to-spec traceability",
+    "body": "## Description\n\nShow gutter icons in Java source files indicating which spec requirement a class or method implements. This is the flagship Spec Intelligence feature.\n\n## Acceptance Criteria\n\n- [ ] Gutter icon appears next to classes/methods linked to a spec requirement\n- [ ] Clicking the icon navigates to the corresponding spec file and requirement\n- [ ] Linking uses `@spec` annotations, naming conventions, or a mapping file\n- [ ] Icons use recognizable spec-related imagery\n- [ ] Performance: does not slow down editor for large files\n\n## Technical Notes\n\nImplement `LineMarkerProvider` for Java files. Scan for `@Spec(\"requirement-id\")` annotations or match class/method names against spec requirement IDs. Cache spec index for performance. Use `GutterIconNavigationHandler` for click-to-navigate.",
+    "labels": ["spec-intelligence", "editor", "priority:high"],
+    "milestone": "v0.2.0 - Polish & Testing"
+  },
+  {
+    "title": "Spec coverage panel",
+    "body": "## Description\n\nA dedicated panel showing which spec requirements have implementing code and which don't — like code coverage but for specifications.\n\n## Acceptance Criteria\n\n- [ ] Panel accessible from tool window (tab or separate view)\n- [ ] Shows each spec requirement with coverage status (covered/uncovered)\n- [ ] Overall coverage percentage displayed\n- [ ] Uncovered requirements highlighted for easy identification\n- [ ] Click on requirement navigates to spec file\n- [ ] Click on covered requirement navigates to implementing code\n\n## Technical Notes\n\nBuild spec index from `openspec/specs/`. Build code index from Java sources (annotations/naming). Cross-reference to compute coverage. Display in `JBTable` or custom panel. Consider caching the index and refreshing on file changes.",
+    "labels": ["spec-intelligence", "toolwindow", "priority:high"],
+    "milestone": "v0.2.0 - Polish & Testing"
+  },
+  {
+    "title": "Change diff viewer with delta spec preview",
+    "body": "## Description\n\nAllow users to preview how delta specs from a change will modify the main specs, using IntelliJ's built-in diff viewer.\n\n## Acceptance Criteria\n\n- [ ] Right-click change node -> 'View Spec Diff' action\n- [ ] Opens IntelliJ diff viewer (side-by-side)\n- [ ] Left side: current main spec\n- [ ] Right side: spec with delta changes applied\n- [ ] Diff is read-only (informational preview)\n- [ ] Works for ADDED, MODIFIED, and REMOVED delta sections\n\n## Technical Notes\n\nUse `DiffManager.getInstance().showDiff()` with `SimpleDiffRequest`. Build modified content by parsing delta spec sections and programmatically applying them to the base spec content.",
+    "labels": ["spec-intelligence", "toolwindow", "priority:medium"],
+    "milestone": "v0.2.0 - Polish & Testing"
+  },
+  {
+    "title": "Spec search and filtering in tool window",
+    "body": "## Description\n\nAdd a search/filter bar to the tool window for finding specs, requirements, and changes by keyword.\n\n## Acceptance Criteria\n\n- [ ] Search field at top of tool window\n- [ ] Filters tree nodes as user types\n- [ ] Highlights matching text in tree labels\n- [ ] Clear button restores full tree\n- [ ] Keyboard shortcut to focus search (Cmd+F / Ctrl+F when tool window focused)\n\n## Technical Notes\n\nAdd `SearchTextField` above the tree in `OpenSpecToolWindowPanel`. On text change, filter `SpecTreeModel` to only show matching nodes and their ancestors. Consider `TreeSpeedSearch` as simpler alternative.",
+    "labels": ["enhancement", "toolwindow", "ux", "priority:medium"],
+    "milestone": "v0.2.0 - Polish & Testing"
+  },
+  {
+    "title": "Engage with OpenSpec/Fission AI for official integration",
+    "body": "## Description\n\nContact the OpenSpec project maintainers to position this IntelliJ plugin as the official JetBrains integration.\n\n## Acceptance Criteria\n\n- [ ] Open discussion/issue on Fission-AI/OpenSpec repo\n- [ ] Demonstrate plugin capabilities (screenshots, feature list)\n- [ ] Request listing on openspec.dev and/or OpenSpec docs\n- [ ] Discuss API stability and versioning expectations\n- [ ] Explore potential collaboration on CLI-plugin interface\n\n## Context\n\nThere are 4 community VS Code extensions but zero JetBrains plugins. The Codder13 VS Code extension is being considered for official adoption (issue #309). This is an opportunity to establish the official JetBrains integration.",
+    "labels": ["infrastructure", "priority:high"],
+    "milestone": "v0.3.0 - Advanced Features"
+  },
+  {
+    "title": "Feature comparison matrix maintenance",
+    "body": "## Description\n\nKeep `docs/feature-comparison-matrix.md` up to date as features ship and as VS Code extensions evolve.\n\n## Acceptance Criteria\n\n- [ ] Update after each milestone release\n- [ ] Track changes to VS Code extensions quarterly\n- [ ] Include new competitors as they emerge\n\n## Technical Notes\n\nFile location: `docs/feature-comparison-matrix.md`. Reference document for positioning and marketing.",
+    "labels": ["documentation", "priority:low"],
+    "milestone": "v0.3.0 - Advanced Features"
   }
 ]

@@ -215,5 +215,82 @@
     "labels": ["infrastructure", "priority:high"],
     "cycle": "v0.1.0 - Initial Release",
     "priority": "high"
+  },
+  {
+    "title": "Welcome panel and onboarding experience",
+    "description": "When no openspec/ directory exists, the tool window shows a clean welcome state with 'Initialize Project' button and 3-step visual explainer (Init, Propose, Generate). After init, prompt to create first change. Every panel has a meaningful empty state.",
+    "labels": ["onboarding", "ux", "priority:high"],
+    "cycle": "v0.1.0 - Initial Release",
+    "priority": "high"
+  },
+  {
+    "title": "Custom plugin icon and visual identity",
+    "description": "Create a custom icon for the tool window tab, menu, and JetBrains Marketplace listing. Icon should be recognizable at 13x13 (tool window), 16x16 (menu), and 40x40 (marketplace). SVG format for retina support.",
+    "labels": ["ux", "priority:high"],
+    "cycle": "v0.1.0 - Initial Release",
+    "priority": "high"
+  },
+  {
+    "title": "Polish artifact pipeline with proper icons and theme support",
+    "description": "Replace text-only pipeline chips with proper status icons (checkmark, circle, dash) using AllIcons or custom SVGs. Use JBColor everywhere for dark/light theme parity. Test in Darcula and New UI dark theme.",
+    "labels": ["ux", "toolwindow", "priority:high"],
+    "cycle": "v0.1.0 - Initial Release",
+    "priority": "high"
+  },
+  {
+    "title": "Generate All button in workflow panel",
+    "description": "Add a prominent 'Generate All' button to the workflow panel (not just context menu). Walks the entire DAG via Direct API with a real-time progress panel showing each artifact as it generates. This is the hero feature — the wow moment.",
+    "labels": ["enhancement", "ai", "ux", "priority:high"],
+    "cycle": "v0.1.0 - Initial Release",
+    "priority": "high"
+  },
+  {
+    "title": "Guided first proposal flow",
+    "description": "After init, automatically suggest creating a first change. Pre-fill the Propose dialog with helpful defaults and hints. Show contextual tips during the first workflow cycle.",
+    "labels": ["onboarding", "ux", "priority:medium"],
+    "cycle": "v0.1.0 - Initial Release",
+    "priority": "medium"
+  },
+  {
+    "title": "Spec gutter markers for code-to-spec traceability",
+    "description": "When editing Java code, show gutter icons indicating which spec requirement a class or method implements. Click to navigate to the spec. Uses annotations or naming conventions to link code to spec requirements.",
+    "labels": ["spec-intelligence", "editor", "priority:high"],
+    "cycle": "v0.2.0 - Polish & Testing",
+    "priority": "high"
+  },
+  {
+    "title": "Spec coverage panel",
+    "description": "A view showing which spec requirements have implementing code and which don't. Like code coverage but for specifications. Shows percentage and highlights gaps. Helps teams ensure nothing is missed.",
+    "labels": ["spec-intelligence", "toolwindow", "priority:high"],
+    "cycle": "v0.2.0 - Polish & Testing",
+    "priority": "high"
+  },
+  {
+    "title": "Change diff viewer with delta spec preview",
+    "description": "Right-click a change to see side-by-side diff of main specs vs specs-with-deltas-applied. Uses IntelliJ DiffManager. Read-only preview of what the change will do to the specifications.",
+    "labels": ["spec-intelligence", "toolwindow", "priority:medium"],
+    "cycle": "v0.2.0 - Polish & Testing",
+    "priority": "medium"
+  },
+  {
+    "title": "Spec search and filtering in tool window",
+    "description": "Search bar at the top of the tool window to filter specs, requirements, and changes by keyword. Highlights matches in tree nodes. Keyboard shortcut to focus search.",
+    "labels": ["enhancement", "toolwindow", "ux", "priority:medium"],
+    "cycle": "v0.2.0 - Polish & Testing",
+    "priority": "medium"
+  },
+  {
+    "title": "Engage with OpenSpec/Fission AI for official integration",
+    "description": "Contact the OpenSpec project maintainers to position this as the official JetBrains integration. Leverage the fact that no JetBrains plugin exists. Aim for listing on openspec.dev and mention in docs.",
+    "labels": ["infrastructure", "priority:high"],
+    "cycle": "v0.3.0 - Advanced Features",
+    "priority": "high"
+  },
+  {
+    "title": "Feature comparison matrix maintenance",
+    "description": "Keep docs/feature-comparison-matrix.md up to date as features are added. Update after each milestone release. Track VS Code extension changes.",
+    "labels": ["documentation", "priority:low"],
+    "cycle": "v0.3.0 - Advanced Features",
+    "priority": "low"
   }
 ]

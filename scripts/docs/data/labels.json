@@ -15,5 +15,7 @@
   { "name": "priority:high",    "color": "b60205", "description": "High priority" },
   { "name": "priority:medium",  "color": "fbca04", "description": "Medium priority" },
   { "name": "priority:low",     "color": "0e8a16", "description": "Low priority" },
-  { "name": "good-first-issue", "color": "7057ff", "description": "Good for newcomers" }
+  { "name": "good-first-issue", "color": "7057ff", "description": "Good for newcomers" },
+  { "name": "onboarding",      "color": "c5def5", "description": "First-time user experience" },
+  { "name": "spec-intelligence","color": "5319e7", "description": "Code-to-spec traceability and intelligence" }
 ]
