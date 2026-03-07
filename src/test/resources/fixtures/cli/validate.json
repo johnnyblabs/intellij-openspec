@@ -1,0 +1,64 @@
+{
+  "items": [
+    {
+      "id": "actions",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 3
+    },
+    {
+      "id": "ai-setup",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 1
+    },
+    {
+      "id": "ensure-ai-component-exist-in-plugin",
+      "type": "change",
+      "valid": false,
+      "issues": [
+        {
+          "level": "ERROR",
+          "path": "file",
+          "message": "Change must have at least one delta."
+        }
+      ],
+      "durationMs": 4
+    },
+    {
+      "id": "validation",
+      "type": "spec",
+      "valid": true,
+      "issues": [
+        {
+          "level": "WARNING",
+          "path": "overview",
+          "message": "Purpose section is too brief (less than 50 characters)"
+        }
+      ],
+      "durationMs": 1
+    }
+  ],
+  "summary": {
+    "totals": {
+      "items": 4,
+      "passed": 3,
+      "failed": 1
+    },
+    "byType": {
+      "change": {
+        "items": 1,
+        "passed": 0,
+        "failed": 1
+      },
+      "spec": {
+        "items": 3,
+        "passed": 3,
+        "failed": 0
+      }
+    }
+  },
+  "version": "1.0"
+}

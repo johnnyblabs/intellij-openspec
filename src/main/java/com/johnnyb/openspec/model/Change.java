@@ -8,13 +8,11 @@ public class Change {
     private final String path;
     private ChangeMetadata metadata;
     private final List<String> artifactFiles;
-    private final List<DeltaSpec> deltaSpecs;
 
     public Change(String name, String path) {
         this.name = name;
         this.path = path;
         this.artifactFiles = new ArrayList<>();
-        this.deltaSpecs = new ArrayList<>();
     }
 
     public String getName() {
@@ -35,9 +33,5 @@ public class Change {
 
     public List<String> getArtifactFiles() {
         return artifactFiles;
-    }
-
-    public List<DeltaSpec> getDeltaSpecs() {
-        return deltaSpecs;
     }
 }

@@ -10,6 +10,13 @@ import org.jetbrains.annotations.NotNull;
 
 import java.awt.*;
 
+/**
+ * Refreshes the tool window tree view by re-scanning the VFS.
+ *
+ * <p><b>Strategy: Built-in only.</b> Refresh is a UI operation that re-reads
+ * the {@code openspec/} directory tree from the IntelliJ VFS. No CLI
+ * interaction is needed.</p>
+ */
 public class OpenSpecRefreshAction extends OpenSpecBaseAction {
 
     @Override
@@ -20,11 +27,12 @@ public class OpenSpecRefreshAction extends OpenSpecBaseAction {
         ToolWindow toolWindow = ToolWindowManager.getInstance(project).getToolWindow("OpenSpec");
         if (toolWindow == null) return;
 
-        Content content = toolWindow.getContentManager().getSelectedContent();
-        if (content != null) {
+        // Find the Browse tab (first content, or any content that is an OpenSpecToolWindowPanel)
+        for (Content content : toolWindow.getContentManager().getContents()) {
             Component component = content.getComponent();
             if (component instanceof OpenSpecToolWindowPanel panel) {
                 panel.refresh();
+                break;
             }
         }
     }

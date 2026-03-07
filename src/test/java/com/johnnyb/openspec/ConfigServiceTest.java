@@ -21,7 +21,7 @@ class ConfigServiceTest {
             assertEquals("1.2.0", config.getVersion());
             assertNotNull(config.getProfile());
             assertEquals("TestProject", config.getProfile().get("name"));
-            assertEquals(1, config.getContext().size());
+            assertEquals("Test context item", config.getContext());
             assertEquals(1, config.getRules().size());
         } catch (Exception e) {
             fail("Failed to parse config: " + e.getMessage());
@@ -34,7 +34,7 @@ class ConfigServiceTest {
         assertNotNull(config.getProfile());
         assertTrue(config.getProfile().isEmpty());
         assertNotNull(config.getContext());
-        assertTrue(config.getContext().isEmpty());
+        assertEquals("", config.getContext());
         assertNotNull(config.getRules());
         assertTrue(config.getRules().isEmpty());
     }

@@ -16,22 +16,31 @@ public final class OpenSpecFileUtil {
     }
 
     public static boolean isOpenSpecProject(Project project) {
-        VirtualFile baseDir = getBaseDir(project);
-        if (baseDir == null) return false;
-        VirtualFile openspecDir = baseDir.findChild("openspec");
-        return openspecDir != null && openspecDir.isDirectory();
+        return getOpenSpecRoot(project) != null;
     }
 
     public static VirtualFile getOpenSpecRoot(Project project) {
         VirtualFile baseDir = getBaseDir(project);
         if (baseDir == null) return null;
-        return baseDir.findChild("openspec");
+        VirtualFile root = baseDir.findChild("openspec");
+        if (root != null && root.isDirectory()) return root;
+        // Fallback: VFS may not have indexed yet, try direct path
+        if (project.getBasePath() != null) {
+            root = LocalFileSystem.getInstance()
+                    .refreshAndFindFileByPath(project.getBasePath() + "/openspec");
+            if (root != null && root.isDirectory()) return root;
+        }
+        return null;
     }
 
     public static VirtualFile getConfigFile(Project project) {
         VirtualFile root = getOpenSpecRoot(project);
         if (root == null) return null;
-        return root.findChild("config.yaml");
+        VirtualFile config = root.findChild("config.yaml");
+        if (config != null) return config;
+        // Fallback: direct path
+        return LocalFileSystem.getInstance()
+                .refreshAndFindFileByPath(root.getPath() + "/config.yaml");
     }
 
     public static VirtualFile getSpecsDir(Project project) {
@@ -47,6 +56,12 @@ public final class OpenSpecFileUtil {
     }
 
     public static VirtualFile getArchiveDir(Project project) {
+        VirtualFile changesDir = getChangesDir(project);
+        if (changesDir != null) {
+            VirtualFile archive = changesDir.findChild("archive");
+            if (archive != null && archive.isDirectory()) return archive;
+        }
+        // Fallback: legacy location at openspec/archive
         VirtualFile root = getOpenSpecRoot(project);
         if (root == null) return null;
         return root.findChild("archive");
@@ -57,9 +72,12 @@ public final class OpenSpecFileUtil {
     }
 
     public static boolean isDeltaSpecFile(VirtualFile file) {
-        return file != null && file.getName().endsWith(".md")
-                && file.getParent() != null
-                && "delta-specs".equals(file.getParent().getName());
+        if (file == null || !"spec.md".equals(file.getName())) return false;
+        // Must be inside a specs/<domain>/spec.md structure within a change
+        VirtualFile domainDir = file.getParent();
+        if (domainDir == null) return false;
+        VirtualFile specsDir = domainDir.getParent();
+        return specsDir != null && "specs".equals(specsDir.getName());
     }
 
     public static boolean isUnderOpenSpec(VirtualFile file, Project project) {

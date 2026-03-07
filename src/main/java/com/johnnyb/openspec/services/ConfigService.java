@@ -3,10 +3,13 @@ package com.johnnyb.openspec.services;
 import com.intellij.openapi.components.Service;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.johnnyb.openspec.model.OpenSpecConfig;
 import com.johnnyb.openspec.util.OpenSpecFileUtil;
+import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.constructor.Constructor;
 
 import java.io.InputStream;
 
@@ -30,13 +33,20 @@ public final class ConfigService {
 
     public void reload() {
         VirtualFile configFile = OpenSpecFileUtil.getConfigFile(project);
+
+        // If VFS hasn't indexed yet, try direct filesystem access
+        if (configFile == null && project.getBasePath() != null) {
+            String configPath = project.getBasePath() + "/openspec/config.yaml";
+            configFile = LocalFileSystem.getInstance().refreshAndFindFileByPath(configPath);
+        }
+
         if (configFile == null || !configFile.exists()) {
             LOG.warn("OpenSpec config.yaml not found");
             config = null;
             return;
         }
         try (InputStream is = configFile.getInputStream()) {
-            Yaml yaml = new Yaml();
+            Yaml yaml = new Yaml(new Constructor(OpenSpecConfig.class, new LoaderOptions()));
             config = yaml.loadAs(is, OpenSpecConfig.class);
         } catch (Exception e) {
             LOG.error("Failed to parse OpenSpec config.yaml", e);

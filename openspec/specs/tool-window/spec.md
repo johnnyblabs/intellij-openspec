@@ -1,46 +1,42 @@
 # Tool Window
 
-## Domain
+## Purpose
 Tree-based UI panel for browsing specs, changes, and archives.
 
 ## Requirements
 
 ### Requirement: Tree View Display
 
-The plugin SHALL provide a tool window that displays OpenSpec project contents in a navigable tree structure.
+The plugin SHALL provide a tool window that displays OpenSpec project contents in a navigable tree structure, with a Workflow Action Panel below the tree for guided artifact generation. The toolbar SHALL NOT include generate artifact actions — generation is handled exclusively by the Workflow Action Panel.
 
-**Keyword:** SHALL
-
-#### Scenarios
-
-**Scenario: Tree structure**
-- GIVEN an OpenSpec project with specs and changes
+#### Scenario: Tree structure
 - WHEN the tool window is opened
 - THEN it SHALL display a tree with top-level nodes: Specs, Changes, Archive
-- AND Specs node SHALL contain child nodes for each spec domain
+- THEN a Workflow Action Panel SHALL be visible below the tree showing the selected change and generation controls
+
+#### Scenario: Tool window layout
+- WHEN the tool window is visible
+- THEN the layout from top to bottom SHALL be: toolbar (without generate actions), tree, workflow action panel, status bar
+
+#### Scenario: Tool window toolbar contents
+- WHEN the tool window toolbar is rendered
+- THEN it SHALL contain: Refresh, Validate, Propose, Apply, Archive
+- THEN it SHALL NOT contain Generate Artifact or Generate All actions
 
 ### Requirement: File Navigation
 
 The plugin SHALL allow users to navigate to spec files by double-clicking tree nodes.
 
-**Keyword:** SHALL
-
-#### Scenarios
-
-**Scenario: Open spec file**
+#### Scenario: Open spec file
 - GIVEN a spec tree node is visible
 - WHEN the user double-clicks the node
 - THEN the corresponding file SHALL open in the editor
 
 ### Requirement: Auto Refresh
 
-The tool window SHOULD automatically refresh when files in the `openspec/` directory change.
+The tool window SHALL automatically refresh when files in the `openspec/` directory change.
 
-**Keyword:** SHOULD
-
-#### Scenarios
-
-**Scenario: File system change**
+#### Scenario: File system change
 - GIVEN the tool window is visible
 - WHEN a file is added or modified under `openspec/`
-- THEN the tree SHOULD refresh to reflect the change
+- THEN the tree SHALL refresh to reflect the change

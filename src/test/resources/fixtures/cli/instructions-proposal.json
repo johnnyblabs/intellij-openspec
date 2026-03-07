@@ -1,0 +1,16 @@
+{
+  "changeName": "ensure-ai-component-exist-in-plugin",
+  "artifactId": "proposal",
+  "schemaName": "spec-driven",
+  "changeDir": "/project/openspec/changes/ensure-ai-component-exist-in-plugin",
+  "outputPath": "proposal.md",
+  "description": "Initial proposal document outlining the change",
+  "instruction": "Create the proposal document that establishes WHY this change is needed.",
+  "context": "IntelliJ Platform plugin with YAML/Markdown parsing and CLI integration",
+  "template": "## Why\n\n<!-- Explain the motivation -->\n\n## What Changes\n\n<!-- Describe what will change -->\n",
+  "dependencies": [],
+  "unlocks": [
+    "design",
+    "specs"
+  ]
+}

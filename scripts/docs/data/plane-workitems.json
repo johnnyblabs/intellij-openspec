@@ -1,0 +1,219 @@
+[
+  {
+    "title": "Add unit tests for SpecParsingService",
+    "description": "Expand test coverage for SpecParsingService beyond existing basic tests. Cover edge cases: no requirements, multiple scenarios, RFC 2119 keyword extraction, malformed markdown, multi-domain parsing.",
+    "labels": ["testing", "priority:high"],
+    "cycle": "v0.1.0 - Initial Release",
+    "priority": "high"
+  },
+  {
+    "title": "Add unit tests for BuiltInValidator",
+    "description": "Create comprehensive tests for BuiltInValidator covering spec, change, and config validation rules. Include strict mode behavior and edge cases.",
+    "labels": ["testing", "priority:high"],
+    "cycle": "v0.1.0 - Initial Release",
+    "priority": "high"
+  },
+  {
+    "title": "Add unit tests for CliOutputParser",
+    "description": "Test JSON and text parsing from CLI output. Cover valid JSON, malformed JSON, plain text fallback, and empty input.",
+    "labels": ["testing", "priority:high"],
+    "cycle": "v0.1.0 - Initial Release",
+    "priority": "high"
+  },
+  {
+    "title": "Add unit tests for VersionSupport",
+    "description": "Test version enum behavior: required fields, artifacts, schema validation per version (v1.0, v1.1, v1.2).",
+    "labels": ["testing", "priority:medium"],
+    "cycle": "v0.1.0 - Initial Release",
+    "priority": "medium"
+  },
+  {
+    "title": "Handle malformed YAML gracefully in ConfigService",
+    "description": "Show clear error notification instead of stack trace when config.yaml contains invalid YAML. Include file path and parse error location.",
+    "labels": ["bug", "priority:high"],
+    "cycle": "v0.1.0 - Initial Release",
+    "priority": "high"
+  },
+  {
+    "title": "Add CLI command timeout configuration",
+    "description": "Allow users to configure CLI timeout in settings. Default 30s. CliRunner reads from settings. Clear error on timeout.",
+    "labels": ["enhancement", "cli-integration", "priority:medium"],
+    "cycle": "v0.1.0 - Initial Release",
+    "priority": "medium"
+  },
+  {
+    "title": "Add progress indicator for long-running operations",
+    "description": "Show IntelliJ progress bar for CLI commands, API calls, and Generate All. Progress should be cancellable where possible.",
+    "labels": ["ux", "priority:medium"],
+    "cycle": "v0.1.0 - Initial Release",
+    "priority": "medium"
+  },
+  {
+    "title": "Improve error messages for API failures",
+    "description": "DirectApiService errors should include HTTP status, provider-specific details, and suggested fixes. Show in both notification and Console.",
+    "labels": ["ux", "priority:medium"],
+    "cycle": "v0.1.0 - Initial Release",
+    "priority": "medium"
+  },
+  {
+    "title": "Add CI pipeline",
+    "description": "Set up automated build and test pipeline. Build on push/PR, run tests, verify plugin, upload artifacts.",
+    "labels": ["infrastructure", "priority:high"],
+    "cycle": "v0.1.0 - Initial Release",
+    "priority": "high"
+  },
+  {
+    "title": "Handle concurrent file operations safely",
+    "description": "Ensure proper ReadAction/WriteAction usage in all file operations. Atomic tree model rebuild. Thread-safe caches.",
+    "labels": ["bug", "priority:medium"],
+    "cycle": "v0.1.0 - Initial Release",
+    "priority": "medium"
+  },
+  {
+    "title": "Add keyboard shortcuts for common actions",
+    "description": "Assign default keyboard shortcuts to Propose, Validate, and Refresh. Document in plugin.xml. No conflicts with IntelliJ defaults.",
+    "labels": ["enhancement", "ux", "priority:medium"],
+    "cycle": "v0.2.0 - Polish & Testing",
+    "priority": "medium"
+  },
+  {
+    "title": "Fix dark theme colors in tree renderer",
+    "description": "Replace hardcoded colors with JBColor for theme-aware rendering. Test in Darcula and New UI dark theme.",
+    "labels": ["bug", "ux", "priority:medium"],
+    "cycle": "v0.2.0 - Polish & Testing",
+    "priority": "medium"
+  },
+  {
+    "title": "Add spec template selection for Propose",
+    "description": "Template dropdown in ProposeChangeDialog (Feature, Bug Fix, Refactor). Templates pre-fill proposal.md.",
+    "labels": ["enhancement", "ux", "priority:medium"],
+    "cycle": "v0.2.0 - Polish & Testing",
+    "priority": "medium"
+  },
+  {
+    "title": "Add inline quick-fixes for validation issues",
+    "description": "LocalQuickFix implementations for common validation issues: missing title, missing RFC 2119 keyword, missing metadata file.",
+    "labels": ["enhancement", "validation", "priority:medium"],
+    "cycle": "v0.2.0 - Polish & Testing",
+    "priority": "medium"
+  },
+  {
+    "title": "Improve validation result formatting",
+    "description": "Display validation results in structured panel with grouped issues, clickable file paths, severity icons, and summary line.",
+    "labels": ["enhancement", "validation", "priority:medium"],
+    "cycle": "v0.2.0 - Polish & Testing",
+    "priority": "medium"
+  },
+  {
+    "title": "Add v2.0 schema support",
+    "description": "Extend VersionSupport with v2_0 enum value. Define new artifact types and config fields. Maintain v1.x backward compatibility.",
+    "labels": ["enhancement", "priority:low"],
+    "cycle": "v0.2.0 - Polish & Testing",
+    "priority": "low"
+  },
+  {
+    "title": "Add integration tests for action lifecycle",
+    "description": "Integration tests for full lifecycle: init → propose → generate → apply → archive. Use BasePlatformTestCase.",
+    "labels": ["testing", "priority:medium"],
+    "cycle": "v0.2.0 - Polish & Testing",
+    "priority": "medium"
+  },
+  {
+    "title": "Document all public APIs with Javadoc",
+    "description": "Add Javadoc to all public classes and methods in services, model, and validation packages.",
+    "labels": ["documentation", "priority:low"],
+    "cycle": "v0.2.0 - Polish & Testing",
+    "priority": "low"
+  },
+  {
+    "title": "Add tree node tooltips",
+    "description": "Hover tooltips showing file path, status details, dependency list. HTML-formatted for readability.",
+    "labels": ["enhancement", "toolwindow", "priority:low"],
+    "cycle": "v0.2.0 - Polish & Testing",
+    "priority": "low"
+  },
+  {
+    "title": "Add notification grouping",
+    "description": "Group rapid notifications during batch operations. Show count and expand button. Log to Console in parallel.",
+    "labels": ["ux", "priority:low"],
+    "cycle": "v0.2.0 - Polish & Testing",
+    "priority": "low"
+  },
+  {
+    "title": "Support multi-project workspaces",
+    "description": "Detect multiple openspec/ directories in monorepos. Show all roots in tool window. Per-root settings.",
+    "labels": ["enhancement", "priority:medium"],
+    "cycle": "v0.3.0 - Advanced Features",
+    "priority": "medium"
+  },
+  {
+    "title": "Publish to JetBrains Marketplace",
+    "description": "Complete plugin metadata, icon, verification. Publish and verify marketplace installation works.",
+    "labels": ["infrastructure", "priority:medium"],
+    "cycle": "v0.3.0 - Advanced Features",
+    "priority": "medium"
+  },
+  {
+    "title": "Add Ollama integration for local AI",
+    "description": "Support Ollama as local AI provider. OpenAI-compatible API at localhost:11434. Model selection from locally available models.",
+    "labels": ["enhancement", "ai", "priority:medium"],
+    "cycle": "v0.3.0 - Advanced Features",
+    "priority": "medium"
+  },
+  {
+    "title": "Add streaming API response support",
+    "description": "Streaming responses from Claude/OpenAI via SSE. Real-time display in Console. Cancellation support.",
+    "labels": ["enhancement", "ai", "priority:low"],
+    "cycle": "v0.3.0 - Advanced Features",
+    "priority": "low"
+  },
+  {
+    "title": "Add spec search and filtering",
+    "description": "Search/filter bar in Browse tab. Filter tree nodes by keyword. Highlight matches. Keyboard shortcut to focus.",
+    "labels": ["enhancement", "toolwindow", "priority:low"],
+    "cycle": "v0.3.0 - Advanced Features",
+    "priority": "low"
+  },
+  {
+    "title": "Register OpenSpec file types",
+    "description": "Register .openspec.yaml, spec.md, and delta spec files with custom icons and file type associations.",
+    "labels": ["enhancement", "editor", "priority:low"],
+    "cycle": "v0.3.0 - Advanced Features",
+    "priority": "low"
+  },
+  {
+    "title": "Add change diff viewer",
+    "description": "Right-click change to view spec diff (original vs. with delta specs applied). Uses IntelliJ DiffManager.",
+    "labels": ["enhancement", "toolwindow", "priority:low"],
+    "cycle": "v0.3.0 - Advanced Features",
+    "priority": "low"
+  },
+  {
+    "title": "Add OpenSpec file templates",
+    "description": "File → New templates for spec.md and delta spec files. Available only inside openspec/ directories.",
+    "labels": ["enhancement", "editor", "priority:low"],
+    "cycle": "v0.3.0 - Advanced Features",
+    "priority": "low"
+  },
+  {
+    "title": "Add config.yaml code completion",
+    "description": "CompletionContributor for config.yaml: top-level keys, schema version values, profile names.",
+    "labels": ["enhancement", "editor", "priority:low"],
+    "cycle": "v0.3.0 - Advanced Features",
+    "priority": "low"
+  },
+  {
+    "title": "Create wiki documentation",
+    "description": "Populate Forgejo wiki with comprehensive user manual and developer documentation (17 pages).",
+    "labels": ["documentation", "priority:high"],
+    "cycle": "v0.1.0 - Initial Release",
+    "priority": "high"
+  },
+  {
+    "title": "Set up project tracking infrastructure",
+    "description": "Configure Forgejo labels, milestones, and issues. Set up Plane project with cycles and work items.",
+    "labels": ["infrastructure", "priority:high"],
+    "cycle": "v0.1.0 - Initial Release",
+    "priority": "high"
+  }
+]

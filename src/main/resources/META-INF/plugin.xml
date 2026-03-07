@@ -11,11 +11,35 @@
     <depends>org.jetbrains.plugins.yaml</depends>
 
     <extensions defaultExtensionNs="com.intellij">
+        <!-- Services -->
         <projectService serviceImplementation="com.johnnyb.openspec.services.OpenSpecProjectService"/>
         <projectService serviceImplementation="com.johnnyb.openspec.services.ConfigService"/>
         <projectService serviceImplementation="com.johnnyb.openspec.services.SpecParsingService"/>
         <projectService serviceImplementation="com.johnnyb.openspec.services.ChangeService"/>
+        <projectService serviceImplementation="com.johnnyb.openspec.services.CliDetectionService"/>
+        <projectService serviceImplementation="com.johnnyb.openspec.validation.BuiltInValidator"/>
+        <projectService serviceImplementation="com.johnnyb.openspec.scaffolding.ScaffoldingService"/>
+        <projectService serviceImplementation="com.johnnyb.openspec.settings.OpenSpecSettings"/>
+        <projectService serviceImplementation="com.johnnyb.openspec.services.ArtifactOrchestrationService"/>
+        <projectService serviceImplementation="com.johnnyb.openspec.services.ScaffoldingDetectionService"/>
+        <projectService serviceImplementation="com.johnnyb.openspec.services.AiToolDetectionService"/>
+        <projectService serviceImplementation="com.johnnyb.openspec.ai.DirectApiService"/>
+        <projectService serviceImplementation="com.johnnyb.openspec.services.DeliveryMethodResolver"/>
+        <projectService serviceImplementation="com.johnnyb.openspec.toolwindow.OpenSpecConsoleService"/>
 
+        <!-- Settings -->
+        <projectConfigurable instance="com.johnnyb.openspec.settings.OpenSpecConfigurable"
+                             id="com.johnnyb.openspec.settings"
+                             displayName="OpenSpec"
+                             parentId="tools"/>
+
+        <!-- Startup -->
+        <postStartupActivity implementation="com.johnnyb.openspec.services.OpenSpecProjectService$StartupDetection"/>
+
+        <!-- Notifications -->
+        <notificationGroup id="OpenSpec Notifications" displayType="BALLOON"/>
+
+        <!-- Tool Window -->
         <toolWindow id="OpenSpec" anchor="right"
                     factoryClass="com.johnnyb.openspec.toolwindow.OpenSpecToolWindowFactory"
                     icon="/icons/openspec.svg"/>

@@ -1,17 +1,20 @@
 package com.johnnyb.openspec.toolwindow;
 
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
-import com.johnnyb.openspec.model.Change;
-import com.johnnyb.openspec.model.Requirement;
-import com.johnnyb.openspec.model.SpecFile;
+import com.johnnyb.openspec.model.*;
+import com.johnnyb.openspec.services.ArtifactOrchestrationService;
 import com.johnnyb.openspec.services.ChangeService;
+import com.johnnyb.openspec.services.CliDetectionService;
 import com.johnnyb.openspec.services.SpecParsingService;
+import com.johnnyb.openspec.util.OpenSpecFileUtil;
 
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeModel;
 import java.util.List;
 
 public class SpecTreeModel {
+    private static final Logger LOG = Logger.getInstance(SpecTreeModel.class);
 
     private final Project project;
 
@@ -21,6 +24,12 @@ public class SpecTreeModel {
 
     public DefaultTreeModel buildModel() {
         DefaultMutableTreeNode root = new DefaultMutableTreeNode("OpenSpec");
+
+        if (!OpenSpecFileUtil.isOpenSpecProject(project)) {
+            root.add(new DefaultMutableTreeNode(
+                    new TreeNodeData("Not an OpenSpec project. Use Init to set up.", TreeNodeType.HINT, null)));
+            return new DefaultTreeModel(root);
+        }
 
         root.add(buildSpecsNode());
         root.add(buildChangesNode());
@@ -35,6 +44,12 @@ public class SpecTreeModel {
 
         SpecParsingService parsingService = project.getService(SpecParsingService.class);
         List<SpecFile> specs = parsingService.parseAllSpecs();
+
+        if (specs.isEmpty()) {
+            specsNode.add(new DefaultMutableTreeNode(
+                    new TreeNodeData("No specs found. Run Init to get started.", TreeNodeType.HINT, null)));
+            return specsNode;
+        }
 
         for (SpecFile spec : specs) {
             DefaultMutableTreeNode domainNode = new DefaultMutableTreeNode(
@@ -58,19 +73,103 @@ public class SpecTreeModel {
         ChangeService changeService = project.getService(ChangeService.class);
         List<Change> changes = changeService.getActiveChanges();
 
-        for (Change change : changes) {
-            DefaultMutableTreeNode changeNode = new DefaultMutableTreeNode(
-                    new TreeNodeData(change.getName(), TreeNodeType.CHANGE, change.getPath()));
+        if (changes.isEmpty()) {
+            changesNode.add(new DefaultMutableTreeNode(
+                    new TreeNodeData("No active changes. Use Propose to create one.", TreeNodeType.HINT, null)));
+            return changesNode;
+        }
 
-            for (String artifact : change.getArtifactFiles()) {
+        boolean cliAvailable = isCliAvailable();
+
+        for (Change change : changes) {
+            // Add status label to change name
+            ChangeStatus status = changeService.getStatus(change);
+            String label = change.getName();
+            if (status != ChangeStatus.UNKNOWN) {
+                label += " " + status.toLabel();
+            }
+
+            DefaultMutableTreeNode changeNode = new DefaultMutableTreeNode(
+                    new TreeNodeData(label, TreeNodeType.CHANGE, change.getPath(), change.getName(), null));
+
+            // Try CLI-based artifact DAG first
+            if (cliAvailable) {
+                boolean dagLoaded = addDagArtifactNodes(changeNode, change);
+                if (!dagLoaded) {
+                    addFallbackArtifactNodes(changeNode, change, changeService);
+                }
+            } else {
+                addFallbackArtifactNodes(changeNode, change, changeService);
+            }
+
+            // Add delta-spec nodes (specs/<domain>/spec.md)
+            List<String> deltaSpecs = changeService.getDeltaSpecNames(change);
+            for (String domain : deltaSpecs) {
                 changeNode.add(new DefaultMutableTreeNode(
-                        new TreeNodeData(artifact, TreeNodeType.ARTIFACT, change.getPath() + "/" + artifact)));
+                        new TreeNodeData(domain, TreeNodeType.DELTA_SPEC,
+                                change.getPath() + "/specs/" + domain + "/spec.md")));
             }
 
             changesNode.add(changeNode);
         }
 
         return changesNode;
+    }
+
+    private boolean addDagArtifactNodes(DefaultMutableTreeNode changeNode, Change change) {
+        try {
+            ArtifactOrchestrationService orchestration = project.getService(ArtifactOrchestrationService.class);
+            if (orchestration == null) return false;
+
+            ChangeArtifactDag dag = orchestration.getArtifactStatus(change.getName());
+            if (dag == null || dag.getArtifacts().isEmpty()) return false;
+
+            for (ArtifactInfo artifact : dag.getArtifacts()) {
+                TreeNodeType nodeType = switch (artifact.getStatus()) {
+                    case DONE -> TreeNodeType.ARTIFACT_DONE;
+                    case READY -> TreeNodeType.ARTIFACT_READY;
+                    case BLOCKED -> TreeNodeType.ARTIFACT_BLOCKED;
+                    default -> TreeNodeType.ARTIFACT;
+                };
+
+                String artifactLabel = buildArtifactLabel(artifact);
+                String filePath = artifact.getOutputPath() != null
+                        ? change.getPath() + "/" + artifact.getOutputPath() : null;
+
+                changeNode.add(new DefaultMutableTreeNode(
+                        new TreeNodeData(artifactLabel, nodeType, filePath, change.getName(), artifact.getId())));
+            }
+            return true;
+        } catch (Exception e) {
+            LOG.debug("Failed to load DAG for change: " + change.getName(), e);
+            return false;
+        }
+    }
+
+    private String buildArtifactLabel(ArtifactInfo artifact) {
+        String icon = artifact.getStatus().toIcon();
+        String label = icon + " " + artifact.getId();
+        if (artifact.getStatus() == ArtifactStatus.BLOCKED && !artifact.getMissingDeps().isEmpty()) {
+            label += " (needs: " + String.join(", ", artifact.getMissingDeps()) + ")";
+        }
+        return label;
+    }
+
+    private void addFallbackArtifactNodes(DefaultMutableTreeNode changeNode, Change change, ChangeService changeService) {
+        for (String artifact : change.getArtifactFiles()) {
+            changeNode.add(new DefaultMutableTreeNode(
+                    new TreeNodeData(artifact, TreeNodeType.ARTIFACT, change.getPath() + "/" + artifact)));
+        }
+        List<String> missing = changeService.getMissingArtifacts(change);
+        for (String missingArtifact : missing) {
+            changeNode.add(new DefaultMutableTreeNode(
+                    new TreeNodeData(missingArtifact, TreeNodeType.MISSING_ARTIFACT, null)));
+        }
+    }
+
+    private boolean isCliAvailable() {
+        CliDetectionService detection = project.getService(CliDetectionService.class);
+        return detection != null && detection.isAvailable();
     }
 
     private DefaultMutableTreeNode buildArchiveNode() {
@@ -89,10 +188,19 @@ public class SpecTreeModel {
     }
 
     public enum TreeNodeType {
-        SPECS, SPEC_DOMAIN, REQUIREMENT, CHANGES, CHANGE, ARTIFACT, ARCHIVE
+        SPECS, SPEC_DOMAIN, REQUIREMENT, CHANGES, CHANGE, ARTIFACT, MISSING_ARTIFACT,
+        ARTIFACT_DONE, ARTIFACT_READY, ARTIFACT_BLOCKED,
+        DELTA_SPEC, ARCHIVE, HINT
     }
 
-    public record TreeNodeData(String label, TreeNodeType type, String filePath) {
+    public record TreeNodeData(String label, TreeNodeType type, String filePath, String changeName, String artifactId) {
+        /**
+         * Backward-compatible constructor for nodes without change/artifact context.
+         */
+        public TreeNodeData(String label, TreeNodeType type, String filePath) {
+            this(label, type, filePath, null, null);
+        }
+
         @Override
         public String toString() {
             return label;

@@ -1,0 +1,163 @@
+package com.johnnyb.openspec.services;
+
+import com.intellij.execution.configurations.GeneralCommandLine;
+import com.intellij.execution.process.OSProcessHandler;
+import com.intellij.execution.process.ProcessAdapter;
+import com.intellij.execution.process.ProcessEvent;
+import com.intellij.execution.process.ProcessOutputTypes;
+import com.intellij.openapi.components.Service;
+import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.Key;
+import com.johnnyb.openspec.settings.OpenSpecSettings;
+
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+
+@Service(Service.Level.PROJECT)
+public final class CliDetectionService {
+    private static final Logger LOG = Logger.getInstance(CliDetectionService.class);
+    private static final int TIMEOUT_MS = 10_000;
+
+    /**
+     * Common install locations for openspec on macOS/Linux.
+     */
+    private static final List<String> COMMON_PATHS = List.of(
+            "/opt/homebrew/bin/openspec",
+            "/usr/local/bin/openspec",
+            "/usr/bin/openspec"
+    );
+
+    private final Project project;
+    private volatile boolean available;
+    private volatile String detectedPath;
+    private volatile String detectedVersion;
+
+    public CliDetectionService(Project project) {
+        this.project = project;
+    }
+
+    public void detect() {
+        available = false;
+        detectedPath = null;
+        detectedVersion = null;
+
+        // 1. Check settings path first
+        OpenSpecSettings settings = OpenSpecSettings.getInstance(project);
+        String settingsPath = settings.getCliPath();
+        if (settingsPath != null && !settingsPath.isEmpty()) {
+            if (tryPath(settingsPath)) return;
+        }
+
+        // 2. Try bare "openspec" via GeneralCommandLine (uses IntelliJ's env resolution)
+        if (tryPath("openspec")) return;
+
+        // 3. Try via user's login shell
+        String shellPath = tryLoginShellWhich();
+        if (shellPath != null && tryPath(shellPath)) return;
+
+        // 4. Try common install locations
+        for (String path : COMMON_PATHS) {
+            if (tryPath(path)) return;
+        }
+    }
+
+    private boolean tryPath(String path) {
+        try {
+            // Use GeneralCommandLine which inherits IntelliJ's environment resolution
+            GeneralCommandLine cmd = new GeneralCommandLine(path, "--version");
+            cmd.setCharset(StandardCharsets.UTF_8);
+
+            OSProcessHandler handler = new OSProcessHandler(cmd);
+            StringBuilder stdout = new StringBuilder();
+
+            handler.addProcessListener(new ProcessAdapter() {
+                @Override
+                public void onTextAvailable(ProcessEvent event, Key outputType) {
+                    if (ProcessOutputTypes.STDOUT.equals(outputType)) {
+                        stdout.append(event.getText());
+                    }
+                }
+            });
+
+            handler.startNotify();
+            if (!handler.waitFor(TIMEOUT_MS)) {
+                handler.destroyProcess();
+                return false;
+            }
+
+            Integer exitCode = handler.getExitCode();
+            if (exitCode != null && exitCode == 0) {
+                available = true;
+                detectedPath = path;
+                String output = stdout.toString().trim();
+                detectedVersion = output.replaceAll("(?i)openspec\\s*v?", "").trim();
+                if (detectedVersion.isEmpty()) {
+                    detectedVersion = output;
+                }
+                LOG.info("OpenSpec CLI detected at: " + path + " version: " + detectedVersion);
+                return true;
+            }
+        } catch (Exception e) {
+            LOG.debug("CLI not available at: " + path, e);
+        }
+        return false;
+    }
+
+    /**
+     * Tries to find openspec via the user's login shell, which has the full PATH.
+     * This handles macOS where GUI apps don't inherit terminal PATH.
+     */
+    private String tryLoginShellWhich() {
+        String shell = System.getenv("SHELL");
+        if (shell == null || shell.isEmpty()) {
+            shell = "/bin/zsh"; // default on macOS
+        }
+        try {
+            GeneralCommandLine cmd = new GeneralCommandLine(shell, "-lc", "which openspec");
+            cmd.setCharset(StandardCharsets.UTF_8);
+
+            OSProcessHandler handler = new OSProcessHandler(cmd);
+            StringBuilder stdout = new StringBuilder();
+
+            handler.addProcessListener(new ProcessAdapter() {
+                @Override
+                public void onTextAvailable(ProcessEvent event, Key outputType) {
+                    if (ProcessOutputTypes.STDOUT.equals(outputType)) {
+                        stdout.append(event.getText());
+                    }
+                }
+            });
+
+            handler.startNotify();
+            if (!handler.waitFor(TIMEOUT_MS)) {
+                handler.destroyProcess();
+                return null;
+            }
+
+            Integer exitCode = handler.getExitCode();
+            if (exitCode != null && exitCode == 0) {
+                String path = stdout.toString().trim();
+                if (!path.isEmpty()) {
+                    LOG.info("Found openspec via login shell: " + path);
+                    return path;
+                }
+            }
+        } catch (Exception e) {
+            LOG.debug("Login shell which failed", e);
+        }
+        return null;
+    }
+
+    public boolean isAvailable() {
+        return available;
+    }
+
+    public String getDetectedPath() {
+        return detectedPath;
+    }
+
+    public String getDetectedVersion() {
+        return detectedVersion;
+    }
+}

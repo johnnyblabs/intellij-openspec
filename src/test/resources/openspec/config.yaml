@@ -6,8 +6,7 @@ profile:
   description: A test project
   language: Java 21
 
-context:
-  - Test context item
+context: "Test context item"
 
 rules:
-  - All tests SHALL pass
+  testing: "All tests SHALL pass"

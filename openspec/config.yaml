@@ -8,14 +8,10 @@ profile:
   framework: IntelliJ Platform SDK 2024.1+
   build: Gradle with IntelliJ Platform Gradle Plugin 2.11.0
 
-context:
-  - IntelliJ Platform plugin architecture (extensions, services, actions)
-  - YAML and Markdown file parsing
-  - OpenSpec CLI integration
-  - Tree-based UI with JTree and tool windows
+context: "IntelliJ Platform plugin (extensions, services, actions) with YAML/Markdown parsing, OpenSpec CLI integration, and tree-based UI (JTree, tool windows)"
 
 rules:
-  - All services SHALL be registered as IntelliJ project services
-  - Specs SHALL use RFC 2119 keywords (SHALL, SHOULD, MAY)
-  - Scenarios SHALL follow Given-When-Then structure
-  - Plugin SHALL support IntelliJ IDEA 2024.1 and later
+  services: "All services SHALL be registered as IntelliJ project services"
+  rfc-keywords: "Specs SHALL use RFC 2119 keywords (SHALL, SHOULD, MAY)"
+  scenarios: "Scenarios SHALL follow Given-When-Then structure"
+  compatibility: "Plugin SHALL support IntelliJ IDEA 2024.1 and later"

@@ -1,0 +1,176 @@
+[
+  {
+    "title": "Add unit tests for SpecParsingService",
+    "body": "## Description\n\nExpand test coverage for `SpecParsingService` beyond the existing basic tests. Cover edge cases in spec parsing.\n\n## Acceptance Criteria\n\n- [ ] Tests for specs with no requirements\n- [ ] Tests for specs with multiple scenarios per requirement\n- [ ] Tests for RFC 2119 keyword extraction (MUST, SHOULD, MAY, SHALL)\n- [ ] Tests for malformed markdown (missing headings, empty sections)\n- [ ] Tests for multi-domain parsing via `parseAllSpecs()`\n- [ ] All tests pass in CI\n\n## Technical Notes\n\nUse JUnit 5. Test class: `SpecParsingServiceTest.java`. Mock VirtualFile for file-based tests.",
+    "labels": ["testing", "priority:high"],
+    "milestone": "v0.1.0 - Initial Release"
+  },
+  {
+    "title": "Add unit tests for BuiltInValidator",
+    "body": "## Description\n\nCreate comprehensive tests for `BuiltInValidator` covering spec, change, and config validation rules.\n\n## Acceptance Criteria\n\n- [ ] Tests for spec validation: title required, requirements present, RFC 2119 keywords\n- [ ] Tests for change validation: metadata exists, required artifacts, delta spec references\n- [ ] Tests for config validation: schema version, required fields, profile validation\n- [ ] Tests for strict mode behavior\n- [ ] Edge cases: empty files, missing fields, unknown schema versions\n\n## Technical Notes\n\nNew test class: `BuiltInValidatorTest.java`. Construct model objects directly for unit testing.",
+    "labels": ["testing", "validation", "priority:high"],
+    "milestone": "v0.1.0 - Initial Release"
+  },
+  {
+    "title": "Add unit tests for CliOutputParser",
+    "body": "## Description\n\nTest JSON and text parsing from CLI output including artifact status, validation results, and error handling.\n\n## Acceptance Criteria\n\n- [ ] Tests for valid JSON artifact status parsing\n- [ ] Tests for valid JSON validation result parsing\n- [ ] Tests for malformed JSON handling\n- [ ] Tests for plain text fallback parsing\n- [ ] Tests for empty/null input\n\n## Technical Notes\n\nNew test class: `CliOutputParserTest.java`. Use sample JSON fixtures.",
+    "labels": ["testing", "cli-integration", "priority:high"],
+    "milestone": "v0.1.0 - Initial Release"
+  },
+  {
+    "title": "Add unit tests for VersionSupport",
+    "body": "## Description\n\nTest version enum behavior: required fields, artifacts, schema validation per version.\n\n## Acceptance Criteria\n\n- [ ] Tests for each version (v1.0, v1.1, v1.2) required config fields\n- [ ] Tests for required artifacts per version\n- [ ] Tests for valid schema detection\n- [ ] Tests for version ordering and comparison\n\n## Technical Notes\n\nNew test class: `VersionSupportTest.java`.",
+    "labels": ["testing", "priority:medium"],
+    "milestone": "v0.1.0 - Initial Release"
+  },
+  {
+    "title": "Handle malformed YAML gracefully in ConfigService",
+    "body": "## Description\n\nWhen `config.yaml` contains invalid YAML, `ConfigService` should show a clear error notification instead of a stack trace.\n\n## Acceptance Criteria\n\n- [ ] Invalid YAML shows a user-friendly notification balloon\n- [ ] Error message includes the file path and parse error location\n- [ ] `isConfigLoaded()` returns false after failed parse\n- [ ] Subsequent calls to `getConfig()` retry parsing\n- [ ] No uncaught exceptions in the IDE log\n\n## Technical Notes\n\nCatch `YAMLException` in `ConfigService.getConfig()`. Use `OpenSpecNotifier.error()` for the notification.",
+    "labels": ["bug", "priority:high"],
+    "milestone": "v0.1.0 - Initial Release"
+  },
+  {
+    "title": "Add CLI command timeout configuration",
+    "body": "## Description\n\nCLI commands currently have a hardcoded timeout. Allow users to configure the timeout in settings.\n\n## Acceptance Criteria\n\n- [ ] New setting: CLI timeout (seconds) with default of 30\n- [ ] Setting appears in Settings → Tools → OpenSpec\n- [ ] `CliRunner` reads timeout from settings\n- [ ] Timeout exceeded shows clear error message\n\n## Technical Notes\n\nAdd `cliTimeout` field to `OpenSpecSettings`. Pass to `CliRunner` execution.",
+    "labels": ["enhancement", "cli-integration", "priority:medium"],
+    "milestone": "v0.1.0 - Initial Release"
+  },
+  {
+    "title": "Add progress indicator for long-running operations",
+    "body": "## Description\n\nCLI commands and API calls should show an IntelliJ progress bar instead of appearing to hang.\n\n## Acceptance Criteria\n\n- [ ] Generate Artifact shows progress indicator\n- [ ] Generate All shows progress with artifact count\n- [ ] CLI commands show indeterminate progress\n- [ ] Progress is cancellable where possible\n\n## Technical Notes\n\nUse `Task.Backgroundable` with `ProgressIndicator`. Already partially implemented — ensure consistency across all long-running actions.",
+    "labels": ["ux", "priority:medium"],
+    "milestone": "v0.1.0 - Initial Release"
+  },
+  {
+    "title": "Improve error messages for API failures",
+    "body": "## Description\n\nDirectApiService error messages should be more actionable — include HTTP status, provider-specific error details, and suggested fixes.\n\n## Acceptance Criteria\n\n- [ ] 401 errors suggest re-checking the API key\n- [ ] 429 errors mention rate limiting and suggest waiting\n- [ ] 500+ errors suggest checking provider status\n- [ ] Error details shown in both notification and Console tab\n\n## Technical Notes\n\nEnhance `AiApiException` to carry structured error info. Update `DirectApiService` error handling.",
+    "labels": ["ux", "ai", "priority:medium"],
+    "milestone": "v0.1.0 - Initial Release"
+  },
+  {
+    "title": "Add keyboard shortcuts for common actions",
+    "body": "## Description\n\nAssign keyboard shortcuts to frequently used actions for power users.\n\n## Acceptance Criteria\n\n- [ ] Propose: assigned default shortcut\n- [ ] Validate: assigned default shortcut\n- [ ] Refresh: assigned default shortcut\n- [ ] Shortcuts documented in plugin.xml with `<keyboard-shortcut>` elements\n- [ ] Shortcuts visible in menu items\n- [ ] No conflicts with default IntelliJ shortcuts\n\n## Technical Notes\n\nAdd `<keyboard-shortcut>` to action registrations in `plugin.xml`. Use platform-appropriate modifiers (Meta on macOS, Ctrl on others).",
+    "labels": ["enhancement", "ux", "priority:medium"],
+    "milestone": "v0.2.0 - Polish & Testing"
+  },
+  {
+    "title": "Fix dark theme colors in tree renderer",
+    "body": "## Description\n\n`SpecTreeCellRenderer` hardcodes colors that may not be readable in dark themes (Darcula/New Dark).\n\n## Acceptance Criteria\n\n- [ ] All tree node text is readable in both light and dark themes\n- [ ] Use `JBColor` for theme-aware colors\n- [ ] Status colors (green/blue/gray) adapt to theme\n- [ ] Tested in Darcula and New UI dark theme\n\n## Technical Notes\n\nReplace `new Color(...)` with `JBColor(light, dark)` pairs in `SpecTreeCellRenderer`.",
+    "labels": ["bug", "ux", "toolwindow", "priority:medium"],
+    "milestone": "v0.2.0 - Polish & Testing"
+  },
+  {
+    "title": "Add spec template selection for Propose",
+    "body": "## Description\n\nWhen proposing a change, allow users to select from predefined templates (e.g., feature, bugfix, refactor) that pre-populate the proposal.\n\n## Acceptance Criteria\n\n- [ ] ProposeChangeDialog includes template dropdown\n- [ ] At least 3 templates: Feature, Bug Fix, Refactor\n- [ ] Templates pre-fill proposal.md with appropriate sections\n- [ ] Custom option for blank proposal\n\n## Technical Notes\n\nExtend `ProposeChangeDialog` with template selection. Add templates to `TemplateProvider`.",
+    "labels": ["enhancement", "ux", "priority:medium"],
+    "milestone": "v0.2.0 - Polish & Testing"
+  },
+  {
+    "title": "Add inline quick-fixes for validation issues",
+    "body": "## Description\n\nInspections should provide quick-fix actions (Alt+Enter) to resolve common validation issues.\n\n## Acceptance Criteria\n\n- [ ] Missing title → quick-fix to insert `# Title` template\n- [ ] Missing RFC 2119 keyword → quick-fix to insert MUST/SHOULD\n- [ ] Missing `.openspec.yaml` → quick-fix to create metadata file\n- [ ] Quick-fixes appear in the intention popup (Alt+Enter)\n\n## Technical Notes\n\nImplement `LocalQuickFix` in each inspection class. Register via `registerFix()` in `ProblemDescriptor`.",
+    "labels": ["enhancement", "validation", "editor", "priority:medium"],
+    "milestone": "v0.2.0 - Polish & Testing"
+  },
+  {
+    "title": "Improve validation result formatting",
+    "body": "## Description\n\nValidation results should be displayed in a structured panel or tool window tab instead of just a notification balloon.\n\n## Acceptance Criteria\n\n- [ ] Validation results shown in a dedicated panel or Console tab section\n- [ ] Issues grouped by file\n- [ ] Clickable file paths that navigate to the issue location\n- [ ] Severity icons (error/warning/info)\n- [ ] Summary line: \"X errors, Y warnings\"\n\n## Technical Notes\n\nConsider using IntelliJ's `ProblemsView` API or formatting output in the Console tab with hyperlinks.",
+    "labels": ["enhancement", "validation", "ux", "priority:medium"],
+    "milestone": "v0.2.0 - Polish & Testing"
+  },
+  {
+    "title": "Add support for v2.0 schema",
+    "body": "## Description\n\nExtend `VersionSupport` to handle a v2.0 schema with new artifact types and config fields.\n\n## Acceptance Criteria\n\n- [ ] New `v2_0` enum value in `VersionSupport`\n- [ ] v2.0 required config fields defined\n- [ ] v2.0 artifact set defined\n- [ ] Backward compatibility maintained for v1.x\n- [ ] Config validation updated for v2.0 rules\n\n## Technical Notes\n\nAdd enum value. Define required fields and artifacts based on OpenSpec CLI v2.0 spec.",
+    "labels": ["enhancement", "priority:low"],
+    "milestone": "v0.2.0 - Polish & Testing"
+  },
+  {
+    "title": "Add integration tests for action lifecycle",
+    "body": "## Description\n\nCreate integration tests that verify the full action lifecycle: init → propose → generate → apply → archive.\n\n## Acceptance Criteria\n\n- [ ] Test init creates correct directory structure\n- [ ] Test propose creates change with metadata\n- [ ] Test apply updates status\n- [ ] Test archive moves to archive directory\n- [ ] Tests use IntelliJ test framework (`BasePlatformTestCase`)\n\n## Technical Notes\n\nUse `HeavyPlatformTestCase` or `BasePlatformTestCase` for tests that need a full project environment.",
+    "labels": ["testing", "priority:medium"],
+    "milestone": "v0.2.0 - Polish & Testing"
+  },
+  {
+    "title": "Add notification grouping and history",
+    "body": "## Description\n\nMultiple rapid notifications (e.g., during Generate All) should be grouped. Add a way to review past notifications.\n\n## Acceptance Criteria\n\n- [ ] Rapid notifications are collapsed into a single group notification\n- [ ] Group notification shows count and expand button\n- [ ] Notification history viewable in Console tab or Event Log\n\n## Technical Notes\n\nUse IntelliJ `NotificationGroup` features for collapsing. Log to Console tab in parallel.",
+    "labels": ["ux", "priority:low"],
+    "milestone": "v0.2.0 - Polish & Testing"
+  },
+  {
+    "title": "Support multi-project workspaces",
+    "body": "## Description\n\nAllow the plugin to work with IntelliJ projects that contain multiple OpenSpec roots (e.g., monorepos).\n\n## Acceptance Criteria\n\n- [ ] Plugin detects multiple `openspec/` directories in project modules\n- [ ] Tool window shows all OpenSpec roots\n- [ ] Actions work relative to the selected root\n- [ ] Settings can be per-root or global\n\n## Technical Notes\n\nRefactor `OpenSpecProjectService.isOpenSpecProject()` to return a list. Update tree model to support multiple roots.",
+    "labels": ["enhancement", "priority:medium"],
+    "milestone": "v0.3.0 - Advanced Features"
+  },
+  {
+    "title": "Publish to JetBrains Marketplace",
+    "body": "## Description\n\nPrepare and publish the plugin to the JetBrains Marketplace for easy installation.\n\n## Acceptance Criteria\n\n- [ ] Plugin descriptor has complete metadata (description, vendor, change notes)\n- [ ] Plugin icon meets marketplace requirements\n- [ ] Plugin passes `verifyPlugin` task\n- [ ] Published and visible on marketplace\n- [ ] Installation works via Settings → Plugins → Marketplace\n\n## Technical Notes\n\nUpdate `plugin.xml` with full metadata. Use `publishPlugin` Gradle task. May need JetBrains Hub account.",
+    "labels": ["infrastructure", "priority:medium"],
+    "milestone": "v0.3.0 - Advanced Features"
+  },
+  {
+    "title": "Add Ollama integration for local AI models",
+    "body": "## Description\n\nSupport Ollama as a local AI provider for artifact generation without cloud API keys.\n\n## Acceptance Criteria\n\n- [ ] New `AiProvider.OLLAMA` enum value\n- [ ] Ollama endpoint configuration in settings (default: `http://localhost:11434`)\n- [ ] Model selection from locally available models\n- [ ] Direct API delivery mode works with Ollama\n- [ ] Error handling for Ollama not running\n\n## Technical Notes\n\nOllama uses OpenAI-compatible API at `/v1/chat/completions`. Extend `DirectApiService` to support the Ollama endpoint.",
+    "labels": ["enhancement", "ai", "priority:medium"],
+    "milestone": "v0.3.0 - Advanced Features"
+  },
+  {
+    "title": "Add streaming API response support",
+    "body": "## Description\n\nSupport streaming responses from AI providers to show real-time generation progress.\n\n## Acceptance Criteria\n\n- [ ] Streaming support for Claude API (SSE)\n- [ ] Streaming support for OpenAI API (SSE)\n- [ ] Real-time output display in Console tab during generation\n- [ ] Final result written to artifact file after stream completes\n- [ ] Cancellation support (stop generation mid-stream)\n\n## Technical Notes\n\nUse `HttpURLConnection` with chunked reading or a streaming HTTP client. Parse SSE `data:` lines.",
+    "labels": ["enhancement", "ai", "performance", "priority:low"],
+    "milestone": "v0.3.0 - Advanced Features"
+  },
+  {
+    "title": "Add spec search and filtering",
+    "body": "## Description\n\nAdd a search/filter bar to the tool window for finding specs, requirements, and changes by keyword.\n\n## Acceptance Criteria\n\n- [ ] Search bar at top of Browse tab\n- [ ] Filters tree nodes by label text\n- [ ] Highlights matching text in nodes\n- [ ] Clears filter to restore full tree\n- [ ] Keyboard shortcut to focus search (Ctrl/Cmd+F in tool window)\n\n## Technical Notes\n\nAdd `TreeSpeedSearch` or custom filter field to `OpenSpecToolWindowPanel`. Filter `SpecTreeModel` nodes during rebuild.",
+    "labels": ["enhancement", "toolwindow", "ux", "priority:low"],
+    "milestone": "v0.3.0 - Advanced Features"
+  },
+  {
+    "title": "Register OpenSpec file types with IntelliJ",
+    "body": "## Description\n\nRegister `.openspec.yaml`, spec.md, and delta spec files as recognized file types with custom icons.\n\n## Acceptance Criteria\n\n- [ ] `.openspec.yaml` recognized with OpenSpec icon\n- [ ] Spec files in `openspec/specs/` shown with spec icon\n- [ ] Delta spec files shown with delta spec icon\n- [ ] File type associations registered in plugin.xml\n\n## Technical Notes\n\nImplement `FileTypeFactory` or use `<fileType>` extension in plugin.xml. Custom icons from `/icons/`.",
+    "labels": ["enhancement", "editor", "priority:low"],
+    "milestone": "v0.3.0 - Advanced Features"
+  },
+  {
+    "title": "Add change diff viewer",
+    "body": "## Description\n\nShow a diff view comparing spec before and after applying delta specs from a change.\n\n## Acceptance Criteria\n\n- [ ] Right-click change → \"View Spec Diff\"\n- [ ] Opens IntelliJ diff viewer with original spec vs. modified spec\n- [ ] Delta specs merged into base spec for preview\n- [ ] Read-only diff (informational only)\n\n## Technical Notes\n\nUse `DiffManager.getInstance().showDiff()` with `SimpleDiffRequest`. Build modified content by applying delta specs programmatically.",
+    "labels": ["enhancement", "toolwindow", "priority:low"],
+    "milestone": "v0.3.0 - Advanced Features"
+  },
+  {
+    "title": "Add OpenSpec file templates",
+    "body": "## Description\n\nRegister file templates so users can create spec.md and delta spec files from File → New.\n\n## Acceptance Criteria\n\n- [ ] File → New → OpenSpec Spec template\n- [ ] File → New → OpenSpec Delta Spec template\n- [ ] Templates include proper structure with placeholders\n- [ ] Templates available only inside `openspec/` directories\n\n## Technical Notes\n\nUse `<internalFileTemplate>` in plugin.xml. Template files go in `resources/fileTemplates/`.",
+    "labels": ["enhancement", "editor", "good-first-issue", "priority:low"],
+    "milestone": "v0.3.0 - Advanced Features"
+  },
+  {
+    "title": "Document all public APIs with Javadoc",
+    "body": "## Description\n\nAdd Javadoc to all public classes and methods in service and model packages.\n\n## Acceptance Criteria\n\n- [ ] All public service methods have Javadoc\n- [ ] All model classes have class-level Javadoc\n- [ ] All enums have value-level documentation\n- [ ] `./gradlew javadoc` produces clean output\n\n## Technical Notes\n\nFocus on services/, model/, and validation/ packages. Actions are self-documenting via naming.",
+    "labels": ["documentation", "good-first-issue", "priority:low"],
+    "milestone": "v0.2.0 - Polish & Testing"
+  },
+  {
+    "title": "Add CI pipeline with GitHub Actions",
+    "body": "## Description\n\nSet up automated build and test pipeline.\n\n## Acceptance Criteria\n\n- [ ] Build runs on every push and PR\n- [ ] Tests run with JUnit 5\n- [ ] Plugin verification (`verifyPlugin`) runs\n- [ ] Build artifacts uploaded (plugin ZIP)\n- [ ] Badge in README showing build status\n\n## Technical Notes\n\nUse `actions/setup-java@v4` with JDK 17. Run `./gradlew build verifyPlugin`.",
+    "labels": ["infrastructure", "priority:high"],
+    "milestone": "v0.1.0 - Initial Release"
+  },
+  {
+    "title": "Add tree node tooltips with detailed info",
+    "body": "## Description\n\nHover tooltips on tree nodes should show additional context (file path, status details, dependency list).\n\n## Acceptance Criteria\n\n- [ ] Spec nodes show file path and requirement count\n- [ ] Change nodes show status, creation date, artifact count\n- [ ] Artifact nodes show dependencies and blocking info\n- [ ] Tooltips formatted with HTML for readability\n\n## Technical Notes\n\nOverride `getToolTipText()` in `SpecTreeCellRenderer` or set tooltips in `SpecTreeModel`.",
+    "labels": ["enhancement", "toolwindow", "ux", "good-first-issue", "priority:low"],
+    "milestone": "v0.2.0 - Polish & Testing"
+  },
+  {
+    "title": "Handle concurrent file operations safely",
+    "body": "## Description\n\nMultiple operations (refresh, validate, generate) can run concurrently and cause race conditions on file access.\n\n## Acceptance Criteria\n\n- [ ] File reads use VFS read actions\n- [ ] File writes use `WriteAction.run()`\n- [ ] Tree model rebuild is atomic (swap on EDT)\n- [ ] Cache invalidation is thread-safe\n\n## Technical Notes\n\nReview all file operations in services for proper `ReadAction`/`WriteAction` usage. Use `ConcurrentHashMap` for caches.",
+    "labels": ["bug", "performance", "priority:medium"],
+    "milestone": "v0.1.0 - Initial Release"
+  },
+  {
+    "title": "Add config.yaml code completion",
+    "body": "## Description\n\nProvide code completion for known fields in `config.yaml` (schema, version, profile, context, rules).\n\n## Acceptance Criteria\n\n- [ ] Completion for top-level keys\n- [ ] Completion for schema version values\n- [ ] Completion for profile names\n- [ ] Works in both YAML and config.yaml contexts\n\n## Technical Notes\n\nImplement `CompletionContributor` for YAML files. Check file is `config.yaml` in openspec/ directory.",
+    "labels": ["enhancement", "editor", "priority:low"],
+    "milestone": "v0.3.0 - Advanced Features"
+  }
+]

@@ -44,3 +44,12 @@ bin/
 
 ### IntelliJ Platform Gradle Plugin ###
 .intellijPlatform/
+
+### Setup tokens ###
+scripts/.env
+
+### Per-user plugin settings ###
+.idea/openspec.xml
+
+### Claude Code local settings ###
+.claude/settings.local.json

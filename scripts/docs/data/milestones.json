@@ -1,0 +1,17 @@
+[
+  {
+    "title": "v0.1.0 - Initial Release",
+    "description": "Stabilization, test coverage, critical bug fixes. Ensure core workflows (init, propose, generate, apply, archive) are solid.",
+    "due_date": "2026-04-01T00:00:00Z"
+  },
+  {
+    "title": "v0.2.0 - Polish & Testing",
+    "description": "UX improvements, integration tests, dark theme support, keyboard shortcuts, and validation enhancements.",
+    "due_date": "2026-05-01T00:00:00Z"
+  },
+  {
+    "title": "v0.3.0 - Advanced Features",
+    "description": "Multi-project support, marketplace publishing, local AI models (Ollama), streaming API responses, spec search.",
+    "due_date": "2026-07-01T00:00:00Z"
+  }
+]

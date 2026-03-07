@@ -1,0 +1,26 @@
+{
+  "changeName": "ensure-ai-component-exist-in-plugin",
+  "artifactId": "tasks",
+  "schemaName": "spec-driven",
+  "changeDir": "/project/openspec/changes/ensure-ai-component-exist-in-plugin",
+  "outputPath": "tasks.md",
+  "description": "Implementation checklist with trackable tasks",
+  "instruction": "Create the task list that breaks down the implementation work.",
+  "context": "IntelliJ Platform plugin with YAML/Markdown parsing and CLI integration",
+  "template": "## 1. <!-- Task Group Name -->\n\n- [ ] 1.1 <!-- Task description -->\n",
+  "dependencies": [
+    {
+      "id": "specs",
+      "done": false,
+      "path": "specs/**/*.md",
+      "description": "Detailed specifications for the change"
+    },
+    {
+      "id": "design",
+      "done": true,
+      "path": "design.md",
+      "description": "Technical design document with implementation details"
+    }
+  ],
+  "unlocks": []
+}
