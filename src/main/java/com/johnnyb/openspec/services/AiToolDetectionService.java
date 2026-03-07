@@ -88,7 +88,7 @@ public final class AiToolDetectionService {
      * Returns the first detected tool name for use as a clipboard label.
      */
     public String getPrimaryToolLabel() {
-        return detectedTools.isEmpty() ? "AI Tool" : detectedTools.get(0);
+        return detectedTools.isEmpty() ? "AI Tool" : detectedTools.getFirst();
     }
 
     /**

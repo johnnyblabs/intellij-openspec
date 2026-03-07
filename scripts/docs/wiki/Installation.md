@@ -4,8 +4,8 @@
 
 | Requirement | Version |
 |------------|---------|
-| **Java JDK** | 17 or later |
-| **IntelliJ IDEA** | 2024.1+ (Community or Ultimate) |
+| **Java JDK** | 21 or later |
+| **IntelliJ IDEA** | 2024.2+ (Community or Ultimate) |
 | **OpenSpec CLI** | Optional — `npm i -g openspec-dev` |
 
 ## Build from Source

@@ -164,9 +164,9 @@ class CliOutputParserTest {
             assertEquals(3, dag.getArtifacts().size());
 
             // Verify artifact statuses are deserialized correctly
-            assertEquals(ArtifactStatus.DONE, dag.getArtifacts().get(0).getStatus());
-            assertEquals(ArtifactStatus.READY, dag.getArtifacts().get(1).getStatus());
-            assertEquals(ArtifactStatus.BLOCKED, dag.getArtifacts().get(2).getStatus());
+            assertEquals(ArtifactStatus.DONE, dag.getArtifacts().get(0).status());
+            assertEquals(ArtifactStatus.READY, dag.getArtifacts().get(1).status());
+            assertEquals(ArtifactStatus.BLOCKED, dag.getArtifacts().get(2).status());
         }
 
         @Test
@@ -184,9 +184,9 @@ class CliOutputParserTest {
                     """;
 
             ChangeArtifactDag dag = CliOutputParser.parseChangeStatus(json);
-            assertNotNull(dag.getArtifacts().get(0).getOutputPath(),
+            assertNotNull(dag.getArtifacts().get(0).outputPath(),
                     "outputPath must not be null — Gson must parse camelCase correctly");
-            assertEquals("/path/proposal.md", dag.getArtifacts().get(0).getOutputPath());
+            assertEquals("/path/proposal.md", dag.getArtifacts().get(0).outputPath());
         }
 
         @Test
@@ -229,12 +229,12 @@ class CliOutputParserTest {
                     """;
 
             ArtifactInstruction inst = CliOutputParser.parseArtifactInstruction(json);
-            assertEquals("my-feature", inst.getChangeName());
-            assertEquals("design", inst.getArtifactId());
-            assertEquals("/changes/my-feature/design.md", inst.getOutputPath());
-            assertEquals("Write the design document", inst.getInstruction());
-            assertEquals(1, inst.getDependencies().size());
-            assertEquals(2, inst.getUnlocks().size());
+            assertEquals("my-feature", inst.changeName());
+            assertEquals("design", inst.artifactId());
+            assertEquals("/changes/my-feature/design.md", inst.outputPath());
+            assertEquals("Write the design document", inst.instruction());
+            assertEquals(1, inst.dependencies().size());
+            assertEquals(2, inst.unlocks().size());
         }
 
         @Test
@@ -248,12 +248,12 @@ class CliOutputParserTest {
                     """;
 
             ArtifactInstruction inst = CliOutputParser.parseArtifactInstruction(json);
-            assertEquals("test", inst.getChangeName());
-            assertEquals("proposal", inst.getArtifactId());
-            assertNotNull(inst.getDependencies());
-            assertTrue(inst.getDependencies().isEmpty());
-            assertNotNull(inst.getUnlocks());
-            assertTrue(inst.getUnlocks().isEmpty());
+            assertEquals("test", inst.changeName());
+            assertEquals("proposal", inst.artifactId());
+            assertNotNull(inst.dependencies());
+            assertTrue(inst.dependencies().isEmpty());
+            assertNotNull(inst.unlocks());
+            assertTrue(inst.unlocks().isEmpty());
         }
     }
 }

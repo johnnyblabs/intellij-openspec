@@ -36,7 +36,7 @@ public class OpenSpecArchiveAction extends OpenSpecBaseAction {
 
         Change target;
         if (active.size() == 1) {
-            target = active.get(0);
+            target = active.getFirst();
         } else {
             String[] names = active.stream().map(Change::getName).toArray(String[]::new);
             int choice = Messages.showChooseDialog(project,

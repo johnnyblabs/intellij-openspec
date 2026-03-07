@@ -69,11 +69,11 @@ class ScaffoldingOverrideTest {
         ScaffoldingDetectionService detector = new ScaffoldingDetectionService(null);
         applyOverrides(dag, changeDir, detector);
 
-        assertEquals(ArtifactStatus.DONE, findArtifact(dag, "proposal").getStatus());
-        assertEquals(ArtifactStatus.READY, findArtifact(dag, "design").getStatus());
-        assertEquals(ArtifactStatus.DONE, findArtifact(dag, "specs").getStatus()); // glob skipped
-        assertEquals(ArtifactStatus.BLOCKED, findArtifact(dag, "tasks").getStatus());
-        assertEquals(List.of("design"), findArtifact(dag, "tasks").getMissingDeps());
+        assertEquals(ArtifactStatus.DONE, findArtifact(dag, "proposal").status());
+        assertEquals(ArtifactStatus.READY, findArtifact(dag, "design").status());
+        assertEquals(ArtifactStatus.DONE, findArtifact(dag, "specs").status()); // glob skipped
+        assertEquals(ArtifactStatus.BLOCKED, findArtifact(dag, "tasks").status());
+        assertEquals(List.of("design"), findArtifact(dag, "tasks").missingDeps());
         assertFalse(dag.isComplete());
     }
 
@@ -92,9 +92,9 @@ class ScaffoldingOverrideTest {
         ScaffoldingDetectionService detector = new ScaffoldingDetectionService(null);
         applyOverrides(dag, changeDir, detector);
 
-        assertEquals(ArtifactStatus.DONE, findArtifact(dag, "proposal").getStatus());
-        assertEquals(ArtifactStatus.DONE, findArtifact(dag, "design").getStatus());
-        assertEquals(ArtifactStatus.DONE, findArtifact(dag, "tasks").getStatus());
+        assertEquals(ArtifactStatus.DONE, findArtifact(dag, "proposal").status());
+        assertEquals(ArtifactStatus.DONE, findArtifact(dag, "design").status());
+        assertEquals(ArtifactStatus.DONE, findArtifact(dag, "tasks").status());
         assertTrue(dag.isComplete());
     }
 
@@ -114,9 +114,9 @@ class ScaffoldingOverrideTest {
         ScaffoldingDetectionService detector = new ScaffoldingDetectionService(null);
         applyOverrides(dag, changeDir, detector);
 
-        assertEquals(ArtifactStatus.DONE, findArtifact(dag, "proposal").getStatus());
-        assertEquals(ArtifactStatus.DONE, findArtifact(dag, "design").getStatus());
-        assertEquals(ArtifactStatus.READY, findArtifact(dag, "tasks").getStatus());
+        assertEquals(ArtifactStatus.DONE, findArtifact(dag, "proposal").status());
+        assertEquals(ArtifactStatus.DONE, findArtifact(dag, "design").status());
+        assertEquals(ArtifactStatus.READY, findArtifact(dag, "tasks").status());
         assertFalse(dag.isComplete());
     }
 
@@ -133,7 +133,7 @@ class ScaffoldingOverrideTest {
         applyOverrides(dag, changeDir, detector);
 
         // specs has glob pattern, should not be checked
-        assertEquals(ArtifactStatus.DONE, findArtifact(dag, "specs").getStatus());
+        assertEquals(ArtifactStatus.DONE, findArtifact(dag, "specs").status());
         assertTrue(dag.isComplete());
     }
 
@@ -150,9 +150,9 @@ class ScaffoldingOverrideTest {
         ScaffoldingDetectionService detector = new ScaffoldingDetectionService(null);
         applyOverrides(dag, changeDir, detector);
 
-        assertEquals(ArtifactStatus.DONE, findArtifact(dag, "proposal").getStatus());
-        assertEquals(ArtifactStatus.READY, findArtifact(dag, "design").getStatus());
-        assertEquals(ArtifactStatus.BLOCKED, findArtifact(dag, "tasks").getStatus());
+        assertEquals(ArtifactStatus.DONE, findArtifact(dag, "proposal").status());
+        assertEquals(ArtifactStatus.READY, findArtifact(dag, "design").status());
+        assertEquals(ArtifactStatus.BLOCKED, findArtifact(dag, "tasks").status());
     }
 
     // --- Helpers ---
@@ -168,36 +168,40 @@ class ScaffoldingOverrideTest {
         java.util.Set<String> scaffoldedIds = new java.util.HashSet<>();
 
         for (ArtifactInfo artifact : artifacts) {
-            if (artifact.getStatus() != ArtifactStatus.DONE) continue;
-            String outputPath = artifact.getOutputPath();
+            if (artifact.status() != ArtifactStatus.DONE) continue;
+            String outputPath = artifact.outputPath();
             if (outputPath == null || outputPath.contains("*")) continue;
             String filePath = changeDir.resolve(outputPath).toString();
             if (detector.isScaffolding(filePath)) {
-                scaffoldedIds.add(artifact.getId());
+                scaffoldedIds.add(artifact.id());
             }
         }
 
         if (scaffoldedIds.isEmpty()) return;
 
+        java.util.List<ArtifactInfo> updatedArtifacts = new java.util.ArrayList<>();
         for (ArtifactInfo artifact : artifacts) {
-            if (!scaffoldedIds.contains(artifact.getId())) continue;
+            if (!scaffoldedIds.contains(artifact.id())) {
+                updatedArtifacts.add(artifact);
+                continue;
+            }
             List<String> blockedBy = new java.util.ArrayList<>();
             for (ArtifactInfo earlier : artifacts) {
-                if (earlier.getId().equals(artifact.getId())) break;
-                if (scaffoldedIds.contains(earlier.getId())) {
-                    blockedBy.add(earlier.getId());
+                if (earlier.id().equals(artifact.id())) break;
+                if (scaffoldedIds.contains(earlier.id())) {
+                    blockedBy.add(earlier.id());
                 }
             }
             if (blockedBy.isEmpty()) {
-                artifact.setStatus(ArtifactStatus.READY);
+                updatedArtifacts.add(new ArtifactInfo(artifact.id(), artifact.outputPath(), ArtifactStatus.READY, List.of()));
             } else {
-                artifact.setStatus(ArtifactStatus.BLOCKED);
-                artifact.setMissingDeps(blockedBy);
+                updatedArtifacts.add(new ArtifactInfo(artifact.id(), artifact.outputPath(), ArtifactStatus.BLOCKED, blockedBy));
             }
         }
+        dag.setArtifacts(updatedArtifacts);
 
-        boolean allDone = artifacts.stream()
-                .allMatch(a -> a.getStatus() == ArtifactStatus.DONE);
+        boolean allDone = updatedArtifacts.stream()
+                .allMatch(a -> a.status() == ArtifactStatus.DONE);
         dag.setComplete(allDone);
     }
 
@@ -225,7 +229,7 @@ class ScaffoldingOverrideTest {
 
     private static ArtifactInfo findArtifact(ChangeArtifactDag dag, String id) {
         return dag.getArtifacts().stream()
-                .filter(a -> a.getId().equals(id))
+                .filter(a -> a.id().equals(id))
                 .findFirst()
                 .orElseThrow(() -> new AssertionError("Artifact not found: " + id));
     }

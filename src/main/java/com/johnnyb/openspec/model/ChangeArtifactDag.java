@@ -55,7 +55,7 @@ public class ChangeArtifactDag {
 
     public List<ArtifactInfo> getReadyArtifacts() {
         return getArtifacts().stream()
-                .filter(a -> a.getStatus() == ArtifactStatus.READY)
+                .filter(a -> a.status() == ArtifactStatus.READY)
                 .collect(Collectors.toList());
     }
 }

@@ -37,7 +37,7 @@ OpenSpec brings structured, spec-driven development directly into your IDE with 
 ## Quick Facts
 
 - **Version:** 0.1.0
-- **Java:** 17+
-- **IDE:** IntelliJ IDEA 2024.1+ (Community or Ultimate)
+- **Java:** 21+
+- **IDE:** IntelliJ IDEA 2024.2+ (Community or Ultimate)
 - **Source:** 61 Java files across 13 packages
 - **License:** See repository

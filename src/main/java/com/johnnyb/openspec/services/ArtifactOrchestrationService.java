@@ -68,15 +68,15 @@ public final class ArtifactOrchestrationService {
         // First pass: identify which artifacts are scaffolding
         Set<String> scaffoldedIds = new HashSet<>();
         for (ArtifactInfo artifact : artifacts) {
-            if (artifact.getStatus() != ArtifactStatus.DONE) continue;
+            if (artifact.status() != ArtifactStatus.DONE) continue;
 
-            String outputPath = artifact.getOutputPath();
+            String outputPath = artifact.outputPath();
             // Skip glob patterns — can't resolve to a single file
             if (outputPath == null || outputPath.contains("*")) continue;
 
             String filePath = changeDir + "/" + outputPath;
             if (detector.isScaffolding(filePath)) {
-                scaffoldedIds.add(artifact.getId());
+                scaffoldedIds.add(artifact.id());
             }
         }
 
@@ -85,36 +85,33 @@ public final class ArtifactOrchestrationService {
         // Second pass: override status based on dependency analysis
         // Use earlier artifacts in the list as implicit dependencies
         // (DAG order: proposal → design/specs → tasks)
-        Set<String> trulyDone = new HashSet<>();
+        List<ArtifactInfo> updatedArtifacts = new ArrayList<>();
         for (ArtifactInfo artifact : artifacts) {
-            if (artifact.getStatus() == ArtifactStatus.DONE && !scaffoldedIds.contains(artifact.getId())) {
-                trulyDone.add(artifact.getId());
+            if (!scaffoldedIds.contains(artifact.id())) {
+                updatedArtifacts.add(artifact);
+                continue;
             }
-        }
-
-        for (ArtifactInfo artifact : artifacts) {
-            if (!scaffoldedIds.contains(artifact.getId())) continue;
 
             // Check if any earlier artifacts in the list are also scaffolded
             List<String> blockedBy = new ArrayList<>();
             for (ArtifactInfo earlier : artifacts) {
-                if (earlier.getId().equals(artifact.getId())) break;
-                if (scaffoldedIds.contains(earlier.getId())) {
-                    blockedBy.add(earlier.getId());
+                if (earlier.id().equals(artifact.id())) break;
+                if (scaffoldedIds.contains(earlier.id())) {
+                    blockedBy.add(earlier.id());
                 }
             }
 
             if (blockedBy.isEmpty()) {
-                artifact.setStatus(ArtifactStatus.READY);
+                updatedArtifacts.add(new ArtifactInfo(artifact.id(), artifact.outputPath(), ArtifactStatus.READY, List.of()));
             } else {
-                artifact.setStatus(ArtifactStatus.BLOCKED);
-                artifact.setMissingDeps(blockedBy);
+                updatedArtifacts.add(new ArtifactInfo(artifact.id(), artifact.outputPath(), ArtifactStatus.BLOCKED, blockedBy));
             }
         }
+        dag.setArtifacts(updatedArtifacts);
 
         // Recalculate isComplete
-        boolean allDone = artifacts.stream()
-                .allMatch(a -> a.getStatus() == ArtifactStatus.DONE);
+        boolean allDone = updatedArtifacts.stream()
+                .allMatch(a -> a.status() == ArtifactStatus.DONE);
         dag.setComplete(allDone);
     }
 
@@ -138,7 +135,7 @@ public final class ArtifactOrchestrationService {
         ChangeArtifactDag dag = getArtifactStatus(changeName);
         if (dag == null) return List.of();
         return dag.getReadyArtifacts().stream()
-                .map(ArtifactInfo::getId)
+                .map(ArtifactInfo::id)
                 .collect(Collectors.toList());
     }
 

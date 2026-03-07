@@ -48,8 +48,8 @@ public final class ChangeService {
     }
 
     public void updateStatus(Change change, ChangeStatus newStatus) throws IOException {
-        VirtualFile changeDir = com.intellij.openapi.vfs.LocalFileSystem.getInstance()
-                .findFileByPath(change.getPath());
+        VirtualFile changeDir = com.intellij.openapi.vfs.VirtualFileManager.getInstance()
+                .findFileByUrl(com.intellij.openapi.vfs.VfsUtilCore.pathToUrl(change.getPath()));
         if (changeDir == null) return;
 
         VirtualFile metaFile = changeDir.findChild(".openspec.yaml");
@@ -65,7 +65,7 @@ public final class ChangeService {
     public String archiveFirstActive() throws IOException {
         List<Change> active = getActiveChanges();
         if (active.isEmpty()) return null;
-        return archiveChange(active.get(0));
+        return archiveChange(active.getFirst());
     }
 
     public String archiveChange(Change change) throws IOException {
@@ -109,8 +109,9 @@ public final class ChangeService {
 
     public List<String> getDeltaSpecNames(Change change) {
         List<String> names = new ArrayList<>();
-        VirtualFile changeDir = com.intellij.openapi.vfs.LocalFileSystem.getInstance()
-                .findFileByPath(change.getPath());
+        VirtualFile changesDir = OpenSpecFileUtil.getChangesDir(project);
+        if (changesDir == null) return names;
+        VirtualFile changeDir = changesDir.findChild(change.getName());
         if (changeDir == null) return names;
         VirtualFile specsDir = changeDir.findChild("specs");
         if (specsDir == null) return names;

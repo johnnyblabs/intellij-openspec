@@ -182,20 +182,20 @@ class ModelTest {
 
         @Test
         void defaultsAreNullsafe() {
-            ArtifactInfo info = new ArtifactInfo();
-            assertEquals(ArtifactStatus.UNKNOWN, info.getStatus());
-            assertNotNull(info.getMissingDeps());
-            assertTrue(info.getMissingDeps().isEmpty());
+            ArtifactInfo info = new ArtifactInfo(null, null, null, null);
+            assertEquals(ArtifactStatus.UNKNOWN, info.status());
+            assertNotNull(info.missingDeps());
+            assertTrue(info.missingDeps().isEmpty());
         }
 
         @Test
         void fullConstructorWorks() {
             ArtifactInfo info = new ArtifactInfo("design", "/path/design.md",
                     ArtifactStatus.READY, List.of("proposal"));
-            assertEquals("design", info.getId());
-            assertEquals("/path/design.md", info.getOutputPath());
-            assertEquals(ArtifactStatus.READY, info.getStatus());
-            assertEquals(List.of("proposal"), info.getMissingDeps());
+            assertEquals("design", info.id());
+            assertEquals("/path/design.md", info.outputPath());
+            assertEquals(ArtifactStatus.READY, info.status());
+            assertEquals(List.of("proposal"), info.missingDeps());
         }
     }
 
@@ -204,25 +204,24 @@ class ModelTest {
 
         @Test
         void defaultsAreNullsafe() {
-            ArtifactInstruction inst = new ArtifactInstruction();
-            assertNotNull(inst.getDependencies());
-            assertTrue(inst.getDependencies().isEmpty());
-            assertNotNull(inst.getUnlocks());
-            assertTrue(inst.getUnlocks().isEmpty());
+            ArtifactInstruction inst = new ArtifactInstruction(null, null, null, null, null, null, null, null);
+            assertNotNull(inst.dependencies());
+            assertTrue(inst.dependencies().isEmpty());
+            assertNotNull(inst.unlocks());
+            assertTrue(inst.unlocks().isEmpty());
         }
 
         @Test
         void buildPrompt_withInstructionOnly() {
-            ArtifactInstruction inst = new ArtifactInstruction();
-            inst.setInstruction("Write the design document");
+            ArtifactInstruction inst = new ArtifactInstruction(null, null, null, null,
+                    "Write the design document", null, null, null);
             assertEquals("Write the design document", inst.buildPrompt());
         }
 
         @Test
         void buildPrompt_withInstructionAndTemplate() {
-            ArtifactInstruction inst = new ArtifactInstruction();
-            inst.setInstruction("Write the design");
-            inst.setTemplate("# Design\n## Approach");
+            ArtifactInstruction inst = new ArtifactInstruction(null, null, null, null,
+                    "Write the design", "# Design\n## Approach", null, null);
             String prompt = inst.buildPrompt();
             assertTrue(prompt.contains("Write the design"));
             assertTrue(prompt.contains("---"));
@@ -232,13 +231,10 @@ class ModelTest {
 
         @Test
         void buildPrompt_withDependencies() {
-            ArtifactInstruction inst = new ArtifactInstruction();
-            inst.setInstruction("Write tasks");
-            ArtifactInstruction.Dependency dep = new ArtifactInstruction.Dependency();
-            dep.setId("proposal");
-            dep.setPath("proposal.md");
-            dep.setDescription("Proposal content");
-            inst.setDependencies(List.of(dep));
+            ArtifactInstruction.Dependency dep = new ArtifactInstruction.Dependency(
+                    "proposal", false, "proposal.md", "Proposal content");
+            ArtifactInstruction inst = new ArtifactInstruction(null, null, null, null,
+                    "Write tasks", null, List.of(dep), null);
             String prompt = inst.buildPrompt();
             assertTrue(prompt.contains("Dependencies:"));
             assertTrue(prompt.contains("### proposal"));
@@ -247,7 +243,8 @@ class ModelTest {
 
         @Test
         void buildPrompt_emptyIsEmpty() {
-            ArtifactInstruction inst = new ArtifactInstruction();
+            ArtifactInstruction inst = new ArtifactInstruction(null, null, null, null,
+                    null, null, null, null);
             assertEquals("", inst.buildPrompt());
         }
     }
@@ -276,9 +273,9 @@ class ModelTest {
 
             List<ArtifactInfo> ready = dag.getReadyArtifacts();
             assertEquals(2, ready.size());
-            assertTrue(ready.stream().allMatch(a -> a.getStatus() == ArtifactStatus.READY));
-            assertTrue(ready.stream().anyMatch(a -> "design".equals(a.getId())));
-            assertTrue(ready.stream().anyMatch(a -> "specs".equals(a.getId())));
+            assertTrue(ready.stream().allMatch(a -> a.status() == ArtifactStatus.READY));
+            assertTrue(ready.stream().anyMatch(a -> "design".equals(a.id())));
+            assertTrue(ready.stream().anyMatch(a -> "specs".equals(a.id())));
         }
 
         @Test

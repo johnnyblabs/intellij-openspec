@@ -1,6 +1,7 @@
 package com.johnnyb.openspec.util;
 
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.roots.ProjectRootManager;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 
@@ -21,12 +22,18 @@ public final class OpenSpecFileUtil {
 
     public static VirtualFile getOpenSpecRoot(Project project) {
         VirtualFile baseDir = getBaseDir(project);
-        if (baseDir == null) return null;
-        VirtualFile root = baseDir.findChild("openspec");
-        if (root != null && root.isDirectory()) return root;
+        if (baseDir != null) {
+            VirtualFile root = baseDir.findChild("openspec");
+            if (root != null && root.isDirectory()) return root;
+        }
+        // Fallback: check content roots (handles multi-module and test environments)
+        for (VirtualFile contentRoot : ProjectRootManager.getInstance(project).getContentRoots()) {
+            VirtualFile root = contentRoot.findChild("openspec");
+            if (root != null && root.isDirectory()) return root;
+        }
         // Fallback: VFS may not have indexed yet, try direct path
         if (project.getBasePath() != null) {
-            root = LocalFileSystem.getInstance()
+            VirtualFile root = LocalFileSystem.getInstance()
                     .refreshAndFindFileByPath(project.getBasePath() + "/openspec");
             if (root != null && root.isDirectory()) return root;
         }

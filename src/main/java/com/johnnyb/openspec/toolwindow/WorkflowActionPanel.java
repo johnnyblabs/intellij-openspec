@@ -267,7 +267,7 @@ public class WorkflowActionPanel extends JPanel {
 
             // Update generate button
             List<ArtifactInfo> ready = dag.getReadyArtifacts();
-            nextArtifactId = ready.isEmpty() ? null : ready.get(0).getId();
+            nextArtifactId = ready.isEmpty() ? null : ready.getFirst().id();
 
             if (dag.isComplete()) {
                 generateButton.setEnabled(false);
@@ -291,7 +291,7 @@ public class WorkflowActionPanel extends JPanel {
 
         String icon;
         Color color;
-        switch (artifact.getStatus()) {
+        switch (artifact.status()) {
             case DONE -> { icon = "\u2713"; color = new JBColor(new Color(0, 128, 0), new Color(80, 200, 80)); }
             case READY -> { icon = "\u25CF"; color = JBColor.BLUE; }
             default -> { icon = "\u25CB"; color = JBColor.GRAY; }
@@ -299,7 +299,7 @@ public class WorkflowActionPanel extends JPanel {
 
         JBLabel iconLabel = new JBLabel(icon);
         iconLabel.setForeground(color);
-        JBLabel nameLabel = new JBLabel(artifact.getId());
+        JBLabel nameLabel = new JBLabel(artifact.id());
         nameLabel.setForeground(color);
         nameLabel.setFont(nameLabel.getFont().deriveFont(Font.PLAIN, 11f));
 
@@ -367,11 +367,11 @@ public class WorkflowActionPanel extends JPanel {
                 String prompt = instruction.buildPrompt();
 
                 lastPrompt = prompt;
-                lastOutputPath = instruction.getOutputPath();
+                lastOutputPath = instruction.outputPath();
 
                 // Determine next artifact from unlocks
-                List<String> unlocks = instruction.getUnlocks();
-                String nextAfterThis = unlocks.isEmpty() ? null : unlocks.get(0);
+                List<String> unlocks = instruction.unlocks();
+                String nextAfterThis = unlocks.isEmpty() ? null : unlocks.getFirst();
 
                 switch (mode) {
                     case CLIPBOARD -> {
@@ -381,9 +381,9 @@ public class WorkflowActionPanel extends JPanel {
                                 ? det.getPreferredToolLabel() : null;
                         String clipboardPrompt = prompt;
                         if (toolLabel != null && AiToolDetectionService.isCliTool(toolLabel)
-                                && instruction.getChangeDir() != null && lastOutputPath != null) {
+                                && instruction.changeDir() != null && lastOutputPath != null) {
                             clipboardPrompt = prompt + "\n\nSave your response to: "
-                                    + instruction.getChangeDir() + "/" + lastOutputPath;
+                                    + instruction.changeDir() + "/" + lastOutputPath;
                         }
                         lastPrompt = clipboardPrompt;
                         Toolkit.getDefaultToolkit().getSystemClipboard()
@@ -418,16 +418,16 @@ public class WorkflowActionPanel extends JPanel {
                     case DIRECT_API -> {
                         DirectApiService apiService = project.getService(DirectApiService.class);
                         String result = apiService.generate(instruction);
-                        String outputPath = instruction.getChangeDir() + "/" + instruction.getOutputPath();
+                        String outputPath = instruction.changeDir() + "/" + instruction.outputPath();
                         ApplicationManager.getApplication().invokeLater(() -> {
                             try {
                                 com.intellij.openapi.application.WriteAction.run(() -> {
                                     VirtualFile outFile = LocalFileSystem.getInstance().findFileByPath(outputPath);
                                     if (outFile == null) {
                                         VirtualFile parent = LocalFileSystem.getInstance()
-                                                .findFileByPath(instruction.getChangeDir());
+                                                .findFileByPath(instruction.changeDir());
                                         if (parent != null) {
-                                            outFile = parent.createChildData(this, instruction.getOutputPath());
+                                            outFile = parent.createChildData(this, instruction.outputPath());
                                         }
                                     }
                                     if (outFile != null) {
@@ -566,7 +566,7 @@ public class WorkflowActionPanel extends JPanel {
             content.add(Box.createVerticalStrut(8));
         } else if (detection != null && detection.getDetectedTools().size() == 1) {
             // Single tool — auto-set preference
-            OpenSpecSettings.getInstance(project).setPreferredTool(detection.getDetectedTools().get(0));
+            OpenSpecSettings.getInstance(project).setPreferredTool(detection.getDetectedTools().getFirst());
         }
 
         JPanel options = new JPanel(new GridLayout(0, 1, 0, 4));

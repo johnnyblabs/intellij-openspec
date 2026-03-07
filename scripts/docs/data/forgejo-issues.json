@@ -151,7 +151,7 @@
   },
   {
     "title": "Add CI pipeline with GitHub Actions",
-    "body": "## Description\n\nSet up automated build and test pipeline.\n\n## Acceptance Criteria\n\n- [ ] Build runs on every push and PR\n- [ ] Tests run with JUnit 5\n- [ ] Plugin verification (`verifyPlugin`) runs\n- [ ] Build artifacts uploaded (plugin ZIP)\n- [ ] Badge in README showing build status\n\n## Technical Notes\n\nUse `actions/setup-java@v4` with JDK 17. Run `./gradlew build verifyPlugin`.",
+    "body": "## Description\n\nSet up automated build and test pipeline.\n\n## Acceptance Criteria\n\n- [ ] Build runs on every push and PR\n- [ ] Tests run with JUnit 5\n- [ ] Plugin verification (`verifyPlugin`) runs\n- [ ] Build artifacts uploaded (plugin ZIP)\n- [ ] Badge in README showing build status\n\n## Technical Notes\n\nUse `actions/setup-java@v4` with JDK 21. Run `./gradlew build verifyPlugin`.",
     "labels": ["infrastructure", "priority:high"],
     "milestone": "v0.1.0 - Initial Release"
   },

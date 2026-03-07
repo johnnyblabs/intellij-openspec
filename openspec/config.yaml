@@ -5,7 +5,7 @@ profile:
   name: OpenSpecPlugin
   description: IntelliJ IDEA plugin for OpenSpec spec-driven development
   language: Java 21
-  framework: IntelliJ Platform SDK 2024.1+
+  framework: IntelliJ Platform SDK 2024.2+
   build: Gradle with IntelliJ Platform Gradle Plugin 2.11.0
 
 context: "IntelliJ Platform plugin (extensions, services, actions) with YAML/Markdown parsing, OpenSpec CLI integration, and tree-based UI (JTree, tool windows)"
@@ -14,4 +14,4 @@ rules:
   services: "All services SHALL be registered as IntelliJ project services"
   rfc-keywords: "Specs SHALL use RFC 2119 keywords (SHALL, SHOULD, MAY)"
   scenarios: "Scenarios SHALL follow Given-When-Then structure"
-  compatibility: "Plugin SHALL support IntelliJ IDEA 2024.1 and later"
+  compatibility: "Plugin SHALL support IntelliJ IDEA 2024.2 and later"

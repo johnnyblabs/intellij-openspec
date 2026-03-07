@@ -4,6 +4,13 @@ An IntelliJ IDEA plugin for the [OpenSpec](https://github.com/openspec-dev) spec
 
 ---
 
+## Requirements
+
+- **IntelliJ IDEA 2024.2 or later** (Community or Ultimate)
+- **Java 21 JDK** — Required for development and plugin runtime (IntelliJ 2024.2+ runs on JBR 21)
+
+---
+
 ## Installation
 
 ### Plugin

@@ -8,7 +8,7 @@ A comprehensive comparison of the OpenSpec IntelliJ plugin against all known VS 
 
 | Extension | IDE | Publisher | Version | Installs | Status |
 |---|---|---|---|---|---|
-| **OpenSpec IntelliJ Plugin** | IntelliJ IDEA 2024.1+ | johnb | 0.1.0-dev | — | In development |
+| **OpenSpec IntelliJ Plugin** | IntelliJ IDEA 2024.2+ | johnb | 0.1.0-dev | — | In development |
 | **OpenSpec** (Codder13) | VS Code | Denis Bolba | 0.0.5 | 1,972 | Community, proposed official |
 | **OpenSpec for Copilot** | VS Code | atman-dev | 1.0.0 | 956 | Community |
 | **OpenSpec VSCode** | VS Code | AngDrew | 1.3.0 | 592 | Community |

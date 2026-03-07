@@ -64,11 +64,11 @@ class CliContractTest {
 
             // Verify each artifact has id, outputPath, and status
             dag.getArtifacts().forEach(a -> {
-                assertNotNull(a.getId(), "artifact id must not be null");
-                assertNotNull(a.getOutputPath(), "outputPath must not be null");
-                assertNotNull(a.getStatus(), "status must not be null");
-                assertNotEquals(ArtifactStatus.UNKNOWN, a.getStatus(),
-                        "status '" + a.getId() + "' must deserialize to a known value");
+                assertNotNull(a.id(), "artifact id must not be null");
+                assertNotNull(a.outputPath(), "outputPath must not be null");
+                assertNotNull(a.status(), "status must not be null");
+                assertNotEquals(ArtifactStatus.UNKNOWN, a.status(),
+                        "status '" + a.id() + "' must deserialize to a known value");
             });
         }
 
@@ -77,10 +77,10 @@ class CliContractTest {
             String json = loadFixture("status.json");
             ChangeArtifactDag dag = CliOutputParser.parseChangeStatus(json);
 
-            assertEquals(ArtifactStatus.DONE, dag.getArtifacts().get(0).getStatus());   // proposal
-            assertEquals(ArtifactStatus.DONE, dag.getArtifacts().get(1).getStatus());   // design
-            assertEquals(ArtifactStatus.READY, dag.getArtifacts().get(2).getStatus());  // specs
-            assertEquals(ArtifactStatus.DONE, dag.getArtifacts().get(3).getStatus());   // tasks
+            assertEquals(ArtifactStatus.DONE, dag.getArtifacts().get(0).status());   // proposal
+            assertEquals(ArtifactStatus.DONE, dag.getArtifacts().get(1).status());   // design
+            assertEquals(ArtifactStatus.READY, dag.getArtifacts().get(2).status());  // specs
+            assertEquals(ArtifactStatus.DONE, dag.getArtifacts().get(3).status());   // tasks
         }
 
         @Test
@@ -89,7 +89,7 @@ class CliContractTest {
             ChangeArtifactDag dag = CliOutputParser.parseChangeStatus(json);
 
             assertEquals(1, dag.getReadyArtifacts().size());
-            assertEquals("specs", dag.getReadyArtifacts().get(0).getId());
+            assertEquals("specs", dag.getReadyArtifacts().get(0).id());
         }
     }
 
@@ -102,13 +102,13 @@ class CliContractTest {
             ArtifactInstruction inst = CliOutputParser.parseArtifactInstruction(json);
 
             assertNotNull(inst);
-            assertEquals("proposal", inst.getArtifactId());
-            assertEquals("proposal.md", inst.getOutputPath());
-            assertNotNull(inst.getDependencies());
-            assertTrue(inst.getDependencies().isEmpty());
-            assertEquals(2, inst.getUnlocks().size());
-            assertTrue(inst.getUnlocks().contains("design"));
-            assertTrue(inst.getUnlocks().contains("specs"));
+            assertEquals("proposal", inst.artifactId());
+            assertEquals("proposal.md", inst.outputPath());
+            assertNotNull(inst.dependencies());
+            assertTrue(inst.dependencies().isEmpty());
+            assertEquals(2, inst.unlocks().size());
+            assertTrue(inst.unlocks().contains("design"));
+            assertTrue(inst.unlocks().contains("specs"));
         }
 
         @Test
@@ -116,14 +116,14 @@ class CliContractTest {
             String json = loadFixture("instructions-specs.json");
             ArtifactInstruction inst = CliOutputParser.parseArtifactInstruction(json);
 
-            assertEquals("specs", inst.getArtifactId());
-            assertEquals(1, inst.getDependencies().size());
+            assertEquals("specs", inst.artifactId());
+            assertEquals(1, inst.dependencies().size());
 
-            ArtifactInstruction.Dependency dep = inst.getDependencies().get(0);
-            assertEquals("proposal", dep.getId());
-            assertTrue(dep.isDone());
-            assertEquals("proposal.md", dep.getPath());
-            assertNotNull(dep.getDescription());
+            ArtifactInstruction.Dependency dep = inst.dependencies().get(0);
+            assertEquals("proposal", dep.id());
+            assertTrue(dep.done());
+            assertEquals("proposal.md", dep.path());
+            assertNotNull(dep.description());
         }
 
         @Test
@@ -131,20 +131,20 @@ class CliContractTest {
             String json = loadFixture("instructions-tasks.json");
             ArtifactInstruction inst = CliOutputParser.parseArtifactInstruction(json);
 
-            assertEquals("tasks", inst.getArtifactId());
-            assertEquals(2, inst.getDependencies().size());
+            assertEquals("tasks", inst.artifactId());
+            assertEquals(2, inst.dependencies().size());
 
             // First dep: specs (not done)
-            ArtifactInstruction.Dependency specsDep = inst.getDependencies().stream()
-                    .filter(d -> "specs".equals(d.getId())).findFirst().orElseThrow();
-            assertFalse(specsDep.isDone());
-            assertEquals("specs/**/*.md", specsDep.getPath());
+            ArtifactInstruction.Dependency specsDep = inst.dependencies().stream()
+                    .filter(d -> "specs".equals(d.id())).findFirst().orElseThrow();
+            assertFalse(specsDep.done());
+            assertEquals("specs/**/*.md", specsDep.path());
 
             // Second dep: design (done)
-            ArtifactInstruction.Dependency designDep = inst.getDependencies().stream()
-                    .filter(d -> "design".equals(d.getId())).findFirst().orElseThrow();
-            assertTrue(designDep.isDone());
-            assertEquals("design.md", designDep.getPath());
+            ArtifactInstruction.Dependency designDep = inst.dependencies().stream()
+                    .filter(d -> "design".equals(d.id())).findFirst().orElseThrow();
+            assertTrue(designDep.done());
+            assertEquals("design.md", designDep.path());
         }
 
         @Test
@@ -152,8 +152,8 @@ class CliContractTest {
             String json = loadFixture("instructions-tasks.json");
             ArtifactInstruction inst = CliOutputParser.parseArtifactInstruction(json);
 
-            assertNotNull(inst.getUnlocks());
-            assertTrue(inst.getUnlocks().isEmpty());
+            assertNotNull(inst.unlocks());
+            assertTrue(inst.unlocks().isEmpty());
         }
 
         @Test
@@ -161,12 +161,12 @@ class CliContractTest {
             String json = loadFixture("instructions-specs.json");
             ArtifactInstruction inst = CliOutputParser.parseArtifactInstruction(json);
 
-            assertEquals("ensure-ai-component-exist-in-plugin", inst.getChangeName());
-            assertNotNull(inst.getChangeDir());
-            assertNotNull(inst.getInstruction());
-            assertFalse(inst.getInstruction().isEmpty());
-            assertNotNull(inst.getTemplate());
-            assertFalse(inst.getTemplate().isEmpty());
+            assertEquals("ensure-ai-component-exist-in-plugin", inst.changeName());
+            assertNotNull(inst.changeDir());
+            assertNotNull(inst.instruction());
+            assertFalse(inst.instruction().isEmpty());
+            assertNotNull(inst.template());
+            assertFalse(inst.template().isEmpty());
         }
 
         @Test

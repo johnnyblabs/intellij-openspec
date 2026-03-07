@@ -125,7 +125,7 @@ public class SpecTreeModel {
             if (dag == null || dag.getArtifacts().isEmpty()) return false;
 
             for (ArtifactInfo artifact : dag.getArtifacts()) {
-                TreeNodeType nodeType = switch (artifact.getStatus()) {
+                TreeNodeType nodeType = switch (artifact.status()) {
                     case DONE -> TreeNodeType.ARTIFACT_DONE;
                     case READY -> TreeNodeType.ARTIFACT_READY;
                     case BLOCKED -> TreeNodeType.ARTIFACT_BLOCKED;
@@ -133,11 +133,11 @@ public class SpecTreeModel {
                 };
 
                 String artifactLabel = buildArtifactLabel(artifact);
-                String filePath = artifact.getOutputPath() != null
-                        ? change.getPath() + "/" + artifact.getOutputPath() : null;
+                String filePath = artifact.outputPath() != null
+                        ? change.getPath() + "/" + artifact.outputPath() : null;
 
                 changeNode.add(new DefaultMutableTreeNode(
-                        new TreeNodeData(artifactLabel, nodeType, filePath, change.getName(), artifact.getId())));
+                        new TreeNodeData(artifactLabel, nodeType, filePath, change.getName(), artifact.id())));
             }
             return true;
         } catch (Exception e) {
@@ -147,10 +147,10 @@ public class SpecTreeModel {
     }
 
     private String buildArtifactLabel(ArtifactInfo artifact) {
-        String icon = artifact.getStatus().toIcon();
-        String label = icon + " " + artifact.getId();
-        if (artifact.getStatus() == ArtifactStatus.BLOCKED && !artifact.getMissingDeps().isEmpty()) {
-            label += " (needs: " + String.join(", ", artifact.getMissingDeps()) + ")";
+        String icon = artifact.status().toIcon();
+        String label = icon + " " + artifact.id();
+        if (artifact.status() == ArtifactStatus.BLOCKED && !artifact.missingDeps().isEmpty()) {
+            label += " (needs: " + String.join(", ", artifact.missingDeps()) + ")";
         }
         return label;
     }

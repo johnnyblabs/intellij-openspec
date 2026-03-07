@@ -5,7 +5,7 @@
 An IntelliJ IDEA plugin for the OpenSpec spec-driven development framework. It lets users browse specs, manage changes, generate artifacts with AI, and validate — all from within the IDE.
 
 - **Language**: Java 21
-- **Framework**: IntelliJ Platform SDK 2024.1+
+- **Framework**: IntelliJ Platform SDK 2024.2+
 - **Build**: Gradle with IntelliJ Platform Gradle Plugin 2.11.0
 - **Schema**: spec-driven (OpenSpec workflow profile)
 
@@ -87,7 +87,7 @@ The plugin has scaffolding detection — if a file exists but only contains plac
 - Settings use `PersistentStateComponent` with `@State` annotation
 - Specs use RFC 2119 keywords (SHALL, SHOULD, MAY) with Given-When-Then scenarios
 - Change names are kebab-case (e.g., `add-user-auth`)
-- Plugin supports IntelliJ IDEA 2024.1+
+- Plugin supports IntelliJ IDEA 2024.2+
 
 ## Available Custom Prompts
 

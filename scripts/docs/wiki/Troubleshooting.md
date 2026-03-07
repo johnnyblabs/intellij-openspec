@@ -77,8 +77,8 @@ If the scaffolded structure looks different than expected:
 ## Plugin Not Visible
 
 1. Verify installation: **Settings → Plugins → Installed** → search "OpenSpec"
-2. Check IDE version: requires IntelliJ 2024.1+
-3. Check Java version: requires JDK 17+
+2. Check IDE version: requires IntelliJ 2024.2+
+3. Check Java version: requires JDK 21+
 4. Look in **Help → Show Log in Finder** for plugin loading errors
 
 ## No Auto-Refresh

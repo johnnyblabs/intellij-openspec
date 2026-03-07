@@ -4,8 +4,8 @@
 
 | Tool | Version | Purpose |
 |------|---------|---------|
-| **JDK** | 17+ | Compilation and runtime |
-| **IntelliJ IDEA** | 2024.1+ | Development IDE and plugin host |
+| **JDK** | 21+ | Compilation and runtime |
+| **IntelliJ IDEA** | 2024.2+ | Development IDE and plugin host |
 | **Gradle** | Wrapper included | Build system |
 | **Node.js** | Latest LTS | For OpenSpec CLI (optional) |
 
@@ -58,15 +58,18 @@ OpenSpecPlugin/
 ## Build Configuration Highlights
 
 ```kotlin
-// Java 17 target
+// Java 21 target
 java {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
 }
 
 // IntelliJ Platform
 intellijPlatform {
-    intellijIdeaCommunity("2024.1")
+    intellijIdeaCommunity("2024.2")
     bundledPlugin("org.jetbrains.plugins.yaml")
 }
 
