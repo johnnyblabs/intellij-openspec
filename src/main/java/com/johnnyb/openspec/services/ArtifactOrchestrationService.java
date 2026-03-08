@@ -3,6 +3,8 @@ package com.johnnyb.openspec.services;
 import com.intellij.openapi.components.Service;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
+import com.johnnyb.openspec.ai.AiApiException;
+import com.johnnyb.openspec.ai.DirectApiService;
 import com.johnnyb.openspec.model.ArtifactInfo;
 import com.johnnyb.openspec.model.ArtifactInstruction;
 import com.johnnyb.openspec.model.ArtifactStatus;
@@ -10,12 +12,17 @@ import com.johnnyb.openspec.model.ChangeArtifactDag;
 import com.johnnyb.openspec.util.CliOutputParser;
 import com.johnnyb.openspec.util.CliRunner;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 @Service(Service.Level.PROJECT)
@@ -24,6 +31,7 @@ public final class ArtifactOrchestrationService {
 
     private final Project project;
     private final Map<String, ChangeArtifactDag> dagCache = new ConcurrentHashMap<>();
+    private final AtomicBoolean generateAllCancelled = new AtomicBoolean(false);
 
     public ArtifactOrchestrationService(Project project) {
         this.project = project;
@@ -129,6 +137,29 @@ public final class ArtifactOrchestrationService {
     }
 
     /**
+     * Checks if regenerating the given artifact would affect downstream artifacts
+     * that are already complete.
+     */
+    public List<String> getCompletedDownstream(String changeName, String artifactId) {
+        ChangeArtifactDag dag = getArtifactStatus(changeName);
+        if (dag == null) return List.of();
+
+        List<ArtifactInfo> artifacts = dag.getArtifacts();
+        boolean found = false;
+        List<String> downstream = new ArrayList<>();
+        for (ArtifactInfo a : artifacts) {
+            if (a.id().equals(artifactId)) {
+                found = true;
+                continue;
+            }
+            if (found && a.status() == ArtifactStatus.DONE) {
+                downstream.add(a.id());
+            }
+        }
+        return downstream;
+    }
+
+    /**
      * Returns IDs of artifacts that are ready for generation.
      */
     public List<String> getGenerationOrder(String changeName) {
@@ -151,5 +182,101 @@ public final class ArtifactOrchestrationService {
      */
     public void invalidateAllCaches() {
         dagCache.clear();
+    }
+
+    /**
+     * Generates all remaining artifacts for a change in dependency order.
+     * Calls the DirectApiService for each artifact, writes the result to disk,
+     * and fires listener callbacks at each stage. Checks the cancellation flag
+     * between artifacts.
+     *
+     * Must be called from a background thread.
+     */
+    public void generateAllRemaining(String changeName, DirectApiService apiService,
+                                     GenerateAllListener listener) {
+        generateAllCancelled.set(false);
+
+        // Count total remaining artifacts
+        ChangeArtifactDag dag = getArtifactStatus(changeName);
+        if (dag == null) {
+            listener.onError(null, new RuntimeException("Failed to load artifact status"));
+            return;
+        }
+        int total = (int) dag.getArtifacts().stream()
+                .filter(a -> a.status() != ArtifactStatus.DONE)
+                .count();
+        int index = 0;
+
+        while (true) {
+            if (generateAllCancelled.get()) {
+                String nextId = findNextReadyArtifactId(dag);
+                listener.onCancelled(nextId);
+                return;
+            }
+
+            // Re-read DAG to respect current dependency state
+            invalidateCache(changeName);
+            dag = getArtifactStatus(changeName);
+            if (dag == null) {
+                listener.onError(null, new RuntimeException("Failed to reload artifact status"));
+                return;
+            }
+
+            if (dag.isComplete()) {
+                listener.onAllComplete();
+                return;
+            }
+
+            String artifactId = findNextReadyArtifactId(dag);
+            if (artifactId == null) {
+                // No ready artifacts but not complete — shouldn't happen, but handle gracefully
+                listener.onAllComplete();
+                return;
+            }
+
+            index++;
+            listener.onArtifactStarted(artifactId, index, total);
+
+            try {
+                ArtifactInstruction instruction = getInstruction(changeName, artifactId);
+                String result = apiService.generate(instruction);
+                writeArtifactResult(instruction, result);
+                invalidateCache(changeName);
+                listener.onArtifactCompleted(artifactId);
+            } catch (AiApiException e) {
+                listener.onError(artifactId, e);
+                return;
+            } catch (Exception e) {
+                listener.onError(artifactId, e);
+                return;
+            }
+        }
+    }
+
+    /**
+     * Cancels a running generateAllRemaining operation.
+     * The cancellation takes effect before the next artifact starts.
+     */
+    public void cancelGenerateAll() {
+        generateAllCancelled.set(true);
+    }
+
+    private String findNextReadyArtifactId(ChangeArtifactDag dag) {
+        List<ArtifactInfo> ready = dag.getReadyArtifacts();
+        return ready.isEmpty() ? null : ready.getFirst().id();
+    }
+
+    private void writeArtifactResult(ArtifactInstruction instruction, String content) throws IOException {
+        String changeDir = instruction.changeDir();
+        String outputPath = instruction.outputPath();
+        if (changeDir == null || outputPath == null) {
+            throw new IOException("Missing changeDir or outputPath in instruction");
+        }
+
+        Path filePath = Path.of(changeDir, outputPath);
+
+        // Create parent directories if output path contains subdirectories
+        Files.createDirectories(filePath.getParent());
+        Files.writeString(filePath, content, StandardCharsets.UTF_8);
     }
 }

@@ -1,41 +1,4 @@
-# Workflow Panel
-
-## Purpose
-Guided artifact generation UI with one-click Generate button and smart delivery defaults.
-
-## Requirements
-
-### Requirement: Workflow Action Panel Display
-
-The tool window SHALL display a Workflow Action Panel between the tree and the status bar that shows the selected change's name via a change selector, artifact pipeline status, and generation controls.
-
-#### Scenario: Active change with ready artifacts
-- WHEN an active change is selected with ready artifacts
-- THEN the panel SHALL display the change selector, a pipeline status row showing each artifact's state, and a "Generate [artifact-name]" button for the next ready artifact
-
-#### Scenario: No active change
-- WHEN no active change exists
-- THEN the panel SHALL display guidance text such as "No active change" with a hint to use Propose
-
-#### Scenario: All artifacts complete
-- WHEN all artifacts for the selected change are done
-- THEN the panel SHALL display "All complete" in the pipeline with guidance to apply or archive
-
-### Requirement: Generate Button with Smart Default
-
-The panel SHALL provide a Generate button that uses the user's preferred delivery method by default, with a dropdown to switch methods.
-
-#### Scenario: One-click generation with preferred method
-- WHEN the user has a saved preferred delivery method
-- THEN clicking the Generate button SHALL trigger generation using that method without showing a dialog
-
-#### Scenario: Split button dropdown
-- WHEN the user clicks the dropdown chevron on the Generate button
-- THEN a menu SHALL appear listing all available delivery methods (Direct API, Copy for [detected tool], Copy to Clipboard, Open in Editor)
-
-#### Scenario: Method remembered
-- WHEN the user selects a delivery method from the dropdown
-- THEN that method SHALL be saved as the preferred method for future clicks
+## MODIFIED Requirements
 
 ### Requirement: Artifact Pipeline Visualization
 
@@ -56,14 +19,6 @@ The WorkflowActionPanel SHALL display a compact pipeline status row showing the 
 #### Scenario: Current step is visually prominent
 - **WHEN** the pipeline contains a READY artifact
 - **THEN** the chip for that artifact SHALL be visually highlighted with a distinct border or background color to indicate it is the current step
-
-### Requirement: Context Menu Generation Routing
-
-When a user triggers generation from the tree context menu on a change node, the panel SHALL select that change and initiate generation.
-
-#### Scenario: Right-click generate on change
-- WHEN the user right-clicks a change node and selects "Generate..."
-- THEN the panel SHALL set its active change to that change and trigger the Generate button action
 
 ### Requirement: Post-Generation Guidance Card
 
@@ -106,15 +61,3 @@ After a clipboard or editor-tab delivery, the WorkflowActionPanel SHALL display 
 - **THEN** the guidance SHALL display the first detected tool's name
 - **WHEN** no tools are detected
 - **THEN** the guidance SHALL display "your AI tool"
-
-### Requirement: Auto-Advance After Generation
-
-The panel SHALL automatically advance to the next ready artifact after a generation completes.
-
-#### Scenario: Direct API generation completes
-- WHEN an artifact is successfully generated via Direct API
-- THEN the panel SHALL refresh the DAG status and show the next ready artifact
-
-#### Scenario: Clipboard or editor mode completion
-- WHEN an artifact prompt is copied to clipboard or opened in editor
-- THEN the panel SHALL display a guidance card with next-step instructions and a "Check for updates" button that re-checks artifact status when clicked
