@@ -27,6 +27,7 @@ public class OpenSpecConfigurable implements Configurable {
     @Override
     public @Nullable JComponent createComponent() {
         panel = new OpenSpecSettingsPanel(project);
+        reset();
         return panel.getPanel();
     }
 
@@ -34,21 +35,22 @@ public class OpenSpecConfigurable implements Configurable {
     public boolean isModified() {
         if (panel == null) return false;
         OpenSpecSettings settings = OpenSpecSettings.getInstance(project);
-        return !panel.getVersionOverride().equals(settings.getVersionOverride() != null ? settings.getVersionOverride() : "")
-                || !panel.getCliPath().equals(settings.getCliPath() != null ? settings.getCliPath() : "")
-                || !panel.getProfile().equals(settings.getProfile() != null ? settings.getProfile() : "")
+        return !panel.getVersionOverride().equals(safe(settings.getVersionOverride()))
+                || !panel.getCliPath().equals(safe(settings.getCliPath()))
+                || !panel.getProfile().equals(safe(settings.getProfile()))
                 || panel.isAutoRefresh() != settings.isAutoRefresh()
                 || panel.isStrictValidation() != settings.isStrictValidation()
-                || !panel.getAiProvider().equals(settings.getAiProvider() != null ? settings.getAiProvider() : "NONE")
-                || !panel.getAiModel().equals(settings.getAiModel() != null ? settings.getAiModel() : "")
+                || !panel.getAiProvider().equals(safe(settings.getAiProvider(), "NONE"))
+                || !panel.getAiModel().equals(safe(settings.getAiModel()))
+                || !panel.getPreferredTool().equals(safe(settings.getPreferredTool()))
+                || !panel.getDeliveryMethod().equals(safe(settings.getPreferredDeliveryMethod()))
                 || isApiKeyModified();
     }
 
     private boolean isApiKeyModified() {
         if (panel == null) return false;
         String key = panel.getApiKey();
-        // "••••••••" means the key hasn't been touched
-        return key != null && !key.isBlank() && !key.equals("••••••••");
+        return key != null && !key.isBlank() && !key.equals("\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022");
     }
 
     @Override
@@ -62,11 +64,13 @@ public class OpenSpecConfigurable implements Configurable {
         settings.setStrictValidation(panel.isStrictValidation());
         settings.setAiProvider(panel.getAiProvider());
         settings.setAiModel(panel.getAiModel());
+        settings.setPreferredTool(panel.getPreferredTool());
+        settings.setPreferredDeliveryMethod(panel.getDeliveryMethod());
 
         // Store API key securely via PasswordSafe
         String apiKey = panel.getApiKey();
         AiProvider provider = AiProvider.fromString(panel.getAiProvider());
-        if (apiKey != null && !apiKey.isBlank() && !apiKey.equals("••••••••")) {
+        if (apiKey != null && !apiKey.isBlank() && !apiKey.equals("\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022")) {
             AiCredentialStore.storeApiKey(provider, apiKey);
         }
     }
@@ -82,10 +86,19 @@ public class OpenSpecConfigurable implements Configurable {
         panel.setStrictValidation(settings.isStrictValidation());
         panel.setAiProvider(settings.getAiProvider());
         panel.setAiModel(settings.getAiModel());
+        panel.setDelivery(settings.getPreferredTool(), settings.getPreferredDeliveryMethod());
     }
 
     @Override
     public void disposeUIResources() {
         panel = null;
+    }
+
+    private static String safe(@Nullable String value) {
+        return value != null ? value : "";
+    }
+
+    private static String safe(@Nullable String value, String defaultValue) {
+        return value != null ? value : defaultValue;
     }
 }

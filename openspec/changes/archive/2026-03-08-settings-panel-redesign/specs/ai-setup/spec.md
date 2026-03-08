@@ -1,12 +1,6 @@
-# AI Setup
-
-## Purpose
-First-run AI tool detection and delivery method configuration.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: First-Run AI Setup
-
 The plugin SHALL display an inline setup card in the Workflow Action Panel when the user first attempts to generate an artifact and no preferred delivery method is configured. When multiple AI tools are detected, the setup card SHALL include a tool selector. Preferences set via the setup card SHALL be editable later in the settings panel (Tools > OpenSpec > Tools & Delivery tab).
 
 #### Scenario: First generate with multiple detected tools

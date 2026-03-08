@@ -30,6 +30,10 @@ public enum AiProvider {
 
     public static AiProvider fromString(String name) {
         if (name == null || name.isBlank()) return NONE;
+        // Try display name first, then enum name
+        for (AiProvider p : values()) {
+            if (p.displayName.equalsIgnoreCase(name.trim())) return p;
+        }
         try {
             return valueOf(name.toUpperCase().trim());
         } catch (IllegalArgumentException e) {
