@@ -21,6 +21,18 @@ The tool window SHALL display a Workflow Action Panel between the tree and the s
 - WHEN all artifacts for the selected change are done
 - THEN the panel SHALL display "All complete" in the pipeline with guidance to apply or archive
 
+#### Scenario: Generate All button visibility
+- WHEN Direct API is configured and 2 or more artifacts remain to be generated
+- THEN the panel SHALL display a "Generate All" button alongside the existing Generate button
+
+#### Scenario: Generate All button hidden without API
+- WHEN Direct API is not configured
+- THEN the panel SHALL NOT display the "Generate All" button
+
+#### Scenario: Generate All button hidden with single artifact
+- WHEN only 1 artifact remains to be generated
+- THEN the panel SHALL NOT display the "Generate All" button
+
 ### Requirement: Generate Button with Smart Default
 
 The panel SHALL provide a Generate button that uses the user's preferred delivery method by default, with a dropdown to switch methods.
@@ -118,3 +130,31 @@ The panel SHALL automatically advance to the next ready artifact after a generat
 #### Scenario: Clipboard or editor mode completion
 - WHEN an artifact prompt is copied to clipboard or opened in editor
 - THEN the panel SHALL display a guidance card with next-step instructions and a "Check for updates" button that re-checks artifact status when clicked
+
+### Requirement: Generate All UI progress feedback
+
+The WorkflowActionPanel SHALL display real-time progress during a Generate All operation.
+
+#### Scenario: Progress label during generation
+- WHEN a Generate All operation is in progress
+- THEN the panel SHALL display a progress label showing the current artifact and count (e.g., "Generating design... 2/4")
+
+#### Scenario: Pipeline chips update in real-time
+- WHEN an artifact completes during a Generate All chain
+- THEN the pipeline chip for that artifact SHALL update to show the done state before the next artifact begins
+
+#### Scenario: Buttons disabled during generation
+- WHEN a Generate All operation is in progress
+- THEN both the Generate and Generate All buttons SHALL be disabled and a Cancel button SHALL be shown
+
+#### Scenario: Cancel button stops generation
+- WHEN the user clicks Cancel during a Generate All operation
+- THEN the system SHALL cancel the remaining chain and restore the panel to its normal state showing current progress
+
+#### Scenario: Completion restores normal state
+- WHEN a Generate All operation completes successfully
+- THEN the panel SHALL restore to normal state with all pipeline chips showing done and an "All complete" message
+
+#### Scenario: Error shows notification and restores state
+- WHEN a Generate All operation fails on an artifact
+- THEN the panel SHALL show an error notification identifying the failed artifact, and restore to normal state with completed artifacts shown as done

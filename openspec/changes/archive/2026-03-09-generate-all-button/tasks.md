@@ -41,9 +41,9 @@
 
 ## 6. Integration and testing
 
-- [ ] 6.1 Verify Generate All works end-to-end with a test change using Direct API (manual)
-- [ ] 6.2 Verify cancellation stops the chain and preserves completed artifacts
-- [ ] 6.3 Verify error on one artifact stops chain with clear notification
-- [ ] 6.4 Verify Generate All button is hidden when Direct API is not configured
-- [ ] 6.5 Verify Generate All button is hidden when only 1 artifact remains
+- [x] 6.1 Verify Generate All works end-to-end with a test change using Direct API (manual)
+- [x] 6.2 Verify cancellation stops the chain and preserves completed artifacts
+- [x] 6.3 Verify error on one artifact stops chain with clear notification
+- [x] 6.4 Verify Generate All button is hidden when Direct API is not configured
+- [x] 6.5 Verify Generate All button is hidden when only 1 artifact remains
 - [x] 6.6 Run full test suite: `./gradlew clean build test` — all green
