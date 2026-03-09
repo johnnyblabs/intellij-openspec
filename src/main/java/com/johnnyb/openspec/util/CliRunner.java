@@ -34,6 +34,12 @@ public final class CliRunner {
             cmd.setWorkDirectory(project.getBasePath());
         }
 
+        // Apply login shell PATH so node-based CLI scripts can resolve their interpreter
+        CliDetectionService detection = project.getService(CliDetectionService.class);
+        if (detection != null) {
+            detection.applyLoginShellPath(cmd);
+        }
+
         try {
             OSProcessHandler handler = new OSProcessHandler(cmd);
             StringBuilder stdout = new StringBuilder();

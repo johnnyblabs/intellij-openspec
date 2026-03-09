@@ -13,6 +13,7 @@ import com.johnnyb.openspec.settings.OpenSpecSettings;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 
 @Service(Service.Level.PROJECT)
 public final class CliDetectionService {
@@ -32,6 +33,7 @@ public final class CliDetectionService {
     private volatile boolean available;
     private volatile String detectedPath;
     private volatile String detectedVersion;
+    private volatile String loginShellPath;
 
     public CliDetectionService(Project project) {
         this.project = project;
@@ -41,6 +43,10 @@ public final class CliDetectionService {
         available = false;
         detectedPath = null;
         detectedVersion = null;
+
+        // Resolve login shell PATH first — needed on macOS where GUI apps
+        // don't inherit terminal PATH (so node/openspec can't be found)
+        resolveLoginShellPath();
 
         // 1. Check settings path first
         OpenSpecSettings settings = OpenSpecSettings.getInstance(project);
@@ -64,9 +70,9 @@ public final class CliDetectionService {
 
     private boolean tryPath(String path) {
         try {
-            // Use GeneralCommandLine which inherits IntelliJ's environment resolution
             GeneralCommandLine cmd = new GeneralCommandLine(path, "--version");
             cmd.setCharset(StandardCharsets.UTF_8);
+            applyLoginShellPath(cmd);
 
             OSProcessHandler handler = new OSProcessHandler(cmd);
             StringBuilder stdout = new StringBuilder();
@@ -147,6 +153,72 @@ public final class CliDetectionService {
             LOG.debug("Login shell which failed", e);
         }
         return null;
+    }
+
+    /**
+     * Resolves the PATH from the user's login shell and caches it.
+     * On macOS, GUI apps don't inherit the terminal PATH, so tools like
+     * node, openspec, etc. can't be found without this.
+     */
+    private void resolveLoginShellPath() {
+        if (loginShellPath != null) return;
+
+        String shell = System.getenv("SHELL");
+        if (shell == null || shell.isEmpty()) {
+            shell = "/bin/zsh";
+        }
+        try {
+            GeneralCommandLine cmd = new GeneralCommandLine(shell, "-lc", "echo $PATH");
+            cmd.setCharset(StandardCharsets.UTF_8);
+
+            OSProcessHandler handler = new OSProcessHandler(cmd);
+            StringBuilder stdout = new StringBuilder();
+
+            handler.addProcessListener(new ProcessAdapter() {
+                @Override
+                public void onTextAvailable(ProcessEvent event, Key outputType) {
+                    if (ProcessOutputTypes.STDOUT.equals(outputType)) {
+                        stdout.append(event.getText());
+                    }
+                }
+            });
+
+            handler.startNotify();
+            if (!handler.waitFor(TIMEOUT_MS)) {
+                handler.destroyProcess();
+                return;
+            }
+
+            Integer exitCode = handler.getExitCode();
+            if (exitCode != null && exitCode == 0) {
+                String path = stdout.toString().trim();
+                if (!path.isEmpty()) {
+                    loginShellPath = path;
+                    LOG.info("Resolved login shell PATH: " + path);
+                }
+            }
+        } catch (Exception e) {
+            LOG.debug("Failed to resolve login shell PATH", e);
+        }
+    }
+
+    /**
+     * Applies the login shell PATH to a GeneralCommandLine so that
+     * scripts with #!/usr/bin/env shebangs can resolve their interpreters.
+     */
+    public void applyLoginShellPath(GeneralCommandLine cmd) {
+        if (loginShellPath != null) {
+            Map<String, String> env = cmd.getEnvironment();
+            env.put("PATH", loginShellPath);
+        }
+    }
+
+    /**
+     * Returns the cached login shell PATH, or null if not yet resolved.
+     * Used by CliRunner to set up command environments.
+     */
+    public String getLoginShellPath() {
+        return loginShellPath;
     }
 
     public boolean isAvailable() {
