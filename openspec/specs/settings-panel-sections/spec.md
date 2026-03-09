@@ -32,6 +32,15 @@ The OpenSpec CLI section SHALL show the CLI detection status and version promine
 - **THEN** the system SHALL scan for the OpenSpec CLI executable
 - **AND** update the path field and status display with the result
 
+#### Scenario: CLI detection fails with error
+- **WHEN** the CLI detection process throws an unexpected exception
+- **THEN** the status label SHALL display an error message (not remain at "Detecting...")
+- **AND** the error SHALL be logged at WARN level in idea.log
+
+#### Scenario: CLI detection always resolves
+- **WHEN** the user clicks "Detect" or the panel opens
+- **THEN** the status label SHALL always transition from "Detecting..." to a terminal state (found, not found, or error) regardless of any exceptions during detection
+
 ### Requirement: Each section includes contextual help text
 Each AI tab SHALL include a brief description label explaining what the section is for and when the user needs it.
 

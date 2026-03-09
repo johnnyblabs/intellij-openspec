@@ -1,5 +1,6 @@
 package com.johnnyb.openspec.settings;
 
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.TextFieldWithBrowseButton;
@@ -23,6 +24,7 @@ import java.util.List;
 
 public class OpenSpecSettingsPanel {
 
+    private static final Logger LOG = Logger.getInstance(OpenSpecSettingsPanel.class);
     private static final String API_KEY_MASK = "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022";
 
     private final JPanel mainPanel;
@@ -274,13 +276,24 @@ public class OpenSpecSettingsPanel {
         cliStatusLabel.setText("Detecting...");
         cliStatusLabel.setForeground(UIManager.getColor("Label.foreground"));
         com.intellij.openapi.application.ApplicationManager.getApplication().executeOnPooledThread(() -> {
-            detection.detect();
-            com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater(() -> {
-                if (detection.isAvailable()) {
-                    cliPathField.setText(detection.getDetectedPath());
-                }
-                updateCliStatus();
-            });
+            try {
+                detection.detect();
+                com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater(() -> {
+                    if (detection.isAvailable()) {
+                        cliPathField.setText(detection.getDetectedPath());
+                        cliPathField.repaint();
+                    }
+                    updateCliStatus();
+                    cliStatusLabel.repaint();
+                });
+            } catch (Exception e) {
+                LOG.warn("CLI detection failed unexpectedly", e);
+                com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater(() -> {
+                    cliStatusLabel.setText("Detection failed: " + e.getMessage());
+                    cliStatusLabel.setForeground(Color.RED);
+                    cliStatusLabel.repaint();
+                });
+            }
         });
     }
 
