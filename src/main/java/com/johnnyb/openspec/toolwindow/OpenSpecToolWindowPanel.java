@@ -254,6 +254,10 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider {
         refreshAsync();
     }
 
+    public void selectChange(String changeName) {
+        workflowPanel.selectChange(changeName);
+    }
+
     private void updateAiStatus() {
         AiToolDetectionService aiDetection = project.getService(AiToolDetectionService.class);
         if (aiDetection != null && aiDetection.hasDetectedTools()) {

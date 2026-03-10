@@ -89,6 +89,10 @@
                     text="Propose..."
                     description="Propose a new change"
                     icon="/icons/change.svg"/>
+            <action id="OpenSpec.Explore"
+                    class="com.johnnyb.openspec.actions.ExploreContextAction"
+                    text="Explore..."
+                    description="Copy project context to clipboard for AI-assisted exploration"/>
             <action id="OpenSpec.Apply"
                     class="com.johnnyb.openspec.actions.OpenSpecApplyAction"
                     text="Apply"

@@ -1,12 +1,20 @@
 package com.johnnyb.openspec.actions;
 
 import com.intellij.openapi.actionSystem.AnActionEvent;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.openapi.wm.ToolWindow;
+import com.intellij.openapi.wm.ToolWindowManager;
+import com.intellij.ui.content.Content;
 import com.johnnyb.openspec.dialogs.ProposeChangeDialog;
 import com.johnnyb.openspec.scaffolding.ScaffoldingService;
+import com.johnnyb.openspec.toolwindow.OpenSpecToolWindowPanel;
+import com.johnnyb.openspec.toolwindow.WorkflowActionPanel;
 import com.johnnyb.openspec.util.OpenSpecNotifier;
 import org.jetbrains.annotations.NotNull;
+
+import java.awt.*;
 
 /**
  * Creates a new change proposal with all required artifacts.
@@ -36,6 +44,7 @@ public class OpenSpecProposeAction extends OpenSpecBaseAction {
         // The CLI's "new change" only creates .openspec.yaml.
         createChangeBuiltIn(project, changeName, why, whatChanges);
         refreshToolWindow(project);
+        autoFocusChange(project, changeName);
     }
 
     private void createChangeBuiltIn(Project project, String changeName, String why, String whatChanges) {
@@ -46,5 +55,19 @@ public class OpenSpecProposeAction extends OpenSpecBaseAction {
         } catch (Exception ex) {
             OpenSpecNotifier.error(project, "Failed to create change: " + ex.getMessage());
         }
+    }
+
+    private void autoFocusChange(Project project, String changeName) {
+        ApplicationManager.getApplication().invokeLater(() -> {
+            ToolWindow toolWindow = ToolWindowManager.getInstance(project).getToolWindow("OpenSpec");
+            if (toolWindow == null) return;
+            for (Content content : toolWindow.getContentManager().getContents()) {
+                Component component = content.getComponent();
+                if (component instanceof OpenSpecToolWindowPanel panel) {
+                    panel.selectChange(changeName);
+                    break;
+                }
+            }
+        });
     }
 }

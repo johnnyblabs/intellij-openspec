@@ -1,18 +1,22 @@
 # Settings Panel Sections
 
 ## Purpose
-Visual organization of the settings panel into distinct sections with contextual help.
+Visual organization of the settings panel into distinct sections. All configuration is visible without tabs.
 
 ## Requirements
 
 ### Requirement: Settings panel uses distinct visual sections
-The settings panel SHALL organize controls into visually distinct sections: an "OpenSpec CLI" titled section at the top, a "General" section for project preferences, and a tabbed pane for AI configuration.
+The settings panel SHALL organize controls into visually distinct sections: an "OpenSpec CLI" titled section at the top, a "General" section for project preferences, and a "Direct API" section for AI provider configuration. No tabbed pane.
 
 #### Scenario: Panel layout on open
 - **WHEN** the user opens OpenSpec settings (Tools > OpenSpec)
 - **THEN** the panel SHALL display an "OpenSpec CLI" section at the top with CLI path, detect button, and version status
 - **AND** a "General" section below with schema profile and preference checkboxes
-- **AND** a tabbed pane below with "Tools & Delivery" and "Direct API" tabs
+- **AND** a "Direct API" section below with provider, API key, model, and test button
+
+#### Scenario: No tabbed pane
+- **WHEN** the user views the settings panel
+- **THEN** all configuration SHALL be visible without switching tabs
 
 ### Requirement: OpenSpec CLI section displays health status prominently
 The OpenSpec CLI section SHALL show the CLI detection status and version prominently so users can immediately see if their installation is working.
@@ -40,17 +44,6 @@ The OpenSpec CLI section SHALL show the CLI detection status and version promine
 #### Scenario: CLI detection always resolves
 - **WHEN** the user clicks "Detect" or the panel opens
 - **THEN** the status label SHALL always transition from "Detecting..." to a terminal state (found, not found, or error) regardless of any exceptions during detection
-
-### Requirement: Each section includes contextual help text
-Each AI tab SHALL include a brief description label explaining what the section is for and when the user needs it.
-
-#### Scenario: Tools & Delivery tab help text
-- **WHEN** the user views the "Tools & Delivery" tab
-- **THEN** a description SHALL be visible explaining that these are detected AI coding tools and delivery preferences
-
-#### Scenario: Direct API tab help text
-- **WHEN** the user views the "Direct API" tab
-- **THEN** a description SHALL be visible explaining that API keys are optional and used for direct artifact generation
 
 ### Requirement: AI provider dropdown shows display names
 The AI provider dropdown SHALL show human-readable display names instead of enum constant names.

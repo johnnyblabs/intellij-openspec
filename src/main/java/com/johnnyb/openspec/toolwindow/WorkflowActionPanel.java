@@ -20,7 +20,6 @@ import com.johnnyb.openspec.model.ChangeArtifactDag;
 import com.johnnyb.openspec.services.AiToolDetectionService;
 import com.johnnyb.openspec.services.ArtifactOrchestrationService;
 import com.johnnyb.openspec.services.ChangeService;
-import com.johnnyb.openspec.services.DeliveryMethodResolver;
 import com.johnnyb.openspec.services.GenerateAllListener;
 import com.johnnyb.openspec.settings.OpenSpecSettings;
 import com.johnnyb.openspec.util.ArtifactFileWatcher;
@@ -38,7 +37,7 @@ import java.util.Map;
 
 /**
  * Workflow action panel displayed below the tree in the tool window.
- * Shows a change selector, interactive artifact pipeline, and a delivery-aware Generate button.
+ * Shows a change selector, interactive artifact pipeline, tool selector, and Generate button.
  */
 public class WorkflowActionPanel extends JPanel {
 
@@ -48,6 +47,8 @@ public class WorkflowActionPanel extends JPanel {
             "specs", "What to build (requirements)",
             "tasks", "Implementation checklist"
     );
+
+    private static final String SEPARATOR_ITEM = "───────────────";
 
     private final Project project;
 
@@ -59,9 +60,12 @@ public class WorkflowActionPanel extends JPanel {
     // Pipeline visualization
     private final JPanel pipelinePanel;
 
+    // Tool selector
+    private final JComboBox<String> toolSelector;
+    private final JBLabel noToolsLabel;
+
     // Generate controls
     private final JButton generateButton;
-    private final JButton dropdownButton;
     private final JButton generateAllButton;
     private final JButton cancelButton;
 
@@ -73,32 +77,25 @@ public class WorkflowActionPanel extends JPanel {
     private final JButton copyAgainButton;
     private final JButton checkUpdatesButton;
 
-    // Setup card (first-run)
-    private final JPanel setupCard;
-    private final CardLayout cardLayout;
-
     private String activeChangeName;
     private String nextArtifactId;
     private String lastPrompt;
     private String lastOutputPath;
     private Runnable onRefreshRequested;
     private boolean updatingCombo;
+    private boolean updatingToolSelector;
     private ArtifactFileWatcher activeWatcher;
 
     public WorkflowActionPanel(Project project) {
         this.project = project;
-        this.cardLayout = new CardLayout();
-        setLayout(cardLayout);
+        setLayout(new BorderLayout(8, 4));
         setBorder(JBUI.Borders.compound(
                 JBUI.Borders.customLine(JBColor.border(), 1, 0, 0, 0),
                 JBUI.Borders.empty(6, 8)
         ));
+        setOpaque(false);
 
-        // --- Normal panel ---
-        JPanel normalPanel = new JPanel(new BorderLayout(8, 4));
-        normalPanel.setOpaque(false);
-
-        // Change selector
+        // --- Change selector ---
         changeSelectorPanel = new JPanel(new CardLayout());
         changeSelectorPanel.setOpaque(false);
 
@@ -182,16 +179,31 @@ public class WorkflowActionPanel extends JPanel {
         infoPanel.add(pipelinePanel);
         infoPanel.add(guidancePanel);
 
+        // Tool selector
+        toolSelector = new JComboBox<>();
+        toolSelector.addActionListener(e -> onToolSelectionChanged());
+
+        noToolsLabel = new JBLabel(
+                "<html><small>Configure an AI tool or API key to get started.</small></html>");
+        noToolsLabel.setForeground(JBColor.GRAY);
+        noToolsLabel.setVisible(false);
+
         // Buttons
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 2, 0));
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.setLayout(new BoxLayout(buttonPanel, BoxLayout.Y_AXIS));
         buttonPanel.setOpaque(false);
+
+        JPanel toolRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
+        toolRow.setOpaque(false);
+        toolRow.add(noToolsLabel);
+        toolRow.add(toolSelector);
+
+        JPanel actionRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 2, 0));
+        actionRow.setOpaque(false);
+
         generateButton = new JButton("Generate");
         generateButton.setEnabled(false);
         generateButton.addActionListener(e -> onGenerate());
-
-        dropdownButton = new JButton("\u25BE");
-        dropdownButton.setMargin(JBUI.insets(2));
-        dropdownButton.addActionListener(e -> showDeliveryMenu());
 
         generateAllButton = new JButton("Generate All");
         generateAllButton.setVisible(false);
@@ -201,20 +213,19 @@ public class WorkflowActionPanel extends JPanel {
         cancelButton.setVisible(false);
         cancelButton.addActionListener(e -> onCancelGenerateAll());
 
-        buttonPanel.add(generateButton);
-        buttonPanel.add(dropdownButton);
-        buttonPanel.add(generateAllButton);
-        buttonPanel.add(cancelButton);
+        actionRow.add(generateButton);
+        actionRow.add(generateAllButton);
+        actionRow.add(cancelButton);
 
-        normalPanel.add(infoPanel, BorderLayout.CENTER);
-        normalPanel.add(buttonPanel, BorderLayout.EAST);
+        buttonPanel.add(toolRow);
+        buttonPanel.add(Box.createVerticalStrut(4));
+        buttonPanel.add(actionRow);
 
-        // Setup card (first-run)
-        setupCard = createSetupCard();
+        add(infoPanel, BorderLayout.CENTER);
+        add(buttonPanel, BorderLayout.EAST);
 
-        add(normalPanel, "normal");
-        add(setupCard, "setup");
-        cardLayout.show(this, "normal");
+        // Populate tool selector
+        populateToolSelector();
     }
 
     public void setOnRefreshRequested(Runnable callback) {
@@ -246,10 +257,152 @@ public class WorkflowActionPanel extends JPanel {
         });
     }
 
+    /**
+     * Selects the given change and triggers generation.
+     */
     public void selectChangeAndGenerate(String changeName) {
         activeChangeName = changeName;
         refresh();
         ApplicationManager.getApplication().invokeLater(this::onGenerate);
+    }
+
+    /**
+     * Selects the given change without triggering generation.
+     * Used by ProposeAction to auto-focus a newly created change.
+     */
+    public void selectChange(String changeName) {
+        activeChangeName = changeName;
+        refresh();
+    }
+
+    // --- Tool selector ---
+
+    private void populateToolSelector() {
+        updatingToolSelector = true;
+        toolSelector.removeAllItems();
+
+        AiToolDetectionService detection = project.getService(AiToolDetectionService.class);
+        if (detection != null) {
+            detection.detect();
+            List<String> tools = detection.getDetectedTools();
+            for (String tool : tools) {
+                AiToolDetectionService.ToolType type = AiToolDetectionService.getToolType(tool);
+                String label = tool + "  [" + (type == AiToolDetectionService.ToolType.CLI ? "CLI" : "IDE") + "]";
+                toolSelector.addItem(label);
+            }
+        }
+
+        DirectApiService apiService = project.getService(DirectApiService.class);
+        boolean hasApi = apiService != null && apiService.isConfigured();
+
+        if (hasApi) {
+            if (toolSelector.getItemCount() > 0) {
+                toolSelector.addItem(SEPARATOR_ITEM);
+            }
+            toolSelector.addItem("Direct API  [API]");
+        }
+
+        if (toolSelector.getItemCount() > 0) {
+            toolSelector.addItem(SEPARATOR_ITEM);
+        }
+        toolSelector.addItem("Editor Tab");
+        toolSelector.addItem("Clipboard");
+
+        // Show/hide based on whether any real tools are available
+        boolean hasTools = (detection != null && detection.hasDetectedTools()) || hasApi;
+        noToolsLabel.setVisible(!hasTools && (detection == null || !detection.hasDetectedTools()));
+
+        // Restore saved selection
+        restoreToolSelection();
+        updatingToolSelector = false;
+    }
+
+    private void restoreToolSelection() {
+        OpenSpecSettings settings = OpenSpecSettings.getInstance(project);
+        String savedTool = settings.getPreferredTool();
+        String savedMethod = settings.getPreferredDeliveryMethod();
+
+        // Try to match saved tool name in the selector items
+        if (savedTool != null && !savedTool.isBlank()) {
+            for (int i = 0; i < toolSelector.getItemCount(); i++) {
+                String item = toolSelector.getItemAt(i);
+                if (item.startsWith(savedTool)) {
+                    toolSelector.setSelectedIndex(i);
+                    return;
+                }
+            }
+        }
+
+        // Try to match by delivery method
+        if (savedMethod != null && !savedMethod.isBlank()) {
+            String match = switch (savedMethod) {
+                case "DIRECT_API" -> "Direct API";
+                case "EDITOR_TAB" -> "Editor Tab";
+                case "CLIPBOARD" -> "Clipboard";
+                default -> null;
+            };
+            if (match != null) {
+                for (int i = 0; i < toolSelector.getItemCount(); i++) {
+                    String item = toolSelector.getItemAt(i);
+                    if (item.startsWith(match)) {
+                        toolSelector.setSelectedIndex(i);
+                        return;
+                    }
+                }
+            }
+        }
+
+        // Default: first non-separator item
+        if (toolSelector.getItemCount() > 0) {
+            toolSelector.setSelectedIndex(0);
+        }
+    }
+
+    private void onToolSelectionChanged() {
+        if (updatingToolSelector) return;
+        String selected = (String) toolSelector.getSelectedItem();
+        if (selected == null || selected.equals(SEPARATOR_ITEM)) return;
+
+        // Save preference
+        OpenSpecSettings settings = OpenSpecSettings.getInstance(project);
+        ToolSelection ts = parseToolSelection(selected);
+        settings.setPreferredTool(ts.toolName);
+        settings.setPreferredDeliveryMethod(ts.mode.name());
+
+        // Update generate button label
+        if (nextArtifactId != null) {
+            generateButton.setText(buildGenerateLabel(nextArtifactId));
+        }
+    }
+
+    private record ToolSelection(String toolName, DeliveryMode mode) {}
+
+    private ToolSelection parseToolSelection(String selectorItem) {
+        if (selectorItem == null || selectorItem.equals(SEPARATOR_ITEM)) {
+            return new ToolSelection("", DeliveryMode.CLIPBOARD);
+        }
+        if (selectorItem.startsWith("Direct API")) {
+            return new ToolSelection("", DeliveryMode.DIRECT_API);
+        }
+        if (selectorItem.equals("Editor Tab")) {
+            return new ToolSelection("", DeliveryMode.EDITOR_TAB);
+        }
+        if (selectorItem.equals("Clipboard")) {
+            return new ToolSelection("", DeliveryMode.CLIPBOARD);
+        }
+        // Tool with type label, e.g. "Claude Code  [CLI]"
+        String toolName = selectorItem.replaceAll("\\s+\\[(?:CLI|IDE)]$", "").trim();
+        return new ToolSelection(toolName, DeliveryMode.CLIPBOARD);
+    }
+
+    private DeliveryMode getSelectedDeliveryMode() {
+        String selected = (String) toolSelector.getSelectedItem();
+        return parseToolSelection(selected).mode;
+    }
+
+    private String getSelectedToolName() {
+        String selected = (String) toolSelector.getSelectedItem();
+        return parseToolSelection(selected).toolName;
     }
 
     // --- Change selector ---
@@ -302,7 +455,6 @@ public class WorkflowActionPanel extends JPanel {
             if (dag == null) {
                 generateButton.setEnabled(false);
                 generateButton.setText("Generate");
-                dropdownButton.setEnabled(false);
                 generateAllButton.setVisible(false);
                 activeChangeName = null;
                 pipelinePanel.add(new JBLabel("Use Propose to create a change"));
@@ -334,26 +486,22 @@ public class WorkflowActionPanel extends JPanel {
             if (dag.isComplete()) {
                 generateButton.setEnabled(false);
                 generateButton.setText("All complete");
-                dropdownButton.setEnabled(false);
                 generateAllButton.setVisible(false);
             } else if (nextArtifactId != null) {
                 generateButton.setText(buildGenerateLabel(nextArtifactId));
                 generateButton.setEnabled(true);
-                dropdownButton.setEnabled(true);
                 updateGenerateAllVisibility(dag);
             } else {
                 generateButton.setText("Generate");
                 generateButton.setEnabled(false);
-                dropdownButton.setEnabled(false);
                 generateAllButton.setVisible(false);
             }
         });
     }
 
     private String buildGenerateLabel(String artifactId) {
-        DeliveryMethodResolver resolver = project.getService(DeliveryMethodResolver.class);
-        DeliveryMethodResolver.ResolvedMethod method = resolver.resolve();
-        String suffix = switch (method.mode()) {
+        DeliveryMode mode = getSelectedDeliveryMode();
+        String suffix = switch (mode) {
             case CLIPBOARD -> "clipboard";
             case EDITOR_TAB -> "editor tab";
             case DIRECT_API -> "API";
@@ -404,7 +552,7 @@ public class WorkflowActionPanel extends JPanel {
         String desc = ARTIFACT_DESCRIPTIONS.getOrDefault(artifact.id(), artifact.id());
         chip.setToolTipText(artifact.id() + ": " + desc);
 
-        // Click handlers for completed chips
+        // Click handlers
         if (artifact.status() == ArtifactStatus.DONE) {
             chip.addMouseListener(new MouseAdapter() {
                 @Override
@@ -422,6 +570,18 @@ public class WorkflowActionPanel extends JPanel {
                 @Override
                 public void mouseReleased(MouseEvent e) {
                     if (e.isPopupTrigger()) showChipContextMenu(e, artifact);
+                }
+            });
+        } else if (artifact.status() == ArtifactStatus.READY) {
+            chip.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            chip.setToolTipText("Click to generate " + artifact.id());
+            chip.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseClicked(MouseEvent e) {
+                    if (SwingUtilities.isLeftMouseButton(e)) {
+                        nextArtifactId = artifact.id();
+                        onGenerate();
+                    }
                 }
             });
         }
@@ -478,29 +638,14 @@ public class WorkflowActionPanel extends JPanel {
 
         // Treat as if this artifact is the next one to generate
         nextArtifactId = artifact.id();
-        DeliveryMethodResolver resolver = project.getService(DeliveryMethodResolver.class);
-        if (!resolver.hasPreference()) {
-            cardLayout.show(this, "setup");
-            return;
-        }
-        DeliveryMethodResolver.ResolvedMethod method = resolver.resolve();
-        executeGeneration(method.mode());
+        executeGeneration(getSelectedDeliveryMode());
     }
 
     // --- Generation ---
 
     private void onGenerate() {
         if (activeChangeName == null || nextArtifactId == null) return;
-
-        DeliveryMethodResolver resolver = project.getService(DeliveryMethodResolver.class);
-
-        if (!resolver.hasPreference()) {
-            cardLayout.show(this, "setup");
-            return;
-        }
-
-        DeliveryMethodResolver.ResolvedMethod method = resolver.resolve();
-        executeGeneration(method.mode());
+        executeGeneration(getSelectedDeliveryMode());
     }
 
     private void executeGeneration(DeliveryMode mode) {
@@ -526,11 +671,9 @@ public class WorkflowActionPanel extends JPanel {
 
                 switch (mode) {
                     case CLIPBOARD -> {
-                        AiToolDetectionService det = project.getService(AiToolDetectionService.class);
-                        String toolLabel = (det != null && det.hasDetectedTools())
-                                ? det.getPreferredToolLabel() : null;
+                        String toolName = getSelectedToolName();
                         String clipboardPrompt = prompt;
-                        if (toolLabel != null && AiToolDetectionService.isCliTool(toolLabel)
+                        if (!toolName.isBlank() && AiToolDetectionService.isCliTool(toolName)
                                 && instruction.changeDir() != null && lastOutputPath != null) {
                             clipboardPrompt = prompt + "\n\nSave your response to: "
                                     + instruction.changeDir() + "/" + lastOutputPath;
@@ -540,7 +683,7 @@ public class WorkflowActionPanel extends JPanel {
                                 .setContents(new StringSelection(clipboardPrompt), null);
                         ApplicationManager.getApplication().invokeLater(() ->
                                 showInlineGuidance("clipboard", instruction.changeDir(),
-                                        lastOutputPath, toolLabel, nextAfterThis));
+                                        lastOutputPath, toolName.isBlank() ? null : toolName, nextAfterThis));
                     }
                     case EDITOR_TAB -> ApplicationManager.getApplication().invokeLater(() -> {
                         try {
@@ -558,11 +701,8 @@ public class WorkflowActionPanel extends JPanel {
                             if (scratch != null) {
                                 FileEditorManager.getInstance(project).openFile(scratch, true);
                             }
-                            AiToolDetectionService det = project.getService(AiToolDetectionService.class);
-                            String toolLabel = (det != null && det.hasDetectedTools())
-                                    ? det.getPreferredToolLabel() : null;
                             showInlineGuidance("editor", instruction.changeDir(),
-                                    lastOutputPath, toolLabel, nextAfterThis);
+                                    lastOutputPath, null, nextAfterThis);
                         } catch (IOException ex) {
                             OpenSpecNotifier.error(project, "Failed to open prompt: " + ex.getMessage());
                         }
@@ -639,8 +779,11 @@ public class WorkflowActionPanel extends JPanel {
         guidancePanel.setVisible(true);
         guidancePanel.revalidate();
 
-        // Show normal panel with inline guidance visible
-        cardLayout.show(this, "normal");
+        // Set generate button to waiting state
+        if (nextArtifactId != null) {
+            generateButton.setText("Waiting for " + nextArtifactId + "...");
+            generateButton.setEnabled(false);
+        }
 
         // Start file watcher
         if (changeDir != null && outputPath != null) {
@@ -688,38 +831,6 @@ public class WorkflowActionPanel extends JPanel {
         if (onRefreshRequested != null) onRefreshRequested.run();
     }
 
-    // --- Delivery menu ---
-
-    private void showDeliveryMenu() {
-        JPopupMenu menu = new JPopupMenu();
-
-        DeliveryMethodResolver resolver = project.getService(DeliveryMethodResolver.class);
-
-        for (DeliveryMode mode : DeliveryMode.values()) {
-            String label = mode.getDisplayName();
-            if (mode == DeliveryMode.CLIPBOARD) {
-                DeliveryMethodResolver.ResolvedMethod resolved = resolver.resolve();
-                if (resolved.mode() == DeliveryMode.CLIPBOARD && !resolved.label().equals("Copy to Clipboard")) {
-                    label = resolved.label();
-                }
-            }
-
-            String finalLabel = label;
-            JMenuItem item = new JMenuItem(finalLabel);
-            item.addActionListener(e -> {
-                resolver.savePreference(mode);
-                // Update button label immediately
-                if (nextArtifactId != null) {
-                    generateButton.setText(buildGenerateLabel(nextArtifactId));
-                }
-                executeGeneration(mode);
-            });
-            menu.add(item);
-        }
-
-        menu.show(dropdownButton, 0, dropdownButton.getHeight());
-    }
-
     // --- Generate All ---
 
     private void updateGenerateAllVisibility(ChangeArtifactDag dag) {
@@ -738,7 +849,6 @@ public class WorkflowActionPanel extends JPanel {
 
         generateButton.setEnabled(false);
         generateButton.setText("Generating...");
-        dropdownButton.setEnabled(false);
         generateAllButton.setVisible(false);
         cancelButton.setVisible(true);
 
@@ -828,90 +938,5 @@ public class WorkflowActionPanel extends JPanel {
         }
         pipelinePanel.revalidate();
         pipelinePanel.repaint();
-    }
-
-    // --- Setup card (first-run) ---
-
-    private JPanel createSetupCard() {
-        JPanel card = new JPanel(new BorderLayout(8, 8));
-        card.setBorder(JBUI.Borders.empty(8));
-        card.setOpaque(false);
-
-        JBLabel title = new JBLabel("Choose how to generate artifacts:");
-        title.setFont(title.getFont().deriveFont(Font.BOLD));
-
-        JPanel content = new JPanel();
-        content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
-        content.setOpaque(false);
-
-        AiToolDetectionService detection = project.getService(AiToolDetectionService.class);
-        if (detection != null) {
-            detection.detect();
-        }
-
-        JComboBox<String> toolSelector = null;
-        if (detection != null && detection.getDetectedTools().size() > 1) {
-            JPanel toolPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
-            toolPanel.setOpaque(false);
-            toolPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-            toolPanel.add(new JBLabel("AI tool:"));
-            toolSelector = new JComboBox<>(detection.getDetectedTools().toArray(new String[0]));
-            toolPanel.add(toolSelector);
-            content.add(toolPanel);
-            content.add(Box.createVerticalStrut(8));
-        } else if (detection != null && detection.getDetectedTools().size() == 1) {
-            OpenSpecSettings.getInstance(project).setPreferredTool(detection.getDetectedTools().getFirst());
-        }
-
-        JPanel options = new JPanel(new GridLayout(0, 1, 0, 4));
-        options.setOpaque(false);
-        options.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        DirectApiService apiService = project.getService(DirectApiService.class);
-        boolean hasApi = apiService != null && apiService.isConfigured();
-
-        if (hasApi) {
-            addSetupOption(options, "Generate via API (configured)", DeliveryMode.DIRECT_API, toolSelector);
-        }
-
-        if (detection != null && detection.hasDetectedTools()) {
-            String toolName = detection.getPreferredToolLabel();
-            addSetupOption(options, "Copy for " + toolName, DeliveryMode.CLIPBOARD, toolSelector);
-        }
-
-        addSetupOption(options, "Copy to Clipboard", DeliveryMode.CLIPBOARD, toolSelector);
-        addSetupOption(options, "Open in Editor Tab", DeliveryMode.EDITOR_TAB, toolSelector);
-
-        if (!hasApi) {
-            JBLabel apiHint = new JBLabel("Configure an API key in Settings > Tools > OpenSpec for direct generation");
-            apiHint.setForeground(JBColor.GRAY);
-            options.add(apiHint);
-        }
-
-        content.add(options);
-        card.add(title, BorderLayout.NORTH);
-        card.add(content, BorderLayout.CENTER);
-
-        return card;
-    }
-
-    private void addSetupOption(JPanel container, String label, DeliveryMode mode,
-                                JComboBox<String> toolSelector) {
-        JButton btn = new JButton(label);
-        btn.setHorizontalAlignment(SwingConstants.LEFT);
-        btn.addActionListener(e -> {
-            if (toolSelector != null) {
-                String selectedTool = (String) toolSelector.getSelectedItem();
-                if (selectedTool != null) {
-                    OpenSpecSettings.getInstance(project).setPreferredTool(selectedTool);
-                }
-            }
-            DeliveryMethodResolver resolver = project.getService(DeliveryMethodResolver.class);
-            resolver.savePreference(mode);
-            cardLayout.show(this, "normal");
-            refresh();
-            executeGeneration(mode);
-        });
-        container.add(btn);
     }
 }
