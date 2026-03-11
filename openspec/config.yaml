@@ -15,3 +15,4 @@ rules:
   rfc-keywords: "Specs SHALL use RFC 2119 keywords (SHALL, SHOULD, MAY)"
   scenarios: "Scenarios SHALL follow Given-When-Then structure"
   compatibility: "Plugin SHALL support IntelliJ IDEA 2024.2 and later"
+  post-archive: "After archiving a change, the tool SHALL commit all changes, push to remote, close the related Forgejo issue with a completion comment, and move the related Plane work item to Done"

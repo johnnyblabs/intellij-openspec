@@ -88,6 +88,7 @@ The plugin has scaffolding detection — if a file exists but only contains plac
 - Specs use RFC 2119 keywords (SHALL, SHOULD, MAY) with Given-When-Then scenarios
 - Change names are kebab-case (e.g., `add-user-auth`)
 - Plugin supports IntelliJ IDEA 2024.2+
+- After archiving a change: commit all changes, push to remote, close the related Forgejo issue, and move the Plane work item to Done (see `openspec/config.yaml` post-archive rule)
 
 ## Available Custom Prompts
 

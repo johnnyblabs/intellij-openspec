@@ -79,3 +79,11 @@ The plugin SHALL discover all spec files under the `openspec/specs/` directory t
 - WHEN the spec parsing service scans for specs
 - THEN it SHALL return a SpecFile for each `spec.md` found
 - AND each SpecFile SHALL include its domain name derived from the parent directory
+
+### Requirement: Post-archive convention in config rules
+
+The project's `openspec/config.yaml` SHALL include a `post-archive` rule declaring the post-archive workflow steps as a project convention visible to all AI tools.
+
+#### Scenario: Config contains post-archive rule
+- **WHEN** any AI tool reads the project's config.yaml rules
+- **THEN** a `post-archive` rule SHALL be present describing the commit, push, and tracker update steps

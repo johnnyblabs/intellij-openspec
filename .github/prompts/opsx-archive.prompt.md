@@ -144,6 +144,57 @@ Target archive directory already exists.
 3. Wait until a different date to archive
 ```
 
+7. **Post-archive: commit, push, update trackers**
+
+   After displaying the archive summary, perform these steps automatically:
+
+   a. **Commit** all changes (implementation code, archived change directory, synced specs) and **push** to the remote repository.
+
+   b. **Close Forgejo issue**: Load credentials from `scripts/.env` (`FORGEJO_TOKEN`, `FORGEJO_URL`). Search for a matching open issue by title:
+      ```bash
+      curl -s -H "Authorization: token $FORGEJO_TOKEN" \
+        "$FORGEJO_URL/api/v1/repos/johnb/OpenSpecPlugin/issues?type=issues&state=open&limit=50" \
+        | jq -r '.[] | "\(.number)\t\(.title)"'
+      ```
+      If a match is found, add a completion comment and close it:
+      ```bash
+      curl -s -X POST -H "Authorization: token $FORGEJO_TOKEN" -H "Content-Type: application/json" \
+        "$FORGEJO_URL/api/v1/repos/johnb/OpenSpecPlugin/issues/<number>/comments" \
+        -d '{"body": "Completed. <brief summary of what was done>"}'
+      curl -s -X PATCH -H "Authorization: token $FORGEJO_TOKEN" -H "Content-Type: application/json" \
+        "$FORGEJO_URL/api/v1/repos/johnb/OpenSpecPlugin/issues/<number>" \
+        -d '{"state": "closed"}'
+      ```
+
+   c. **Update Plane work item**: Load credentials from `scripts/.env` (`PLANE_API_KEY`, `PLANE_URL`, `PLANE_WORKSPACE`). Find the project ID, then search for a matching work item by title:
+      ```bash
+      PLANE_PID=$(curl -s -H "X-API-Key: $PLANE_API_KEY" \
+        "$PLANE_URL/api/v1/workspaces/$PLANE_WORKSPACE/projects/" \
+        | jq -r '(.results[]? // .[]?) | select(.name == "OpenSpec Plugin") | .id')
+      curl -s -H "X-API-Key: $PLANE_API_KEY" \
+        "$PLANE_URL/api/v1/workspaces/$PLANE_WORKSPACE/projects/$PLANE_PID/work-items/?per_page=200" \
+        | jq -r '(.results[]? // .[]?) | "\(.id)\t\(.name)"'
+      ```
+      If a match is found, get the "Done" state ID and update:
+      ```bash
+      DONE_STATE=$(curl -s -H "X-API-Key: $PLANE_API_KEY" \
+        "$PLANE_URL/api/v1/workspaces/$PLANE_WORKSPACE/projects/$PLANE_PID/states/" \
+        | jq -r '(.results[]? // .[]?) | select(.name == "Done") | .id')
+      curl -s -X PATCH -H "X-API-Key: $PLANE_API_KEY" -H "Content-Type: application/json" \
+        "$PLANE_URL/api/v1/workspaces/$PLANE_WORKSPACE/projects/$PLANE_PID/work-items/<item-id>/" \
+        -d "{\"state\": \"$DONE_STATE\"}"
+      ```
+
+   d. **Cross-link Plane and Forgejo**: If both a Forgejo issue and Plane work item were found, link them by setting `external_id` on the Plane work item:
+      ```bash
+      curl -s -X PATCH -H "X-API-Key: $PLANE_API_KEY" -H "Content-Type: application/json" \
+        "$PLANE_URL/api/v1/workspaces/$PLANE_WORKSPACE/projects/$PLANE_PID/work-items/<item-id>/" \
+        -d '{"external_id": "forgejo-issue-<number>", "external_source": "forgejo"}'
+      ```
+      Skip if the work item already has an `external_id` set.
+
+   e. If no matching issue or work item is found, skip that tracker update silently.
+
 **Guardrails**
 - Always prompt for change selection if not provided
 - Use artifact graph (openspec status --json) for completion checking
@@ -152,3 +203,4 @@ Target archive directory already exists.
 - Show clear summary of what happened
 - If sync is requested, use the Skill tool to invoke `openspec-sync-specs` (agent-driven)
 - If delta specs exist, always run the sync assessment and show the combined summary before prompting
+- Post-archive steps (commit, push, tracker updates) are MANDATORY — do not skip unless the user explicitly says to
