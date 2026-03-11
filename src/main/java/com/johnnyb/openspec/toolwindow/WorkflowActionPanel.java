@@ -81,9 +81,9 @@ public class WorkflowActionPanel extends JPanel {
 
     // Inline guidance (replaces old card-based guidance)
     private final JPanel guidancePanel;
-    private final JBLabel guidanceMessageLabel;
-    private final JBLabel guidanceWatchingLabel;
-    private final JBLabel guidanceNextLabel;
+    private final JTextArea guidanceMessageLabel;
+    private final JTextArea guidanceWatchingLabel;
+    private final JTextArea guidanceNextLabel;
     private final JButton copyAgainButton;
     private final JButton checkUpdatesButton;
 
@@ -102,6 +102,7 @@ public class WorkflowActionPanel extends JPanel {
 
     // Retry state
     private final JButton retryButton;
+    private final JButton syncRetryButton;
 
     private String activeChangeName;
     private String nextArtifactId;
@@ -154,19 +155,13 @@ public class WorkflowActionPanel extends JPanel {
         guidancePanel.setVisible(false);
         guidancePanel.setBorder(JBUI.Borders.emptyTop(4));
 
-        guidanceMessageLabel = new JBLabel();
-        guidanceMessageLabel.setFont(guidanceMessageLabel.getFont().deriveFont(Font.BOLD, 11f));
-        guidanceMessageLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        guidanceMessageLabel = createWrappingLabel(Font.BOLD, 11f);
 
-        guidanceWatchingLabel = new JBLabel();
+        guidanceWatchingLabel = createWrappingLabel(Font.ITALIC, 11f);
         guidanceWatchingLabel.setForeground(JBColor.GRAY);
-        guidanceWatchingLabel.setFont(guidanceWatchingLabel.getFont().deriveFont(Font.ITALIC, 11f));
-        guidanceWatchingLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        guidanceNextLabel = new JBLabel();
+        guidanceNextLabel = createWrappingLabel(Font.ITALIC, 11f);
         guidanceNextLabel.setForeground(JBColor.BLUE);
-        guidanceNextLabel.setFont(guidanceNextLabel.getFont().deriveFont(Font.ITALIC, 11f));
-        guidanceNextLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         copyAgainButton = new JButton("Copy again");
         copyAgainButton.addActionListener(e -> {
@@ -217,6 +212,11 @@ public class WorkflowActionPanel extends JPanel {
         retryButton.setVisible(false);
         retryButton.addActionListener(e -> onGenerateAll());
 
+        syncRetryButton = new JButton("Retry Sync");
+        syncRetryButton.setIcon(AllIcons.Actions.Restart);
+        syncRetryButton.setVisible(false);
+        syncRetryButton.addActionListener(e -> onRetrySyncAction());
+
         // Task progress and hint labels
         taskProgressLabel = new JBLabel();
         taskProgressLabel.setFont(taskProgressLabel.getFont().deriveFont(Font.PLAIN, 11f));
@@ -230,21 +230,6 @@ public class WorkflowActionPanel extends JPanel {
         taskHintLabel.setVisible(false);
         taskHintLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        // Info column: selector + pipeline + progress + task progress + inline guidance
-        JPanel infoPanel = new JPanel();
-        infoPanel.setLayout(new BoxLayout(infoPanel, BoxLayout.Y_AXIS));
-        infoPanel.setOpaque(false);
-        changeSelectorPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        pipelinePanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        guidancePanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        infoPanel.add(changeSelectorPanel);
-        infoPanel.add(Box.createVerticalStrut(4));
-        infoPanel.add(pipelinePanel);
-        infoPanel.add(progressRow);
-        infoPanel.add(taskProgressLabel);
-        infoPanel.add(taskHintLabel);
-        infoPanel.add(guidancePanel);
-
         // Tool selector
         toolSelector = new JComboBox<>();
         toolSelector.addActionListener(e -> onToolSelectionChanged());
@@ -255,18 +240,6 @@ public class WorkflowActionPanel extends JPanel {
         noToolsLabel.setVisible(false);
 
         // Buttons
-        JPanel buttonPanel = new JPanel();
-        buttonPanel.setLayout(new BoxLayout(buttonPanel, BoxLayout.Y_AXIS));
-        buttonPanel.setOpaque(false);
-
-        JPanel toolRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
-        toolRow.setOpaque(false);
-        toolRow.add(noToolsLabel);
-        toolRow.add(toolSelector);
-
-        JPanel actionRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 2, 0));
-        actionRow.setOpaque(false);
-
         generateButton = new JButton("Generate");
         generateButton.setEnabled(false);
         generateButton.addActionListener(e -> onGenerate());
@@ -286,18 +259,51 @@ public class WorkflowActionPanel extends JPanel {
         applyButton.setVisible(false);
         applyButton.addActionListener(e -> onApplyTasks());
 
+        // --- Layout: vertical stack with full-width guidance ---
+
+        // Header row: change selector (left) + tool dropdown (right)
+        JPanel headerRow = new JPanel(new BorderLayout(8, 0));
+        headerRow.setOpaque(false);
+        headerRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        changeSelectorPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        headerRow.add(changeSelectorPanel, BorderLayout.CENTER);
+
+        JPanel toolRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
+        toolRow.setOpaque(false);
+        toolRow.add(noToolsLabel);
+        toolRow.add(toolSelector);
+        headerRow.add(toolRow, BorderLayout.EAST);
+
+        // Pipeline row
+        pipelinePanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        // Action buttons row (below pipeline, not competing with text)
+        JPanel actionRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        actionRow.setOpaque(false);
+        actionRow.setAlignmentX(Component.LEFT_ALIGNMENT);
         actionRow.add(generateButton);
         actionRow.add(generateAllButton);
         actionRow.add(applyButton);
         actionRow.add(retryButton);
+        actionRow.add(syncRetryButton);
         actionRow.add(cancelButton);
 
-        buttonPanel.add(toolRow);
-        buttonPanel.add(Box.createVerticalStrut(4));
-        buttonPanel.add(actionRow);
+        // Assemble vertical stack — guidance gets full panel width
+        guidancePanel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        add(infoPanel, BorderLayout.CENTER);
-        add(buttonPanel, BorderLayout.EAST);
+        JPanel contentPanel = new JPanel();
+        contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
+        contentPanel.setOpaque(false);
+        contentPanel.add(headerRow);
+        contentPanel.add(Box.createVerticalStrut(4));
+        contentPanel.add(pipelinePanel);
+        contentPanel.add(actionRow);
+        contentPanel.add(progressRow);
+        contentPanel.add(taskProgressLabel);
+        contentPanel.add(taskHintLabel);
+        contentPanel.add(guidancePanel);
+
+        add(contentPanel, BorderLayout.CENTER);
 
         // Populate tool selector
         populateToolSelector();
@@ -1462,6 +1468,66 @@ public class WorkflowActionPanel extends JPanel {
         disposeAnimations();
         disposeWatcher();
         super.removeNotify();
+    }
+
+    // --- Archive Sync ---
+
+    /**
+     * Shows the outcome of a sync operation in the guidance panel.
+     */
+    public void showSyncOutcome(com.johnnyb.openspec.tracking.ArchiveSyncService.SyncResult result, String changeName) {
+        syncRetryButton.setVisible(false);
+        switch (result.state()) {
+            case SUCCESS -> {
+                guidanceMessageLabel.setText("\u2713 Archive and sync complete for \"" + changeName + "\"");
+                guidanceMessageLabel.setForeground(new JBColor(new Color(0, 128, 0), new Color(80, 200, 80)));
+                guidancePanel.setVisible(true);
+                guidancePanel.revalidate();
+            }
+            case PARTIAL_FAILURE, FAILURE -> {
+                guidanceMessageLabel.setText("\u2717 Sync failed: " + result.message());
+                guidanceMessageLabel.setForeground(JBColor.RED);
+                syncRetryButton.setVisible(true);
+                guidancePanel.setVisible(true);
+                guidancePanel.revalidate();
+            }
+            case SKIPPED -> {
+                // No trackers — just show archive success
+                guidanceMessageLabel.setText("\u2713 Change archived");
+                guidanceMessageLabel.setForeground(new JBColor(new Color(0, 128, 0), new Color(80, 200, 80)));
+                guidancePanel.setVisible(true);
+                guidancePanel.revalidate();
+            }
+        }
+    }
+
+    private void onRetrySyncAction() {
+        if (activeChangeName == null) return;
+        String changeName = activeChangeName;
+        syncRetryButton.setEnabled(false);
+        guidanceMessageLabel.setText("Retrying sync...");
+        guidanceMessageLabel.setForeground(JBColor.GRAY);
+
+        com.johnnyb.openspec.tracking.ArchiveSyncService syncService = project.getService(
+                com.johnnyb.openspec.tracking.ArchiveSyncService.class);
+        if (syncService != null) {
+            syncService.syncAsync(changeName, () -> {
+                syncRetryButton.setEnabled(true);
+                if (onRefreshRequested != null) onRefreshRequested.run();
+            });
+        }
+    }
+
+    private static JTextArea createWrappingLabel(int fontStyle, float fontSize) {
+        JTextArea area = new JTextArea();
+        area.setEditable(false);
+        area.setOpaque(false);
+        area.setLineWrap(true);
+        area.setWrapStyleWord(true);
+        area.setFont(UIManager.getFont("Label.font").deriveFont(fontStyle, fontSize));
+        area.setBorder(null);
+        area.setAlignmentX(Component.LEFT_ALIGNMENT);
+        return area;
     }
 
     Icon getSpinnerIcon() {

@@ -76,6 +76,29 @@ public final class PlaneService {
         apiCall("PATCH", url, apiKey, GSON.toJson(payload));
     }
 
+    /**
+     * Checks if a work item is already in the given state (idempotency guard).
+     */
+    public boolean isWorkItemInState(String workItemId, String stateName) throws IOException {
+        OpenSpecSettings settings = OpenSpecSettings.getInstance(project);
+        String baseUrl = settings.getPlaneUrl().replaceAll("/+$", "");
+        String workspace = settings.getPlaneWorkspace();
+        String projectId = settings.getPlaneProject();
+        String apiKey = TrackerCredentialStore.getToken(TrackerType.PLANE);
+
+        // Get work item current state
+        String url = baseUrl + "/api/v1/workspaces/" + workspace + "/projects/" + projectId + "/work-items/" + workItemId + "/";
+        String response = apiCall("GET", url, apiKey, null);
+        JsonObject workItem = GSON.fromJson(response, JsonObject.class);
+        if (!workItem.has("state")) return false;
+
+        String currentStateId = workItem.get("state").getAsString();
+
+        // Resolve target state name to ID and compare
+        String targetStateId = resolveStateId(baseUrl, workspace, projectId, apiKey, stateName);
+        return currentStateId.equals(targetStateId);
+    }
+
     public String testConnection(String url, String workspace, String projectId) throws IOException {
         String baseUrl = url.replaceAll("/+$", "");
         String apiKey = TrackerCredentialStore.getToken(TrackerType.PLANE);

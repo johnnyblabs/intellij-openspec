@@ -5,20 +5,18 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
 import com.johnnyb.openspec.model.Change;
 import com.johnnyb.openspec.services.ChangeService;
-import com.johnnyb.openspec.tracking.IssueLifecycleService;
+import com.johnnyb.openspec.tracking.ArchiveSyncService;
 import com.johnnyb.openspec.util.OpenSpecNotifier;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 
 /**
- * Archives a completed change by moving it from {@code changes/} to {@code archive/}.
+ * Archives a completed change by moving it from {@code changes/} to {@code archive/},
+ * then triggers sync reconciliation with configured issue trackers.
  *
- * <p><b>Strategy: Built-in only.</b> Archive is a write operation that moves
- * directories on disk. The CLI's {@code openspec archive} may use date-prefixed
- * naming or different directory conventions. Using built-in ensures the tree view,
- * status tracking, and directory layout are always consistent — regardless of
- * whether the CLI is installed.</p>
+ * <p>Archive and sync are separate phases: if archive succeeds but sync fails,
+ * the archive is preserved and the user can retry sync independently.</p>
  */
 public class OpenSpecArchiveAction extends OpenSpecBaseAction {
 
@@ -47,21 +45,24 @@ public class OpenSpecArchiveAction extends OpenSpecBaseAction {
             target = active.get(choice);
         }
 
+        String changeName = target.getName();
+
+        // Phase 1: Archive (filesystem)
         try {
-            String changeName = target.getName();
-            String changeDir = target.getPath();
-
-            // Trigger issue close in configured trackers (before move, while metadata is accessible)
-            IssueLifecycleService lifecycle = project.getService(IssueLifecycleService.class);
-            if (lifecycle != null) {
-                lifecycle.onArchive(changeName, changeDir);
-            }
-
             changeService.archiveChange(target);
             OpenSpecNotifier.info(project, "Change archived: " + changeName);
-            refreshToolWindow(project);
         } catch (Exception ex) {
+            // Archive failed — do NOT proceed to sync
             OpenSpecNotifier.error(project, "Failed to archive change: " + ex.getMessage());
+            return;
+        }
+
+        // Phase 2: Sync reconciliation (tracker updates) — only after archive success
+        ArchiveSyncService syncService = project.getService(ArchiveSyncService.class);
+        if (syncService != null) {
+            syncService.syncAsync(changeName, () -> refreshToolWindow(project));
+        } else {
+            refreshToolWindow(project);
         }
     }
 }

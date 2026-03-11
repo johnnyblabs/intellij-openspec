@@ -29,6 +29,7 @@
         <projectService serviceImplementation="com.johnnyb.openspec.tracking.ForgejoService"/>
         <projectService serviceImplementation="com.johnnyb.openspec.tracking.PlaneService"/>
         <projectService serviceImplementation="com.johnnyb.openspec.tracking.IssueLifecycleService"/>
+        <projectService serviceImplementation="com.johnnyb.openspec.tracking.ArchiveSyncService"/>
 
         <!-- Settings -->
         <projectConfigurable instance="com.johnnyb.openspec.settings.OpenSpecConfigurable"

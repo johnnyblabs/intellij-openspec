@@ -127,6 +127,22 @@ public final class ForgejoService {
         }
     }
 
+    /**
+     * Checks if a Forgejo issue is already closed (idempotency guard).
+     */
+    public boolean isIssueClosed(int issueNumber) throws IOException {
+        OpenSpecSettings settings = OpenSpecSettings.getInstance(project);
+        String baseUrl = settings.getForgejoUrl().replaceAll("/+$", "");
+        String owner = settings.getForgejoOwner();
+        String repo = settings.getForgejoRepo();
+        String token = TrackerCredentialStore.getToken(TrackerType.FORGEJO);
+
+        String url = baseUrl + "/api/v1/repos/" + owner + "/" + repo + "/issues/" + issueNumber;
+        String response = apiCall("GET", url, token, null);
+        JsonObject issue = GSON.fromJson(response, JsonObject.class);
+        return issue.has("state") && "closed".equals(issue.get("state").getAsString());
+    }
+
     public String testConnection(String url, String owner, String repo) throws IOException {
         String baseUrl = url.replaceAll("/+$", "");
         String token = TrackerCredentialStore.getToken(TrackerType.FORGEJO);
