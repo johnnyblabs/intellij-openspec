@@ -17,9 +17,15 @@ class ArtifactStatusTest {
             "ready, READY",
             "READY, READY",
             "blocked, BLOCKED",
-            "BLOCKED, BLOCKED"
+            "BLOCKED, BLOCKED",
+            "generating, GENERATING",
+            "GENERATING, GENERATING",
+            "error, ERROR",
+            "ERROR, ERROR",
+            "unknown, UNKNOWN",
+            "UNKNOWN, UNKNOWN"
     })
-    void fromString_parsesValidStatuses(String input, ArtifactStatus expected) {
+    void fromString_parsesAllSixStatuses(String input, ArtifactStatus expected) {
         assertEquals(expected, ArtifactStatus.fromString(input));
     }
 
@@ -31,15 +37,26 @@ class ArtifactStatusTest {
     }
 
     @Test
+    void toIcon_returnsNonEmptyForAllStatuses() {
+        for (ArtifactStatus status : ArtifactStatus.values()) {
+            String icon = status.toIcon();
+            assertNotNull(icon, status.name() + " icon should not be null");
+            assertFalse(icon.isEmpty(), status.name() + " icon should not be empty");
+        }
+    }
+
+    @Test
     void toIcon_returnsExpectedSymbols() {
-        assertEquals("\u2713", ArtifactStatus.DONE.toIcon());     // ✓
-        assertEquals("\u25CB", ArtifactStatus.READY.toIcon());    // ○
-        assertEquals("\u2212", ArtifactStatus.BLOCKED.toIcon());  // −
+        assertEquals("\u2713", ArtifactStatus.DONE.toIcon());       // ✓
+        assertEquals("\u25CB", ArtifactStatus.READY.toIcon());      // ○
+        assertEquals("\u2212", ArtifactStatus.BLOCKED.toIcon());    // −
+        assertEquals("\u25CF", ArtifactStatus.GENERATING.toIcon()); // ●
+        assertEquals("\u2717", ArtifactStatus.ERROR.toIcon());      // ✗
         assertEquals("?", ArtifactStatus.UNKNOWN.toIcon());
     }
 
     @Test
-    void allStatusesExist() {
-        assertEquals(4, ArtifactStatus.values().length);
+    void allSixStatusesExist() {
+        assertEquals(6, ArtifactStatus.values().length);
     }
 }
