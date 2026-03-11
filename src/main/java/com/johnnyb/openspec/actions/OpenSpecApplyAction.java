@@ -4,21 +4,28 @@ import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
+import com.intellij.openapi.wm.ToolWindow;
+import com.intellij.openapi.wm.ToolWindowManager;
+import com.intellij.ui.content.Content;
 import com.johnnyb.openspec.model.Change;
-import com.johnnyb.openspec.model.ChangeStatus;
+import com.johnnyb.openspec.model.ChangeArtifactDag;
+import com.johnnyb.openspec.services.ArtifactOrchestrationService;
 import com.johnnyb.openspec.services.ChangeService;
+import com.johnnyb.openspec.toolwindow.OpenSpecToolWindowPanel;
+import com.johnnyb.openspec.tracking.IssueLifecycleService;
+import com.johnnyb.openspec.util.ApplyPromptBuilder;
 import com.johnnyb.openspec.util.OpenSpecNotifier;
 import org.jetbrains.annotations.NotNull;
 
+import java.awt.*;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 
 /**
- * Marks a change as "applied" by updating its {@code .openspec.yaml} status.
- *
- * <p><b>Strategy: Built-in only.</b> Apply is a write operation that updates
- * change metadata. The CLI has no equivalent {@code apply} command, so this
- * is inherently built-in. Updates the status field in {@code .openspec.yaml}
- * and refreshes the tree view.</p>
+ * Assembles a full-context implementation prompt from a change's design,
+ * specs, and tasks, then delivers it via the workflow panel's tool selector.
  */
 public class OpenSpecApplyAction extends OpenSpecBaseAction {
 
@@ -48,12 +55,61 @@ public class OpenSpecApplyAction extends OpenSpecBaseAction {
             target = active.get(choice);
         }
 
-        try {
-            changeService.updateStatus(target, ChangeStatus.APPLIED);
-            OpenSpecNotifier.info(project, "Change applied: " + target.getName());
-            refreshToolWindow(project);
-        } catch (Exception ex) {
-            OpenSpecNotifier.error(project, "Failed to apply change: " + ex.getMessage());
+        String changeName = target.getName();
+        String changeDir = target.getPath();
+
+        // Check artifact completion
+        ArtifactOrchestrationService orchestration = project.getService(ArtifactOrchestrationService.class);
+        ChangeArtifactDag dag = orchestration.getArtifactStatus(changeName);
+        if (dag != null && !dag.isComplete()) {
+            OpenSpecNotifier.warn(project,
+                    "Not all artifacts are complete for \"" + changeName + "\". Generate artifacts first.");
+            return;
         }
+
+        // Check if tasks exist
+        Path tasksPath = Path.of(changeDir, "tasks.md");
+        if (!Files.exists(tasksPath)) {
+            OpenSpecNotifier.warn(project, "No tasks.md found for \"" + changeName + "\"");
+            return;
+        }
+
+        // Check if all tasks are already complete
+        try {
+            String tasksContent = Files.readString(tasksPath);
+            int[] counts = ApplyPromptBuilder.countTasks(tasksContent);
+            if (counts[1] > 0 && counts[0] == counts[1]) {
+                OpenSpecNotifier.info(project,
+                        "All tasks complete for \"" + changeName + "\". Consider archiving.");
+                return;
+            }
+        } catch (IOException ignored) {
+        }
+
+        // Focus the workflow panel and trigger apply from there
+        focusAndApply(project, changeName);
+
+        // Trigger issue status updates in configured trackers
+        IssueLifecycleService lifecycle = project.getService(IssueLifecycleService.class);
+        if (lifecycle != null) {
+            lifecycle.onApply(changeName, changeDir);
+        }
+    }
+
+    private void focusAndApply(Project project, String changeName) {
+        ApplicationManager.getApplication().invokeLater(() -> {
+            ToolWindow toolWindow = ToolWindowManager.getInstance(project).getToolWindow("OpenSpec");
+            if (toolWindow == null) return;
+            for (Content content : toolWindow.getContentManager().getContents()) {
+                Component component = content.getComponent();
+                if (component instanceof OpenSpecToolWindowPanel panel) {
+                    panel.selectChangeAndApply(changeName);
+                    return;
+                }
+            }
+            // Fallback if panel not found — just notify
+            OpenSpecNotifier.info(project,
+                    "Open the OpenSpec tool window to apply tasks for \"" + changeName + "\"");
+        });
     }
 }

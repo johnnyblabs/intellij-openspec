@@ -109,7 +109,7 @@ public final class SpecParsingService {
                 }
 
                 String scenarioBody = reqSection.substring(scenarioStart, scenarioEnd);
-                Pattern clausePattern = Pattern.compile("^-\\s+(GIVEN|WHEN|THEN|AND)\\s+(.+)$", Pattern.MULTILINE);
+                Pattern clausePattern = Pattern.compile("^-\\s+\\*{0,2}(GIVEN|WHEN|THEN|AND)\\*{0,2}\\s+(.+)$", Pattern.MULTILINE);
                 Matcher clauseMatcher = clausePattern.matcher(scenarioBody);
                 while (clauseMatcher.find()) {
                     scenario.addClause(clauseMatcher.group(1) + " " + clauseMatcher.group(2).trim());

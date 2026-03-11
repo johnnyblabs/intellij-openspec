@@ -150,47 +150,44 @@ update_plane_statuses() {
 
   plane_get_project_id "OpenSpec Plugin"
 
-  # Get project states
-  _plane_auth
-  if ! api_call GET "${PLANE_WS_API}/projects/${PLANE_PROJECT_ID}/states/"; then
-    log_error "Could not fetch Plane states"
-    return 1
+  # Build state cache (avoids repeated API calls)
+  typeset -A STATE_CACHE
+  local _states
+  _states=$(plane_get_states "$PLANE_PROJECT_ID" 2>/dev/null) || true
+  if [[ -n "$_states" ]]; then
+    local _tmpfile
+    _tmpfile=$(mktemp)
+    echo "$_states" | jq -r '.[]? | "\(.name)\t\(.id)"' > "$_tmpfile" 2>/dev/null || true
+    while IFS=$'\t' read -r sname sid; do
+      [[ -n "$sname" ]] && STATE_CACHE[$sname]="$sid"
+    done < "$_tmpfile"
+    rm -f "$_tmpfile"
   fi
 
-  local plane_state_done plane_state_backlog plane_state_todo
-  plane_state_done=$(echo "$API_RESPONSE_BODY" | python3 -c "
-import sys, json
-data = json.loads(sys.stdin.read(), strict=False)
-items = data.get('results', data) if isinstance(data, dict) else data
-for s in items:
-    if s.get('name','').lower() in ('done', 'completed'):
-        print(s['id']); break" 2>/dev/null)
+  local plane_state_done="${STATE_CACHE[Done]:-}"
+  local plane_state_in_progress="${STATE_CACHE[In Progress]:-}"
+  local plane_state_backlog="${STATE_CACHE[Backlog]:-}"
 
-  if [[ -z "${plane_state_done:-}" ]]; then
+  if [[ -z "$plane_state_done" ]]; then
     log_warn "Could not find 'Done' state — skipping Plane status updates"
     return 0
   fi
 
-  log_info "Done state: ${plane_state_done}"
+  log_info "States cached: Done=${plane_state_done}, In Progress=${plane_state_in_progress}, Backlog=${plane_state_backlog}"
   log_info "Marking completed items as Done..."
 
   for title in "${(@k)COMPLETED_ITEMS}"; do
     _plane_auth
     if api_call GET "${PLANE_WS_API}/projects/${PLANE_PROJECT_ID}/work-items/?search=${title}&per_page=5"; then
       local item_id
-      item_id=$(echo "$API_RESPONSE_BODY" | python3 -c "
-import sys, json
-data = json.loads(sys.stdin.read(), strict=False)
-items = data.get('results', data) if isinstance(data, dict) else data
-for i in items:
-    if i.get('name','') == '''${title}''':
-        print(i['id']); break" 2>/dev/null)
+      item_id=$(echo "$API_RESPONSE_BODY" | jq -r --arg t "$title" \
+        '(.results[]? // .[]?) | select(.name == $t) | .id' | head -1)
 
-      if [[ -n "$item_id" && "$item_id" != "" ]]; then
+      if [[ -n "$item_id" && "$item_id" != "null" ]]; then
         local payload
         payload=$(jq -n --arg state "$plane_state_done" '{ state: $state }')
         if api_call PATCH "${PLANE_WS_API}/projects/${PLANE_PROJECT_ID}/work-items/${item_id}/" "$payload"; then
-          log_success "Updated: ${title}"
+          log_success "Updated: ${title} → Done"
         fi
         sleep 0.3
       else

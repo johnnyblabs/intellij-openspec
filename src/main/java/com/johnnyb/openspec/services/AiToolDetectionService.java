@@ -14,6 +14,28 @@ public final class AiToolDetectionService {
 
     public enum ToolType { CLI, IDE_PANEL }
 
+    /**
+     * Guidance metadata for tool-specific delivery instructions.
+     */
+    public record ToolGuidance(
+            String chatPanelName,
+            String pasteAction,
+            String promptPrefix,
+            boolean canAutoSave
+    ) {}
+
+    private static final Map<String, ToolGuidance> TOOL_GUIDANCE = Map.of(
+            "Claude Code", new ToolGuidance("terminal", "Paste into Claude Code", "/opsx:", true),
+            "Gemini", new ToolGuidance("terminal", "Paste into Gemini", null, true),
+            "GitHub Copilot", new ToolGuidance("Copilot Chat", "Open Copilot Chat and paste the prompt", "/opsx-", false),
+            "Cursor", new ToolGuidance("Composer", "Open Composer and paste the prompt", null, false),
+            "Windsurf", new ToolGuidance("Cascade", "Open Cascade and paste the prompt", null, false),
+            "Cline", new ToolGuidance("Cline chat", "Open Cline chat and paste the prompt", null, false)
+    );
+
+    private static final ToolGuidance DEFAULT_GUIDANCE =
+            new ToolGuidance("your AI tool", "Paste into your AI tool", null, false);
+
     private static final Map<String, String> TOOL_DIRS = new LinkedHashMap<>() {{
         put(".claude", "Claude Code");
         put(".github", "GitHub Copilot");
@@ -107,6 +129,7 @@ public final class AiToolDetectionService {
      * Returns whether the given tool name is a CLI-based tool (can write files directly).
      */
     public static boolean isCliTool(String toolName) {
+        if (toolName == null) return false;
         return TOOL_TYPES.getOrDefault(toolName, ToolType.IDE_PANEL) == ToolType.CLI;
     }
 
@@ -114,6 +137,15 @@ public final class AiToolDetectionService {
      * Returns the tool type classification for the given tool name.
      */
     public static ToolType getToolType(String toolName) {
+        if (toolName == null) return ToolType.IDE_PANEL;
         return TOOL_TYPES.getOrDefault(toolName, ToolType.IDE_PANEL);
+    }
+
+    /**
+     * Returns guidance metadata for the given tool, with a generic fallback for unknown tools.
+     */
+    public static ToolGuidance getToolGuidance(String toolName) {
+        if (toolName == null) return DEFAULT_GUIDANCE;
+        return TOOL_GUIDANCE.getOrDefault(toolName, DEFAULT_GUIDANCE);
     }
 }

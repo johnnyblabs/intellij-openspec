@@ -10,7 +10,7 @@ import com.intellij.ui.content.Content;
 import com.johnnyb.openspec.dialogs.ProposeChangeDialog;
 import com.johnnyb.openspec.scaffolding.ScaffoldingService;
 import com.johnnyb.openspec.toolwindow.OpenSpecToolWindowPanel;
-import com.johnnyb.openspec.toolwindow.WorkflowActionPanel;
+import com.johnnyb.openspec.tracking.IssueLifecycleService;
 import com.johnnyb.openspec.util.OpenSpecNotifier;
 import org.jetbrains.annotations.NotNull;
 
@@ -52,6 +52,12 @@ public class OpenSpecProposeAction extends OpenSpecBaseAction {
             ScaffoldingService scaffolding = project.getService(ScaffoldingService.class);
             VirtualFile changeDir = scaffolding.createChange(changeName, why, whatChanges);
             OpenSpecNotifier.info(project, "Change proposed: " + changeDir.getName());
+
+            // Trigger issue creation in configured trackers
+            IssueLifecycleService lifecycle = project.getService(IssueLifecycleService.class);
+            if (lifecycle != null) {
+                lifecycle.onPropose(changeName, changeDir.getPath());
+            }
         } catch (Exception ex) {
             OpenSpecNotifier.error(project, "Failed to create change: " + ex.getMessage());
         }

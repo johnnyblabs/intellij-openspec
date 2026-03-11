@@ -115,6 +115,34 @@ public final class OpenSpecSettings implements PersistentStateComponent<OpenSpec
         return null;
     }
 
+    // --- Forgejo tracker settings ---
+
+    public boolean isForgejoEnabled() { return state.forgejoEnabled; }
+    public void setForgejoEnabled(boolean enabled) { state.forgejoEnabled = enabled; }
+
+    public String getForgejoUrl() { return state.forgejoUrl; }
+    public void setForgejoUrl(String url) { state.forgejoUrl = url; }
+
+    public String getForgejoOwner() { return state.forgejoOwner; }
+    public void setForgejoOwner(String owner) { state.forgejoOwner = owner; }
+
+    public String getForgejoRepo() { return state.forgejoRepo; }
+    public void setForgejoRepo(String repo) { state.forgejoRepo = repo; }
+
+    // --- Plane tracker settings ---
+
+    public boolean isPlaneEnabled() { return state.planeEnabled; }
+    public void setPlaneEnabled(boolean enabled) { state.planeEnabled = enabled; }
+
+    public String getPlaneUrl() { return state.planeUrl; }
+    public void setPlaneUrl(String url) { state.planeUrl = url; }
+
+    public String getPlaneWorkspace() { return state.planeWorkspace; }
+    public void setPlaneWorkspace(String workspace) { state.planeWorkspace = workspace; }
+
+    public String getPlaneProject() { return state.planeProject; }
+    public void setPlaneProject(String projectId) { state.planeProject = projectId; }
+
     public static class State {
         public String versionOverride = "";
         public String cliPath = "";
@@ -125,5 +153,15 @@ public final class OpenSpecSettings implements PersistentStateComponent<OpenSpec
         public String aiModel = "";
         public String preferredDeliveryMethod = "";
         public String preferredTool = "";
+
+        // Issue tracking
+        public boolean forgejoEnabled = false;
+        public String forgejoUrl = "";
+        public String forgejoOwner = "";
+        public String forgejoRepo = "";
+        public boolean planeEnabled = false;
+        public String planeUrl = "";
+        public String planeWorkspace = "";
+        public String planeProject = "";
     }
 }

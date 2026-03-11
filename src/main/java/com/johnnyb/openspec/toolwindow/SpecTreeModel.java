@@ -88,6 +88,15 @@ public class SpecTreeModel {
             if (status != ChangeStatus.UNKNOWN) {
                 label += " " + status.toLabel();
             }
+            // Add tracking indicator
+            if (change.getMetadata() != null && change.getMetadata().getTracking() != null) {
+                ChangeMetadata.TrackingMetadata tracking = change.getMetadata().getTracking();
+                boolean hasForgejoLink = tracking.getForgejo() != null && tracking.getForgejo().getIssueNumber() > 0;
+                boolean hasPlaneLink = tracking.getPlane() != null && tracking.getPlane().getWorkItemId() != null;
+                if (hasForgejoLink || hasPlaneLink) {
+                    label += " [linked]";
+                }
+            }
 
             DefaultMutableTreeNode changeNode = new DefaultMutableTreeNode(
                     new TreeNodeData(label, TreeNodeType.CHANGE, change.getPath(), change.getName(), null));

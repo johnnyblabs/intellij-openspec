@@ -26,6 +26,9 @@
         <projectService serviceImplementation="com.johnnyb.openspec.ai.DirectApiService"/>
         <projectService serviceImplementation="com.johnnyb.openspec.services.DeliveryMethodResolver"/>
         <projectService serviceImplementation="com.johnnyb.openspec.toolwindow.OpenSpecConsoleService"/>
+        <projectService serviceImplementation="com.johnnyb.openspec.tracking.ForgejoService"/>
+        <projectService serviceImplementation="com.johnnyb.openspec.tracking.PlaneService"/>
+        <projectService serviceImplementation="com.johnnyb.openspec.tracking.IssueLifecycleService"/>
 
         <!-- Settings -->
         <projectConfigurable instance="com.johnnyb.openspec.settings.OpenSpecConfigurable"

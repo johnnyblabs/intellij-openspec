@@ -25,6 +25,8 @@ import com.johnnyb.openspec.settings.OpenSpecSettings;
 import com.johnnyb.openspec.util.ArtifactFileWatcher;
 import com.johnnyb.openspec.util.OpenSpecNotifier;
 
+import com.johnnyb.openspec.util.ApplyPromptBuilder;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.datatransfer.StringSelection;
@@ -32,6 +34,8 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 
@@ -68,6 +72,11 @@ public class WorkflowActionPanel extends JPanel {
     private final JButton generateButton;
     private final JButton generateAllButton;
     private final JButton cancelButton;
+
+    // Apply controls
+    private final JButton applyButton;
+    private final JBLabel taskProgressLabel;
+    private final JBLabel taskHintLabel;
 
     // Inline guidance (replaces old card-based guidance)
     private final JPanel guidancePanel;
@@ -167,7 +176,20 @@ public class WorkflowActionPanel extends JPanel {
         guidancePanel.add(Box.createVerticalStrut(4));
         guidancePanel.add(guidanceButtons);
 
-        // Info column: selector + pipeline + inline guidance
+        // Task progress and hint labels
+        taskProgressLabel = new JBLabel();
+        taskProgressLabel.setFont(taskProgressLabel.getFont().deriveFont(Font.PLAIN, 11f));
+        taskProgressLabel.setForeground(JBColor.GRAY);
+        taskProgressLabel.setVisible(false);
+        taskProgressLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        taskHintLabel = new JBLabel();
+        taskHintLabel.setFont(taskHintLabel.getFont().deriveFont(Font.ITALIC, 11f));
+        taskHintLabel.setForeground(JBColor.ORANGE);
+        taskHintLabel.setVisible(false);
+        taskHintLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        // Info column: selector + pipeline + task progress + inline guidance
         JPanel infoPanel = new JPanel();
         infoPanel.setLayout(new BoxLayout(infoPanel, BoxLayout.Y_AXIS));
         infoPanel.setOpaque(false);
@@ -177,6 +199,8 @@ public class WorkflowActionPanel extends JPanel {
         infoPanel.add(changeSelectorPanel);
         infoPanel.add(Box.createVerticalStrut(4));
         infoPanel.add(pipelinePanel);
+        infoPanel.add(taskProgressLabel);
+        infoPanel.add(taskHintLabel);
         infoPanel.add(guidancePanel);
 
         // Tool selector
@@ -213,8 +237,13 @@ public class WorkflowActionPanel extends JPanel {
         cancelButton.setVisible(false);
         cancelButton.addActionListener(e -> onCancelGenerateAll());
 
+        applyButton = new JButton("Apply Tasks");
+        applyButton.setVisible(false);
+        applyButton.addActionListener(e -> onApplyTasks());
+
         actionRow.add(generateButton);
         actionRow.add(generateAllButton);
+        actionRow.add(applyButton);
         actionRow.add(cancelButton);
 
         buttonPanel.add(toolRow);
@@ -369,9 +398,18 @@ public class WorkflowActionPanel extends JPanel {
         settings.setPreferredTool(ts.toolName);
         settings.setPreferredDeliveryMethod(ts.mode.name());
 
-        // Update generate button label
+        // Update button labels
         if (nextArtifactId != null) {
             generateButton.setText(buildGenerateLabel(nextArtifactId));
+        }
+        if (applyButton.isVisible() && applyButton.isEnabled()) {
+            DeliveryMode m = ts.mode;
+            String suffix = switch (m) {
+                case CLIPBOARD -> "clipboard";
+                case EDITOR_TAB -> "editor tab";
+                case DIRECT_API -> "API";
+            };
+            applyButton.setText("Apply tasks \u2192 " + suffix);
         }
     }
 
@@ -453,9 +491,13 @@ public class WorkflowActionPanel extends JPanel {
             guidancePanel.setVisible(false);
 
             if (dag == null) {
+                generateButton.setVisible(true);
                 generateButton.setEnabled(false);
                 generateButton.setText("Generate");
                 generateAllButton.setVisible(false);
+                applyButton.setVisible(false);
+                taskProgressLabel.setVisible(false);
+                taskHintLabel.setVisible(false);
                 activeChangeName = null;
                 pipelinePanel.add(new JBLabel("Use Propose to create a change"));
                 pipelinePanel.revalidate();
@@ -485,16 +527,25 @@ public class WorkflowActionPanel extends JPanel {
 
             if (dag.isComplete()) {
                 generateButton.setEnabled(false);
-                generateButton.setText("All complete");
+                generateButton.setVisible(false);
                 generateAllButton.setVisible(false);
+                showApplyState(dag);
             } else if (nextArtifactId != null) {
+                generateButton.setVisible(true);
                 generateButton.setText(buildGenerateLabel(nextArtifactId));
                 generateButton.setEnabled(true);
+                applyButton.setVisible(false);
+                taskProgressLabel.setVisible(false);
+                taskHintLabel.setVisible(false);
                 updateGenerateAllVisibility(dag);
             } else {
+                generateButton.setVisible(true);
                 generateButton.setText("Generate");
                 generateButton.setEnabled(false);
                 generateAllButton.setVisible(false);
+                applyButton.setVisible(false);
+                taskProgressLabel.setVisible(false);
+                taskHintLabel.setVisible(false);
             }
         });
     }
@@ -641,6 +692,204 @@ public class WorkflowActionPanel extends JPanel {
         executeGeneration(getSelectedDeliveryMode());
     }
 
+    // --- Apply ---
+
+    /**
+     * Selects the given change and triggers apply.
+     */
+    public void selectChangeAndApply(String changeName) {
+        activeChangeName = changeName;
+        refresh();
+        ApplicationManager.getApplication().invokeLater(this::onApplyTasks);
+    }
+
+    private void showApplyState(ChangeArtifactDag dag) {
+        String changeDir = project.getBasePath() + "/openspec/changes/" + activeChangeName;
+        String tasksContent = null;
+        try {
+            Path tasksPath = Path.of(changeDir, "tasks.md");
+            if (Files.exists(tasksPath)) {
+                tasksContent = Files.readString(tasksPath);
+            }
+        } catch (IOException ignored) {
+        }
+
+        if (tasksContent == null) {
+            generateButton.setVisible(true);
+            generateButton.setText("All complete");
+            generateButton.setEnabled(false);
+            applyButton.setVisible(false);
+            taskProgressLabel.setVisible(false);
+            taskHintLabel.setVisible(false);
+            return;
+        }
+
+        int[] counts = ApplyPromptBuilder.countTasks(tasksContent);
+        int complete = counts[0];
+        int total = counts[1];
+        int remaining = total - complete;
+
+        if (total == 0 || remaining == 0) {
+            generateButton.setVisible(true);
+            generateButton.setText("All complete");
+            generateButton.setEnabled(false);
+            applyButton.setVisible(false);
+            taskProgressLabel.setText(total > 0 ? complete + "/" + total + " tasks complete" : "");
+            taskProgressLabel.setVisible(total > 0);
+            taskHintLabel.setVisible(false);
+            return;
+        }
+
+        // Show apply button with delivery label
+        DeliveryMode mode = getSelectedDeliveryMode();
+        String suffix = switch (mode) {
+            case CLIPBOARD -> "clipboard";
+            case EDITOR_TAB -> "editor tab";
+            case DIRECT_API -> "API";
+        };
+        applyButton.setText("Apply tasks \u2192 " + suffix);
+        applyButton.setEnabled(true);
+        applyButton.setVisible(true);
+
+        taskProgressLabel.setText(complete + "/" + total + " tasks complete");
+        taskProgressLabel.setVisible(true);
+
+        // Hint for large task lists
+        taskHintLabel.setVisible(remaining >= 10);
+        if (remaining >= 10) {
+            taskHintLabel.setText("Large task list \u2014 consider reviewing tasks.md first");
+        }
+    }
+
+    private void onApplyTasks() {
+        if (activeChangeName == null) return;
+        String changeName = activeChangeName;
+        String changeDir = project.getBasePath() + "/openspec/changes/" + changeName;
+
+        applyButton.setEnabled(false);
+        applyButton.setText("Preparing...");
+
+        ApplicationManager.getApplication().executeOnPooledThread(() -> {
+            String prompt = ApplyPromptBuilder.build(changeName, changeDir);
+            DeliveryMode mode = getSelectedDeliveryMode();
+
+            lastPrompt = prompt;
+
+            switch (mode) {
+                case CLIPBOARD -> {
+                    String toolName = getSelectedToolName();
+                    String clipboardPrompt = prompt;
+                    if (!toolName.isBlank() && AiToolDetectionService.isCliTool(toolName)) {
+                        clipboardPrompt = ApplyPromptBuilder.appendSavePathHint(prompt, changeDir);
+                    }
+                    lastPrompt = clipboardPrompt;
+                    Toolkit.getDefaultToolkit().getSystemClipboard()
+                            .setContents(new StringSelection(clipboardPrompt), null);
+                    ApplicationManager.getApplication().invokeLater(() ->
+                            showApplyGuidance(changeName, changeDir,
+                                    toolName.isBlank() ? null : toolName));
+                }
+                case EDITOR_TAB -> ApplicationManager.getApplication().invokeLater(() -> {
+                    try {
+                        VirtualFile scratch = com.intellij.openapi.application.WriteAction.compute(() -> {
+                            VirtualFile tmp = LocalFileSystem.getInstance()
+                                    .findFileByPath(System.getProperty("java.io.tmpdir"));
+                            if (tmp == null) return null;
+                            String name = "openspec-apply-" + changeName + "-prompt.md";
+                            VirtualFile file = tmp.findChild(name);
+                            if (file != null) file.delete(this);
+                            file = tmp.createChildData(this, name);
+                            file.setBinaryContent(prompt.getBytes(StandardCharsets.UTF_8));
+                            return file;
+                        });
+                        if (scratch != null) {
+                            FileEditorManager.getInstance(project).openFile(scratch, true);
+                        }
+                        showApplyGuidance(changeName, changeDir, null);
+                    } catch (IOException ex) {
+                        OpenSpecNotifier.error(project, "Failed to open prompt: " + ex.getMessage());
+                    }
+                });
+                case DIRECT_API -> {
+                    // Direct API: send prompt, but there's no single output file for apply
+                    OpenSpecNotifier.warn(project,
+                            "Direct API is not yet supported for Apply. Use clipboard or editor tab.");
+                    ApplicationManager.getApplication().invokeLater(() -> {
+                        applyButton.setEnabled(true);
+                        applyButton.setText("Apply Tasks");
+                    });
+                }
+            }
+        });
+    }
+
+    private void showApplyGuidance(String changeName, String changeDir, String toolLabel) {
+        String toolName = toolLabel != null ? toolLabel : "your AI tool";
+        AiToolDetectionService.ToolGuidance guidance = AiToolDetectionService.getToolGuidance(toolName);
+
+        guidanceMessageLabel.setText("\u2713 Implementation prompt copied");
+        guidanceMessageLabel.setForeground(new JBColor(new Color(0, 128, 0), new Color(80, 200, 80)));
+
+        if (guidance.canAutoSave()) {
+            guidanceWatchingLabel.setText(guidance.pasteAction() + " \u2014 watching tasks.md for progress...");
+        } else {
+            guidanceWatchingLabel.setText(guidance.pasteAction() + ". Save tasks.md when the tool finishes working through the tasks.");
+        }
+
+        guidanceNextLabel.setVisible(false);
+        copyAgainButton.setVisible(true);
+        guidancePanel.setVisible(true);
+        guidancePanel.revalidate();
+
+        applyButton.setText("Waiting...");
+        applyButton.setEnabled(false);
+
+        // Watch tasks.md for changes
+        startTaskWatcher(changeName, changeDir);
+    }
+
+    private void startTaskWatcher(String changeName, String changeDir) {
+        disposeWatcher();
+        activeWatcher = new ArtifactFileWatcher(
+                changeDir, "tasks.md",
+                () -> {
+                    // tasks.md changed — re-parse and update progress
+                    onTaskFileChanged(changeName, changeDir);
+                },
+                () -> {
+                    guidanceWatchingLabel.setText("No progress detected yet. Click 'Check progress' to refresh.");
+                }
+        );
+        activeWatcher.start();
+    }
+
+    private void onTaskFileChanged(String changeName, String changeDir) {
+        try {
+            String content = Files.readString(Path.of(changeDir, "tasks.md"));
+            int[] counts = ApplyPromptBuilder.countTasks(content);
+            int complete = counts[0];
+            int total = counts[1];
+
+            taskProgressLabel.setText(complete + "/" + total + " tasks complete");
+
+            if (total > 0 && complete == total) {
+                // All done!
+                guidancePanel.setVisible(false);
+                applyButton.setVisible(false);
+                generateButton.setVisible(true);
+                generateButton.setText("All complete");
+                generateButton.setEnabled(false);
+                taskHintLabel.setVisible(false);
+                OpenSpecNotifier.info(project,
+                        "All tasks complete for \"" + changeName + "\"! Consider archiving.");
+                if (onRefreshRequested != null) onRefreshRequested.run();
+            } else {
+                guidanceWatchingLabel.setText("Progress: " + complete + "/" + total + " \u2014 still watching...");
+            }
+        } catch (IOException ignored) {
+        }
+    }
+
     // --- Generation ---
 
     private void onGenerate() {
@@ -751,26 +1000,38 @@ public class WorkflowActionPanel extends JPanel {
     private void showInlineGuidance(String deliveryType, String changeDir,
                                      String outputPath, String toolLabel, String nextArtifact) {
         String toolName = toolLabel != null ? toolLabel : "your AI tool";
+        AiToolDetectionService.ToolGuidance guidance = AiToolDetectionService.getToolGuidance(toolName);
 
         if ("clipboard".equals(deliveryType)) {
             guidanceMessageLabel.setText("\u2713 Copied to clipboard");
             guidanceMessageLabel.setForeground(new JBColor(new Color(0, 128, 0), new Color(80, 200, 80)));
 
-            if (AiToolDetectionService.isCliTool(toolName)) {
-                guidanceWatchingLabel.setText("Paste into " + toolName + " \u2014 it will save automatically.");
+            if (guidance.canAutoSave()) {
+                guidanceWatchingLabel.setText(guidance.pasteAction() + " \u2014 it will save automatically.");
             } else {
-                guidanceWatchingLabel.setText("Paste into " + toolName + ", then save to: " + (outputPath != null ? outputPath : "change directory"));
+                String savePath = (changeDir != null && outputPath != null)
+                        ? changeDir + "/" + outputPath : (outputPath != null ? outputPath : "change directory");
+                guidanceWatchingLabel.setText(guidance.pasteAction() + ". Save the response to: " + savePath);
             }
             copyAgainButton.setVisible(true);
         } else {
             guidanceMessageLabel.setText("\u2713 Opened in editor tab");
             guidanceMessageLabel.setForeground(new JBColor(new Color(0, 128, 0), new Color(80, 200, 80)));
-            guidanceWatchingLabel.setText("Copy the prompt to " + toolName + ", then save output to: " + (outputPath != null ? outputPath : "change directory"));
+            String savePath = (changeDir != null && outputPath != null)
+                    ? changeDir + "/" + outputPath : (outputPath != null ? outputPath : "change directory");
+            guidanceWatchingLabel.setText("Copy the prompt to " + guidance.chatPanelName() + ", then save output to: " + savePath);
             copyAgainButton.setVisible(false);
         }
 
         if (nextArtifact != null) {
-            guidanceNextLabel.setText("Next: Generate " + nextArtifact);
+            String nextText = "Next: Generate " + nextArtifact;
+            if (guidance.promptPrefix() != null) {
+                nextText += "  |  Tip: You can also use " + guidance.promptPrefix() + "propose directly in " + guidance.chatPanelName();
+            }
+            guidanceNextLabel.setText(nextText);
+            guidanceNextLabel.setVisible(true);
+        } else if (guidance.promptPrefix() != null) {
+            guidanceNextLabel.setText("Tip: You can also use " + guidance.promptPrefix() + "propose directly in " + guidance.chatPanelName());
             guidanceNextLabel.setVisible(true);
         } else {
             guidanceNextLabel.setVisible(false);
@@ -826,6 +1087,9 @@ public class WorkflowActionPanel extends JPanel {
         ArtifactOrchestrationService orchestration = project.getService(ArtifactOrchestrationService.class);
         if (activeChangeName != null) {
             orchestration.invalidateCache(activeChangeName);
+            // If in apply state, also check task progress
+            String changeDir = project.getBasePath() + "/openspec/changes/" + activeChangeName;
+            onTaskFileChanged(activeChangeName, changeDir);
         }
         refresh();
         if (onRefreshRequested != null) onRefreshRequested.run();

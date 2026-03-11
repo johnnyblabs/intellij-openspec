@@ -1,0 +1,28 @@
+[
+  {
+    "name": "Current Cycle",
+    "description": "Work items in the active cycle, sorted by priority",
+    "filters": {
+      "priority": ["urgent", "high", "medium", "low", "none"]
+    }
+  },
+  {
+    "name": "High Priority",
+    "description": "All items with priority Urgent or High",
+    "filters": {
+      "priority": ["urgent", "high"]
+    }
+  },
+  {
+    "name": "By Module",
+    "description": "All work items grouped by module for component-level planning",
+    "filters": {}
+  },
+  {
+    "name": "Blocked / Stale",
+    "description": "Items that may need attention — not updated recently",
+    "filters": {
+      "priority": ["urgent", "high", "medium", "low", "none"]
+    }
+  }
+]

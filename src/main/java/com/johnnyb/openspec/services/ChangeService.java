@@ -9,11 +9,13 @@ import com.johnnyb.openspec.model.Change;
 import com.johnnyb.openspec.model.ChangeMetadata;
 import com.johnnyb.openspec.model.ChangeStatus;
 import com.johnnyb.openspec.util.OpenSpecFileUtil;
+import com.johnnyb.openspec.util.OpenSpecNotifier;
 import com.johnnyb.openspec.version.VersionSupport;
 import com.johnnyb.openspec.settings.OpenSpecSettings;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.Constructor;
+import org.yaml.snakeyaml.error.MarkedYAMLException;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -142,8 +144,12 @@ public final class ChangeService {
                     Yaml yaml = new Yaml(new Constructor(ChangeMetadata.class, new LoaderOptions()));
                     ChangeMetadata metadata = yaml.loadAs(is, ChangeMetadata.class);
                     change.setMetadata(metadata);
+                } catch (MarkedYAMLException e) {
+                    String problem = e.getProblem() != null ? e.getProblem() : "invalid YAML";
+                    LOG.warn("Failed to parse change metadata: " + metaFile.getPath() + " — " + problem, e);
+                    OpenSpecNotifier.warn(project, ".openspec.yaml parse error in '" + changeDir.getName() + "': " + problem);
                 } catch (Exception e) {
-                    LOG.warn("Failed to parse change metadata: " + metaFile.getPath(), e);
+                    LOG.warn("Failed to read change metadata: " + metaFile.getPath(), e);
                 }
             }
 

@@ -5,6 +5,7 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
 import com.johnnyb.openspec.model.Change;
 import com.johnnyb.openspec.services.ChangeService;
+import com.johnnyb.openspec.tracking.IssueLifecycleService;
 import com.johnnyb.openspec.util.OpenSpecNotifier;
 import org.jetbrains.annotations.NotNull;
 
@@ -47,8 +48,17 @@ public class OpenSpecArchiveAction extends OpenSpecBaseAction {
         }
 
         try {
+            String changeName = target.getName();
+            String changeDir = target.getPath();
+
+            // Trigger issue close in configured trackers (before move, while metadata is accessible)
+            IssueLifecycleService lifecycle = project.getService(IssueLifecycleService.class);
+            if (lifecycle != null) {
+                lifecycle.onArchive(changeName, changeDir);
+            }
+
             changeService.archiveChange(target);
-            OpenSpecNotifier.info(project, "Change archived: " + target.getName());
+            OpenSpecNotifier.info(project, "Change archived: " + changeName);
             refreshToolWindow(project);
         } catch (Exception ex) {
             OpenSpecNotifier.error(project, "Failed to archive change: " + ex.getMessage());

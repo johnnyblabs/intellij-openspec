@@ -1,0 +1,26 @@
+[
+  {
+    "name": "Core",
+    "description": "Plugin framework, settings, services, and foundational infrastructure"
+  },
+  {
+    "name": "UI",
+    "description": "Tool window, workflow panel, tree views, and editor integrations"
+  },
+  {
+    "name": "AI Integration",
+    "description": "Direct API providers, AI delivery, Claude/OpenAI/Gemini support"
+  },
+  {
+    "name": "Validation",
+    "description": "Inspections, spec parsing, annotators, and code quality checks"
+  },
+  {
+    "name": "Documentation",
+    "description": "Getting started guides, onboarding, help content, and user documentation"
+  },
+  {
+    "name": "Infrastructure",
+    "description": "CLI integration, scaffolding detection, setup scripts, and build tooling"
+  }
+]

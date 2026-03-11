@@ -2,7 +2,11 @@ package com.johnnyb.openspec.model;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 
@@ -246,6 +250,79 @@ class ModelTest {
             ArtifactInstruction inst = new ArtifactInstruction(null, null, null, null,
                     null, null, null, null);
             assertEquals("", inst.buildPrompt());
+        }
+
+        @Test
+        void buildPrompt_includesChangeNameHeader() {
+            ArtifactInstruction inst = new ArtifactInstruction("my-change", "design", "/some/dir", "design.md",
+                    "Write the design", null, null, null);
+            String prompt = inst.buildPrompt();
+            assertTrue(prompt.startsWith("# Change: my-change\n\n"));
+            assertTrue(prompt.contains("Write the design"));
+        }
+
+        @Test
+        void buildPrompt_omitsHeaderWhenChangeNameNull() {
+            ArtifactInstruction inst = new ArtifactInstruction(null, "design", null, "design.md",
+                    "Write the design", null, null, null);
+            String prompt = inst.buildPrompt();
+            assertFalse(prompt.contains("# Change:"));
+            assertEquals("Write the design", prompt);
+        }
+
+        @Test
+        void buildPrompt_inlinesDependencyContent(@TempDir Path tempDir) throws IOException {
+            Path proposalFile = tempDir.resolve("proposal.md");
+            Files.writeString(proposalFile, "# Proposal\nThis is the proposal content.");
+
+            ArtifactInstruction.Dependency dep = new ArtifactInstruction.Dependency(
+                    "proposal", true, "proposal.md", "The proposal");
+            ArtifactInstruction inst = new ArtifactInstruction("test-change", "design",
+                    tempDir.toString(), "design.md",
+                    "Write the design", null, List.of(dep), null);
+
+            String prompt = inst.buildPrompt();
+            assertTrue(prompt.contains("```\n# Proposal\nThis is the proposal content.\n```"));
+            assertFalse(prompt.contains("Path: proposal.md"));
+        }
+
+        @Test
+        void buildPrompt_fallsBackToPathWhenFileMissing() {
+            ArtifactInstruction.Dependency dep = new ArtifactInstruction.Dependency(
+                    "proposal", true, "proposal.md", null);
+            ArtifactInstruction inst = new ArtifactInstruction("test-change", "design",
+                    "/nonexistent/dir", "design.md",
+                    "Write the design", null, List.of(dep), null);
+
+            String prompt = inst.buildPrompt();
+            assertTrue(prompt.contains("Path: proposal.md"));
+            assertFalse(prompt.contains("```"));
+        }
+
+        @Test
+        void buildPrompt_showsNotYetCompletedForPendingDeps() {
+            ArtifactInstruction.Dependency dep = new ArtifactInstruction.Dependency(
+                    "specs", false, "specs/**/*.md", "Specification files");
+            ArtifactInstruction inst = new ArtifactInstruction("test-change", "tasks",
+                    "/some/dir", "tasks.md",
+                    "Write tasks", null, List.of(dep), null);
+
+            String prompt = inst.buildPrompt();
+            assertTrue(prompt.contains("specs/**/*.md (not yet completed)"));
+        }
+
+        @Test
+        void buildPrompt_skipsInlineWhenChangeDirNull() {
+            ArtifactInstruction.Dependency dep = new ArtifactInstruction.Dependency(
+                    "proposal", true, "proposal.md", "The proposal");
+            ArtifactInstruction inst = new ArtifactInstruction("test-change", "design",
+                    null, "design.md",
+                    "Write the design", null, List.of(dep), null);
+
+            String prompt = inst.buildPrompt();
+            // changeDir is null so even though dep is done, can't read file — falls through
+            assertFalse(prompt.contains("```"));
+            assertTrue(prompt.contains("Path: proposal.md (not yet completed)"));
         }
     }
 

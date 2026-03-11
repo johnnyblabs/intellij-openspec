@@ -13,6 +13,10 @@ import com.johnnyb.openspec.ai.AiCredentialStore;
 import com.johnnyb.openspec.ai.AiProvider;
 import com.johnnyb.openspec.ai.DirectApiService;
 import com.johnnyb.openspec.services.CliDetectionService;
+import com.johnnyb.openspec.tracking.ForgejoService;
+import com.johnnyb.openspec.tracking.PlaneService;
+import com.johnnyb.openspec.tracking.TrackerCredentialStore;
+import com.johnnyb.openspec.tracking.TrackerType;
 
 import javax.swing.*;
 import java.awt.*;
@@ -40,11 +44,42 @@ public class OpenSpecSettingsPanel {
     private JComboBox<String> aiModelCombo;
     private JBLabel aiTestResultLabel;
 
+    // Issue Tracking - Forgejo
+    private final JBCheckBox forgejoEnabledCheckbox;
+    private final JTextField forgejoUrlField;
+    private final JTextField forgejoOwnerField;
+    private final JTextField forgejoRepoField;
+    private final JPasswordField forgejoTokenField;
+    private final JBLabel forgejoTestResultLabel;
+
+    // Issue Tracking - Plane
+    private final JBCheckBox planeEnabledCheckbox;
+    private final JTextField planeUrlField;
+    private final JTextField planeWorkspaceField;
+    private final JTextField planeProjectField;
+    private final JPasswordField planeApiKeyField;
+    private final JBLabel planeTestResultLabel;
+
     // State
     private final Project project;
 
     public OpenSpecSettingsPanel(Project project) {
         this.project = project;
+
+        // Pre-init issue tracking fields
+        forgejoEnabledCheckbox = new JBCheckBox("Enable Forgejo integration");
+        forgejoUrlField = new JTextField(30);
+        forgejoOwnerField = new JTextField(20);
+        forgejoRepoField = new JTextField(20);
+        forgejoTokenField = new JPasswordField(30);
+        forgejoTestResultLabel = new JBLabel(" ");
+
+        planeEnabledCheckbox = new JBCheckBox("Enable Plane integration");
+        planeUrlField = new JTextField(30);
+        planeWorkspaceField = new JTextField(20);
+        planeProjectField = new JTextField(20);
+        planeApiKeyField = new JPasswordField(30);
+        planeTestResultLabel = new JBLabel(" ");
 
         // --- CLI Section ---
         cliPathField = new TextFieldWithBrowseButton();
@@ -91,21 +126,29 @@ public class OpenSpecSettingsPanel {
         // --- Direct API Section ---
         JPanel directApiSection = buildDirectApiSection();
 
+        // --- Issue Tracking Section ---
+        JPanel issueTrackingSection = buildIssueTrackingSection();
+
         // --- Assemble main panel ---
         mainPanel = new JPanel();
         mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
         cliSection.setAlignmentX(Component.LEFT_ALIGNMENT);
         generalSection.setAlignmentX(Component.LEFT_ALIGNMENT);
         directApiSection.setAlignmentX(Component.LEFT_ALIGNMENT);
+        issueTrackingSection.setAlignmentX(Component.LEFT_ALIGNMENT);
         mainPanel.add(cliSection);
         mainPanel.add(Box.createVerticalStrut(4));
         mainPanel.add(generalSection);
         mainPanel.add(Box.createVerticalStrut(4));
         mainPanel.add(directApiSection);
+        mainPanel.add(Box.createVerticalStrut(4));
+        mainPanel.add(issueTrackingSection);
 
         // Initialize state
         detectCli(); // Auto-detect CLI on panel creation
         onProviderChanged();
+        updateForgejoFieldsEnabled();
+        updatePlaneFieldsEnabled();
     }
 
     private JPanel buildDirectApiSection() {
@@ -150,6 +193,158 @@ public class OpenSpecSettingsPanel {
                 .getPanel();
         panel.setBorder(IdeBorderFactory.createTitledBorder("Direct API"));
         return panel;
+    }
+
+    private JPanel buildIssueTrackingSection() {
+        // Forgejo sub-group
+        forgejoEnabledCheckbox.addActionListener(e -> updateForgejoFieldsEnabled());
+
+        JButton forgejoTestButton = new JButton("Test Connection");
+        forgejoTestButton.addActionListener(e -> testForgejoConnection());
+
+        JPanel forgejoTokenRow = new JPanel();
+        forgejoTokenRow.setLayout(new BoxLayout(forgejoTokenRow, BoxLayout.X_AXIS));
+        forgejoTokenRow.add(forgejoTokenField);
+        forgejoTokenRow.add(Box.createHorizontalStrut(4));
+        forgejoTokenRow.add(forgejoTestButton);
+
+        JPanel forgejoGroup = FormBuilder.createFormBuilder()
+                .addComponent(forgejoEnabledCheckbox)
+                .addLabeledComponent(new JBLabel("Server URL:"), forgejoUrlField)
+                .addLabeledComponent(new JBLabel("Repository owner:"), forgejoOwnerField)
+                .addLabeledComponent(new JBLabel("Repository name:"), forgejoRepoField)
+                .addLabeledComponent(new JBLabel("Token:"), forgejoTokenRow)
+                .addComponent(forgejoTestResultLabel)
+                .getPanel();
+        forgejoGroup.setBorder(IdeBorderFactory.createTitledBorder("Forgejo"));
+
+        // Plane sub-group
+        planeEnabledCheckbox.addActionListener(e -> updatePlaneFieldsEnabled());
+
+        JButton planeTestButton = new JButton("Test Connection");
+        planeTestButton.addActionListener(e -> testPlaneConnection());
+
+        JPanel planeApiKeyRow = new JPanel();
+        planeApiKeyRow.setLayout(new BoxLayout(planeApiKeyRow, BoxLayout.X_AXIS));
+        planeApiKeyRow.add(planeApiKeyField);
+        planeApiKeyRow.add(Box.createHorizontalStrut(4));
+        planeApiKeyRow.add(planeTestButton);
+
+        JPanel planeGroup = FormBuilder.createFormBuilder()
+                .addComponent(planeEnabledCheckbox)
+                .addLabeledComponent(new JBLabel("Server URL:"), planeUrlField)
+                .addLabeledComponent(new JBLabel("Workspace slug:"), planeWorkspaceField)
+                .addLabeledComponent(new JBLabel("Project identifier:"), planeProjectField)
+                .addLabeledComponent(new JBLabel("API key:"), planeApiKeyRow)
+                .addComponent(planeTestResultLabel)
+                .getPanel();
+        planeGroup.setBorder(IdeBorderFactory.createTitledBorder("Plane"));
+
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        forgejoGroup.setAlignmentX(Component.LEFT_ALIGNMENT);
+        planeGroup.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panel.add(forgejoGroup);
+        panel.add(Box.createVerticalStrut(4));
+        panel.add(planeGroup);
+        panel.setBorder(IdeBorderFactory.createTitledBorder("Issue Tracking"));
+        return panel;
+    }
+
+    private void updateForgejoFieldsEnabled() {
+        boolean enabled = forgejoEnabledCheckbox.isSelected();
+        forgejoUrlField.setEnabled(enabled);
+        forgejoOwnerField.setEnabled(enabled);
+        forgejoRepoField.setEnabled(enabled);
+        forgejoTokenField.setEnabled(enabled);
+    }
+
+    private void updatePlaneFieldsEnabled() {
+        boolean enabled = planeEnabledCheckbox.isSelected();
+        planeUrlField.setEnabled(enabled);
+        planeWorkspaceField.setEnabled(enabled);
+        planeProjectField.setEnabled(enabled);
+        planeApiKeyField.setEnabled(enabled);
+    }
+
+    private void testForgejoConnection() {
+        forgejoTestResultLabel.setText("Testing...");
+        forgejoTestResultLabel.setForeground(Color.GRAY);
+
+        String token = new String(forgejoTokenField.getPassword());
+        if (token != null && !token.isBlank() && !token.equals(API_KEY_MASK)) {
+            TrackerCredentialStore.storeToken(TrackerType.FORGEJO, token);
+        }
+
+        ForgejoService forgejoService = project.getService(ForgejoService.class);
+        if (forgejoService == null) {
+            forgejoTestResultLabel.setText("Service not available");
+            forgejoTestResultLabel.setForeground(Color.RED);
+            return;
+        }
+
+        new SwingWorker<String, Void>() {
+            @Override
+            protected String doInBackground() throws Exception {
+                return forgejoService.testConnection(
+                        forgejoUrlField.getText(),
+                        forgejoOwnerField.getText(),
+                        forgejoRepoField.getText());
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    String result = get();
+                    forgejoTestResultLabel.setText(result);
+                    forgejoTestResultLabel.setForeground(new Color(0, 128, 0));
+                } catch (Exception e) {
+                    String msg = e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
+                    forgejoTestResultLabel.setText("Failed: " + msg);
+                    forgejoTestResultLabel.setForeground(Color.RED);
+                }
+            }
+        }.execute();
+    }
+
+    private void testPlaneConnection() {
+        planeTestResultLabel.setText("Testing...");
+        planeTestResultLabel.setForeground(Color.GRAY);
+
+        String apiKey = new String(planeApiKeyField.getPassword());
+        if (apiKey != null && !apiKey.isBlank() && !apiKey.equals(API_KEY_MASK)) {
+            TrackerCredentialStore.storeToken(TrackerType.PLANE, apiKey);
+        }
+
+        PlaneService planeService = project.getService(PlaneService.class);
+        if (planeService == null) {
+            planeTestResultLabel.setText("Service not available");
+            planeTestResultLabel.setForeground(Color.RED);
+            return;
+        }
+
+        new SwingWorker<String, Void>() {
+            @Override
+            protected String doInBackground() throws Exception {
+                return planeService.testConnection(
+                        planeUrlField.getText(),
+                        planeWorkspaceField.getText(),
+                        planeProjectField.getText());
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    String result = get();
+                    planeTestResultLabel.setText(result);
+                    planeTestResultLabel.setForeground(new Color(0, 128, 0));
+                } catch (Exception e) {
+                    String msg = e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
+                    planeTestResultLabel.setText("Failed: " + msg);
+                    planeTestResultLabel.setForeground(Color.RED);
+                }
+            }
+        }.execute();
     }
 
     // --- CLI detection ---
@@ -338,4 +533,34 @@ public class OpenSpecSettingsPanel {
     public void setAiModel(String model) {
         aiModelCombo.setSelectedItem(model != null ? model : "");
     }
+
+    // --- Issue Tracking accessors ---
+
+    public boolean isForgejoEnabled() { return forgejoEnabledCheckbox.isSelected(); }
+    public void setForgejoEnabled(boolean enabled) {
+        forgejoEnabledCheckbox.setSelected(enabled);
+        updateForgejoFieldsEnabled();
+    }
+    public String getForgejoUrl() { return forgejoUrlField.getText(); }
+    public void setForgejoUrl(String url) { forgejoUrlField.setText(url != null ? url : ""); }
+    public String getForgejoOwner() { return forgejoOwnerField.getText(); }
+    public void setForgejoOwner(String owner) { forgejoOwnerField.setText(owner != null ? owner : ""); }
+    public String getForgejoRepo() { return forgejoRepoField.getText(); }
+    public void setForgejoRepo(String repo) { forgejoRepoField.setText(repo != null ? repo : ""); }
+    public String getForgejoToken() { return new String(forgejoTokenField.getPassword()); }
+    public void setForgejoToken(String token) { forgejoTokenField.setText(token != null ? token : ""); }
+
+    public boolean isPlaneEnabled() { return planeEnabledCheckbox.isSelected(); }
+    public void setPlaneEnabled(boolean enabled) {
+        planeEnabledCheckbox.setSelected(enabled);
+        updatePlaneFieldsEnabled();
+    }
+    public String getPlaneUrl() { return planeUrlField.getText(); }
+    public void setPlaneUrl(String url) { planeUrlField.setText(url != null ? url : ""); }
+    public String getPlaneWorkspace() { return planeWorkspaceField.getText(); }
+    public void setPlaneWorkspace(String workspace) { planeWorkspaceField.setText(workspace != null ? workspace : ""); }
+    public String getPlaneProjectId() { return planeProjectField.getText(); }
+    public void setPlaneProjectId(String projectId) { planeProjectField.setText(projectId != null ? projectId : ""); }
+    public String getPlaneApiKey() { return new String(planeApiKeyField.getPassword()); }
+    public void setPlaneApiKey(String key) { planeApiKeyField.setText(key != null ? key : ""); }
 }

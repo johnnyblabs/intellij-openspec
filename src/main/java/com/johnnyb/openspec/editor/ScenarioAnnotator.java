@@ -17,7 +17,7 @@ import java.util.regex.Pattern;
 public class ScenarioAnnotator implements Annotator {
 
     private static final Pattern SCENARIO_KEYWORD_PATTERN = Pattern.compile(
-            "^-\\s+(GIVEN|WHEN|THEN|AND)\\b", Pattern.MULTILINE);
+            "^-\\s+\\*{0,2}(GIVEN|WHEN|THEN|AND)\\*{0,2}\\b", Pattern.MULTILINE);
 
     private static final TextAttributesKey SCENARIO_KEYWORD = TextAttributesKey.createTextAttributesKey(
             "OPENSPEC_SCENARIO_KEYWORD", DefaultLanguageHighlighterColors.METADATA);

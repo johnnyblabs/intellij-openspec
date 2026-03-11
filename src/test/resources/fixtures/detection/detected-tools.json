@@ -1,0 +1,5 @@
+{
+  "detectedTools": ["Claude Code", "GitHub Copilot"],
+  "summary": "AI: Claude Code, GitHub Copilot",
+  "primaryToolLabel": "Claude Code"
+}

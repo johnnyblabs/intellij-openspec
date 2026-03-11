@@ -7,9 +7,11 @@ import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.johnnyb.openspec.model.OpenSpecConfig;
 import com.johnnyb.openspec.util.OpenSpecFileUtil;
+import com.johnnyb.openspec.util.OpenSpecNotifier;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.Constructor;
+import org.yaml.snakeyaml.error.MarkedYAMLException;
 
 import java.io.InputStream;
 
@@ -48,9 +50,21 @@ public final class ConfigService {
         try (InputStream is = configFile.getInputStream()) {
             Yaml yaml = new Yaml(new Constructor(OpenSpecConfig.class, new LoaderOptions()));
             config = yaml.loadAs(is, OpenSpecConfig.class);
-        } catch (Exception e) {
-            LOG.error("Failed to parse OpenSpec config.yaml", e);
+        } catch (MarkedYAMLException e) {
             config = null;
+            String location = "";
+            if (e.getProblemMark() != null) {
+                location = "line " + (e.getProblemMark().getLine() + 1)
+                        + ", column " + (e.getProblemMark().getColumn() + 1) + ": ";
+            }
+            String message = configFile.getPath() + ": " + location
+                    + (e.getProblem() != null ? e.getProblem() : "invalid YAML");
+            LOG.warn("Failed to parse config.yaml: " + message, e);
+            OpenSpecNotifier.warn(project, "config.yaml parse error: " + message);
+        } catch (Exception e) {
+            config = null;
+            LOG.warn("Failed to read config.yaml: " + configFile.getPath(), e);
+            OpenSpecNotifier.warn(project, "Failed to read config.yaml: " + e.getMessage());
         }
     }
 
