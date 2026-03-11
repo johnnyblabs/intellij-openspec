@@ -6,6 +6,7 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.icons.AllIcons;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.util.ui.JBUI;
@@ -85,6 +86,22 @@ public class WorkflowActionPanel extends JPanel {
     private final JBLabel guidanceNextLabel;
     private final JButton copyAgainButton;
     private final JButton checkUpdatesButton;
+
+    // Progress bar and elapsed time for Generate All
+    private final JProgressBar generateAllProgressBar;
+    private final JBLabel elapsedTimeLabel;
+    private javax.swing.Timer elapsedTimer;
+    private long generateAllStartNanos;
+
+    // Animation state
+    private javax.swing.Timer pulseTimer;
+    private javax.swing.Timer spinnerTimer;
+    private String generatingArtifactId;
+    private String errorArtifactId;
+    private int spinnerStep;
+
+    // Retry state
+    private final JButton retryButton;
 
     private String activeChangeName;
     private String nextArtifactId;
@@ -176,6 +193,30 @@ public class WorkflowActionPanel extends JPanel {
         guidancePanel.add(Box.createVerticalStrut(4));
         guidancePanel.add(guidanceButtons);
 
+        // Progress bar and elapsed time for Generate All
+        JPanel progressRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        progressRow.setOpaque(false);
+        progressRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        generateAllProgressBar = new JProgressBar(0, 1);
+        generateAllProgressBar.setStringPainted(true);
+        generateAllProgressBar.setVisible(false);
+        generateAllProgressBar.setPreferredSize(new Dimension(200, 18));
+
+        elapsedTimeLabel = new JBLabel();
+        elapsedTimeLabel.setFont(elapsedTimeLabel.getFont().deriveFont(Font.PLAIN, 11f));
+        elapsedTimeLabel.setForeground(JBColor.GRAY);
+        elapsedTimeLabel.setVisible(false);
+
+        progressRow.add(generateAllProgressBar);
+        progressRow.add(elapsedTimeLabel);
+
+        // Retry button for error recovery
+        retryButton = new JButton("Retry");
+        retryButton.setIcon(AllIcons.Actions.Restart);
+        retryButton.setVisible(false);
+        retryButton.addActionListener(e -> onGenerateAll());
+
         // Task progress and hint labels
         taskProgressLabel = new JBLabel();
         taskProgressLabel.setFont(taskProgressLabel.getFont().deriveFont(Font.PLAIN, 11f));
@@ -189,7 +230,7 @@ public class WorkflowActionPanel extends JPanel {
         taskHintLabel.setVisible(false);
         taskHintLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        // Info column: selector + pipeline + task progress + inline guidance
+        // Info column: selector + pipeline + progress + task progress + inline guidance
         JPanel infoPanel = new JPanel();
         infoPanel.setLayout(new BoxLayout(infoPanel, BoxLayout.Y_AXIS));
         infoPanel.setOpaque(false);
@@ -199,6 +240,7 @@ public class WorkflowActionPanel extends JPanel {
         infoPanel.add(changeSelectorPanel);
         infoPanel.add(Box.createVerticalStrut(4));
         infoPanel.add(pipelinePanel);
+        infoPanel.add(progressRow);
         infoPanel.add(taskProgressLabel);
         infoPanel.add(taskHintLabel);
         infoPanel.add(guidancePanel);
@@ -230,6 +272,9 @@ public class WorkflowActionPanel extends JPanel {
         generateButton.addActionListener(e -> onGenerate());
 
         generateAllButton = new JButton("Generate All");
+        generateAllButton.setIcon(AllIcons.Actions.Execute);
+        generateAllButton.setFont(generateAllButton.getFont().deriveFont(Font.BOLD));
+        generateAllButton.putClientProperty("JButton.buttonType", "gradient");
         generateAllButton.setVisible(false);
         generateAllButton.addActionListener(e -> onGenerateAll());
 
@@ -244,6 +289,7 @@ public class WorkflowActionPanel extends JPanel {
         actionRow.add(generateButton);
         actionRow.add(generateAllButton);
         actionRow.add(applyButton);
+        actionRow.add(retryButton);
         actionRow.add(cancelButton);
 
         buttonPanel.add(toolRow);
@@ -564,34 +610,56 @@ public class WorkflowActionPanel extends JPanel {
         JPanel chip = new JPanel(new FlowLayout(FlowLayout.LEFT, 2, 1));
         chip.setOpaque(true);
 
-        String icon;
         Color color;
         switch (artifact.status()) {
             case DONE -> {
-                icon = "\u2713";
                 color = new JBColor(new Color(0, 128, 0), new Color(80, 200, 80));
                 chip.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+                chip.setBackground(new JBColor(new Color(0, 0, 0, 0), new Color(0, 0, 0, 0)));
+                chip.setBorder(JBUI.Borders.empty(1));
             }
             case READY -> {
-                icon = "\u25CF";
                 color = JBColor.BLUE;
                 chip.setBackground(new JBColor(new Color(220, 235, 255), new Color(40, 55, 80)));
                 chip.setBorder(BorderFactory.createLineBorder(JBColor.BLUE, 1, true));
             }
+            case GENERATING -> {
+                color = new JBColor(new Color(60, 130, 230), new Color(80, 150, 250));
+                chip.setBackground(new JBColor(new Color(220, 235, 255), new Color(40, 55, 80)));
+                // Pulsing border — alternates via repaint driven by pulseTimer
+                boolean bright = (pulseTimer != null && System.currentTimeMillis() % 1200 < 600);
+                Color borderColor = bright
+                        ? new JBColor(new Color(60, 130, 230), new Color(80, 150, 250))
+                        : new JBColor(new Color(140, 180, 240), new Color(50, 90, 160));
+                chip.setBorder(BorderFactory.createLineBorder(borderColor, 2, true));
+            }
+            case ERROR -> {
+                color = JBColor.RED;
+                chip.setBackground(new JBColor(new Color(255, 230, 230), new Color(80, 30, 30)));
+                chip.setBorder(BorderFactory.createLineBorder(JBColor.RED, 2, true));
+            }
             default -> {
-                icon = "\u25CB";
                 color = JBColor.GRAY;
+                chip.setBackground(new JBColor(new Color(0, 0, 0, 0), new Color(0, 0, 0, 0)));
+                chip.setBorder(JBUI.Borders.empty(1));
             }
         }
 
-        if (artifact.status() != ArtifactStatus.READY) {
-            chip.setBackground(new JBColor(new Color(0, 0, 0, 0), new Color(0, 0, 0, 0)));
-            chip.setBorder(JBUI.Borders.empty(1));
+        // Icon: use AllIcons for generating/error/done states, unicode for others
+        JBLabel iconLabel;
+        if (artifact.status() == ArtifactStatus.GENERATING) {
+            iconLabel = new JBLabel(getSpinnerIcon());
+        } else if (artifact.status() == ArtifactStatus.ERROR) {
+            iconLabel = new JBLabel(AllIcons.General.Error);
+        } else if (artifact.status() == ArtifactStatus.DONE) {
+            iconLabel = new JBLabel(AllIcons.Actions.Checked);
+        } else {
+            String iconText = artifact.status() == ArtifactStatus.READY ? "\u25CF" : "\u25CB";
+            iconLabel = new JBLabel(iconText);
+            iconLabel.setForeground(color);
+            iconLabel.setFont(iconLabel.getFont().deriveFont(12f));
         }
 
-        JBLabel iconLabel = new JBLabel(icon);
-        iconLabel.setForeground(color);
-        iconLabel.setFont(iconLabel.getFont().deriveFont(12f));
         JBLabel nameLabel = new JBLabel(artifact.id());
         nameLabel.setForeground(color);
         nameLabel.setFont(nameLabel.getFont().deriveFont(Font.PLAIN, 12f));
@@ -1103,7 +1171,11 @@ public class WorkflowActionPanel extends JPanel {
         long remaining = dag.getArtifacts().stream()
                 .filter(a -> a.status() != ArtifactStatus.DONE)
                 .count();
-        generateAllButton.setVisible(hasApi && remaining >= 2);
+        boolean visible = hasApi && remaining >= 2;
+        generateAllButton.setVisible(visible);
+        if (visible) {
+            generateAllButton.setText("Generate All (" + remaining + ")");
+        }
     }
 
     private void onGenerateAll() {
@@ -1111,17 +1183,55 @@ public class WorkflowActionPanel extends JPanel {
 
         String changeName = activeChangeName;
 
+        // Reset UI state
+        disposeAnimations();
+        generatingArtifactId = null;
         generateButton.setEnabled(false);
         generateButton.setText("Generating...");
         generateAllButton.setVisible(false);
+        retryButton.setVisible(false);
         cancelButton.setVisible(true);
+        guidancePanel.setVisible(false);
+
+        // Count remaining artifacts for progress bar
+        ArtifactOrchestrationService orch = project.getService(ArtifactOrchestrationService.class);
+        ChangeArtifactDag currentDag = orch.getArtifactStatus(changeName);
+        int totalRemaining = currentDag != null
+                ? (int) currentDag.getArtifacts().stream().filter(a -> a.status() != ArtifactStatus.DONE).count()
+                : 4;
+
+        // Show progress bar
+        generateAllProgressBar.setMaximum(totalRemaining);
+        generateAllProgressBar.setValue(0);
+        generateAllProgressBar.setString("0 of " + totalRemaining + " artifacts");
+        generateAllProgressBar.setForeground(null); // reset to default color
+        generateAllProgressBar.setVisible(true);
+
+        // Start elapsed timer
+        generateAllStartNanos = System.nanoTime();
+        elapsedTimeLabel.setText("0s elapsed");
+        elapsedTimeLabel.setVisible(true);
+        elapsedTimer = new javax.swing.Timer(1000, e -> updateElapsedTime());
+        elapsedTimer.start();
+
+        final int totalCount = totalRemaining;
 
         GenerateAllListener listener = new GenerateAllListener() {
+            private int completedCount = 0;
+
             @Override
             public void onArtifactStarted(String artifactId, int index, int total) {
                 ApplicationManager.getApplication().invokeLater(() -> {
                     if (!isDisplayable()) return;
+                    generatingArtifactId = artifactId;
                     generateButton.setText("Generating " + artifactId + "... " + index + "/" + total);
+                    // Refresh chips to show GENERATING state
+                    ArtifactOrchestrationService o = project.getService(ArtifactOrchestrationService.class);
+                    ChangeArtifactDag dag = o.getArtifactStatus(changeName);
+                    if (dag != null) {
+                        refreshPipelineChips(dag);
+                    }
+                    startPulseAnimation();
                 });
             }
 
@@ -1129,8 +1239,17 @@ public class WorkflowActionPanel extends JPanel {
             public void onArtifactCompleted(String artifactId) {
                 ApplicationManager.getApplication().invokeLater(() -> {
                     if (!isDisplayable()) return;
-                    ArtifactOrchestrationService orch = project.getService(ArtifactOrchestrationService.class);
-                    ChangeArtifactDag dag = orch.getArtifactStatus(changeName);
+                    completedCount++;
+                    generatingArtifactId = null;
+                    stopPulseAnimation();
+
+                    // Update progress bar
+                    generateAllProgressBar.setValue(completedCount);
+                    generateAllProgressBar.setString(completedCount + " of " + totalCount + " artifacts");
+
+                    // Refresh chips
+                    ArtifactOrchestrationService o = project.getService(ArtifactOrchestrationService.class);
+                    ChangeArtifactDag dag = o.getArtifactStatus(changeName);
                     if (dag != null) {
                         refreshPipelineChips(dag);
                     }
@@ -1141,10 +1260,39 @@ public class WorkflowActionPanel extends JPanel {
             public void onAllComplete() {
                 ApplicationManager.getApplication().invokeLater(() -> {
                     if (!isDisplayable()) return;
+                    disposeAnimations();
+                    generatingArtifactId = null;
                     cancelButton.setVisible(false);
+
+                    // Completion celebration
+                    generateAllProgressBar.setValue(generateAllProgressBar.getMaximum());
+                    generateAllProgressBar.setString("All complete");
+                    generateAllProgressBar.setForeground(new JBColor(new Color(0, 128, 0), new Color(80, 200, 80)));
+
+                    // Flash all chips green
+                    flashPipelineChipsGreen(changeName);
+
+                    // Show success message
+                    guidanceMessageLabel.setText("\u2713 All artifacts generated");
+                    guidanceMessageLabel.setForeground(new JBColor(new Color(0, 128, 0), new Color(80, 200, 80)));
+                    guidanceWatchingLabel.setText("Ready to review or apply tasks");
+                    guidanceNextLabel.setVisible(false);
+                    copyAgainButton.setVisible(false);
+                    checkUpdatesButton.setVisible(false);
+                    guidancePanel.setVisible(true);
+                    guidancePanel.revalidate();
+
+                    // Auto-hide progress bar and elapsed time after 3 seconds
+                    javax.swing.Timer hideTimer = new javax.swing.Timer(3000, ev -> {
+                        generateAllProgressBar.setVisible(false);
+                        elapsedTimeLabel.setVisible(false);
+                        refresh();
+                        if (onRefreshRequested != null) onRefreshRequested.run();
+                    });
+                    hideTimer.setRepeats(false);
+                    hideTimer.start();
+
                     OpenSpecNotifier.info(project, "All artifacts generated for " + changeName);
-                    refresh();
-                    if (onRefreshRequested != null) onRefreshRequested.run();
                 });
             }
 
@@ -1152,13 +1300,36 @@ public class WorkflowActionPanel extends JPanel {
             public void onError(String artifactId, Exception exception) {
                 ApplicationManager.getApplication().invokeLater(() -> {
                     if (!isDisplayable()) return;
+                    disposeAnimations();
+                    generatingArtifactId = null;
                     cancelButton.setVisible(false);
+
+                    // Error state: red progress bar
+                    generateAllProgressBar.setForeground(JBColor.RED);
+
+                    // Show error chip state
+                    errorArtifactId = artifactId;
+                    ArtifactOrchestrationService o = project.getService(ArtifactOrchestrationService.class);
+                    ChangeArtifactDag dag = o.getArtifactStatus(changeName);
+                    if (dag != null) {
+                        refreshPipelineChips(dag);
+                    }
+
+                    // Show inline error message
                     String msg = artifactId != null
-                            ? "Generation failed on " + artifactId + ": " + exception.getMessage()
+                            ? artifactId + " failed: " + exception.getMessage()
                             : "Generation failed: " + exception.getMessage();
-                    OpenSpecNotifier.error(project, msg);
-                    refresh();
-                    if (onRefreshRequested != null) onRefreshRequested.run();
+                    guidanceMessageLabel.setText("\u2717 " + msg);
+                    guidanceMessageLabel.setForeground(JBColor.RED);
+                    guidanceWatchingLabel.setText("");
+                    guidanceNextLabel.setVisible(false);
+                    copyAgainButton.setVisible(false);
+                    checkUpdatesButton.setVisible(false);
+                    guidancePanel.setVisible(true);
+                    guidancePanel.revalidate();
+
+                    // Show retry button
+                    retryButton.setVisible(true);
                 });
             }
 
@@ -1166,7 +1337,11 @@ public class WorkflowActionPanel extends JPanel {
             public void onCancelled(String artifactId) {
                 ApplicationManager.getApplication().invokeLater(() -> {
                     if (!isDisplayable()) return;
+                    disposeAnimations();
+                    generatingArtifactId = null;
                     cancelButton.setVisible(false);
+                    generateAllProgressBar.setVisible(false);
+                    elapsedTimeLabel.setVisible(false);
                     OpenSpecNotifier.info(project, "Generation cancelled");
                     refresh();
                     if (onRefreshRequested != null) onRefreshRequested.run();
@@ -1193,7 +1368,14 @@ public class WorkflowActionPanel extends JPanel {
         List<ArtifactInfo> artifacts = dag.getArtifacts();
         for (int i = 0; i < artifacts.size(); i++) {
             ArtifactInfo a = artifacts.get(i);
-            pipelinePanel.add(createPipelineChip(a));
+            // Override status for generating/error artifacts
+            ArtifactInfo displayArtifact = a;
+            if (a.id().equals(generatingArtifactId) && a.status() != ArtifactStatus.DONE) {
+                displayArtifact = new ArtifactInfo(a.id(), a.outputPath(), ArtifactStatus.GENERATING, a.missingDeps());
+            } else if (a.id().equals(errorArtifactId) && a.status() != ArtifactStatus.DONE) {
+                displayArtifact = new ArtifactInfo(a.id(), a.outputPath(), ArtifactStatus.ERROR, a.missingDeps());
+            }
+            pipelinePanel.add(createPipelineChip(displayArtifact));
             if (i < artifacts.size() - 1) {
                 JBLabel arrow = new JBLabel("\u2192");
                 arrow.setForeground(JBColor.GRAY);
@@ -1202,5 +1384,97 @@ public class WorkflowActionPanel extends JPanel {
         }
         pipelinePanel.revalidate();
         pipelinePanel.repaint();
+    }
+
+    // --- Animation helpers ---
+
+    private void updateElapsedTime() {
+        long elapsed = (System.nanoTime() - generateAllStartNanos) / 1_000_000_000L;
+        String text;
+        if (elapsed < 60) {
+            text = elapsed + "s elapsed";
+        } else {
+            text = (elapsed / 60) + "m " + (elapsed % 60) + "s elapsed";
+        }
+        elapsedTimeLabel.setText(text);
+    }
+
+    private void startPulseAnimation() {
+        stopPulseAnimation();
+        // Start spinner icon rotation
+        spinnerStep = 0;
+        spinnerTimer = new javax.swing.Timer(100, e -> {
+            spinnerStep = (spinnerStep + 1) % 12;
+            // Trigger chip repaint by refreshing the pipeline
+            pipelinePanel.repaint();
+        });
+        spinnerTimer.start();
+
+        // Pulse border animation
+        pulseTimer = new javax.swing.Timer(600, e -> pipelinePanel.repaint());
+        pulseTimer.start();
+    }
+
+    private void stopPulseAnimation() {
+        if (pulseTimer != null) {
+            pulseTimer.stop();
+            pulseTimer = null;
+        }
+        if (spinnerTimer != null) {
+            spinnerTimer.stop();
+            spinnerTimer = null;
+        }
+    }
+
+    private void flashPipelineChipsGreen(String changeName) {
+        // Set all chip borders to bright green
+        Color flashColor = new JBColor(new Color(0, 180, 0), new Color(80, 220, 80));
+        for (Component comp : pipelinePanel.getComponents()) {
+            if (comp instanceof JPanel chip) {
+                chip.setBorder(BorderFactory.createLineBorder(flashColor, 2, true));
+            }
+        }
+        pipelinePanel.repaint();
+
+        // Restore normal state after 300ms
+        javax.swing.Timer flashTimer = new javax.swing.Timer(300, e -> {
+            ArtifactOrchestrationService o = project.getService(ArtifactOrchestrationService.class);
+            ChangeArtifactDag dag = o.getArtifactStatus(changeName);
+            if (dag != null) {
+                refreshPipelineChips(dag);
+            }
+        });
+        flashTimer.setRepeats(false);
+        flashTimer.start();
+    }
+
+    private void disposeAnimations() {
+        stopPulseAnimation();
+        if (elapsedTimer != null) {
+            elapsedTimer.stop();
+            elapsedTimer = null;
+        }
+        errorArtifactId = null;
+    }
+
+    @Override
+    public void removeNotify() {
+        disposeAnimations();
+        disposeWatcher();
+        super.removeNotify();
+    }
+
+    Icon getSpinnerIcon() {
+        return switch (spinnerStep) {
+            case 0 -> AllIcons.Process.Step_1;
+            case 1 -> AllIcons.Process.Step_2;
+            case 2 -> AllIcons.Process.Step_3;
+            case 3 -> AllIcons.Process.Step_4;
+            case 4 -> AllIcons.Process.Step_5;
+            case 5 -> AllIcons.Process.Step_6;
+            case 6 -> AllIcons.Process.Step_7;
+            case 7 -> AllIcons.Process.Step_8;
+            default -> AllIcons.Process.Step_1;
+        };
     }
 }

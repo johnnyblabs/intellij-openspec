@@ -29,9 +29,9 @@ The tool window SHALL display a Workflow Action Panel between the tree and the s
 - **WHEN** all artifacts are complete and 10 or more tasks remain incomplete
 - **THEN** the panel SHALL display an inline hint suggesting the user review tasks.md before applying
 
-#### Scenario: Generate All button visibility
+#### Scenario: Generate All button visible and styled
 - **WHEN** Direct API is configured and 2 or more artifacts remain to be generated
-- **THEN** the panel SHALL display a "Generate All" button alongside the existing Generate button
+- **THEN** the panel SHALL display a "Generate All (N)" button with a gradient background, bold font, and an execute icon
 
 #### Scenario: Generate All button hidden without API
 - **WHEN** Direct API is not configured
@@ -72,7 +72,7 @@ The WorkflowActionPanel SHALL display a compact pipeline status row showing the 
 
 #### Scenario: Pipeline with mixed states
 - **WHEN** the selected change has artifacts in done, ready, and blocked states (after scaffolding override)
-- **THEN** the pipeline row SHALL show each artifact as an interactive chip with a visual state indicator (checkmark for done, filled circle for ready, empty circle for blocked), a text label, and a tooltip describing the artifact's role
+- **THEN** the pipeline row SHALL show each artifact as an interactive chip with a visual state indicator (checkmark icon for done, filled circle for ready, empty circle for blocked), a text label, and a tooltip describing the artifact's role
 
 #### Scenario: Pipeline updates after generation
 - **WHEN** an artifact generation completes
@@ -84,11 +84,19 @@ The WorkflowActionPanel SHALL display a compact pipeline status row showing the 
 
 #### Scenario: Current step is visually prominent
 - **WHEN** the pipeline contains a READY artifact
-- **THEN** the chip for that artifact SHALL be visually highlighted with a distinct border or background color to indicate it is the current step
+- **THEN** the chip for that artifact SHALL be visually highlighted with a distinct border and background color to indicate it is the current step
 
 #### Scenario: READY chip triggers generation
 - **WHEN** the user clicks a READY pipeline chip
 - **THEN** the system SHALL trigger generation for that artifact using the selected delivery method
+
+#### Scenario: Generating chip animation
+- **WHEN** an artifact is actively being generated during a Generate All operation
+- **THEN** the chip SHALL display a pulsing border animation (toggling between bright and dim at 600ms intervals) and use IntelliJ's animated process step icons to indicate active work
+
+#### Scenario: Error chip state
+- **WHEN** an artifact fails during Generate All
+- **THEN** the chip SHALL display with a red border, red text, and an error icon (AllIcons.General.Error)
 
 ### Requirement: Context Menu Generation Routing
 
@@ -162,11 +170,11 @@ The WorkflowActionPanel SHALL display real-time progress during a Generate All o
 
 #### Scenario: Progress label during generation
 - **WHEN** a Generate All operation is in progress
-- **THEN** the panel SHALL display a progress label showing the current artifact and count (e.g., "Generating design... 2/4")
+- **THEN** the panel SHALL display a progress bar beneath the pipeline chips showing determinate progress, an elapsed time label, and the generate button text SHALL show the current artifact name and count (e.g., "Generating design... 2/4")
 
 #### Scenario: Pipeline chips update in real-time
 - **WHEN** an artifact completes during a Generate All chain
-- **THEN** the pipeline chip for that artifact SHALL update to show the done state before the next artifact begins
+- **THEN** the pipeline chip for that artifact SHALL transition to the done state with a brief green flash animation (300ms), and the next artifact's chip SHALL enter a pulsing generating state
 
 #### Scenario: Buttons disabled during generation
 - **WHEN** a Generate All operation is in progress
@@ -178,11 +186,11 @@ The WorkflowActionPanel SHALL display real-time progress during a Generate All o
 
 #### Scenario: Completion restores normal state
 - **WHEN** a Generate All operation completes successfully
-- **THEN** the panel SHALL restore to normal state with all pipeline chips showing done and an "All complete" message
+- **THEN** the panel SHALL display a completion celebration (green flash, success message, progress bar turning green) before restoring to normal state with all pipeline chips showing done
 
 #### Scenario: Error shows notification and restores state
 - **WHEN** a Generate All operation fails on an artifact
-- **THEN** the panel SHALL show an error notification identifying the failed artifact, and restore to normal state with completed artifacts shown as done
+- **THEN** the failed artifact chip SHALL display in red with an error icon, an inline error message SHALL appear, and a "Retry" button SHALL be shown
 
 ### Requirement: Post-Apply watching state
 The WorkflowActionPanel SHALL display a watching state after an Apply delivery, monitoring tasks.md for progress.
