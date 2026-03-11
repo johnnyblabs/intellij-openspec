@@ -46,6 +46,24 @@ import java.util.Map;
  */
 public class WorkflowActionPanel extends JPanel {
 
+    // --- Color constants (light, dark) ---
+    // Chip foreground
+    private static final JBColor COLOR_DONE = new JBColor(new Color(0, 128, 0), new Color(100, 210, 100));
+    private static final JBColor COLOR_READY = JBColor.BLUE;
+    private static final JBColor COLOR_GENERATING = new JBColor(new Color(60, 130, 230), new Color(80, 150, 250));
+    private static final JBColor COLOR_ERROR = JBColor.RED;
+    private static final JBColor COLOR_BLOCKED = new JBColor(new Color(128, 128, 128), new Color(140, 140, 140));
+    // Chip backgrounds
+    private static final JBColor COLOR_CHIP_BG_TRANSPARENT = new JBColor(new Color(0, 0, 0, 0), new Color(0, 0, 0, 0));
+    private static final JBColor COLOR_READY_BG = new JBColor(new Color(220, 235, 255), new Color(35, 50, 75));
+    private static final JBColor COLOR_ERROR_BG = new JBColor(new Color(255, 230, 230), new Color(90, 25, 25));
+    // Chip borders (pulsing pair for GENERATING)
+    private static final JBColor COLOR_GENERATING_BORDER_BRIGHT = new JBColor(new Color(60, 130, 230), new Color(80, 150, 250));
+    private static final JBColor COLOR_GENERATING_BORDER_DIM = new JBColor(new Color(140, 180, 240), new Color(50, 90, 160));
+    // Guidance / feedback text
+    private static final JBColor COLOR_SUCCESS = new JBColor(new Color(0, 128, 0), new Color(100, 210, 100));
+    private static final JBColor COLOR_FLASH_GREEN = new JBColor(new Color(0, 180, 0), new Color(80, 220, 80));
+
     private static final Map<String, String> ARTIFACT_DESCRIPTIONS = Map.of(
             "proposal", "Why this change is needed",
             "design", "How to implement it",
@@ -118,7 +136,7 @@ public class WorkflowActionPanel extends JPanel {
         setLayout(new BorderLayout(8, 4));
         setBorder(JBUI.Borders.compound(
                 JBUI.Borders.customLine(JBColor.border(), 1, 0, 0, 0),
-                JBUI.Borders.empty(6, 8)
+                JBUI.Borders.empty(JBUI.scale(6), JBUI.scale(8))
         ));
         setOpaque(false);
 
@@ -127,10 +145,10 @@ public class WorkflowActionPanel extends JPanel {
         changeSelectorPanel.setOpaque(false);
 
         singleChangeLabel = new JBLabel("No active change");
-        singleChangeLabel.setFont(singleChangeLabel.getFont().deriveFont(Font.BOLD));
+        singleChangeLabel.setFont(singleChangeLabel.getFont().deriveFont(Font.BOLD, 13f));
 
         changeCombo = new JComboBox<>();
-        changeCombo.setFont(changeCombo.getFont().deriveFont(Font.BOLD));
+        changeCombo.setFont(changeCombo.getFont().deriveFont(Font.BOLD, 13f));
         changeCombo.addActionListener(e -> {
             if (updatingCombo) return;
             String selected = (String) changeCombo.getSelectedItem();
@@ -145,7 +163,7 @@ public class WorkflowActionPanel extends JPanel {
         changeSelectorPanel.add(changeCombo, "combo");
 
         // Pipeline chips
-        pipelinePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        pipelinePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, JBUI.scale(6), 0));
         pipelinePanel.setOpaque(false);
 
         // Inline guidance (below pipeline, visible during waiting)
@@ -153,9 +171,11 @@ public class WorkflowActionPanel extends JPanel {
         guidancePanel.setLayout(new BoxLayout(guidancePanel, BoxLayout.Y_AXIS));
         guidancePanel.setOpaque(false);
         guidancePanel.setVisible(false);
-        guidancePanel.setBorder(JBUI.Borders.emptyTop(4));
+        guidancePanel.setBorder(JBUI.Borders.compound(
+                JBUI.Borders.customLine(JBColor.border(), 1, 0, 0, 0),
+                JBUI.Borders.empty(JBUI.scale(4), 0, 0, 0)));
 
-        guidanceMessageLabel = createWrappingLabel(Font.BOLD, 11f);
+        guidanceMessageLabel = createWrappingLabel(Font.BOLD, 13f);
 
         guidanceWatchingLabel = createWrappingLabel(Font.ITALIC, 11f);
         guidanceWatchingLabel.setForeground(JBColor.GRAY);
@@ -175,28 +195,28 @@ public class WorkflowActionPanel extends JPanel {
         checkUpdatesButton = new JButton("Check for updates");
         checkUpdatesButton.addActionListener(e -> onCheckForUpdates());
 
-        JPanel guidanceButtons = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        JPanel guidanceButtons = new JPanel(new FlowLayout(FlowLayout.LEFT, JBUI.scale(8), 0));
         guidanceButtons.setOpaque(false);
         guidanceButtons.setAlignmentX(Component.LEFT_ALIGNMENT);
         guidanceButtons.add(copyAgainButton);
         guidanceButtons.add(checkUpdatesButton);
 
         guidancePanel.add(guidanceMessageLabel);
-        guidancePanel.add(Box.createVerticalStrut(2));
+        guidancePanel.add(Box.createVerticalStrut(JBUI.scale(2)));
         guidancePanel.add(guidanceWatchingLabel);
         guidancePanel.add(guidanceNextLabel);
-        guidancePanel.add(Box.createVerticalStrut(4));
+        guidancePanel.add(Box.createVerticalStrut(JBUI.scale(4)));
         guidancePanel.add(guidanceButtons);
 
         // Progress bar and elapsed time for Generate All
-        JPanel progressRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        JPanel progressRow = new JPanel(new FlowLayout(FlowLayout.LEFT, JBUI.scale(8), 0));
         progressRow.setOpaque(false);
         progressRow.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         generateAllProgressBar = new JProgressBar(0, 1);
         generateAllProgressBar.setStringPainted(true);
         generateAllProgressBar.setVisible(false);
-        generateAllProgressBar.setPreferredSize(new Dimension(200, 18));
+        generateAllProgressBar.setPreferredSize(new Dimension(JBUI.scale(200), JBUI.scale(18)));
 
         elapsedTimeLabel = new JBLabel();
         elapsedTimeLabel.setFont(elapsedTimeLabel.getFont().deriveFont(Font.PLAIN, 11f));
@@ -219,7 +239,7 @@ public class WorkflowActionPanel extends JPanel {
 
         // Task progress and hint labels
         taskProgressLabel = new JBLabel();
-        taskProgressLabel.setFont(taskProgressLabel.getFont().deriveFont(Font.PLAIN, 11f));
+        taskProgressLabel.setFont(taskProgressLabel.getFont().deriveFont(Font.PLAIN, 12f));
         taskProgressLabel.setForeground(JBColor.GRAY);
         taskProgressLabel.setVisible(false);
         taskProgressLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -262,13 +282,13 @@ public class WorkflowActionPanel extends JPanel {
         // --- Layout: vertical stack with full-width guidance ---
 
         // Header row: change selector (left) + tool dropdown (right)
-        JPanel headerRow = new JPanel(new BorderLayout(8, 0));
+        JPanel headerRow = new JPanel(new BorderLayout(JBUI.scale(8), 0));
         headerRow.setOpaque(false);
         headerRow.setAlignmentX(Component.LEFT_ALIGNMENT);
         changeSelectorPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
         headerRow.add(changeSelectorPanel, BorderLayout.CENTER);
 
-        JPanel toolRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
+        JPanel toolRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, JBUI.scale(4), 0));
         toolRow.setOpaque(false);
         toolRow.add(noToolsLabel);
         toolRow.add(toolSelector);
@@ -276,11 +296,17 @@ public class WorkflowActionPanel extends JPanel {
 
         // Pipeline row
         pipelinePanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        pipelinePanel.setBorder(JBUI.Borders.compound(
+                JBUI.Borders.customLine(JBColor.border(), 1, 0, 0, 0),
+                JBUI.Borders.empty(JBUI.scale(4), 0, JBUI.scale(2), 0)));
 
         // Action buttons row (below pipeline, not competing with text)
-        JPanel actionRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        JPanel actionRow = new JPanel(new FlowLayout(FlowLayout.LEFT, JBUI.scale(4), 0));
         actionRow.setOpaque(false);
         actionRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        actionRow.setBorder(JBUI.Borders.compound(
+                JBUI.Borders.customLine(JBColor.border(), 1, 0, 0, 0),
+                JBUI.Borders.empty(JBUI.scale(4), 0, JBUI.scale(2), 0)));
         actionRow.add(generateButton);
         actionRow.add(generateAllButton);
         actionRow.add(applyButton);
@@ -295,7 +321,6 @@ public class WorkflowActionPanel extends JPanel {
         contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
         contentPanel.setOpaque(false);
         contentPanel.add(headerRow);
-        contentPanel.add(Box.createVerticalStrut(4));
         contentPanel.add(pipelinePanel);
         contentPanel.add(actionRow);
         contentPanel.add(progressRow);
@@ -619,34 +644,32 @@ public class WorkflowActionPanel extends JPanel {
         Color color;
         switch (artifact.status()) {
             case DONE -> {
-                color = new JBColor(new Color(0, 128, 0), new Color(80, 200, 80));
+                color = COLOR_DONE;
                 chip.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-                chip.setBackground(new JBColor(new Color(0, 0, 0, 0), new Color(0, 0, 0, 0)));
+                chip.setBackground(COLOR_CHIP_BG_TRANSPARENT);
                 chip.setBorder(JBUI.Borders.empty(1));
             }
             case READY -> {
-                color = JBColor.BLUE;
-                chip.setBackground(new JBColor(new Color(220, 235, 255), new Color(40, 55, 80)));
-                chip.setBorder(BorderFactory.createLineBorder(JBColor.BLUE, 1, true));
+                color = COLOR_READY;
+                chip.setBackground(COLOR_READY_BG);
+                chip.setBorder(BorderFactory.createLineBorder(COLOR_READY, 1, true));
             }
             case GENERATING -> {
-                color = new JBColor(new Color(60, 130, 230), new Color(80, 150, 250));
-                chip.setBackground(new JBColor(new Color(220, 235, 255), new Color(40, 55, 80)));
+                color = COLOR_GENERATING;
+                chip.setBackground(COLOR_READY_BG);
                 // Pulsing border — alternates via repaint driven by pulseTimer
                 boolean bright = (pulseTimer != null && System.currentTimeMillis() % 1200 < 600);
-                Color borderColor = bright
-                        ? new JBColor(new Color(60, 130, 230), new Color(80, 150, 250))
-                        : new JBColor(new Color(140, 180, 240), new Color(50, 90, 160));
+                Color borderColor = bright ? COLOR_GENERATING_BORDER_BRIGHT : COLOR_GENERATING_BORDER_DIM;
                 chip.setBorder(BorderFactory.createLineBorder(borderColor, 2, true));
             }
             case ERROR -> {
-                color = JBColor.RED;
-                chip.setBackground(new JBColor(new Color(255, 230, 230), new Color(80, 30, 30)));
-                chip.setBorder(BorderFactory.createLineBorder(JBColor.RED, 2, true));
+                color = COLOR_ERROR;
+                chip.setBackground(COLOR_ERROR_BG);
+                chip.setBorder(BorderFactory.createLineBorder(COLOR_ERROR, 2, true));
             }
             default -> {
-                color = JBColor.GRAY;
-                chip.setBackground(new JBColor(new Color(0, 0, 0, 0), new Color(0, 0, 0, 0)));
+                color = COLOR_BLOCKED;
+                chip.setBackground(COLOR_CHIP_BG_TRANSPARENT);
                 chip.setBorder(JBUI.Borders.empty(1));
             }
         }
@@ -902,7 +925,7 @@ public class WorkflowActionPanel extends JPanel {
         AiToolDetectionService.ToolGuidance guidance = AiToolDetectionService.getToolGuidance(toolName);
 
         guidanceMessageLabel.setText("\u2713 Implementation prompt copied");
-        guidanceMessageLabel.setForeground(new JBColor(new Color(0, 128, 0), new Color(80, 200, 80)));
+        guidanceMessageLabel.setForeground(COLOR_SUCCESS);
 
         if (guidance.canAutoSave()) {
             guidanceWatchingLabel.setText(guidance.pasteAction() + " \u2014 watching tasks.md for progress...");
@@ -1078,7 +1101,7 @@ public class WorkflowActionPanel extends JPanel {
 
         if ("clipboard".equals(deliveryType)) {
             guidanceMessageLabel.setText("\u2713 Copied to clipboard");
-            guidanceMessageLabel.setForeground(new JBColor(new Color(0, 128, 0), new Color(80, 200, 80)));
+            guidanceMessageLabel.setForeground(COLOR_SUCCESS);
 
             if (guidance.canAutoSave()) {
                 guidanceWatchingLabel.setText(guidance.pasteAction() + " \u2014 it will save automatically.");
@@ -1090,7 +1113,7 @@ public class WorkflowActionPanel extends JPanel {
             copyAgainButton.setVisible(true);
         } else {
             guidanceMessageLabel.setText("\u2713 Opened in editor tab");
-            guidanceMessageLabel.setForeground(new JBColor(new Color(0, 128, 0), new Color(80, 200, 80)));
+            guidanceMessageLabel.setForeground(COLOR_SUCCESS);
             String savePath = (changeDir != null && outputPath != null)
                     ? changeDir + "/" + outputPath : (outputPath != null ? outputPath : "change directory");
             guidanceWatchingLabel.setText("Copy the prompt to " + guidance.chatPanelName() + ", then save output to: " + savePath);
@@ -1273,14 +1296,14 @@ public class WorkflowActionPanel extends JPanel {
                     // Completion celebration
                     generateAllProgressBar.setValue(generateAllProgressBar.getMaximum());
                     generateAllProgressBar.setString("All complete");
-                    generateAllProgressBar.setForeground(new JBColor(new Color(0, 128, 0), new Color(80, 200, 80)));
+                    generateAllProgressBar.setForeground(COLOR_SUCCESS);
 
                     // Flash all chips green
                     flashPipelineChipsGreen(changeName);
 
                     // Show success message
                     guidanceMessageLabel.setText("\u2713 All artifacts generated");
-                    guidanceMessageLabel.setForeground(new JBColor(new Color(0, 128, 0), new Color(80, 200, 80)));
+                    guidanceMessageLabel.setForeground(COLOR_SUCCESS);
                     guidanceWatchingLabel.setText("Ready to review or apply tasks");
                     guidanceNextLabel.setVisible(false);
                     copyAgainButton.setVisible(false);
@@ -1434,7 +1457,7 @@ public class WorkflowActionPanel extends JPanel {
 
     private void flashPipelineChipsGreen(String changeName) {
         // Set all chip borders to bright green
-        Color flashColor = new JBColor(new Color(0, 180, 0), new Color(80, 220, 80));
+        Color flashColor = COLOR_FLASH_GREEN;
         for (Component comp : pipelinePanel.getComponents()) {
             if (comp instanceof JPanel chip) {
                 chip.setBorder(BorderFactory.createLineBorder(flashColor, 2, true));
@@ -1480,7 +1503,7 @@ public class WorkflowActionPanel extends JPanel {
         switch (result.state()) {
             case SUCCESS -> {
                 guidanceMessageLabel.setText("\u2713 Archive and sync complete for \"" + changeName + "\"");
-                guidanceMessageLabel.setForeground(new JBColor(new Color(0, 128, 0), new Color(80, 200, 80)));
+                guidanceMessageLabel.setForeground(COLOR_SUCCESS);
                 guidancePanel.setVisible(true);
                 guidancePanel.revalidate();
             }
@@ -1494,7 +1517,7 @@ public class WorkflowActionPanel extends JPanel {
             case SKIPPED -> {
                 // No trackers — just show archive success
                 guidanceMessageLabel.setText("\u2713 Change archived");
-                guidanceMessageLabel.setForeground(new JBColor(new Color(0, 128, 0), new Color(80, 200, 80)));
+                guidanceMessageLabel.setForeground(COLOR_SUCCESS);
                 guidancePanel.setVisible(true);
                 guidancePanel.revalidate();
             }

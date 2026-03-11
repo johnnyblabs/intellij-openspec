@@ -1,3 +1,10 @@
+# Service Test Coverage
+
+## Purpose
+Unit test coverage for core services including ArtifactOrchestrationService, DirectApiService, and IssueLifecycleService.
+
+## Requirements
+
 ### Requirement: Test infrastructure includes Mockito
 
 The project's test dependencies SHALL include Mockito for mocking services and their dependencies.

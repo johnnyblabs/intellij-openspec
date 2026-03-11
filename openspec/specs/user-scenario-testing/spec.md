@@ -1,3 +1,10 @@
+# User Scenario Testing
+
+## Purpose
+End-to-end scenario coverage for delivery method resolution, tool guidance, and Generate All visibility across different user configurations.
+
+## Requirements
+
 ### Requirement: Corporate Copilot with skills disabled scenario
 
 The test suite SHALL verify that the plugin delivers a functional experience when the user has GitHub Copilot detected but skills are disabled and no Direct API is configured.
