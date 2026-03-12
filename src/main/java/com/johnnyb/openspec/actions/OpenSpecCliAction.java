@@ -36,9 +36,9 @@ public abstract class OpenSpecCliAction extends OpenSpecBaseAction {
         CliDetectionService detection = project.getService(CliDetectionService.class);
         if (detection == null || !detection.isAvailable()) {
             if (!handleCliMissing(project, e)) {
-                OpenSpecNotifier.warn(project,
-                        "OpenSpec CLI not available. Cannot run '" + getCommandLabel() + "'. " +
-                                "Install with: npm i -g openspec-dev");
+                OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_SYSTEM, "CLI",
+                        "OpenSpec CLI not available. Cannot run '" + getCommandLabel() + "'. Install with: npm i -g openspec-dev",
+                        com.intellij.notification.NotificationType.WARNING, OpenSpecNotifier.openSettingsAction());
             }
             return;
         }
@@ -71,7 +71,7 @@ public abstract class OpenSpecCliAction extends OpenSpecBaseAction {
         OpenSpecConsolePanel console = consoleService != null ? consoleService.getAndActivate() : null;
 
         if (console == null) {
-            OpenSpecNotifier.info(project, "openspec " + getCommandLabel() +
+            OpenSpecNotifier.info(project, "CLI", "openspec " + getCommandLabel() +
                     (result.isSuccess() ? " completed" : " failed (exit " + result.exitCode() + ")"));
             return;
         }
@@ -95,6 +95,8 @@ public abstract class OpenSpecCliAction extends OpenSpecBaseAction {
     }
 
     private void showError(Project project, Exception ex) {
-        OpenSpecNotifier.error(project, "Failed to run openspec " + getCommandLabel() + ": " + ex.getMessage());
+        OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_SYSTEM, "CLI",
+                "Failed to run openspec " + getCommandLabel() + ": " + ex.getMessage(),
+                com.intellij.notification.NotificationType.ERROR);
     }
 }

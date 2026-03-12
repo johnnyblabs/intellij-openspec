@@ -29,7 +29,7 @@ public class OpenSpecArchiveAction extends OpenSpecBaseAction {
         List<Change> active = changeService.getActiveChanges();
 
         if (active.isEmpty()) {
-            OpenSpecNotifier.warn(project, "No active changes to archive");
+            OpenSpecNotifier.warn(project, "Archive", "No active changes to archive");
             return;
         }
 
@@ -50,10 +50,10 @@ public class OpenSpecArchiveAction extends OpenSpecBaseAction {
         // Phase 1: Archive (filesystem)
         try {
             changeService.archiveChange(target);
-            OpenSpecNotifier.info(project, "Change archived: " + changeName);
+            OpenSpecNotifier.info(project, "Archive", "Change archived: " + changeName);
         } catch (Exception ex) {
             // Archive failed — do NOT proceed to sync
-            OpenSpecNotifier.error(project, "Failed to archive change: " + ex.getMessage());
+            OpenSpecNotifier.error(project, "Archive", "Failed to archive change: " + ex.getMessage());
             return;
         }
 

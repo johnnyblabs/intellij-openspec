@@ -31,17 +31,17 @@ public class OpenSpecInitAction extends OpenSpecBaseAction {
         if (project == null) return;
 
         if (OpenSpecFileUtil.isOpenSpecProject(project)) {
-            OpenSpecNotifier.info(project, "OpenSpec is already initialized in this project");
+            OpenSpecNotifier.info(project, "Initialize", "OpenSpec is already initialized in this project");
             return;
         }
 
         try {
             ScaffoldingService scaffolding = project.getService(ScaffoldingService.class);
             scaffolding.initOpenSpec();
-            OpenSpecNotifier.info(project, "OpenSpec initialized");
+            OpenSpecNotifier.info(project, "Initialize", "OpenSpec initialized");
             refreshToolWindow(project);
         } catch (Exception ex) {
-            OpenSpecNotifier.error(project, "Failed to initialize OpenSpec: " + ex.getMessage());
+            OpenSpecNotifier.error(project, "Initialize", "Failed to initialize OpenSpec: " + ex.getMessage());
         }
     }
 }

@@ -84,11 +84,14 @@ public final class IssueLifecycleService {
             ForgejoService.IssueResult result = forgejo.createIssue(title, body, List.of("enhancement"));
             TrackingMetadataWriter.writeForgejoRef(Path.of(changeDir), result.issueNumber(), result.issueUrl());
             ApplicationManager.getApplication().invokeLater(() ->
-                    OpenSpecNotifier.info(project, "Forgejo issue #" + result.issueNumber() + " created for \"" + changeName + "\""));
+                    OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_TRACKER, "Forgejo",
+                            "Issue #" + result.issueNumber() + " created for \"" + changeName + "\"",
+                            com.intellij.notification.NotificationType.INFORMATION));
         } catch (Exception e) {
             LOG.warn("Failed to create Forgejo issue for " + changeName, e);
             ApplicationManager.getApplication().invokeLater(() ->
-                    OpenSpecNotifier.warn(project, "Forgejo: " + e.getMessage()));
+                    OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_TRACKER, "Forgejo",
+                            e.getMessage(), com.intellij.notification.NotificationType.WARNING));
         }
     }
 
@@ -99,11 +102,14 @@ public final class IssueLifecycleService {
             PlaneService.WorkItemResult result = plane.createWorkItem(title, html);
             TrackingMetadataWriter.writePlaneRef(Path.of(changeDir), result.workItemId(), result.workItemUrl());
             ApplicationManager.getApplication().invokeLater(() ->
-                    OpenSpecNotifier.info(project, "Plane work item created for \"" + changeName + "\""));
+                    OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_TRACKER, "Plane",
+                            "Work item created for \"" + changeName + "\"",
+                            com.intellij.notification.NotificationType.INFORMATION));
         } catch (Exception e) {
             LOG.warn("Failed to create Plane work item for " + changeName, e);
             ApplicationManager.getApplication().invokeLater(() ->
-                    OpenSpecNotifier.warn(project, "Plane: " + e.getMessage()));
+                    OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_TRACKER, "Plane",
+                            e.getMessage(), com.intellij.notification.NotificationType.WARNING));
         }
     }
 
@@ -115,7 +121,8 @@ public final class IssueLifecycleService {
         } catch (Exception e) {
             LOG.warn("Failed to update Forgejo issue #" + issueNumber + " on Apply", e);
             ApplicationManager.getApplication().invokeLater(() ->
-                    OpenSpecNotifier.warn(project, "Forgejo update failed: " + e.getMessage()));
+                    OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_TRACKER, "Forgejo",
+                            "Update failed: " + e.getMessage(), com.intellij.notification.NotificationType.WARNING));
         }
     }
 
@@ -126,7 +133,8 @@ public final class IssueLifecycleService {
         } catch (Exception e) {
             LOG.warn("Failed to update Plane work item " + workItemId + " on Apply", e);
             ApplicationManager.getApplication().invokeLater(() ->
-                    OpenSpecNotifier.warn(project, "Plane update failed: " + e.getMessage()));
+                    OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_TRACKER, "Plane",
+                            "Update failed: " + e.getMessage(), com.intellij.notification.NotificationType.WARNING));
         }
     }
 
@@ -136,11 +144,13 @@ public final class IssueLifecycleService {
             forgejo.addComment(issueNumber, "Change archived");
             forgejo.updateIssue(issueNumber, "closed", List.of("done"));
             ApplicationManager.getApplication().invokeLater(() ->
-                    OpenSpecNotifier.info(project, "Forgejo issue #" + issueNumber + " closed"));
+                    OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_TRACKER, "Forgejo",
+                            "Issue #" + issueNumber + " closed", com.intellij.notification.NotificationType.INFORMATION));
         } catch (Exception e) {
             LOG.warn("Failed to close Forgejo issue #" + issueNumber, e);
             ApplicationManager.getApplication().invokeLater(() ->
-                    OpenSpecNotifier.warn(project, "Forgejo close failed: " + e.getMessage()));
+                    OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_TRACKER, "Forgejo",
+                            "Close failed: " + e.getMessage(), com.intellij.notification.NotificationType.WARNING));
         }
     }
 
@@ -149,11 +159,13 @@ public final class IssueLifecycleService {
             PlaneService plane = project.getService(PlaneService.class);
             plane.updateWorkItemState(workItemId, "Done");
             ApplicationManager.getApplication().invokeLater(() ->
-                    OpenSpecNotifier.info(project, "Plane work item closed"));
+                    OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_TRACKER, "Plane",
+                            "Work item closed", com.intellij.notification.NotificationType.INFORMATION));
         } catch (Exception e) {
             LOG.warn("Failed to close Plane work item " + workItemId, e);
             ApplicationManager.getApplication().invokeLater(() ->
-                    OpenSpecNotifier.warn(project, "Plane close failed: " + e.getMessage()));
+                    OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_TRACKER, "Plane",
+                            "Close failed: " + e.getMessage(), com.intellij.notification.NotificationType.WARNING));
         }
     }
 

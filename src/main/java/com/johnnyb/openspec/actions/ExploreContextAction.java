@@ -92,7 +92,7 @@ public class ExploreContextAction extends OpenSpecBaseAction {
             com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater(() -> {
                 Toolkit.getDefaultToolkit().getSystemClipboard()
                         .setContents(new StringSelection(contextText), null);
-                OpenSpecNotifier.info(project,
+                OpenSpecNotifier.info(project, "Explore Context",
                         "Context copied \u2014 paste into your AI tool to start exploring.");
             });
         });

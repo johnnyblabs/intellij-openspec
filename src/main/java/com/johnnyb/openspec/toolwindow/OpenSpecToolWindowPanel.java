@@ -202,8 +202,10 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider {
                 scaffolding.initOpenSpec();
                 refreshAsync();
             } catch (java.io.IOException ex) {
-                com.johnnyb.openspec.util.OpenSpecNotifier.error(project,
-                        "Failed to initialize: " + ex.getMessage());
+                com.johnnyb.openspec.util.OpenSpecNotifier.notify(project,
+                        com.johnnyb.openspec.util.OpenSpecNotifier.GROUP_SYSTEM, "Initialize",
+                        "Failed to initialize: " + ex.getMessage(),
+                        com.intellij.notification.NotificationType.ERROR);
             }
         }
     }

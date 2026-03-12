@@ -60,11 +60,13 @@ public final class ConfigService {
             String message = configFile.getPath() + ": " + location
                     + (e.getProblem() != null ? e.getProblem() : "invalid YAML");
             LOG.warn("Failed to parse config.yaml: " + message, e);
-            OpenSpecNotifier.warn(project, "config.yaml parse error: " + message);
+            OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_SYSTEM, "Configuration",
+                    "config.yaml parse error: " + message, com.intellij.notification.NotificationType.WARNING);
         } catch (Exception e) {
             config = null;
             LOG.warn("Failed to read config.yaml: " + configFile.getPath(), e);
-            OpenSpecNotifier.warn(project, "Failed to read config.yaml: " + e.getMessage());
+            OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_SYSTEM, "Configuration",
+                    "Failed to read config.yaml: " + e.getMessage(), com.intellij.notification.NotificationType.WARNING);
         }
     }
 

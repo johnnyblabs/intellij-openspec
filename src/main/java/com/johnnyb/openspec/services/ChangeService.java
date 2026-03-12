@@ -147,7 +147,9 @@ public final class ChangeService {
                 } catch (MarkedYAMLException e) {
                     String problem = e.getProblem() != null ? e.getProblem() : "invalid YAML";
                     LOG.warn("Failed to parse change metadata: " + metaFile.getPath() + " — " + problem, e);
-                    OpenSpecNotifier.warn(project, ".openspec.yaml parse error in '" + changeDir.getName() + "': " + problem);
+                    OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_SYSTEM, "Configuration",
+                            ".openspec.yaml parse error in '" + changeDir.getName() + "': " + problem,
+                            com.intellij.notification.NotificationType.WARNING);
                 } catch (Exception e) {
                     LOG.warn("Failed to read change metadata: " + metaFile.getPath(), e);
                 }

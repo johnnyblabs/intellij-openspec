@@ -37,16 +37,16 @@ public class CreateDeltaSpecAction extends AnAction {
 
         VirtualFile changeDir = LocalFileSystem.getInstance().findFileByPath(changePath);
         if (changeDir == null) {
-            OpenSpecNotifier.error(project, "Change directory not found");
+            OpenSpecNotifier.error(project, "Delta Spec", "Change directory not found");
             return;
         }
 
         try {
             ScaffoldingService scaffolding = project.getService(ScaffoldingService.class);
             scaffolding.createDeltaSpec(changeDir, domain);
-            OpenSpecNotifier.info(project, "Spec created for domain: " + domain);
+            OpenSpecNotifier.info(project, "Delta Spec", "Spec created for domain: " + domain);
         } catch (Exception ex) {
-            OpenSpecNotifier.error(project, "Failed to create spec: " + ex.getMessage());
+            OpenSpecNotifier.error(project, "Delta Spec", "Failed to create spec: " + ex.getMessage());
         }
     }
 }

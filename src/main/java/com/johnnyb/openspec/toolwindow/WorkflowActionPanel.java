@@ -200,7 +200,7 @@ public class WorkflowActionPanel extends JPanel {
             if (lastPrompt != null) {
                 Toolkit.getDefaultToolkit().getSystemClipboard()
                         .setContents(new StringSelection(lastPrompt), null);
-                OpenSpecNotifier.info(project, "Prompt re-copied to clipboard");
+                OpenSpecNotifier.info(project, "Generate", "Prompt re-copied to clipboard");
             }
         });
 
@@ -955,12 +955,13 @@ public class WorkflowActionPanel extends JPanel {
                         }
                         showApplyGuidance(changeName, changeDir, null);
                     } catch (IOException ex) {
-                        OpenSpecNotifier.error(project, "Failed to open prompt: " + ex.getMessage());
+                        OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_SYSTEM, "Apply",
+                                "Failed to open prompt: " + ex.getMessage(), com.intellij.notification.NotificationType.ERROR);
                     }
                 });
                 case DIRECT_API -> {
                     // Direct API: send prompt, but there's no single output file for apply
-                    OpenSpecNotifier.warn(project,
+                    OpenSpecNotifier.warn(project, "Apply",
                             "Direct API is not yet supported for Apply. Use clipboard or editor tab.");
                     ApplicationManager.getApplication().invokeLater(() -> {
                         applyButton.setEnabled(true);
@@ -1063,7 +1064,7 @@ public class WorkflowActionPanel extends JPanel {
         if (target == null) {
             archiveButton.setEnabled(true);
             archiveButton.setText("Archive");
-            OpenSpecNotifier.error(project, "Change not found: " + changeName);
+            OpenSpecNotifier.error(project, "Archive", "Change not found: " + changeName);
             return;
         }
 
@@ -1089,7 +1090,7 @@ public class WorkflowActionPanel extends JPanel {
                 SwingUtilities.invokeLater(() -> {
                     archiveButton.setEnabled(true);
                     archiveButton.setText("Archive");
-                    OpenSpecNotifier.error(project, "Archive failed: " + ex.getMessage());
+                    OpenSpecNotifier.error(project, "Archive", "Archive failed: " + ex.getMessage());
                 });
             }
         });
@@ -1241,7 +1242,8 @@ public class WorkflowActionPanel extends JPanel {
                             showInlineGuidance("editor", instruction.changeDir(),
                                     lastOutputPath, null, nextAfterThis);
                         } catch (IOException ex) {
-                            OpenSpecNotifier.error(project, "Failed to open prompt: " + ex.getMessage());
+                            OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_GENERATION, "Generate",
+                                    "Failed to open prompt: " + ex.getMessage(), com.intellij.notification.NotificationType.ERROR);
                         }
                     });
                     case DIRECT_API -> {
@@ -1263,22 +1265,34 @@ public class WorkflowActionPanel extends JPanel {
                                         outFile.setBinaryContent(result.getBytes(StandardCharsets.UTF_8));
                                     }
                                 });
-                                OpenSpecNotifier.info(project, "Generated " + artifactId);
+                                VirtualFile generatedFile = LocalFileSystem.getInstance().findFileByPath(outputPath);
+                                if (generatedFile != null) {
+                                    OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_GENERATION, "Generate",
+                                            "Generated " + artifactId, com.intellij.notification.NotificationType.INFORMATION,
+                                            OpenSpecNotifier.openFileAction(generatedFile));
+                                } else {
+                                    OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_GENERATION, "Generate",
+                                            "Generated " + artifactId, com.intellij.notification.NotificationType.INFORMATION);
+                                }
                                 orchestration.invalidateCache(changeName);
                                 refresh();
                                 if (onRefreshRequested != null) onRefreshRequested.run();
                             } catch (IOException ex) {
-                                OpenSpecNotifier.error(project, "Failed to write artifact: " + ex.getMessage());
+                                OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_GENERATION, "Generate",
+                                        "Failed to write artifact: " + ex.getMessage(), com.intellij.notification.NotificationType.ERROR);
                             }
                         });
                     }
                 }
             } catch (AiApiException ex) {
                 ApplicationManager.getApplication().invokeLater(() ->
-                        OpenSpecNotifier.error(project, "AI generation failed: " + ex.getMessage()));
+                        OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_GENERATION, "Generate",
+                                "AI generation failed: " + ex.getMessage(), com.intellij.notification.NotificationType.ERROR,
+                                OpenSpecNotifier.openSettingsAction()));
             } catch (Exception ex) {
                 ApplicationManager.getApplication().invokeLater(() ->
-                        OpenSpecNotifier.error(project, "Generation failed: " + ex.getMessage()));
+                        OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_GENERATION, "Generate",
+                                "Generation failed: " + ex.getMessage(), com.intellij.notification.NotificationType.ERROR));
             }
         });
     }
@@ -1512,7 +1526,8 @@ public class WorkflowActionPanel extends JPanel {
                     hideTimer.setRepeats(false);
                     hideTimer.start();
 
-                    OpenSpecNotifier.info(project, "All artifacts generated for " + changeName);
+                    long elapsedSeconds = (System.nanoTime() - generateAllStartNanos) / 1_000_000_000L;
+                    OpenSpecNotifier.generateAllSummary(project, generateAllProgressBar.getMaximum(), elapsedSeconds);
                 });
             }
 
@@ -1562,7 +1577,8 @@ public class WorkflowActionPanel extends JPanel {
                     cancelButton.setVisible(false);
                     generateAllProgressBar.setVisible(false);
                     elapsedTimeLabel.setVisible(false);
-                    OpenSpecNotifier.info(project, "Generation cancelled");
+                    OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_GENERATION, "Generate All",
+                            "Generation cancelled", com.intellij.notification.NotificationType.INFORMATION);
                     refresh();
                     if (onRefreshRequested != null) onRefreshRequested.run();
                 });

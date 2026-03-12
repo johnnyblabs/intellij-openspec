@@ -51,7 +51,7 @@ public class OpenSpecProposeAction extends OpenSpecBaseAction {
         try {
             ScaffoldingService scaffolding = project.getService(ScaffoldingService.class);
             VirtualFile changeDir = scaffolding.createChange(changeName, why, whatChanges);
-            OpenSpecNotifier.info(project, "Change proposed: " + changeDir.getName());
+            OpenSpecNotifier.info(project, "Propose", "Change proposed: " + changeDir.getName());
 
             // Trigger issue creation in configured trackers
             IssueLifecycleService lifecycle = project.getService(IssueLifecycleService.class);
@@ -59,7 +59,7 @@ public class OpenSpecProposeAction extends OpenSpecBaseAction {
                 lifecycle.onPropose(changeName, changeDir.getPath());
             }
         } catch (Exception ex) {
-            OpenSpecNotifier.error(project, "Failed to create change: " + ex.getMessage());
+            OpenSpecNotifier.error(project, "Propose", "Failed to create change: " + ex.getMessage());
         }
     }
 

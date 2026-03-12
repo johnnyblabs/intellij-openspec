@@ -41,7 +41,11 @@
         <postStartupActivity implementation="com.johnnyb.openspec.services.OpenSpecProjectService$StartupDetection"/>
 
         <!-- Notifications -->
-        <notificationGroup id="OpenSpec Notifications" displayType="BALLOON"/>
+        <notificationGroup id="OpenSpec.Workflow" displayType="BALLOON"/>
+        <notificationGroup id="OpenSpec.Generation" displayType="BALLOON"/>
+        <notificationGroup id="OpenSpec.Validation" displayType="BALLOON"/>
+        <notificationGroup id="OpenSpec.System" displayType="STICKY_BALLOON"/>
+        <notificationGroup id="OpenSpec.Tracker" displayType="BALLOON"/>
 
         <!-- Tool Window -->
         <toolWindow id="OpenSpec" anchor="right"

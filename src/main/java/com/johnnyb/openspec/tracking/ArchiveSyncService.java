@@ -165,14 +165,14 @@ public final class ArchiveSyncService {
 
     private void notifyResult(String changeName, SyncResult result) {
         switch (result.state()) {
-            case SUCCESS -> OpenSpecNotifier.info(project,
-                    "Sync complete for \"" + changeName + "\"");
-            case PARTIAL_FAILURE -> OpenSpecNotifier.warn(project,
-                    "Sync partially failed for \"" + changeName + "\": " + result.message() +
-                            ". Use Retry Sync to try again.");
-            case FAILURE -> OpenSpecNotifier.error(project,
-                    "Sync failed for \"" + changeName + "\": " + result.message() +
-                            ". Use Retry Sync to try again.");
+            case SUCCESS -> OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_TRACKER, "Tracker Sync",
+                    "Sync complete for \"" + changeName + "\"", com.intellij.notification.NotificationType.INFORMATION);
+            case PARTIAL_FAILURE -> OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_TRACKER, "Tracker Sync",
+                    "Sync partially failed for \"" + changeName + "\": " + result.message() + ". Use Retry Sync to try again.",
+                    com.intellij.notification.NotificationType.WARNING);
+            case FAILURE -> OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_TRACKER, "Tracker Sync",
+                    "Sync failed for \"" + changeName + "\": " + result.message() + ". Use Retry Sync to try again.",
+                    com.intellij.notification.NotificationType.ERROR);
             case SKIPPED -> { /* silent */ }
         }
     }

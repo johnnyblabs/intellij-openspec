@@ -97,7 +97,7 @@ public class OpenSpecListAction extends OpenSpecCliAction {
                     console.printCommand("openspec list (built-in)");
                     console.printOutput(output);
                 } else {
-                    OpenSpecNotifier.info(project, "OpenSpec list generated (built-in)");
+                    OpenSpecNotifier.info(project, "List", "OpenSpec list generated (built-in)");
                 }
             });
         });

@@ -38,7 +38,7 @@ public class OpenSpecApplyAction extends OpenSpecBaseAction {
         List<Change> active = changeService.getActiveChanges();
 
         if (active.isEmpty()) {
-            OpenSpecNotifier.warn(project, "No active changes to apply");
+            OpenSpecNotifier.warn(project, "Apply", "No active changes to apply");
             return;
         }
 
@@ -64,7 +64,7 @@ public class OpenSpecApplyAction extends OpenSpecBaseAction {
             ArtifactOrchestrationService orchestration = project.getService(ArtifactOrchestrationService.class);
             ChangeArtifactDag dag = orchestration.getArtifactStatus(changeName);
             if (dag != null && !dag.isComplete()) {
-                OpenSpecNotifier.warn(project,
+                OpenSpecNotifier.warn(project, "Apply",
                         "Not all artifacts are complete for \"" + changeName + "\". Generate artifacts first.");
                 return;
             }
@@ -72,7 +72,7 @@ public class OpenSpecApplyAction extends OpenSpecBaseAction {
             // Check if tasks exist
             Path tasksPath = Path.of(changeDir, "tasks.md");
             if (!Files.exists(tasksPath)) {
-                OpenSpecNotifier.warn(project, "No tasks.md found for \"" + changeName + "\"");
+                OpenSpecNotifier.warn(project, "Apply", "No tasks.md found for \"" + changeName + "\"");
                 return;
             }
 
@@ -81,7 +81,7 @@ public class OpenSpecApplyAction extends OpenSpecBaseAction {
                 String tasksContent = Files.readString(tasksPath);
                 int[] counts = ApplyPromptBuilder.countTasks(tasksContent);
                 if (counts[1] > 0 && counts[0] == counts[1]) {
-                    OpenSpecNotifier.info(project,
+                    OpenSpecNotifier.info(project, "Apply",
                             "All tasks complete for \"" + changeName + "\". Consider archiving.");
                     return;
                 }
@@ -111,7 +111,7 @@ public class OpenSpecApplyAction extends OpenSpecBaseAction {
                 }
             }
             // Fallback if panel not found — just notify
-            OpenSpecNotifier.info(project,
+            OpenSpecNotifier.info(project, "Apply",
                     "Open the OpenSpec tool window to apply tasks for \"" + changeName + "\"");
         });
     }

@@ -107,11 +107,13 @@ public class OpenSpecValidateAction extends OpenSpecBaseAction {
         }
 
         if (result.passed()) {
-            OpenSpecNotifier.info(project, "Validation passed (" +
-                    result.warningCount() + " warnings)");
+            OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_VALIDATION, "Validate",
+                    "Validation passed (" + result.warningCount() + " warnings)",
+                    com.intellij.notification.NotificationType.INFORMATION);
         } else {
-            OpenSpecNotifier.error(project, "Validation failed (" +
-                    result.errorCount() + " errors, " + result.warningCount() + " warnings)");
+            OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_VALIDATION, "Validate",
+                    "Validation failed (" + result.errorCount() + " errors, " + result.warningCount() + " warnings)",
+                    com.intellij.notification.NotificationType.ERROR);
         }
 
         showInConsole(project, sb.toString(), result.passed());
@@ -122,7 +124,9 @@ public class OpenSpecValidateAction extends OpenSpecBaseAction {
         OpenSpecConsolePanel console = consoleService != null ? consoleService.getAndActivate() : null;
 
         if (console == null) {
-            OpenSpecNotifier.info(project, "Validation " + (success ? "passed" : "failed"));
+            OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_VALIDATION, "Validate",
+                    "Validation " + (success ? "passed" : "failed"),
+                    success ? com.intellij.notification.NotificationType.INFORMATION : com.intellij.notification.NotificationType.ERROR);
             return;
         }
 
