@@ -1,7 +1,7 @@
 # Issue Tracking
 
 ## Purpose
-Automated issue lifecycle integration with Forgejo and Plane project management systems.
+Automated issue lifecycle integration with Forgejo and Plane project management systems. This is internal development tooling — tracker configuration is stored in project settings and `scripts/.env`, not exposed in the user-facing settings UI.
 
 ## Requirements
 
@@ -99,23 +99,23 @@ The plugin SHALL store tracker references in the change's `.openspec.yaml` file 
 - **THEN** the system SHALL skip tracker updates for that change silently
 
 ### Requirement: Tracker connection testing
-The plugin SHALL provide a "Test Connection" button for each configured tracker that validates the connection.
+The tracker services SHALL provide `testConnection()` methods that validate the connection programmatically. Connection testing is available via setup scripts (`scripts/setup-forgejo.sh`, `scripts/setup-plane.sh`), not through the plugin settings UI.
 
 #### Scenario: Successful Forgejo test
-- **WHEN** the user clicks "Test Connection" for Forgejo with valid credentials
-- **THEN** the system SHALL display a success message confirming the connection
+- **WHEN** `ForgejoService.testConnection()` is called with valid credentials
+- **THEN** it SHALL return a success message confirming the connection
 
 #### Scenario: Failed Forgejo test
-- **WHEN** the user clicks "Test Connection" for Forgejo with invalid credentials
-- **THEN** the system SHALL display an error message with the failure reason
+- **WHEN** `ForgejoService.testConnection()` is called with invalid credentials
+- **THEN** it SHALL throw an exception with the failure reason
 
 #### Scenario: Successful Plane test
-- **WHEN** the user clicks "Test Connection" for Plane with valid credentials
-- **THEN** the system SHALL display a success message confirming the connection
+- **WHEN** `PlaneService.testConnection()` is called with valid credentials
+- **THEN** it SHALL return a success message confirming the connection
 
 #### Scenario: Failed Plane test
-- **WHEN** the user clicks "Test Connection" for Plane with invalid credentials
-- **THEN** the system SHALL display an error message with the failure reason
+- **WHEN** `PlaneService.testConnection()` is called with invalid credentials
+- **THEN** it SHALL throw an exception with the failure reason
 
 ### Requirement: Post-archive tracker sync is idempotent
 The issue lifecycle integration SHALL treat post-archive sync updates as idempotent so repeated sync attempts do not create duplicate terminal updates.
