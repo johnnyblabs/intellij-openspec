@@ -1,9 +1,12 @@
 package com.johnnyb.openspec.tracking;
 
+import com.intellij.openapi.application.WriteAction;
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.vfs.LocalFileSystem;
+import com.intellij.openapi.vfs.VirtualFile;
 
 import java.io.IOException;
-import java.nio.file.Files;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -52,10 +55,11 @@ public final class TrackingMetadataWriter {
 
     @SuppressWarnings("unchecked")
     private static Map<String, Object> readYaml(Path path) throws IOException {
-        if (!Files.exists(path)) {
+        VirtualFile vf = LocalFileSystem.getInstance().refreshAndFindFileByPath(path.toString());
+        if (vf == null || !vf.exists()) {
             return new LinkedHashMap<>();
         }
-        String content = Files.readString(path);
+        String content = new String(vf.contentsToByteArray(), StandardCharsets.UTF_8);
         Yaml yaml = new Yaml(new LoaderOptions());
         Object loaded = yaml.load(content);
         if (loaded instanceof Map) {
@@ -69,6 +73,19 @@ public final class TrackingMetadataWriter {
         options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
         options.setPrettyFlow(true);
         Yaml yaml = new Yaml(options);
-        Files.writeString(path, yaml.dump(data));
+        byte[] bytes = yaml.dump(data).getBytes(StandardCharsets.UTF_8);
+
+        WriteAction.runAndWait(() -> {
+            VirtualFile vf = LocalFileSystem.getInstance().refreshAndFindFileByPath(path.toString());
+            if (vf == null) {
+                // File doesn't exist yet — create it
+                VirtualFile parent = LocalFileSystem.getInstance().refreshAndFindFileByPath(path.getParent().toString());
+                if (parent == null) {
+                    throw new IOException("Parent directory not found: " + path.getParent());
+                }
+                vf = parent.createChildData(TrackingMetadataWriter.class, path.getFileName().toString());
+            }
+            vf.setBinaryContent(bytes);
+        });
     }
 }

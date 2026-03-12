@@ -12,6 +12,12 @@ import com.johnnyb.openspec.model.ChangeArtifactDag;
 import com.johnnyb.openspec.util.CliOutputParser;
 import com.johnnyb.openspec.util.CliRunner;
 
+import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.application.WriteAction;
+import com.intellij.openapi.vfs.LocalFileSystem;
+import com.intellij.openapi.vfs.VfsUtil;
+import com.intellij.openapi.vfs.VirtualFile;
+
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -282,9 +288,31 @@ public final class ArtifactOrchestrationService {
         }
 
         Path filePath = Path.of(changeDir, outputPath);
+        byte[] bytes = content.getBytes(StandardCharsets.UTF_8);
 
-        // Create parent directories if output path contains subdirectories
-        Files.createDirectories(filePath.getParent());
-        Files.writeString(filePath, content, StandardCharsets.UTF_8);
+        if (ApplicationManager.getApplication() == null) {
+            // Fallback for unit test context (no IntelliJ Application)
+            Files.createDirectories(filePath.getParent());
+            Files.writeString(filePath, content, StandardCharsets.UTF_8);
+            return;
+        }
+
+        String parentPath = filePath.getParent().toString();
+        WriteAction.runAndWait(() -> {
+            VirtualFile parentDir = VfsUtil.createDirectoryIfMissing(parentPath);
+            if (parentDir == null) {
+                throw new IOException("Failed to create directory: " + parentPath);
+            }
+            String fileName = filePath.getFileName().toString();
+            VirtualFile file = parentDir.findChild(fileName);
+            if (file == null) {
+                file = parentDir.createChildData(this, fileName);
+            }
+            file.setBinaryContent(bytes);
+        });
+
+        // Safety net: ensure parent directory is fully indexed
+        VfsUtil.markDirtyAndRefresh(false, true, true,
+                LocalFileSystem.getInstance().findFileByPath(parentPath));
     }
 }
