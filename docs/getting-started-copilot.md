@@ -1,6 +1,6 @@
 # Getting Started: OpenSpec Plugin + GitHub Copilot
 
-*Last verified: 2026-03-09 against plugin source*
+*Last verified: 2026-03-11 against plugin source*
 
 This guide walks you through setting up the OpenSpec IntelliJ plugin and completing your first spec-driven change using GitHub Copilot as your AI tool. By the end, you'll have proposed, generated, implemented, and archived a change — the full OpenSpec lifecycle.
 
@@ -332,7 +332,7 @@ Notice how each artifact builds on the previous ones. The design references the 
   (done)       (done)       (done)      (done)
 ```
 
-The Generate button shows: **"All complete"**
+The Generate button is replaced by an **Archive** button, and the panel shows that validation has been run automatically for the completed pipeline state.
 
 Your change now has a complete specification. Four artifacts, each building on the last, transforming a vague idea into a concrete implementation plan.
 
@@ -374,14 +374,15 @@ You can use Copilot throughout implementation — for code completion, asking qu
 
 Once all tasks are done:
 
-1. Go to **OpenSpec > Archive** in the menu bar
+1. In the Workflow Action Panel, click the **Archive** button that appears automatically once all tasks are complete
 2. The plugin checks that all artifacts are complete and all tasks are checked
-3. If delta specs exist, it asks whether to **sync them to main specs** (recommended — this merges your change's specs into `openspec/specs/`)
-4. The change directory moves to the archive:
+3. The panel shows the validation results from the automatic pre-archive validation
+4. If delta specs exist, it asks whether to **sync them to main specs** (recommended — this merges your change's specs into `openspec/specs/`)
+5. The change directory moves to the archive:
    ```
    openspec/changes/archive/2026-03-09-add-greeting-message/
    ```
-5. The tool window tree updates — the change moves from **Changes** to **Archive**
+6. The tool window tree updates — the change moves from **Changes** to **Archive**
 
 Your main specs at `openspec/specs/` now include the requirements from this change. The next change you propose will build on this accumulated knowledge.
 

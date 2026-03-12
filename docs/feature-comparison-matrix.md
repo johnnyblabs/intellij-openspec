@@ -1,6 +1,6 @@
 # OpenSpec IDE Extension — Feature Comparison Matrix
 
-A comprehensive comparison of the OpenSpec IntelliJ plugin against all known VS Code extensions. Last updated: 2026-03-07.
+A comprehensive comparison of the OpenSpec IntelliJ plugin against all known VS Code extensions. Last updated: 2026-03-11.
 
 ---
 
@@ -22,8 +22,8 @@ A comprehensive comparison of the OpenSpec IntelliJ plugin against all known VS 
 |---|---|---|---|---|---|
 | Initialize project (`openspec init`) | Yes (menu + toolbar) | No | No | No | No |
 | Propose change (create + scaffold) | Yes (dialog with name/desc) | No | Yes | No | No |
-| Apply change | Yes (menu action) | No | No | No | No |
-| Archive change | Yes (menu action) | No | Yes | No | No |
+| Apply change | Yes (panel action) | No | No | No | No |
+| Archive change | Yes (panel action) | No | Yes | No | No |
 | List specs/changes | Yes (tree + menu) | No | Partial | Yes | Yes |
 | Full lifecycle (init -> archive) | Yes | No | Partial | No | No |
 
@@ -63,6 +63,7 @@ A comprehensive comparison of the OpenSpec IntelliJ plugin against all known VS 
 | Save-path hint for CLI tools | Yes | No | No | No | No |
 | CodeLens for task-to-AI-chat | No | Yes (core feature) | No | No | No |
 | Context injection into AI chat | No | Yes (Copilot Chat) | No | No | No |
+| Chat Participant API (@-mention in Copilot Chat) | No | Yes | Yes | No | No |
 
 ---
 
@@ -104,6 +105,8 @@ A comprehensive comparison of the OpenSpec IntelliJ plugin against all known VS 
 | CLI-enhanced validation | Yes (merged results) | No | No | No | No |
 | Config.yaml validation | Yes | No | No | No | No |
 | Delta spec validation | Yes | No | No | No | No |
+| Per-change validation | Yes | No | No | No | No |
+| Auto-validation at phase transitions | Yes | No | No | No | No |
 | Strict validation mode | Yes (setting) | No | No | No | No |
 | Real-time inline validation | Yes (inspections) | No | No | No | No |
 | Validation results in console | Yes | No | No | No | No |
@@ -153,6 +156,7 @@ A comprehensive comparison of the OpenSpec IntelliJ plugin against all known VS 
 - Proposed for official OpenSpec adoption (GitHub issue #309)
 
 ### atman-dev (VS Code)
+- Copilot Chat Participant — registers as @-mentionable in Copilot Chat, can write directly into the chat window
 - GitHub Copilot prompt management (`.github/prompts/` generation)
 - GitHub issue creation from changes
 - Design generation workflow
@@ -201,13 +205,14 @@ AvantMedia:      Narrow and simple (monitoring only)
 | Feature | Who Has It | Priority | Planned |
 |---|---|---|---|
 | CodeLens on tasks (click to start AI chat) | Codder13 | High | v0.2.0 |
+| Chat Participant API (write into Copilot Chat) | Codder13, atman-dev | Medium | No IntelliJ equivalent API |
 | Auto-inject project context into AI chat | Codder13 | Medium | Investigate |
 | GitHub issue creation from changes | atman-dev | Low | — |
 | Batch processing loops (Ralph Loop) | AngDrew | Medium | Have "Generate All" |
 | Live monitoring server | AngDrew | Low | — |
 | Badge notifications | AvantMedia | Low | Have inline status |
 
-**Key gap**: Codder13's CodeLens + Copilot Chat injection is the only feature that is genuinely compelling and missing from our plugin. The IntelliJ equivalent would be gutter icons on task lines that trigger AI chat with context. This aligns with the "Spec Intelligence" direction in v0.2.0.
+**Key gaps**: Codder13's CodeLens + Copilot Chat injection and the Chat Participant API (used by both Codder13 and atman-dev) are the most compelling features missing from our plugin. The Chat Participant API is a VS Code-specific capability — extensions register as @-mentionable participants that can write directly into the Copilot Chat window. IntelliJ has no equivalent public API for Copilot's chat panel. The IntelliJ equivalent for CodeLens would be gutter icons on task lines that trigger AI chat with context, aligning with the "Spec Intelligence" direction in v0.2.0. For chat integration, our Direct API approach serves as the alternative strategy.
 
 ---
 
@@ -225,5 +230,6 @@ AvantMedia:      Narrow and simple (monitoring only)
 | Credential storage | OS keychain via PasswordSafe | Secrets API (simpler) |
 | File watchers | VFS-level, reliable, batched | fs.watch (less reliable) |
 | Progress indicators | Modal/background, cancellable, nested | Limited |
+| Chat Participant API | No equivalent — no public API for Copilot Chat | Extensions can register as @-mentionable chat participants |
 
-IntelliJ's platform gives us capabilities that VS Code extensions fundamentally cannot match in depth. The strategy should be to lean into these platform advantages, not replicate VS Code patterns.
+IntelliJ's platform gives us capabilities that VS Code extensions fundamentally cannot match in depth. However, VS Code's Chat Participant API is a notable counter-advantage — it lets extensions write directly into Copilot Chat, which IntelliJ cannot replicate. The strategy should be to lean into IntelliJ's platform advantages (inspections, gutter icons, tool windows) and our Direct API approach as the alternative to chat participant integration.
