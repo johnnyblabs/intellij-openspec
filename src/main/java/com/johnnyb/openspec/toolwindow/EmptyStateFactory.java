@@ -32,7 +32,7 @@ public final class EmptyStateFactory {
         panel.add(titleLabel, gbc);
 
         gbc.gridy++;
-        JBLabel descLabel = new JBLabel("<html><body style='width:280px'>" + description + "</body></html>");
+        JBLabel descLabel = new JBLabel("<html><body style='width:" + JBUI.scale(280) + "px'>" + description + "</body></html>");
         descLabel.setForeground(JBColor.GRAY);
         panel.add(descLabel, gbc);
 
