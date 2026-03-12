@@ -1,9 +1,4 @@
-# Tool Window
-
-## Purpose
-Tree-based UI panel for browsing specs, changes, and archives.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Tree View Display
 
@@ -28,21 +23,3 @@ The plugin SHALL provide a tool window that displays OpenSpec project contents i
 - **THEN** Refresh SHALL use `AllIcons.Actions.Refresh`
 - **AND** Propose SHALL use `AllIcons.General.Add`
 - **AND** Validate SHALL use the custom `requirement.svg` icon
-
-### Requirement: File Navigation
-
-The plugin SHALL allow users to navigate to spec files by double-clicking tree nodes.
-
-#### Scenario: Open spec file
-- GIVEN a spec tree node is visible
-- WHEN the user double-clicks the node
-- THEN the corresponding file SHALL open in the editor
-
-### Requirement: Auto Refresh
-
-The tool window SHALL automatically refresh when files in the `openspec/` directory change.
-
-#### Scenario: File system change
-- GIVEN the tool window is visible
-- WHEN a file is added or modified under `openspec/`
-- THEN the tree SHALL refresh to reflect the change
