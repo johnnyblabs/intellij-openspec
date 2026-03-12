@@ -1,9 +1,4 @@
-# Tool Window
-
-## Purpose
-Tree-based UI panel for browsing specs, changes, and archives.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Tree View Display
 
@@ -38,25 +33,6 @@ The plugin SHALL provide a tool window that displays OpenSpec project contents i
 - **WHEN** tree nodes are rendered
 - **THEN** artifacts SHALL use `artifact.svg`, delta specs SHALL use `delta-spec.svg`, missing artifacts SHALL use `missing-artifact.svg`, and other types SHALL retain their existing icons
 
-### Requirement: File Navigation
-
-The plugin SHALL allow users to navigate to spec files by double-clicking tree nodes.
-
-#### Scenario: Open spec file
-- GIVEN a spec tree node is visible
-- WHEN the user double-clicks the node
-- THEN the corresponding file SHALL open in the editor
-
-### Requirement: Auto Refresh
-
-The tool window SHALL automatically refresh when files in the `openspec/` directory change.
-
-#### Scenario: File system change
-- GIVEN the tool window is visible
-- WHEN a file is added or modified under `openspec/`
-- THEN the tree SHALL refresh to reflect the change
-- AND the tree SHALL preserve its expansion state across the refresh
-
 ### Requirement: Getting Started Panel
 
 The tool window SHALL display a state-aware Getting Started panel instead of the normal tree view when the project is not fully set up. The panel SHALL use the OpenSpec icon for branding.
@@ -82,24 +58,3 @@ The tool window SHALL display a state-aware Getting Started panel instead of the
 #### Scenario: Branded icon in Getting Started cards
 - **WHEN** a Getting Started card is displayed
 - **THEN** it SHALL use the OpenSpec icon instead of `AllIcons.General.Information`
-
-### Requirement: Setup Wizard Auto-Launch
-
-The setup wizard SHALL auto-launch on first tool window open when setup has not been completed.
-
-#### Scenario: First open
-- **WHEN** the tool window opens and `setupCompleted` is false
-- **THEN** the Setup Wizard dialog SHALL open automatically
-- **AND** the tool window SHALL rebuild after the wizard closes
-
-### Requirement: Actionable Empty State Nodes
-
-Tree hint nodes for empty sections SHALL be actionable via double-click.
-
-#### Scenario: No active changes hint
-- **WHEN** the user double-clicks the "No active changes" hint node
-- **THEN** the Propose action SHALL be triggered
-
-#### Scenario: Not initialized hint
-- **WHEN** the user double-clicks the "No openspec/ directory found" hint node
-- **THEN** the Initialize action SHALL be triggered

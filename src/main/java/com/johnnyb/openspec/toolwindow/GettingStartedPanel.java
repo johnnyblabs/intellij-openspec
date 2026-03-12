@@ -1,7 +1,7 @@
 package com.johnnyb.openspec.toolwindow;
 
-import com.intellij.icons.AllIcons;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.IconLoader;
 import com.intellij.ui.HyperlinkLabel;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.util.ui.JBUI;
@@ -19,6 +19,8 @@ import javax.swing.*;
 import java.awt.*;
 
 public class GettingStartedPanel extends JPanel {
+
+    private static final Icon OPENSPEC_ICON = IconLoader.getIcon("/icons/openspec.svg", GettingStartedPanel.class);
 
     public enum State {
         NOT_INITIALIZED,
@@ -109,7 +111,7 @@ public class GettingStartedPanel extends JPanel {
     }
 
     private JPanel createCard(String title, String description, JButton button) {
-        return EmptyStateFactory.createPanel(AllIcons.General.Information, title, description, button);
+        return EmptyStateFactory.createPanel(OPENSPEC_ICON, title, description, button);
     }
 
     private JButton createInitButton() {

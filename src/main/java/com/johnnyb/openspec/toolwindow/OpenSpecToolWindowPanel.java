@@ -24,6 +24,8 @@ import javax.swing.*;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreePath;
+import com.intellij.ui.JBColor;
+
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -317,10 +319,10 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider {
         if (detection != null && detection.isAvailable()) {
             String version = detection.getDetectedVersion();
             statusLabel.setText("CLI: available" + (version != null ? " v" + version : ""));
-            statusLabel.setForeground(new Color(0, 128, 0));
+            statusLabel.setForeground(JBColor.namedColor("Label.successForeground", new JBColor(new Color(0, 128, 0), new Color(100, 210, 100))));
         } else {
             statusLabel.setText("CLI: not found (built-in mode)");
-            statusLabel.setForeground(Color.RED);
+            statusLabel.setForeground(JBColor.RED);
         }
     }
 
@@ -340,10 +342,10 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider {
         AiToolDetectionService aiDetection = project.getService(AiToolDetectionService.class);
         if (aiDetection != null && aiDetection.hasDetectedTools()) {
             aiStatusLabel.setText(aiDetection.getSummary());
-            aiStatusLabel.setForeground(new Color(0, 128, 0));
+            aiStatusLabel.setForeground(new JBColor(new Color(0, 128, 0), new Color(100, 210, 100)));
         } else {
             aiStatusLabel.setText("AI: none");
-            aiStatusLabel.setForeground(Color.GRAY);
+            aiStatusLabel.setForeground(JBColor.GRAY);
         }
     }
 

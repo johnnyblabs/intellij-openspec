@@ -1,27 +1,4 @@
-# Settings Panel Sections
-
-## Purpose
-Visual organization of the settings panel into distinct sections. All configuration is visible without tabs.
-
-## Requirements
-
-### Requirement: Settings panel uses distinct visual sections
-The settings panel SHALL organize controls into visually distinct sections: a "Run Setup Wizard" button at the top, an "OpenSpec CLI" titled section, a "General" section for project preferences, and a "Direct API" section for AI provider configuration. No tabbed pane.
-
-#### Scenario: Panel layout on open
-- **WHEN** the user opens OpenSpec settings (Tools > OpenSpec)
-- **THEN** the panel SHALL display a "Run Setup Wizard..." button at the top
-- **AND** an "OpenSpec CLI" section below with CLI path, detect button, and version status
-- **AND** a "General" section below with schema profile and preference checkboxes
-- **AND** a "Direct API" section below with provider, API key, model, and test button
-
-#### Scenario: No tabbed pane
-- **WHEN** the user views the settings panel
-- **THEN** all configuration SHALL be visible without switching tabs
-
-#### Scenario: Setup Wizard button
-- **WHEN** the user clicks "Run Setup Wizard..."
-- **THEN** the Setup Wizard dialog SHALL open
+## MODIFIED Requirements
 
 ### Requirement: OpenSpec CLI section displays health status prominently
 The OpenSpec CLI section SHALL show the CLI detection status and version prominently so users can immediately see if their installation is working. Status colors SHALL use `JBColor` for theme compatibility.
@@ -49,10 +26,3 @@ The OpenSpec CLI section SHALL show the CLI detection status and version promine
 #### Scenario: CLI detection always resolves
 - **WHEN** the user clicks "Detect" or the panel opens
 - **THEN** the status label SHALL always transition from "Detecting..." to a terminal state (found, not found, or error) regardless of any exceptions during detection
-
-### Requirement: AI provider dropdown shows display names
-The AI provider dropdown SHALL show human-readable display names instead of enum constant names.
-
-#### Scenario: Provider names in dropdown
-- **WHEN** the user opens the AI provider dropdown
-- **THEN** the options SHALL show "None", "Claude", "OpenAI", "Gemini" (not "NONE", "CLAUDE", "OPENAI", "GEMINI")

@@ -1,6 +1,7 @@
 package com.johnnyb.openspec.toolwindow;
 
 import com.intellij.openapi.util.IconLoader;
+import com.intellij.ui.JBColor;
 
 import javax.swing.*;
 import javax.swing.tree.DefaultMutableTreeNode;
@@ -14,13 +15,17 @@ public class SpecTreeCellRenderer extends DefaultTreeCellRenderer {
     private static final Icon CHANGE_ICON = IconLoader.getIcon("/icons/change.svg", SpecTreeCellRenderer.class);
     private static final Icon REQUIREMENT_ICON = IconLoader.getIcon("/icons/requirement.svg", SpecTreeCellRenderer.class);
     private static final Icon ARCHIVE_ICON = IconLoader.getIcon("/icons/archive.svg", SpecTreeCellRenderer.class);
+    private static final Icon ARTIFACT_ICON = IconLoader.getIcon("/icons/artifact.svg", SpecTreeCellRenderer.class);
+    private static final Icon DELTA_SPEC_ICON = IconLoader.getIcon("/icons/delta-spec.svg", SpecTreeCellRenderer.class);
+    private static final Icon MISSING_ARTIFACT_ICON = IconLoader.getIcon("/icons/missing-artifact.svg", SpecTreeCellRenderer.class);
 
-    private static final Color PROPOSED_COLOR = new Color(0, 128, 0);
-    private static final Color APPLIED_COLOR = new Color(0, 0, 200);
-    private static final Color MISSING_COLOR = Color.GRAY;
-    private static final Color DONE_COLOR = new Color(0, 128, 0);
-    private static final Color READY_COLOR = new Color(0, 0, 200);
-    private static final Color BLOCKED_COLOR = Color.GRAY;
+    private static final JBColor PROPOSED_COLOR = new JBColor(new Color(0, 128, 0), new Color(100, 210, 100));
+    private static final JBColor APPLIED_COLOR = new JBColor(new Color(0, 0, 200), new Color(110, 150, 255));
+    private static final JBColor MISSING_COLOR = new JBColor(Color.GRAY, new Color(140, 140, 140));
+    private static final JBColor DONE_COLOR = new JBColor(new Color(0, 128, 0), new Color(100, 210, 100));
+    private static final JBColor READY_COLOR = new JBColor(new Color(0, 0, 200), new Color(110, 150, 255));
+    private static final JBColor BLOCKED_COLOR = new JBColor(Color.GRAY, new Color(140, 140, 140));
+    private static final JBColor HINT_COLOR = new JBColor(Color.GRAY, new Color(140, 140, 140));
 
     @Override
     public Component getTreeCellRendererComponent(JTree tree, Object value, boolean sel,
@@ -68,7 +73,7 @@ public class SpecTreeCellRenderer extends DefaultTreeCellRenderer {
                         }
                     }
                     case HINT -> {
-                        setForeground(Color.GRAY);
+                        setForeground(HINT_COLOR);
                         Font font = getFont();
                         if (font != null) {
                             setFont(font.deriveFont(Font.ITALIC));
@@ -94,9 +99,9 @@ public class SpecTreeCellRenderer extends DefaultTreeCellRenderer {
             case SPECS, SPEC_DOMAIN -> SPEC_ICON;
             case REQUIREMENT -> REQUIREMENT_ICON;
             case CHANGES, CHANGE -> CHANGE_ICON;
-            case ARTIFACT, ARTIFACT_DONE, ARTIFACT_READY, ARTIFACT_BLOCKED -> SPEC_ICON;
-            case MISSING_ARTIFACT -> SPEC_ICON;
-            case DELTA_SPEC -> SPEC_ICON;
+            case ARTIFACT, ARTIFACT_DONE, ARTIFACT_READY, ARTIFACT_BLOCKED -> ARTIFACT_ICON;
+            case MISSING_ARTIFACT -> MISSING_ARTIFACT_ICON;
+            case DELTA_SPEC -> DELTA_SPEC_ICON;
             case ARCHIVE -> ARCHIVE_ICON;
             case HINT -> null;
         };

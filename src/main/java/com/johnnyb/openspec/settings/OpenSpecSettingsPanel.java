@@ -14,6 +14,8 @@ import com.johnnyb.openspec.ai.AiProvider;
 import com.johnnyb.openspec.ai.DirectApiService;
 import com.johnnyb.openspec.services.CliDetectionService;
 
+import com.intellij.ui.JBColor;
+
 import javax.swing.*;
 import java.awt.*;
 
@@ -191,7 +193,7 @@ public class OpenSpecSettingsPanel {
                 LOG.warn("CLI detection failed unexpectedly", e);
                 com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater(() -> {
                     cliStatusLabel.setText("Detection failed: " + e.getMessage());
-                    cliStatusLabel.setForeground(Color.RED);
+                    cliStatusLabel.setForeground(JBColor.RED);
                     cliStatusLabel.repaint();
                 }, modality);
             }
@@ -203,10 +205,10 @@ public class OpenSpecSettingsPanel {
         if (detection != null && detection.isAvailable()) {
             String version = detection.getDetectedVersion();
             cliStatusLabel.setText("OpenSpec CLI " + (version != null ? "v" + version : "available"));
-            cliStatusLabel.setForeground(new Color(0, 128, 0));
+            cliStatusLabel.setForeground(new JBColor(new Color(0, 128, 0), new Color(100, 210, 100)));
         } else {
             cliStatusLabel.setText("OpenSpec CLI not found");
-            cliStatusLabel.setForeground(new Color(180, 80, 0));
+            cliStatusLabel.setForeground(new JBColor(new Color(180, 80, 0), new Color(230, 160, 80)));
         }
     }
 
@@ -238,7 +240,7 @@ public class OpenSpecSettingsPanel {
 
     private void testApiConnection() {
         aiTestResultLabel.setText("Testing...");
-        aiTestResultLabel.setForeground(Color.GRAY);
+        aiTestResultLabel.setForeground(JBColor.GRAY);
 
         String key = getApiKey();
         AiProvider provider = getSelectedProvider();
@@ -249,7 +251,7 @@ public class OpenSpecSettingsPanel {
         DirectApiService apiService = project.getService(DirectApiService.class);
         if (apiService == null) {
             aiTestResultLabel.setText("Service not available");
-            aiTestResultLabel.setForeground(Color.RED);
+            aiTestResultLabel.setForeground(JBColor.RED);
             return;
         }
 
@@ -264,11 +266,11 @@ public class OpenSpecSettingsPanel {
                 try {
                     String result = get();
                     aiTestResultLabel.setText(result);
-                    aiTestResultLabel.setForeground(new Color(0, 128, 0));
+                    aiTestResultLabel.setForeground(new JBColor(new Color(0, 128, 0), new Color(100, 210, 100)));
                 } catch (Exception e) {
                     String msg = e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
                     aiTestResultLabel.setText("Failed: " + msg);
-                    aiTestResultLabel.setForeground(Color.RED);
+                    aiTestResultLabel.setForeground(JBColor.RED);
                 }
             }
         }.execute();
