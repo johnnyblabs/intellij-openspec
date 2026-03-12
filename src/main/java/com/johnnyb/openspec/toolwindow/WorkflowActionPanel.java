@@ -1,5 +1,9 @@
 package com.johnnyb.openspec.toolwindow;
 
+import com.intellij.openapi.actionSystem.ActionManager;
+import com.intellij.openapi.actionSystem.AnAction;
+import com.intellij.openapi.actionSystem.AnActionEvent;
+import com.intellij.openapi.actionSystem.DataContext;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.project.Project;
@@ -13,6 +17,10 @@ import com.intellij.util.ui.JBUI;
 import com.johnnyb.openspec.ai.AiApiException;
 import com.johnnyb.openspec.ai.DeliveryMode;
 import com.johnnyb.openspec.ai.DirectApiService;
+import com.johnnyb.openspec.tracking.ArchiveSyncService;
+import com.johnnyb.openspec.validation.BuiltInValidator;
+import com.johnnyb.openspec.validation.ValidationIssue;
+import com.johnnyb.openspec.validation.ValidationResult;
 import com.johnnyb.openspec.model.ArtifactInfo;
 import com.johnnyb.openspec.model.ArtifactInstruction;
 import com.johnnyb.openspec.model.ArtifactStatus;
@@ -117,6 +125,10 @@ public class WorkflowActionPanel extends JPanel {
     private String generatingArtifactId;
     private String errorArtifactId;
     private int spinnerStep;
+
+    // Archive and post-archive controls
+    private final JButton archiveButton;
+    private final JButton startNewChangeButton;
 
     // Retry state
     private final JButton retryButton;
@@ -279,6 +291,16 @@ public class WorkflowActionPanel extends JPanel {
         applyButton.setVisible(false);
         applyButton.addActionListener(e -> onApplyTasks());
 
+        archiveButton = new JButton("Archive");
+        archiveButton.setIcon(AllIcons.Actions.Checked);
+        archiveButton.setVisible(false);
+        archiveButton.addActionListener(e -> onArchive());
+
+        startNewChangeButton = new JButton("Start New Change");
+        startNewChangeButton.setIcon(AllIcons.General.Add);
+        startNewChangeButton.setVisible(false);
+        startNewChangeButton.addActionListener(e -> onStartNewChange());
+
         // --- Layout: vertical stack with full-width guidance ---
 
         // Header row: change selector (left) + tool dropdown (right)
@@ -310,6 +332,8 @@ public class WorkflowActionPanel extends JPanel {
         actionRow.add(generateButton);
         actionRow.add(generateAllButton);
         actionRow.add(applyButton);
+        actionRow.add(archiveButton);
+        actionRow.add(startNewChangeButton);
         actionRow.add(retryButton);
         actionRow.add(syncRetryButton);
         actionRow.add(cancelButton);
@@ -812,12 +836,15 @@ public class WorkflowActionPanel extends JPanel {
         }
 
         if (tasksContent == null) {
-            generateButton.setVisible(true);
-            generateButton.setText("All complete");
-            generateButton.setEnabled(false);
+            generateButton.setVisible(false);
             applyButton.setVisible(false);
+            archiveButton.setVisible(true);
+            archiveButton.setEnabled(true);
+            archiveButton.setText("Archive");
+            startNewChangeButton.setVisible(false);
             taskProgressLabel.setVisible(false);
             taskHintLabel.setVisible(false);
+            runChangeValidation();
             return;
         }
 
@@ -827,13 +854,16 @@ public class WorkflowActionPanel extends JPanel {
         int remaining = total - complete;
 
         if (total == 0 || remaining == 0) {
-            generateButton.setVisible(true);
-            generateButton.setText("All complete");
-            generateButton.setEnabled(false);
+            generateButton.setVisible(false);
             applyButton.setVisible(false);
+            archiveButton.setVisible(true);
+            archiveButton.setEnabled(true);
+            archiveButton.setText("Archive");
+            startNewChangeButton.setVisible(false);
             taskProgressLabel.setText(total > 0 ? complete + "/" + total + " tasks complete" : "");
             taskProgressLabel.setVisible(total > 0);
             taskHintLabel.setVisible(false);
+            runChangeValidation();
             return;
         }
 
@@ -970,21 +1000,157 @@ public class WorkflowActionPanel extends JPanel {
             taskProgressLabel.setText(complete + "/" + total + " tasks complete");
 
             if (total > 0 && complete == total) {
-                // All done!
+                // All done — show archive button
                 guidancePanel.setVisible(false);
                 applyButton.setVisible(false);
-                generateButton.setVisible(true);
-                generateButton.setText("All complete");
-                generateButton.setEnabled(false);
+                generateButton.setVisible(false);
+                archiveButton.setVisible(true);
+                archiveButton.setEnabled(true);
+                archiveButton.setText("Archive");
+                startNewChangeButton.setVisible(false);
                 taskHintLabel.setVisible(false);
-                OpenSpecNotifier.info(project,
-                        "All tasks complete for \"" + changeName + "\"! Consider archiving.");
+                runChangeValidation();
                 if (onRefreshRequested != null) onRefreshRequested.run();
             } else {
                 guidanceWatchingLabel.setText("Progress: " + complete + "/" + total + " \u2014 still watching...");
             }
         } catch (IOException ignored) {
         }
+    }
+
+    // --- Archive ---
+
+    private void onArchive() {
+        if (activeChangeName == null) return;
+        String changeName = activeChangeName;
+
+        archiveButton.setEnabled(false);
+        archiveButton.setText("Archiving...");
+
+        ChangeService changeService = project.getService(ChangeService.class);
+        Change target = null;
+        for (Change c : changeService.getActiveChanges()) {
+            if (changeName.equals(c.getName())) {
+                target = c;
+                break;
+            }
+        }
+        if (target == null) {
+            archiveButton.setEnabled(true);
+            archiveButton.setText("Archive");
+            OpenSpecNotifier.error(project, "Change not found: " + changeName);
+            return;
+        }
+
+        Change finalTarget = target;
+        ApplicationManager.getApplication().executeOnPooledThread(() -> {
+            try {
+                ApplicationManager.getApplication().invokeAndWait(() -> {
+                    try {
+                        changeService.archiveChange(finalTarget);
+                    } catch (IOException ex) {
+                        throw new RuntimeException(ex);
+                    }
+                });
+
+                ArchiveSyncService syncService = project.getService(ArchiveSyncService.class);
+                if (syncService != null) {
+                    syncService.syncAsync(changeName, () ->
+                            SwingUtilities.invokeLater(() -> showPostArchiveState(changeName, true)));
+                } else {
+                    SwingUtilities.invokeLater(() -> showPostArchiveState(changeName, true));
+                }
+            } catch (Exception ex) {
+                SwingUtilities.invokeLater(() -> {
+                    archiveButton.setEnabled(true);
+                    archiveButton.setText("Archive");
+                    OpenSpecNotifier.error(project, "Archive failed: " + ex.getMessage());
+                });
+            }
+        });
+    }
+
+    private void showPostArchiveState(String changeName, boolean syncSuccess) {
+        archiveButton.setVisible(false);
+        generateButton.setVisible(false);
+        applyButton.setVisible(false);
+        generateAllButton.setVisible(false);
+        cancelButton.setVisible(false);
+        retryButton.setVisible(false);
+        taskHintLabel.setVisible(false);
+        taskProgressLabel.setVisible(false);
+
+        startNewChangeButton.setVisible(true);
+
+        if (syncSuccess) {
+            syncRetryButton.setVisible(false);
+            guidanceMessageLabel.setText("\u2713 " + changeName + " archived");
+            guidanceMessageLabel.setForeground(COLOR_SUCCESS);
+        } else {
+            syncRetryButton.setVisible(true);
+            guidanceMessageLabel.setText("\u2713 " + changeName + " archived \u2014 sync failed");
+            guidanceMessageLabel.setForeground(COLOR_ERROR);
+        }
+        guidanceWatchingLabel.setVisible(false);
+        guidanceNextLabel.setVisible(false);
+        copyAgainButton.setVisible(false);
+        checkUpdatesButton.setVisible(false);
+        guidancePanel.setVisible(true);
+
+        if (onRefreshRequested != null) onRefreshRequested.run();
+    }
+
+    private void onStartNewChange() {
+        AnAction proposeAction = ActionManager.getInstance().getAction("OpenSpec.Propose");
+        if (proposeAction != null) {
+            DataContext dataContext = DataContext.EMPTY_CONTEXT;
+            AnActionEvent event = AnActionEvent.createFromAnAction(
+                    proposeAction, null, "OpenSpecWorkflowPanel", dataContext);
+            proposeAction.actionPerformed(event);
+        }
+    }
+
+    // --- Change-level validation ---
+
+    private void runChangeValidation() {
+        if (activeChangeName == null) return;
+        String changeName = activeChangeName;
+
+        ApplicationManager.getApplication().executeOnPooledThread(() -> {
+            BuiltInValidator validator = project.getService(BuiltInValidator.class);
+            ValidationResult result = validator.validateChange(changeName);
+
+            SwingUtilities.invokeLater(() -> {
+                long errorCount = result.issues().stream()
+                        .filter(i -> i.severity() == ValidationIssue.Severity.ERROR).count();
+                long warnCount = result.issues().stream()
+                        .filter(i -> i.severity() == ValidationIssue.Severity.WARNING).count();
+
+                if (errorCount > 0) {
+                    String firstError = result.issues().stream()
+                            .filter(i -> i.severity() == ValidationIssue.Severity.ERROR)
+                            .findFirst().map(ValidationIssue::message).orElse("");
+                    guidanceMessageLabel.setText("\u2717 " + errorCount + " error" +
+                            (errorCount > 1 ? "s" : "") + ": " + firstError);
+                    guidanceMessageLabel.setForeground(COLOR_ERROR);
+                } else if (warnCount > 0) {
+                    String firstWarn = result.issues().stream()
+                            .filter(i -> i.severity() == ValidationIssue.Severity.WARNING)
+                            .findFirst().map(ValidationIssue::message).orElse("");
+                    guidanceMessageLabel.setText("\u26A0 " + warnCount + " warning" +
+                            (warnCount > 1 ? "s" : "") + ": " + firstWarn);
+                    guidanceMessageLabel.setForeground(JBColor.ORANGE);
+                } else {
+                    guidanceMessageLabel.setText("\u2713 Change valid");
+                    guidanceMessageLabel.setForeground(COLOR_SUCCESS);
+                }
+                guidanceWatchingLabel.setVisible(false);
+                guidanceNextLabel.setVisible(false);
+                copyAgainButton.setVisible(false);
+                checkUpdatesButton.setVisible(false);
+                guidancePanel.setVisible(true);
+            });
+        });
     }
 
     // --- Generation ---

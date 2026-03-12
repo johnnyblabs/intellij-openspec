@@ -107,36 +107,49 @@ public final class BuiltInValidator {
 
     public ValidationResult validateChanges() {
         List<ValidationIssue> issues = new ArrayList<>();
+        ChangeService changeService = project.getService(ChangeService.class);
+        for (Change change : changeService.getActiveChanges()) {
+            issues.addAll(validateSingleChange(change).issues());
+        }
+        boolean passed = issues.stream().noneMatch(i -> i.severity() == ValidationIssue.Severity.ERROR);
+        return new ValidationResult(passed, issues, "built-in");
+    }
+
+    public ValidationResult validateChange(String changeName) {
+        ChangeService changeService = project.getService(ChangeService.class);
+        for (Change change : changeService.getActiveChanges()) {
+            if (changeName.equals(change.getName())) {
+                return validateSingleChange(change);
+            }
+        }
+        return new ValidationResult(true, List.of(), "built-in");
+    }
+
+    private ValidationResult validateSingleChange(Change change) {
+        List<ValidationIssue> issues = new ArrayList<>();
         boolean strict = OpenSpecSettings.getInstance(project).isStrictValidation();
         VersionSupport version = getVersionSupport();
         Set<String> required = version.getRequiredArtifacts();
+        String changePath = change.getPath();
 
-        ChangeService changeService = project.getService(ChangeService.class);
-        for (Change change : changeService.getActiveChanges()) {
-            String changePath = change.getPath();
-
-            // Must have proposal.md
-            if (!change.getArtifactFiles().contains("proposal.md")) {
-                issues.add(new ValidationIssue(ValidationIssue.Severity.ERROR, changePath, 1,
-                        "Change '" + change.getName() + "' must have proposal.md", "change-proposal-required"));
-            }
-
-            // Check other required artifacts (IDs map to files: design→design.md, tasks→tasks.md)
-            for (String artifact : required) {
-                if ("proposal".equals(artifact)) continue; // already checked above
-                if ("specs".equals(artifact)) continue; // validated separately via delta specs
-                String fileName = artifact + ".md";
-                if (!change.getArtifactFiles().contains(fileName)) {
-                    ValidationIssue.Severity severity = strict
-                            ? ValidationIssue.Severity.ERROR : ValidationIssue.Severity.WARNING;
-                    issues.add(new ValidationIssue(severity, changePath, 1,
-                            "Change '" + change.getName() + "' should have " + fileName, "change-artifact-missing"));
-                }
-            }
-
-            // Validate delta specs have ADDED/MODIFIED/REMOVED
-            validateDeltaSpecs(changePath, issues);
+        if (!change.getArtifactFiles().contains("proposal.md")) {
+            issues.add(new ValidationIssue(ValidationIssue.Severity.ERROR, changePath, 1,
+                    "Change '" + change.getName() + "' must have proposal.md", "change-proposal-required"));
         }
+
+        for (String artifact : required) {
+            if ("proposal".equals(artifact)) continue;
+            if ("specs".equals(artifact)) continue;
+            String fileName = artifact + ".md";
+            if (!change.getArtifactFiles().contains(fileName)) {
+                ValidationIssue.Severity severity = strict
+                        ? ValidationIssue.Severity.ERROR : ValidationIssue.Severity.WARNING;
+                issues.add(new ValidationIssue(severity, changePath, 1,
+                        "Change '" + change.getName() + "' should have " + fileName, "change-artifact-missing"));
+            }
+        }
+
+        validateDeltaSpecs(changePath, issues);
         boolean passed = issues.stream().noneMatch(i -> i.severity() == ValidationIssue.Severity.ERROR);
         return new ValidationResult(passed, issues, "built-in");
     }
