@@ -53,3 +53,6 @@ scripts/.env
 
 ### Claude Code local settings ###
 .claude/settings.local.json
+
+### Quarkus CLI cache ###
+.quarkus/
