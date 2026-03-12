@@ -2,6 +2,7 @@ package com.johnnyb.openspec.toolwindow;
 
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.IconLoader;
+import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.ui.HyperlinkLabel;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.util.ui.JBUI;
@@ -14,6 +15,7 @@ import com.johnnyb.openspec.dialogs.SetupWizardDialog;
 import com.johnnyb.openspec.scaffolding.ScaffoldingService;
 import com.johnnyb.openspec.settings.OpenSpecSettings;
 import com.johnnyb.openspec.util.OpenSpecFileUtil;
+import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 import java.awt.*;
@@ -30,10 +32,16 @@ public class GettingStartedPanel extends JPanel {
     }
 
     private final Project project;
+    private final @Nullable ToolWindow toolWindow;
 
     public GettingStartedPanel(Project project) {
+        this(project, null);
+    }
+
+    public GettingStartedPanel(Project project, @Nullable ToolWindow toolWindow) {
         super(new GridBagLayout());
         this.project = project;
+        this.toolWindow = toolWindow;
         rebuild();
     }
 
@@ -151,6 +159,11 @@ public class GettingStartedPanel extends JPanel {
                 DataContext context = dataId -> com.intellij.openapi.actionSystem.CommonDataKeys.PROJECT.is(dataId) ? project : null;
                 AnActionEvent event = AnActionEvent.createFromAnAction(action, null, "GettingStartedPanel", context);
                 action.actionPerformed(event);
+            }
+            // Transition to tree view if a change was created
+            if (toolWindow != null && detectState() == State.READY) {
+                toolWindow.getContentManager().removeAllContents(true);
+                OpenSpecToolWindowFactory.createNormalContent(project, toolWindow);
             }
         });
         return btn;

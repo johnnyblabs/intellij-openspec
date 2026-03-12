@@ -15,7 +15,7 @@ public class OpenSpecToolWindowFactory implements ToolWindowFactory, DumbAware {
 
     @Override
     public void createToolWindowContent(@NotNull Project project, @NotNull ToolWindow toolWindow) {
-        GettingStartedPanel gettingStarted = new GettingStartedPanel(project);
+        GettingStartedPanel gettingStarted = new GettingStartedPanel(project, toolWindow);
         GettingStartedPanel.State state = gettingStarted.detectState();
 
         if (state == GettingStartedPanel.State.READY) {
@@ -32,7 +32,7 @@ public class OpenSpecToolWindowFactory implements ToolWindowFactory, DumbAware {
                 dialog.show();
                 // Rebuild tool window after wizard completes
                 toolWindow.getContentManager().removeAllContents(true);
-                GettingStartedPanel refreshed = new GettingStartedPanel(project);
+                GettingStartedPanel refreshed = new GettingStartedPanel(project, toolWindow);
                 if (refreshed.detectState() == GettingStartedPanel.State.READY) {
                     createNormalContent(project, toolWindow);
                 } else {
@@ -42,7 +42,7 @@ public class OpenSpecToolWindowFactory implements ToolWindowFactory, DumbAware {
         }
     }
 
-    private void createNormalContent(Project project, ToolWindow toolWindow) {
+    static void createNormalContent(Project project, ToolWindow toolWindow) {
         ContentFactory contentFactory = ContentFactory.getInstance();
 
         // Browse tab (tree view)

@@ -63,7 +63,7 @@ The tool window SHALL automatically refresh when files in the `openspec/` direct
 
 ### Requirement: Getting Started Panel
 
-The tool window SHALL display a state-aware Getting Started panel instead of the normal tree view when the project is not fully set up. The panel SHALL use the OpenSpec icon for branding.
+The tool window SHALL display a state-aware Getting Started panel instead of the normal tree view when the project is not fully set up. The panel SHALL use the OpenSpec icon for branding. Card description text SHALL wrap within the tool window width. After a successful propose action from the panel, the tool window SHALL automatically transition to the normal tree view.
 
 #### Scenario: Project not initialized
 - **WHEN** the tool window opens and no `openspec/` directory exists
@@ -86,6 +86,14 @@ The tool window SHALL display a state-aware Getting Started panel instead of the
 #### Scenario: Branded icon in Getting Started cards
 - **WHEN** a Getting Started card is displayed
 - **THEN** it SHALL use the OpenSpec icon instead of `AllIcons.General.Information`
+
+#### Scenario: Card description text wraps
+- **WHEN** a Getting Started card is displayed in a narrow tool window
+- **THEN** the description text SHALL wrap within the available width instead of clipping or overflowing
+
+#### Scenario: Auto-transition after first propose
+- **WHEN** the user clicks "Propose a Change" and successfully creates a change from the Getting Started panel
+- **THEN** the tool window SHALL replace the Getting Started panel with the normal Browse and Console tabs
 
 ### Requirement: Setup Wizard Auto-Launch
 
