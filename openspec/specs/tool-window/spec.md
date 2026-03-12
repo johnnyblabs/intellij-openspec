@@ -7,7 +7,7 @@ Tree-based UI panel for browsing specs, changes, and archives.
 
 ### Requirement: Tree View Display
 
-The plugin SHALL provide a tool window that displays OpenSpec project contents in a navigable tree structure, with a Workflow Action Panel below the tree for guided artifact generation. The toolbar SHALL contain only project-level operations — change-scoped actions are handled exclusively by the Workflow Action Panel and main menu. The tree cell renderer SHALL use `JBColor` for all status colors and distinct icons for each node type.
+The plugin SHALL provide a tool window that displays OpenSpec project contents in a navigable tree structure, with a Workflow Action Panel below the tree for guided artifact generation. The toolbar SHALL contain only project-level operations — change-scoped actions are handled exclusively by the Workflow Action Panel and main menu. The tree cell renderer SHALL use `JBColor` for all status colors and distinct icons for each node type. All tree nodes SHALL display contextual tooltips on hover.
 
 #### Scenario: Tree structure
 - **WHEN** the tool window is opened
@@ -37,6 +37,10 @@ The plugin SHALL provide a tool window that displays OpenSpec project contents i
 #### Scenario: Each node type has a distinct icon
 - **WHEN** tree nodes are rendered
 - **THEN** artifacts SHALL use `artifact.svg`, delta specs SHALL use `delta-spec.svg`, missing artifacts SHALL use `missing-artifact.svg`, and other types SHALL retain their existing icons
+
+#### Scenario: Tree nodes display tooltips on hover
+- **WHEN** the user hovers over any tree node
+- **THEN** a tooltip SHALL appear with contextual information relevant to that node type
 
 ### Requirement: File Navigation
 

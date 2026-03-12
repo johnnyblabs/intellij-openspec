@@ -37,6 +37,7 @@ public class SpecTreeCellRenderer extends DefaultTreeCellRenderer {
 
             if (userObject instanceof SpecTreeModel.TreeNodeData data) {
                 setIcon(getIconForType(data.type()));
+                setToolTipText(data.tooltip());
 
                 // Apply status styling
                 switch (data.type()) {

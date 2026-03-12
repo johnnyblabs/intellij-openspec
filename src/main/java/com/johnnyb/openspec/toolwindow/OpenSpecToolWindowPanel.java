@@ -52,6 +52,7 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider {
         tree.setCellRenderer(new SpecTreeCellRenderer());
         tree.setRootVisible(true);
         tree.setShowsRootHandles(true);
+        javax.swing.ToolTipManager.sharedInstance().registerComponent(tree);
 
         tree.addMouseListener(new MouseAdapter() {
             @Override
