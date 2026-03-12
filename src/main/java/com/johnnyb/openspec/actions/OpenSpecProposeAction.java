@@ -9,6 +9,7 @@ import com.intellij.openapi.wm.ToolWindowManager;
 import com.intellij.ui.content.Content;
 import com.johnnyb.openspec.dialogs.ProposeChangeDialog;
 import com.johnnyb.openspec.scaffolding.ScaffoldingService;
+import com.johnnyb.openspec.settings.OpenSpecSettings;
 import com.johnnyb.openspec.toolwindow.OpenSpecToolWindowPanel;
 import com.johnnyb.openspec.tracking.IssueLifecycleService;
 import com.johnnyb.openspec.util.OpenSpecNotifier;
@@ -52,6 +53,15 @@ public class OpenSpecProposeAction extends OpenSpecBaseAction {
             ScaffoldingService scaffolding = project.getService(ScaffoldingService.class);
             VirtualFile changeDir = scaffolding.createChange(changeName, why, whatChanges);
             OpenSpecNotifier.info(project, "Propose", "Change proposed: " + changeDir.getName());
+
+            // Fire "What's Next" notification on first proposal
+            OpenSpecSettings settings = OpenSpecSettings.getInstance(project);
+            if (!settings.isFirstProposalCompleted()) {
+                OpenSpecNotifier.info(project, "What's Next",
+                        "Your change is created! Next, generate artifacts (design, specs, tasks) " +
+                        "from the workflow panel, then implement the tasks.");
+                settings.setFirstProposalCompleted(true);
+            }
 
             // Trigger issue creation in configured trackers
             IssueLifecycleService lifecycle = project.getService(IssueLifecycleService.class);

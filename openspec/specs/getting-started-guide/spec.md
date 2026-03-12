@@ -68,3 +68,14 @@ The guide SHALL explain the artifact dependency pipeline and how it appears in t
 #### Scenario: Pipeline concepts explained
 - **WHEN** a user reads the pipeline section
 - **THEN** the guide SHALL explain the DAG order (proposal → design → specs → tasks), status indicators (done/ready/blocked), and how the pipeline chips visualize progress
+
+### Requirement: NO_CHANGES empty state includes educational content
+The GettingStartedPanel NO_CHANGES state SHALL include a brief explanation of what a change is and how to scope one, in addition to the "Propose a Change" button.
+
+#### Scenario: Change concept explained
+- **WHEN** the GettingStartedPanel displays the NO_CHANGES state
+- **THEN** the description text SHALL explain that a change represents a scoped unit of work with a name, motivation, and list of what will be built or modified
+
+#### Scenario: Scoping guidance provided
+- **WHEN** the GettingStartedPanel displays the NO_CHANGES state
+- **THEN** the description text SHALL include a brief tip on how to scope a change (e.g., "Keep it focused — one feature or fix per change")

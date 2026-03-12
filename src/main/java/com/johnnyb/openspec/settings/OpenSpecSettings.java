@@ -109,6 +109,14 @@ public final class OpenSpecSettings implements PersistentStateComponent<OpenSpec
         state.setupCompleted = completed;
     }
 
+    public boolean isFirstProposalCompleted() {
+        return state.firstProposalCompleted;
+    }
+
+    public void setFirstProposalCompleted(boolean completed) {
+        state.firstProposalCompleted = completed;
+    }
+
     /**
      * Returns the effective version: settings override if set, else config.yaml version.
      */
@@ -162,6 +170,7 @@ public final class OpenSpecSettings implements PersistentStateComponent<OpenSpec
         public String preferredDeliveryMethod = "";
         public String preferredTool = "";
         public boolean setupCompleted = false;
+        public boolean firstProposalCompleted = false;
 
         // Issue tracking
         public boolean forgejoEnabled = false;

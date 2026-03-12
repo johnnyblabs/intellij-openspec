@@ -97,7 +97,9 @@ public class GettingStartedPanel extends JPanel {
             case NO_CHANGES -> {
                 add(createCard(
                         "Create your first change",
-                        "Propose a new change to start defining requirements and generating artifacts.",
+                        "A change is a scoped unit of work — one feature, fix, or improvement. " +
+                        "Give it a name, describe why it's needed, and OpenSpec will help you " +
+                        "generate design docs, specs, and tasks. Keep it focused: one change per feature.",
                         createProposeButton()
                 ), gbc);
             }
