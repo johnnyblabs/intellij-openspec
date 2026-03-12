@@ -600,7 +600,19 @@ public class WorkflowActionPanel extends JPanel {
                 taskProgressLabel.setVisible(false);
                 taskHintLabel.setVisible(false);
                 activeChangeName = null;
-                pipelinePanel.add(new JBLabel("Use Propose to create a change"));
+                JBLabel emptyLabel = new JBLabel("No changes yet.");
+                emptyLabel.setForeground(JBColor.GRAY);
+                pipelinePanel.add(emptyLabel);
+                com.intellij.ui.HyperlinkLabel proposeLink = new com.intellij.ui.HyperlinkLabel("Propose a change");
+                proposeLink.addHyperlinkListener(ev -> {
+                    AnAction action = ActionManager.getInstance().getAction("OpenSpec.Propose");
+                    if (action != null) {
+                        DataContext ctx = dataId -> com.intellij.openapi.actionSystem.CommonDataKeys.PROJECT.is(dataId) ? project : null;
+                        AnActionEvent event = AnActionEvent.createFromAnAction(action, null, "WorkflowPanel", ctx);
+                        action.actionPerformed(event);
+                    }
+                });
+                pipelinePanel.add(proposeLink);
                 pipelinePanel.revalidate();
                 pipelinePanel.repaint();
                 return;
@@ -825,16 +837,25 @@ public class WorkflowActionPanel extends JPanel {
     }
 
     private void showApplyState(ChangeArtifactDag dag) {
-        String changeDir = project.getBasePath() + "/openspec/changes/" + activeChangeName;
-        String tasksContent = null;
-        try {
-            Path tasksPath = Path.of(changeDir, "tasks.md");
-            if (Files.exists(tasksPath)) {
-                tasksContent = Files.readString(tasksPath);
-            }
-        } catch (IOException ignored) {
-        }
+        String changeName = activeChangeName;
+        String changeDir = project.getBasePath() + "/openspec/changes/" + changeName;
 
+        ApplicationManager.getApplication().executeOnPooledThread(() -> {
+            String tasksContent = null;
+            try {
+                Path tasksPath = Path.of(changeDir, "tasks.md");
+                if (Files.exists(tasksPath)) {
+                    tasksContent = Files.readString(tasksPath);
+                }
+            } catch (IOException ignored) {
+            }
+
+            String finalTasksContent = tasksContent;
+            ApplicationManager.getApplication().invokeLater(() -> applyStateToUi(finalTasksContent));
+        });
+    }
+
+    private void applyStateToUi(String tasksContent) {
         if (tasksContent == null) {
             generateButton.setVisible(false);
             applyButton.setVisible(false);
@@ -991,31 +1012,35 @@ public class WorkflowActionPanel extends JPanel {
     }
 
     private void onTaskFileChanged(String changeName, String changeDir) {
-        try {
-            String content = Files.readString(Path.of(changeDir, "tasks.md"));
-            int[] counts = ApplyPromptBuilder.countTasks(content);
-            int complete = counts[0];
-            int total = counts[1];
+        ApplicationManager.getApplication().executeOnPooledThread(() -> {
+            try {
+                String content = Files.readString(Path.of(changeDir, "tasks.md"));
+                int[] counts = ApplyPromptBuilder.countTasks(content);
+                int complete = counts[0];
+                int total = counts[1];
 
-            taskProgressLabel.setText(complete + "/" + total + " tasks complete");
+                ApplicationManager.getApplication().invokeLater(() -> {
+                    taskProgressLabel.setText(complete + "/" + total + " tasks complete");
 
-            if (total > 0 && complete == total) {
-                // All done — show archive button
-                guidancePanel.setVisible(false);
-                applyButton.setVisible(false);
-                generateButton.setVisible(false);
-                archiveButton.setVisible(true);
-                archiveButton.setEnabled(true);
-                archiveButton.setText("Archive");
-                startNewChangeButton.setVisible(false);
-                taskHintLabel.setVisible(false);
-                runChangeValidation();
-                if (onRefreshRequested != null) onRefreshRequested.run();
-            } else {
-                guidanceWatchingLabel.setText("Progress: " + complete + "/" + total + " \u2014 still watching...");
+                    if (total > 0 && complete == total) {
+                        // All done — show archive button
+                        guidancePanel.setVisible(false);
+                        applyButton.setVisible(false);
+                        generateButton.setVisible(false);
+                        archiveButton.setVisible(true);
+                        archiveButton.setEnabled(true);
+                        archiveButton.setText("Archive");
+                        startNewChangeButton.setVisible(false);
+                        taskHintLabel.setVisible(false);
+                        runChangeValidation();
+                        if (onRefreshRequested != null) onRefreshRequested.run();
+                    } else {
+                        guidanceWatchingLabel.setText("Progress: " + complete + "/" + total + " \u2014 still watching...");
+                    }
+                });
+            } catch (IOException ignored) {
             }
-        } catch (IOException ignored) {
-        }
+        });
     }
 
     // --- Archive ---
@@ -1390,7 +1415,7 @@ public class WorkflowActionPanel extends JPanel {
 
         // Count remaining artifacts for progress bar
         ArtifactOrchestrationService orch = project.getService(ArtifactOrchestrationService.class);
-        ChangeArtifactDag currentDag = orch.getArtifactStatus(changeName);
+        ChangeArtifactDag currentDag = orch.getCachedArtifactStatus(changeName);
         int totalRemaining = currentDag != null
                 ? (int) currentDag.getArtifacts().stream().filter(a -> a.status() != ArtifactStatus.DONE).count()
                 : 4;
@@ -1422,7 +1447,7 @@ public class WorkflowActionPanel extends JPanel {
                     generateButton.setText("Generating " + artifactId + "... " + index + "/" + total);
                     // Refresh chips to show GENERATING state
                     ArtifactOrchestrationService o = project.getService(ArtifactOrchestrationService.class);
-                    ChangeArtifactDag dag = o.getArtifactStatus(changeName);
+                    ChangeArtifactDag dag = o.getCachedArtifactStatus(changeName);
                     if (dag != null) {
                         refreshPipelineChips(dag);
                     }
@@ -1444,7 +1469,7 @@ public class WorkflowActionPanel extends JPanel {
 
                     // Refresh chips
                     ArtifactOrchestrationService o = project.getService(ArtifactOrchestrationService.class);
-                    ChangeArtifactDag dag = o.getArtifactStatus(changeName);
+                    ChangeArtifactDag dag = o.getCachedArtifactStatus(changeName);
                     if (dag != null) {
                         refreshPipelineChips(dag);
                     }
@@ -1505,7 +1530,7 @@ public class WorkflowActionPanel extends JPanel {
                     // Show error chip state
                     errorArtifactId = artifactId;
                     ArtifactOrchestrationService o = project.getService(ArtifactOrchestrationService.class);
-                    ChangeArtifactDag dag = o.getArtifactStatus(changeName);
+                    ChangeArtifactDag dag = o.getCachedArtifactStatus(changeName);
                     if (dag != null) {
                         refreshPipelineChips(dag);
                     }
@@ -1634,7 +1659,7 @@ public class WorkflowActionPanel extends JPanel {
         // Restore normal state after 300ms
         javax.swing.Timer flashTimer = new javax.swing.Timer(300, e -> {
             ArtifactOrchestrationService o = project.getService(ArtifactOrchestrationService.class);
-            ChangeArtifactDag dag = o.getArtifactStatus(changeName);
+            ChangeArtifactDag dag = o.getCachedArtifactStatus(changeName);
             if (dag != null) {
                 refreshPipelineChips(dag);
             }

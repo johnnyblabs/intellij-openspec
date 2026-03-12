@@ -123,6 +123,11 @@
                     text="Refresh Tree"
                     description="Refresh the OpenSpec tool window"
                     icon="AllIcons.Actions.Refresh"/>
+            <action id="OpenSpec.SetupWizard"
+                    class="com.johnnyb.openspec.actions.OpenSpecSetupWizardAction"
+                    text="Setup Wizard..."
+                    description="Run the OpenSpec setup wizard"
+                    icon="AllIcons.General.GearPlain"/>
             <add-to-group group-id="MainMenu" anchor="before" relative-to-action="ToolsMenu"/>
         </group>
 
@@ -131,6 +136,7 @@
             <reference ref="OpenSpec.Refresh"/>
             <reference ref="OpenSpec.Validate"/>
             <reference ref="OpenSpec.Propose"/>
+            <reference ref="OpenSpec.SetupWizard"/>
         </group>
     </actions>
 </idea-plugin>

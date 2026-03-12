@@ -27,7 +27,7 @@ public class SpecTreeModel {
 
         if (!OpenSpecFileUtil.isOpenSpecProject(project)) {
             root.add(new DefaultMutableTreeNode(
-                    new TreeNodeData("Not an OpenSpec project. Use Init to set up.", TreeNodeType.HINT, null)));
+                    new TreeNodeData("No openspec/ directory found — click Initialize to set up.", TreeNodeType.HINT, null)));
             return new DefaultTreeModel(root);
         }
 
@@ -47,7 +47,7 @@ public class SpecTreeModel {
 
         if (specs.isEmpty()) {
             specsNode.add(new DefaultMutableTreeNode(
-                    new TreeNodeData("No specs found. Run Init to get started.", TreeNodeType.HINT, null)));
+                    new TreeNodeData("No specs found yet.", TreeNodeType.HINT, null)));
             return specsNode;
         }
 
@@ -75,7 +75,7 @@ public class SpecTreeModel {
 
         if (changes.isEmpty()) {
             changesNode.add(new DefaultMutableTreeNode(
-                    new TreeNodeData("No active changes. Use Propose to create one.", TreeNodeType.HINT, null)));
+                    new TreeNodeData("No active changes — double-click to propose one.", TreeNodeType.HINT, null)));
             return changesNode;
         }
 

@@ -27,6 +27,7 @@ import javax.swing.tree.TreePath;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.*;
 import java.util.List;
 
 public class OpenSpecToolWindowPanel extends JPanel implements DataProvider {
@@ -88,16 +89,54 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider {
     }
 
     private void refreshAsync() {
+        Set<String> expandedLabels = saveExpansionState();
         ApplicationManager.getApplication().executeOnPooledThread(() -> {
             SpecTreeModel treeModel = new SpecTreeModel(project);
             DefaultTreeModel model = treeModel.buildModel();
             ApplicationManager.getApplication().invokeLater(() -> {
                 tree.setModel(model);
+                restoreExpansionState(expandedLabels);
                 updateCliStatus();
                 updateAiStatus();
             });
         });
         workflowPanel.refresh();
+    }
+
+    private Set<String> saveExpansionState() {
+        Set<String> expanded = new HashSet<>();
+        int rowCount = tree.getRowCount();
+        for (int i = 0; i < rowCount; i++) {
+            TreePath path = tree.getPathForRow(i);
+            if (path != null && tree.isExpanded(path)) {
+                expanded.add(pathToKey(path));
+            }
+        }
+        return expanded;
+    }
+
+    private void restoreExpansionState(Set<String> expandedKeys) {
+        DefaultMutableTreeNode root = (DefaultMutableTreeNode) tree.getModel().getRoot();
+        restoreNodeExpansion(root, new TreePath(root), expandedKeys);
+    }
+
+    private void restoreNodeExpansion(DefaultMutableTreeNode node, TreePath path, Set<String> expandedKeys) {
+        if (expandedKeys.contains(pathToKey(path))) {
+            tree.expandPath(path);
+        }
+        for (int i = 0; i < node.getChildCount(); i++) {
+            DefaultMutableTreeNode child = (DefaultMutableTreeNode) node.getChildAt(i);
+            restoreNodeExpansion(child, path.pathByAddingChild(child), expandedKeys);
+        }
+    }
+
+    private String pathToKey(TreePath path) {
+        StringBuilder sb = new StringBuilder();
+        for (Object component : path.getPath()) {
+            if (!sb.isEmpty()) sb.append("/");
+            sb.append(component.toString());
+        }
+        return sb.toString();
     }
 
     private JComponent createActionToolbar() {
@@ -121,13 +160,48 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider {
         DefaultMutableTreeNode node = (DefaultMutableTreeNode) path.getLastPathComponent();
         Object userObject = node.getUserObject();
 
-        if (userObject instanceof SpecTreeModel.TreeNodeData data && data.filePath() != null) {
-            VirtualFile file = LocalFileSystem.getInstance().findFileByPath(data.filePath());
-            if (file != null && !file.isDirectory()) {
-                // Opening markdown files triggers slow file index operations in the
-                // Markdown preview plugin. Allow slow operations to avoid EDT assertion.
-                com.intellij.util.SlowOperations.allowSlowOperations(
-                        () -> FileEditorManager.getInstance(project).openFile(file, true));
+        if (userObject instanceof SpecTreeModel.TreeNodeData data) {
+            if (data.type() == SpecTreeModel.TreeNodeType.HINT) {
+                handleHintAction(node);
+                return;
+            }
+            if (data.filePath() != null) {
+                VirtualFile file = LocalFileSystem.getInstance().findFileByPath(data.filePath());
+                if (file != null && !file.isDirectory()) {
+                    // Opening markdown files triggers slow file index operations in the
+                    // Markdown preview plugin. Allow slow operations to avoid EDT assertion.
+                    com.intellij.util.SlowOperations.allowSlowOperations(
+                            () -> FileEditorManager.getInstance(project).openFile(file, true));
+                }
+            }
+        }
+    }
+
+    private void handleHintAction(DefaultMutableTreeNode hintNode) {
+        DefaultMutableTreeNode parent = (DefaultMutableTreeNode) hintNode.getParent();
+        if (parent == null) return;
+        Object parentObj = parent.getUserObject();
+
+        if (parentObj instanceof SpecTreeModel.TreeNodeData parentData) {
+            if (parentData.type() == SpecTreeModel.TreeNodeType.CHANGES) {
+                // "No active changes" — trigger Propose action
+                AnAction action = ActionManager.getInstance().getAction("OpenSpec.Propose");
+                if (action != null) {
+                    DataContext context = dataId -> CommonDataKeys.PROJECT.is(dataId) ? project : null;
+                    AnActionEvent event = AnActionEvent.createFromAnAction(action, null, "SpecTree", context);
+                    action.actionPerformed(event);
+                }
+            }
+        } else if ("OpenSpec".equals(parent.getUserObject())) {
+            // Root-level hint — trigger Init
+            try {
+                com.johnnyb.openspec.scaffolding.ScaffoldingService scaffolding =
+                        project.getService(com.johnnyb.openspec.scaffolding.ScaffoldingService.class);
+                scaffolding.initOpenSpec();
+                refreshAsync();
+            } catch (java.io.IOException ex) {
+                com.johnnyb.openspec.util.OpenSpecNotifier.error(project,
+                        "Failed to initialize: " + ex.getMessage());
             }
         }
     }

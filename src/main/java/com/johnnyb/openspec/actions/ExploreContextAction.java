@@ -27,72 +27,75 @@ public class ExploreContextAction extends OpenSpecBaseAction {
         Project project = e.getProject();
         if (project == null) return;
 
-        StringBuilder context = new StringBuilder();
-        context.append("# OpenSpec Explore Context\n\n");
+        com.intellij.openapi.application.ApplicationManager.getApplication().executeOnPooledThread(() -> {
+            StringBuilder context = new StringBuilder();
+            context.append("# OpenSpec Explore Context\n\n");
 
-        // Config summary
-        ConfigService configService = project.getService(ConfigService.class);
-        if (configService != null) {
-            OpenSpecConfig config = configService.getConfig();
-            if (config != null) {
-                context.append("## Project Config\n");
-                context.append("- Version: ").append(config.getVersion()).append("\n");
-                if (config.getSchema() != null) {
-                    context.append("- Schema: ").append(config.getSchema()).append("\n");
+            // Config summary
+            ConfigService configService = project.getService(ConfigService.class);
+            if (configService != null) {
+                OpenSpecConfig config = configService.getConfig();
+                if (config != null) {
+                    context.append("## Project Config\n");
+                    context.append("- Version: ").append(config.getVersion()).append("\n");
+                    if (config.getSchema() != null) {
+                        context.append("- Schema: ").append(config.getSchema()).append("\n");
+                    }
+                    context.append("\n");
+                }
+            }
+
+            // Detected AI tools
+            AiToolDetectionService detection = project.getService(AiToolDetectionService.class);
+            if (detection != null) {
+                detection.detect();
+                List<String> tools = detection.getDetectedTools();
+                context.append("## Detected AI Tools\n");
+                if (tools.isEmpty()) {
+                    context.append("None detected.\n");
+                } else {
+                    for (String tool : tools) {
+                        AiToolDetectionService.ToolType type = AiToolDetectionService.getToolType(tool);
+                        context.append("- ").append(tool).append(" [").append(type).append("]\n");
+                    }
                 }
                 context.append("\n");
             }
-        }
 
-        // Detected AI tools
-        AiToolDetectionService detection = project.getService(AiToolDetectionService.class);
-        if (detection != null) {
-            detection.detect();
-            List<String> tools = detection.getDetectedTools();
-            context.append("## Detected AI Tools\n");
-            if (tools.isEmpty()) {
-                context.append("None detected.\n");
-            } else {
-                for (String tool : tools) {
-                    AiToolDetectionService.ToolType type = AiToolDetectionService.getToolType(tool);
-                    context.append("- ").append(tool).append(" [").append(type).append("]\n");
-                }
-            }
-            context.append("\n");
-        }
+            // Active changes
+            ChangeService changeService = project.getService(ChangeService.class);
+            if (changeService != null) {
+                List<Change> changes = changeService.getActiveChanges();
+                context.append("## Active Changes\n");
+                if (changes.isEmpty()) {
+                    context.append("No active changes.\n");
+                } else {
+                    for (Change change : changes) {
+                        context.append("- **").append(change.getName()).append("**");
+                        if (change.getMetadata() != null && change.getMetadata().getSchema() != null) {
+                            context.append(" (").append(change.getMetadata().getSchema()).append(")");
+                        }
+                        context.append("\n");
 
-        // Active changes
-        ChangeService changeService = project.getService(ChangeService.class);
-        if (changeService != null) {
-            List<Change> changes = changeService.getActiveChanges();
-            context.append("## Active Changes\n");
-            if (changes.isEmpty()) {
-                context.append("No active changes.\n");
-            } else {
-                for (Change change : changes) {
-                    context.append("- **").append(change.getName()).append("**");
-                    if (change.getMetadata() != null && change.getMetadata().getSchema() != null) {
-                        context.append(" (").append(change.getMetadata().getSchema()).append(")");
+                        // Include proposal summary if available
+                        appendProposalSummary(project, change.getName(), context);
                     }
-                    context.append("\n");
-
-                    // Include proposal summary if available
-                    appendProposalSummary(project, change.getName(), context);
                 }
+                context.append("\n");
             }
-            context.append("\n");
-        }
 
-        // Recent specs summary
-        appendSpecsSummary(project, context);
+            // Recent specs summary
+            appendSpecsSummary(project, context);
 
-        // Copy to clipboard
-        String contextText = context.toString();
-        Toolkit.getDefaultToolkit().getSystemClipboard()
-                .setContents(new StringSelection(contextText), null);
-
-        OpenSpecNotifier.info(project,
-                "Context copied \u2014 paste into your AI tool to start exploring.");
+            // Copy to clipboard on EDT
+            String contextText = context.toString();
+            com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater(() -> {
+                Toolkit.getDefaultToolkit().getSystemClipboard()
+                        .setContents(new StringSelection(contextText), null);
+                OpenSpecNotifier.info(project,
+                        "Context copied \u2014 paste into your AI tool to start exploring.");
+            });
+        });
     }
 
     private void appendProposalSummary(Project project, String changeName, StringBuilder context) {

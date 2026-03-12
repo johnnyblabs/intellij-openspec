@@ -58,42 +58,45 @@ public class OpenSpecApplyAction extends OpenSpecBaseAction {
         String changeName = target.getName();
         String changeDir = target.getPath();
 
-        // Check artifact completion
-        ArtifactOrchestrationService orchestration = project.getService(ArtifactOrchestrationService.class);
-        ChangeArtifactDag dag = orchestration.getArtifactStatus(changeName);
-        if (dag != null && !dag.isComplete()) {
-            OpenSpecNotifier.warn(project,
-                    "Not all artifacts are complete for \"" + changeName + "\". Generate artifacts first.");
-            return;
-        }
-
-        // Check if tasks exist
-        Path tasksPath = Path.of(changeDir, "tasks.md");
-        if (!Files.exists(tasksPath)) {
-            OpenSpecNotifier.warn(project, "No tasks.md found for \"" + changeName + "\"");
-            return;
-        }
-
-        // Check if all tasks are already complete
-        try {
-            String tasksContent = Files.readString(tasksPath);
-            int[] counts = ApplyPromptBuilder.countTasks(tasksContent);
-            if (counts[1] > 0 && counts[0] == counts[1]) {
-                OpenSpecNotifier.info(project,
-                        "All tasks complete for \"" + changeName + "\". Consider archiving.");
+        // Run file I/O checks on background thread, then continue on EDT
+        ApplicationManager.getApplication().executeOnPooledThread(() -> {
+            // Check artifact completion
+            ArtifactOrchestrationService orchestration = project.getService(ArtifactOrchestrationService.class);
+            ChangeArtifactDag dag = orchestration.getArtifactStatus(changeName);
+            if (dag != null && !dag.isComplete()) {
+                OpenSpecNotifier.warn(project,
+                        "Not all artifacts are complete for \"" + changeName + "\". Generate artifacts first.");
                 return;
             }
-        } catch (IOException ignored) {
-        }
 
-        // Focus the workflow panel and trigger apply from there
-        focusAndApply(project, changeName);
+            // Check if tasks exist
+            Path tasksPath = Path.of(changeDir, "tasks.md");
+            if (!Files.exists(tasksPath)) {
+                OpenSpecNotifier.warn(project, "No tasks.md found for \"" + changeName + "\"");
+                return;
+            }
 
-        // Trigger issue status updates in configured trackers
-        IssueLifecycleService lifecycle = project.getService(IssueLifecycleService.class);
-        if (lifecycle != null) {
-            lifecycle.onApply(changeName, changeDir);
-        }
+            // Check if all tasks are already complete
+            try {
+                String tasksContent = Files.readString(tasksPath);
+                int[] counts = ApplyPromptBuilder.countTasks(tasksContent);
+                if (counts[1] > 0 && counts[0] == counts[1]) {
+                    OpenSpecNotifier.info(project,
+                            "All tasks complete for \"" + changeName + "\". Consider archiving.");
+                    return;
+                }
+            } catch (IOException ignored) {
+            }
+
+            // Focus the workflow panel and trigger apply from there
+            focusAndApply(project, changeName);
+
+            // Trigger issue status updates in configured trackers
+            IssueLifecycleService lifecycle = project.getService(IssueLifecycleService.class);
+            if (lifecycle != null) {
+                lifecycle.onApply(changeName, changeDir);
+            }
+        });
     }
 
     private void focusAndApply(Project project, String changeName) {

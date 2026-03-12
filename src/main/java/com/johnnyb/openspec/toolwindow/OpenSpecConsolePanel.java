@@ -17,6 +17,8 @@ public class OpenSpecConsolePanel extends JPanel {
         consoleView = TextConsoleBuilderFactory.getInstance()
                 .createBuilder(project).getConsole();
         add(consoleView.getComponent(), BorderLayout.CENTER);
+        consoleView.print("CLI output will appear here when commands are executed.\n",
+                ConsoleViewContentType.SYSTEM_OUTPUT);
     }
 
     public void printCommand(String command) {

@@ -38,9 +38,17 @@ public final class ArtifactOrchestrationService {
     }
 
     /**
-     * Gets artifact DAG status for a change. Uses cache to avoid blocking EDT.
-     * Applies scaffolding detection to override CLI-reported status when files
-     * contain only placeholder content.
+     * Returns the cached DAG without spawning a CLI process.
+     * Safe to call from EDT. Returns null if no cached data exists.
+     */
+    public ChangeArtifactDag getCachedArtifactStatus(String changeName) {
+        return dagCache.get(changeName);
+    }
+
+    /**
+     * Gets artifact DAG status for a change by calling the CLI.
+     * <b>Must NOT be called on EDT</b> — spawns an external process.
+     * Falls back to cache on failure.
      */
     public ChangeArtifactDag getArtifactStatus(String changeName) {
         try {
