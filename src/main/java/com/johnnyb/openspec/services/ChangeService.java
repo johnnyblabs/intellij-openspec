@@ -1,5 +1,7 @@
 package com.johnnyb.openspec.services;
 
+import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.application.WriteAction;
 import com.intellij.openapi.components.Service;
 import com.intellij.openapi.diagnostic.Logger;
@@ -140,9 +142,21 @@ public final class ChangeService {
 
             VirtualFile metaFile = changeDir.findChild(".openspec.yaml");
             if (metaFile != null) {
-                try (InputStream is = metaFile.getInputStream()) {
-                    Yaml yaml = new Yaml(new Constructor(ChangeMetadata.class, new LoaderOptions()));
-                    ChangeMetadata metadata = yaml.loadAs(is, ChangeMetadata.class);
+                try {
+                    ChangeMetadata metadata;
+                    if (ApplicationManager.getApplication() == null) {
+                        try (InputStream is = metaFile.getInputStream()) {
+                            Yaml yaml = new Yaml(new Constructor(ChangeMetadata.class, new LoaderOptions()));
+                            metadata = yaml.loadAs(is, ChangeMetadata.class);
+                        }
+                    } else {
+                        metadata = ReadAction.compute(() -> {
+                            try (InputStream is = metaFile.getInputStream()) {
+                                Yaml yaml = new Yaml(new Constructor(ChangeMetadata.class, new LoaderOptions()));
+                                return yaml.loadAs(is, ChangeMetadata.class);
+                            }
+                        });
+                    }
                     change.setMetadata(metadata);
                 } catch (MarkedYAMLException e) {
                     String problem = e.getProblem() != null ? e.getProblem() : "invalid YAML";

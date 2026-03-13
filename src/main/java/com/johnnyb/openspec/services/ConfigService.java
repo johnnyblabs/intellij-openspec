@@ -1,5 +1,7 @@
 package com.johnnyb.openspec.services;
 
+import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.components.Service;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
@@ -20,17 +22,24 @@ public final class ConfigService {
     private static final Logger LOG = Logger.getInstance(ConfigService.class);
 
     private final Project project;
-    private OpenSpecConfig config;
+    private volatile OpenSpecConfig config;
 
     public ConfigService(Project project) {
         this.project = project;
     }
 
     public OpenSpecConfig getConfig() {
-        if (config == null) {
-            reload();
+        OpenSpecConfig c = config;
+        if (c == null) {
+            synchronized (this) {
+                c = config;
+                if (c == null) {
+                    reload();
+                    c = config;
+                }
+            }
         }
-        return config;
+        return c;
     }
 
     public void reload() {
@@ -47,9 +56,23 @@ public final class ConfigService {
             config = null;
             return;
         }
-        try (InputStream is = configFile.getInputStream()) {
-            Yaml yaml = new Yaml(new Constructor(OpenSpecConfig.class, new LoaderOptions()));
-            config = yaml.loadAs(is, OpenSpecConfig.class);
+        try {
+            OpenSpecConfig loaded;
+            if (ApplicationManager.getApplication() == null) {
+                try (InputStream is = configFile.getInputStream()) {
+                    Yaml yaml = new Yaml(new Constructor(OpenSpecConfig.class, new LoaderOptions()));
+                    loaded = yaml.loadAs(is, OpenSpecConfig.class);
+                }
+            } else {
+                VirtualFile cfgFile = configFile;
+                loaded = ReadAction.compute(() -> {
+                    try (InputStream is = cfgFile.getInputStream()) {
+                        Yaml yaml = new Yaml(new Constructor(OpenSpecConfig.class, new LoaderOptions()));
+                        return yaml.loadAs(is, OpenSpecConfig.class);
+                    }
+                });
+            }
+            config = loaded;
         } catch (MarkedYAMLException e) {
             config = null;
             String location = "";

@@ -1,5 +1,7 @@
 package com.johnnyb.openspec.validation;
 
+import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.components.Service;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -228,7 +230,10 @@ public final class BuiltInValidator {
 
     private String readFile(VirtualFile file) {
         try {
-            return new String(file.contentsToByteArray(), StandardCharsets.UTF_8);
+            if (ApplicationManager.getApplication() == null) {
+                return new String(file.contentsToByteArray(), StandardCharsets.UTF_8);
+            }
+            return ReadAction.compute(() -> new String(file.contentsToByteArray(), StandardCharsets.UTF_8));
         } catch (IOException e) {
             return null;
         }

@@ -9,6 +9,9 @@ import com.johnnyb.openspec.model.Scenario;
 import com.johnnyb.openspec.model.SpecFile;
 import com.johnnyb.openspec.util.OpenSpecFileUtil;
 
+import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.application.ReadAction;
+
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -51,7 +54,12 @@ public final class SpecParsingService {
 
     public SpecFile parseSpec(VirtualFile file, String domain) {
         try {
-            String content = new String(file.contentsToByteArray(), StandardCharsets.UTF_8);
+            String content;
+            if (ApplicationManager.getApplication() == null) {
+                content = new String(file.contentsToByteArray(), StandardCharsets.UTF_8);
+            } else {
+                content = ReadAction.compute(() -> new String(file.contentsToByteArray(), StandardCharsets.UTF_8));
+            }
             return parseSpecContent(content, domain, file.getPath());
         } catch (IOException e) {
             LOG.error("Failed to read spec file: " + file.getPath(), e);

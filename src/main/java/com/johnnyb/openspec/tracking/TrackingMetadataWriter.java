@@ -1,5 +1,7 @@
 package com.johnnyb.openspec.tracking;
 
+import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.application.WriteAction;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.vfs.LocalFileSystem;
@@ -59,7 +61,12 @@ public final class TrackingMetadataWriter {
         if (vf == null || !vf.exists()) {
             return new LinkedHashMap<>();
         }
-        String content = new String(vf.contentsToByteArray(), StandardCharsets.UTF_8);
+        String content;
+        if (ApplicationManager.getApplication() == null) {
+            content = new String(vf.contentsToByteArray(), StandardCharsets.UTF_8);
+        } else {
+            content = ReadAction.compute(() -> new String(vf.contentsToByteArray(), StandardCharsets.UTF_8));
+        }
         Yaml yaml = new Yaml(new LoaderOptions());
         Object loaded = yaml.load(content);
         if (loaded instanceof Map) {
