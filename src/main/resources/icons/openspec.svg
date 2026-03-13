@@ -1,4 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 13 13">
-  <rect x="1" y="1" width="11" height="11" rx="2" fill="#6C5CE7" stroke="#5A4BD1" stroke-width="0.5"/>
-  <text x="6.5" y="9.5" text-anchor="middle" font-family="Arial" font-size="8" font-weight="bold" fill="white">S</text>
+  <!-- Document body -->
+  <rect x="1" y="0.5" width="8" height="10" rx="1.5" fill="#6C5CE7" opacity="0.2" stroke="#6C5CE7" stroke-width="0.8"/>
+  <!-- Checkmark badge -->
+  <circle cx="9.5" cy="9.5" r="3" fill="#6C5CE7"/>
+  <polyline points="7.8,9.5 9,10.7 11.2,8.5" fill="none" stroke="white" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
