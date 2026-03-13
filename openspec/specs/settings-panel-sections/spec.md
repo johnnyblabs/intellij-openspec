@@ -56,3 +56,23 @@ The AI provider dropdown SHALL show human-readable display names instead of enum
 #### Scenario: Provider names in dropdown
 - **WHEN** the user opens the AI provider dropdown
 - **THEN** the options SHALL show "None", "Claude", "OpenAI", "Gemini" (not "NONE", "CLAUDE", "OPENAI", "GEMINI")
+
+### Requirement: CLI command timeout configuration
+
+The settings panel SHALL include a CLI timeout setting that controls how long CLI commands are allowed to run before being terminated.
+
+#### Scenario: CLI timeout control in General section
+- **WHEN** the user opens OpenSpec settings
+- **THEN** the General section SHALL include a "CLI Timeout (seconds)" spinner with a range of 1-3600 and a default of 30
+
+#### Scenario: CLI timeout persisted
+- **WHEN** the user changes the CLI timeout value and clicks Apply
+- **THEN** the new timeout value SHALL be persisted in `OpenSpecSettings`
+
+#### Scenario: CliRunner reads timeout from settings
+- **WHEN** a CLI command is executed via `CliRunner.run(project, args)`
+- **THEN** the timeout SHALL be read from `OpenSpecSettings.getCliTimeoutSeconds()` instead of using a hardcoded default
+
+#### Scenario: Timeout exceeded shows clear error
+- **WHEN** a CLI command exceeds the configured timeout
+- **THEN** the error message SHALL include the timeout duration

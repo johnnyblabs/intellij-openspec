@@ -33,6 +33,7 @@ public class OpenSpecSettingsPanel {
 
     // General section
     private final JComboBox<String> profileCombo;
+    private final JSpinner cliTimeoutSpinner;
     private final JBCheckBox autoRefreshCheckbox;
     private final JBCheckBox strictValidationCheckbox;
 
@@ -81,11 +82,14 @@ public class OpenSpecSettingsPanel {
         profileCombo = new JComboBox<>(new String[]{"", "spec-driven", "tdd", "rapid"});
         profileCombo.setEditable(true);
 
+        cliTimeoutSpinner = new JSpinner(new SpinnerNumberModel(30, 1, 3600, 1));
+
         autoRefreshCheckbox = new JBCheckBox("Auto-refresh tool window on file changes");
         strictValidationCheckbox = new JBCheckBox("Strict validation (warnings become errors)");
 
         JPanel generalSection = FormBuilder.createFormBuilder()
                 .addLabeledComponent(new JBLabel("Schema profile:"), profileCombo)
+                .addLabeledComponent(new JBLabel("CLI Timeout (seconds):"), cliTimeoutSpinner)
                 .addComponent(autoRefreshCheckbox)
                 .addComponent(strictValidationCheckbox)
                 .getPanel();
@@ -306,6 +310,14 @@ public class OpenSpecSettingsPanel {
 
     public void setProfile(String profile) {
         profileCombo.setSelectedItem(profile != null ? profile : "");
+    }
+
+    public int getCliTimeout() {
+        return (Integer) cliTimeoutSpinner.getValue();
+    }
+
+    public void setCliTimeout(int timeout) {
+        cliTimeoutSpinner.setValue(timeout);
     }
 
     public boolean isAutoRefresh() {

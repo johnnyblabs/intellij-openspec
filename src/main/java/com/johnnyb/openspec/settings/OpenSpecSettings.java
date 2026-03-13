@@ -159,6 +159,14 @@ public final class OpenSpecSettings implements PersistentStateComponent<OpenSpec
     public String getPlaneProject() { return state.planeProject; }
     public void setPlaneProject(String projectId) { state.planeProject = projectId; }
 
+    public int getCliTimeoutSeconds() {
+        return state.cliTimeoutSeconds;
+    }
+
+    public void setCliTimeoutSeconds(int timeout) {
+        state.cliTimeoutSeconds = timeout;
+    }
+
     public static class State {
         public String versionOverride = "";
         public String cliPath = "";
@@ -171,6 +179,7 @@ public final class OpenSpecSettings implements PersistentStateComponent<OpenSpec
         public String preferredTool = "";
         public boolean setupCompleted = false;
         public boolean firstProposalCompleted = false;
+        public int cliTimeoutSeconds = 30;
 
         // Issue tracking
         public boolean forgejoEnabled = false;

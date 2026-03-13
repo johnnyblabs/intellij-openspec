@@ -372,3 +372,21 @@ The WorkflowActionPanel SHALL auto-validate the active change when it crosses ph
 - **WHEN** change-level validation completes with warnings
 - **THEN** the guidance area SHALL show the warning count and first warning description
 - **AND** the Apply or Archive button SHALL remain enabled
+
+### Requirement: Progress indicators for long-running operations
+
+Long-running operations (generation, validation, archive) SHALL show IntelliJ's native progress bar via `Task.Backgroundable` instead of running silently on pooled threads.
+
+#### Scenario: Generate artifact shows progress indicator
+- **WHEN** the user clicks Generate to produce an artifact
+- **THEN** the operation SHALL run as a `Task.Backgroundable` with title "Generating [artifact-name]"
+- **AND** the task SHALL be cancellable
+
+#### Scenario: Validate change shows progress indicator
+- **WHEN** the user triggers change validation
+- **THEN** the operation SHALL run as a `Task.Backgroundable` with title "Validating [change-name]"
+
+#### Scenario: Archive shows progress indicator
+- **WHEN** the user clicks Archive
+- **THEN** the operation SHALL run as a `Task.Backgroundable` with title "Archiving [change-name]"
+- **AND** `ProcessCanceledException` SHALL be re-thrown without wrapping

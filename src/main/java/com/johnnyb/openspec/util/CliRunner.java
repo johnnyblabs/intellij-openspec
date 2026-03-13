@@ -8,6 +8,7 @@ import com.intellij.execution.process.ProcessOutputTypes;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Key;
 import com.johnnyb.openspec.services.CliDetectionService;
+import com.johnnyb.openspec.settings.OpenSpecSettings;
 
 import java.nio.charset.StandardCharsets;
 
@@ -19,7 +20,8 @@ public final class CliRunner {
     }
 
     public static CliResult run(Project project, String... args) throws CliException {
-        return run(project, DEFAULT_TIMEOUT_MS, args);
+        int timeoutMs = OpenSpecSettings.getInstance(project).getCliTimeoutSeconds() * 1000;
+        return run(project, timeoutMs, args);
     }
 
     public static CliResult run(Project project, int timeoutMs, String... args) throws CliException {

@@ -7,6 +7,10 @@ import com.intellij.openapi.actionSystem.DataContext;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.progress.ProgressIndicator;
+import com.intellij.openapi.progress.ProgressManager;
+import com.intellij.openapi.progress.Task;
+import org.jetbrains.annotations.NotNull;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -1069,29 +1073,34 @@ public class WorkflowActionPanel extends JPanel {
         }
 
         Change finalTarget = target;
-        ApplicationManager.getApplication().executeOnPooledThread(() -> {
-            try {
-                ApplicationManager.getApplication().invokeAndWait(() -> {
-                    try {
-                        changeService.archiveChange(finalTarget);
-                    } catch (IOException ex) {
-                        throw new RuntimeException(ex);
-                    }
-                });
+        ProgressManager.getInstance().run(new Task.Backgroundable(project, "Archiving " + changeName, false) {
+            @Override
+            public void run(@NotNull ProgressIndicator indicator) {
+                try {
+                    ApplicationManager.getApplication().invokeAndWait(() -> {
+                        try {
+                            changeService.archiveChange(finalTarget);
+                        } catch (IOException ex) {
+                            throw new RuntimeException(ex);
+                        }
+                    });
 
-                ArchiveSyncService syncService = project.getService(ArchiveSyncService.class);
-                if (syncService != null) {
-                    syncService.syncAsync(changeName, () ->
-                            SwingUtilities.invokeLater(() -> showPostArchiveState(changeName, true)));
-                } else {
-                    SwingUtilities.invokeLater(() -> showPostArchiveState(changeName, true));
+                    ArchiveSyncService syncService = project.getService(ArchiveSyncService.class);
+                    if (syncService != null) {
+                        syncService.syncAsync(changeName, () ->
+                                SwingUtilities.invokeLater(() -> showPostArchiveState(changeName, true)));
+                    } else {
+                        SwingUtilities.invokeLater(() -> showPostArchiveState(changeName, true));
+                    }
+                } catch (com.intellij.openapi.progress.ProcessCanceledException e) {
+                    throw e;
+                } catch (Exception ex) {
+                    SwingUtilities.invokeLater(() -> {
+                        archiveButton.setEnabled(true);
+                        archiveButton.setText("Archive");
+                        OpenSpecNotifier.error(project, "Archive", "Archive failed: " + ex.getMessage());
+                    });
                 }
-            } catch (Exception ex) {
-                SwingUtilities.invokeLater(() -> {
-                    archiveButton.setEnabled(true);
-                    archiveButton.setText("Archive");
-                    OpenSpecNotifier.error(project, "Archive", "Archive failed: " + ex.getMessage());
-                });
             }
         });
     }
@@ -1142,40 +1151,43 @@ public class WorkflowActionPanel extends JPanel {
         if (activeChangeName == null) return;
         String changeName = activeChangeName;
 
-        ApplicationManager.getApplication().executeOnPooledThread(() -> {
-            BuiltInValidator validator = project.getService(BuiltInValidator.class);
-            ValidationResult result = validator.validateChange(changeName);
+        ProgressManager.getInstance().run(new Task.Backgroundable(project, "Validating " + changeName, false) {
+            @Override
+            public void run(@NotNull ProgressIndicator indicator) {
+                BuiltInValidator validator = project.getService(BuiltInValidator.class);
+                ValidationResult result = validator.validateChange(changeName);
 
-            SwingUtilities.invokeLater(() -> {
-                long errorCount = result.issues().stream()
-                        .filter(i -> i.severity() == ValidationIssue.Severity.ERROR).count();
-                long warnCount = result.issues().stream()
-                        .filter(i -> i.severity() == ValidationIssue.Severity.WARNING).count();
+                SwingUtilities.invokeLater(() -> {
+                    long errorCount = result.issues().stream()
+                            .filter(i -> i.severity() == ValidationIssue.Severity.ERROR).count();
+                    long warnCount = result.issues().stream()
+                            .filter(i -> i.severity() == ValidationIssue.Severity.WARNING).count();
 
-                if (errorCount > 0) {
-                    String firstError = result.issues().stream()
-                            .filter(i -> i.severity() == ValidationIssue.Severity.ERROR)
-                            .findFirst().map(ValidationIssue::message).orElse("");
-                    guidanceMessageLabel.setText("\u2717 " + errorCount + " error" +
-                            (errorCount > 1 ? "s" : "") + ": " + firstError);
-                    guidanceMessageLabel.setForeground(COLOR_ERROR);
-                } else if (warnCount > 0) {
-                    String firstWarn = result.issues().stream()
-                            .filter(i -> i.severity() == ValidationIssue.Severity.WARNING)
-                            .findFirst().map(ValidationIssue::message).orElse("");
-                    guidanceMessageLabel.setText("\u26A0 " + warnCount + " warning" +
-                            (warnCount > 1 ? "s" : "") + ": " + firstWarn);
-                    guidanceMessageLabel.setForeground(JBColor.ORANGE);
-                } else {
-                    guidanceMessageLabel.setText("\u2713 Change valid");
-                    guidanceMessageLabel.setForeground(COLOR_SUCCESS);
-                }
-                guidanceWatchingLabel.setVisible(false);
-                guidanceNextLabel.setVisible(false);
-                copyAgainButton.setVisible(false);
-                checkUpdatesButton.setVisible(false);
-                guidancePanel.setVisible(true);
-            });
+                    if (errorCount > 0) {
+                        String firstError = result.issues().stream()
+                                .filter(i -> i.severity() == ValidationIssue.Severity.ERROR)
+                                .findFirst().map(ValidationIssue::message).orElse("");
+                        guidanceMessageLabel.setText("\u2717 " + errorCount + " error" +
+                                (errorCount > 1 ? "s" : "") + ": " + firstError);
+                        guidanceMessageLabel.setForeground(COLOR_ERROR);
+                    } else if (warnCount > 0) {
+                        String firstWarn = result.issues().stream()
+                                .filter(i -> i.severity() == ValidationIssue.Severity.WARNING)
+                                .findFirst().map(ValidationIssue::message).orElse("");
+                        guidanceMessageLabel.setText("\u26A0 " + warnCount + " warning" +
+                                (warnCount > 1 ? "s" : "") + ": " + firstWarn);
+                        guidanceMessageLabel.setForeground(JBColor.ORANGE);
+                    } else {
+                        guidanceMessageLabel.setText("\u2713 Change valid");
+                        guidanceMessageLabel.setForeground(COLOR_SUCCESS);
+                    }
+                    guidanceWatchingLabel.setVisible(false);
+                    guidanceNextLabel.setVisible(false);
+                    copyAgainButton.setVisible(false);
+                    checkUpdatesButton.setVisible(false);
+                    guidancePanel.setVisible(true);
+                });
+            }
         });
     }
 
@@ -1195,109 +1207,117 @@ public class WorkflowActionPanel extends JPanel {
         String changeName = activeChangeName;
         String artifactId = nextArtifactId;
 
-        ApplicationManager.getApplication().executeOnPooledThread(() -> {
-            try {
-                ArtifactOrchestrationService orchestration = project.getService(ArtifactOrchestrationService.class);
-                ArtifactInstruction instruction = orchestration.getInstruction(changeName, artifactId);
-                String prompt = instruction.buildPrompt();
+        ProgressManager.getInstance().run(new Task.Backgroundable(project, "Generating " + artifactId, true) {
+            @Override
+            public void run(@NotNull ProgressIndicator indicator) {
+                try {
+                    ArtifactOrchestrationService orchestration = project.getService(ArtifactOrchestrationService.class);
+                    ArtifactInstruction instruction = orchestration.getInstruction(changeName, artifactId);
+                    String prompt = instruction.buildPrompt();
 
-                lastPrompt = prompt;
-                lastOutputPath = instruction.outputPath();
+                    lastPrompt = prompt;
+                    lastOutputPath = instruction.outputPath();
 
-                List<String> unlocks = instruction.unlocks();
-                String nextAfterThis = unlocks.isEmpty() ? null : unlocks.getFirst();
+                    List<String> unlocks = instruction.unlocks();
+                    String nextAfterThis = unlocks.isEmpty() ? null : unlocks.getFirst();
 
-                switch (mode) {
-                    case CLIPBOARD -> {
-                        String toolName = getSelectedToolName();
-                        String clipboardPrompt = prompt;
-                        if (!toolName.isBlank() && AiToolDetectionService.isCliTool(toolName)
-                                && instruction.changeDir() != null && lastOutputPath != null) {
-                            clipboardPrompt = prompt + "\n\nSave your response to: "
-                                    + instruction.changeDir() + "/" + lastOutputPath;
-                        }
-                        lastPrompt = clipboardPrompt;
-                        Toolkit.getDefaultToolkit().getSystemClipboard()
-                                .setContents(new StringSelection(clipboardPrompt), null);
-                        ApplicationManager.getApplication().invokeLater(() ->
-                                showInlineGuidance("clipboard", instruction.changeDir(),
-                                        lastOutputPath, toolName.isBlank() ? null : toolName, nextAfterThis));
-                    }
-                    case EDITOR_TAB -> ApplicationManager.getApplication().invokeLater(() -> {
-                        try {
-                            VirtualFile scratch = com.intellij.openapi.application.WriteAction.compute(() -> {
-                                VirtualFile tmp = LocalFileSystem.getInstance()
-                                        .findFileByPath(System.getProperty("java.io.tmpdir"));
-                                if (tmp == null) return null;
-                                String name = "openspec-" + artifactId + "-prompt.md";
-                                VirtualFile file = tmp.findChild(name);
-                                if (file != null) file.delete(this);
-                                file = tmp.createChildData(this, name);
-                                file.setBinaryContent(prompt.getBytes(StandardCharsets.UTF_8));
-                                return file;
-                            });
-                            if (scratch != null) {
-                                FileEditorManager.getInstance(project).openFile(scratch, true);
+                    switch (mode) {
+                        case CLIPBOARD -> {
+                            String toolName = getSelectedToolName();
+                            String clipboardPrompt = prompt;
+                            if (!toolName.isBlank() && AiToolDetectionService.isCliTool(toolName)
+                                    && instruction.changeDir() != null && lastOutputPath != null) {
+                                clipboardPrompt = prompt + "\n\nSave your response to: "
+                                        + instruction.changeDir() + "/" + lastOutputPath;
                             }
-                            showInlineGuidance("editor", instruction.changeDir(),
-                                    lastOutputPath, null, nextAfterThis);
-                        } catch (IOException ex) {
-                            OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_GENERATION, "Generate",
-                                    "Failed to open prompt: " + ex.getMessage(), com.intellij.notification.NotificationType.ERROR);
+                            lastPrompt = clipboardPrompt;
+                            Toolkit.getDefaultToolkit().getSystemClipboard()
+                                    .setContents(new StringSelection(clipboardPrompt), null);
+                            ApplicationManager.getApplication().invokeLater(() ->
+                                    showInlineGuidance("clipboard", instruction.changeDir(),
+                                            lastOutputPath, toolName.isBlank() ? null : toolName, nextAfterThis));
                         }
-                    });
-                    case DIRECT_API -> {
-                        DirectApiService apiService = project.getService(DirectApiService.class);
-                        String result = apiService.generate(instruction);
-                        String outputPath = instruction.changeDir() + "/" + instruction.outputPath();
-                        ApplicationManager.getApplication().invokeLater(() -> {
+                        case EDITOR_TAB -> ApplicationManager.getApplication().invokeLater(() -> {
                             try {
-                                com.intellij.openapi.application.WriteAction.run(() -> {
-                                    VirtualFile outFile = LocalFileSystem.getInstance().findFileByPath(outputPath);
-                                    if (outFile == null) {
-                                        VirtualFile parent = LocalFileSystem.getInstance()
-                                                .findFileByPath(instruction.changeDir());
-                                        if (parent != null) {
-                                            outFile = parent.createChildData(this, instruction.outputPath());
-                                        }
-                                    }
-                                    if (outFile != null) {
-                                        outFile.setBinaryContent(result.getBytes(StandardCharsets.UTF_8));
-                                    }
+                                VirtualFile scratch = com.intellij.openapi.application.WriteAction.compute(() -> {
+                                    VirtualFile tmp = LocalFileSystem.getInstance()
+                                            .findFileByPath(System.getProperty("java.io.tmpdir"));
+                                    if (tmp == null) return null;
+                                    String name = "openspec-" + artifactId + "-prompt.md";
+                                    VirtualFile file = tmp.findChild(name);
+                                    if (file != null) file.delete(this);
+                                    file = tmp.createChildData(this, name);
+                                    file.setBinaryContent(prompt.getBytes(StandardCharsets.UTF_8));
+                                    return file;
                                 });
-                                VirtualFile generatedFile = LocalFileSystem.getInstance().findFileByPath(outputPath);
-                                if (generatedFile != null) {
-                                    OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_GENERATION, "Generate",
-                                            "Generated " + artifactId, com.intellij.notification.NotificationType.INFORMATION,
-                                            OpenSpecNotifier.openFileAction(generatedFile));
-                                } else {
-                                    OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_GENERATION, "Generate",
-                                            "Generated " + artifactId, com.intellij.notification.NotificationType.INFORMATION);
+                                if (scratch != null) {
+                                    FileEditorManager.getInstance(project).openFile(scratch, true);
                                 }
-                                orchestration.invalidateCache(changeName);
-                                refresh();
-                                if (onRefreshRequested != null) onRefreshRequested.run();
+                                showInlineGuidance("editor", instruction.changeDir(),
+                                        lastOutputPath, null, nextAfterThis);
                             } catch (IOException ex) {
                                 OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_GENERATION, "Generate",
-                                        "Failed to write artifact: " + ex.getMessage(), com.intellij.notification.NotificationType.ERROR);
+                                        "Failed to open prompt: " + ex.getMessage(), com.intellij.notification.NotificationType.ERROR);
                             }
                         });
+                        case DIRECT_API -> {
+                            DirectApiService apiService = project.getService(DirectApiService.class);
+                            String result = apiService.generate(instruction);
+                            String outputPath = instruction.changeDir() + "/" + instruction.outputPath();
+                            ApplicationManager.getApplication().invokeLater(() -> {
+                                try {
+                                    com.intellij.openapi.application.WriteAction.run(() -> {
+                                        VirtualFile outFile = LocalFileSystem.getInstance().findFileByPath(outputPath);
+                                        if (outFile == null) {
+                                            VirtualFile parent = LocalFileSystem.getInstance()
+                                                    .findFileByPath(instruction.changeDir());
+                                            if (parent != null) {
+                                                outFile = parent.createChildData(this, instruction.outputPath());
+                                            }
+                                        }
+                                        if (outFile != null) {
+                                            outFile.setBinaryContent(result.getBytes(StandardCharsets.UTF_8));
+                                        }
+                                    });
+                                    VirtualFile generatedFile = LocalFileSystem.getInstance().findFileByPath(outputPath);
+                                    if (generatedFile != null) {
+                                        OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_GENERATION, "Generate",
+                                                "Generated " + artifactId, com.intellij.notification.NotificationType.INFORMATION,
+                                                OpenSpecNotifier.openFileAction(generatedFile));
+                                    } else {
+                                        OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_GENERATION, "Generate",
+                                                "Generated " + artifactId, com.intellij.notification.NotificationType.INFORMATION);
+                                    }
+                                    orchestration.invalidateCache(changeName);
+                                    refresh();
+                                    if (onRefreshRequested != null) onRefreshRequested.run();
+                                } catch (IOException ex) {
+                                    OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_GENERATION, "Generate",
+                                            "Failed to write artifact: " + ex.getMessage(), com.intellij.notification.NotificationType.ERROR);
+                                }
+                            });
+                        }
                     }
-                }
-            } catch (AiApiException ex) {
-                ApplicationManager.getApplication().invokeLater(() -> {
-                    String content = "AI generation failed: " + ex.getMessage();
-                    if (ex.getSuggestion() != null) {
-                        content += "\n" + ex.getSuggestion();
-                    }
-                    OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_GENERATION, "Generate",
-                            content, com.intellij.notification.NotificationType.ERROR,
-                            OpenSpecNotifier.openSettingsAction());
-                });
-            } catch (Exception ex) {
-                ApplicationManager.getApplication().invokeLater(() ->
+                } catch (AiApiException ex) {
+                    ApplicationManager.getApplication().invokeLater(() -> {
+                        String content = "AI generation failed: " + ex.getMessage();
+                        if (ex.getSuggestion() != null) {
+                            content += "\n" + ex.getSuggestion();
+                        }
                         OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_GENERATION, "Generate",
-                                "Generation failed: " + ex.getMessage(), com.intellij.notification.NotificationType.ERROR));
+                                content, com.intellij.notification.NotificationType.ERROR,
+                                OpenSpecNotifier.openSettingsAction());
+                    });
+                } catch (Exception ex) {
+                    ApplicationManager.getApplication().invokeLater(() ->
+                            OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_GENERATION, "Generate",
+                                    "Generation failed: " + ex.getMessage(), com.intellij.notification.NotificationType.ERROR));
+                } finally {
+                    ApplicationManager.getApplication().invokeLater(() -> {
+                        generateButton.setEnabled(true);
+                        generateButton.setText(buildGenerateLabel(artifactId));
+                    });
+                }
             }
         });
     }
