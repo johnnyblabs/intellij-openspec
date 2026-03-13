@@ -42,6 +42,10 @@ The plugin SHALL provide a tool window that displays OpenSpec project contents i
 - **WHEN** the user hovers over any tree node
 - **THEN** a tooltip SHALL appear with contextual information relevant to that node type
 
+#### Scenario: Delta spec nodes have context menu
+- **WHEN** the user right-clicks a DELTA_SPEC node
+- **THEN** a context menu SHALL appear with "Preview Diff" and "Open File" actions
+
 ### Requirement: File Navigation
 
 The plugin SHALL allow users to navigate to spec files by double-clicking tree nodes.
