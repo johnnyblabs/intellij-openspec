@@ -58,14 +58,15 @@ public final class ConfigService {
         }
         try {
             OpenSpecConfig loaded;
-            if (ApplicationManager.getApplication() == null) {
+            if (ApplicationManager.getApplication() == null
+                    || ApplicationManager.getApplication().isDispatchThread()) {
                 try (InputStream is = configFile.getInputStream()) {
                     Yaml yaml = new Yaml(new Constructor(OpenSpecConfig.class, new LoaderOptions()));
                     loaded = yaml.loadAs(is, OpenSpecConfig.class);
                 }
             } else {
                 VirtualFile cfgFile = configFile;
-                loaded = ReadAction.compute(() -> {
+                loaded = ReadAction.computeCancellable(() -> {
                     try (InputStream is = cfgFile.getInputStream()) {
                         Yaml yaml = new Yaml(new Constructor(OpenSpecConfig.class, new LoaderOptions()));
                         return yaml.loadAs(is, OpenSpecConfig.class);

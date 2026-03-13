@@ -3,6 +3,7 @@ package com.johnnyb.openspec.settings;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.ui.TextBrowseFolderListener;
 import com.intellij.openapi.ui.TextFieldWithBrowseButton;
 import com.intellij.ui.IdeBorderFactory;
 import com.intellij.ui.components.JBCheckBox;
@@ -53,10 +54,9 @@ public class OpenSpecSettingsPanel {
         // --- CLI Section ---
         cliPathField = new TextFieldWithBrowseButton();
         cliPathField.addBrowseFolderListener(
-                "Select OpenSpec CLI",
-                "Choose the openspec executable",
-                project,
-                FileChooserDescriptorFactory.createSingleFileDescriptor());
+                new TextBrowseFolderListener(
+                        FileChooserDescriptorFactory.createSingleFileNoJarsDescriptor(),
+                        project));
 
         JButton detectButton = new JButton("Detect");
         detectButton.addActionListener(e -> detectCli());

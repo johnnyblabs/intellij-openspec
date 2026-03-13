@@ -612,8 +612,9 @@ public class WorkflowActionPanel extends JPanel {
                     AnAction action = ActionManager.getInstance().getAction("OpenSpec.Propose");
                     if (action != null) {
                         DataContext ctx = dataId -> com.intellij.openapi.actionSystem.CommonDataKeys.PROJECT.is(dataId) ? project : null;
-                        AnActionEvent event = AnActionEvent.createFromAnAction(action, null, "WorkflowPanel", ctx);
-                        action.actionPerformed(event);
+                        com.intellij.openapi.actionSystem.Presentation pres = action.getTemplatePresentation().clone();
+                        AnActionEvent event = new AnActionEvent(null, ctx, "WorkflowPanel", pres, ActionManager.getInstance(), 0);
+                        com.intellij.openapi.actionSystem.ex.ActionUtil.performActionDumbAwareWithCallbacks(action, event);
                     }
                 });
                 pipelinePanel.add(proposeLink);
@@ -1138,10 +1139,9 @@ public class WorkflowActionPanel extends JPanel {
     private void onStartNewChange() {
         AnAction proposeAction = ActionManager.getInstance().getAction("OpenSpec.Propose");
         if (proposeAction != null) {
-            DataContext dataContext = DataContext.EMPTY_CONTEXT;
-            AnActionEvent event = AnActionEvent.createFromAnAction(
-                    proposeAction, null, "OpenSpecWorkflowPanel", dataContext);
-            proposeAction.actionPerformed(event);
+            com.intellij.openapi.actionSystem.Presentation presentation = proposeAction.getTemplatePresentation().clone();
+            AnActionEvent event = new AnActionEvent(null, DataContext.EMPTY_CONTEXT, "OpenSpecWorkflowPanel", presentation, ActionManager.getInstance(), 0);
+            com.intellij.openapi.actionSystem.ex.ActionUtil.performActionDumbAwareWithCallbacks(proposeAction, event);
         }
     }
 

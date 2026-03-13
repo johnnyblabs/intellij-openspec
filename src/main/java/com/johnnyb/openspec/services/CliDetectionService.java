@@ -2,8 +2,8 @@ package com.johnnyb.openspec.services;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.execution.process.OSProcessHandler;
-import com.intellij.execution.process.ProcessAdapter;
 import com.intellij.execution.process.ProcessEvent;
+import com.intellij.execution.process.ProcessListener;
 import com.intellij.execution.process.ProcessOutputTypes;
 import com.intellij.openapi.components.Service;
 import com.intellij.openapi.diagnostic.Logger;
@@ -77,9 +77,9 @@ public final class CliDetectionService {
             OSProcessHandler handler = new OSProcessHandler(cmd);
             StringBuilder stdout = new StringBuilder();
 
-            handler.addProcessListener(new ProcessAdapter() {
+            handler.addProcessListener(new ProcessListener() {
                 @Override
-                public void onTextAvailable(ProcessEvent event, Key outputType) {
+                public void onTextAvailable(@org.jetbrains.annotations.NotNull ProcessEvent event, @org.jetbrains.annotations.NotNull Key outputType) {
                     if (ProcessOutputTypes.STDOUT.equals(outputType)) {
                         stdout.append(event.getText());
                     }
@@ -126,9 +126,9 @@ public final class CliDetectionService {
             OSProcessHandler handler = new OSProcessHandler(cmd);
             StringBuilder stdout = new StringBuilder();
 
-            handler.addProcessListener(new ProcessAdapter() {
+            handler.addProcessListener(new ProcessListener() {
                 @Override
-                public void onTextAvailable(ProcessEvent event, Key outputType) {
+                public void onTextAvailable(@org.jetbrains.annotations.NotNull ProcessEvent event, @org.jetbrains.annotations.NotNull Key outputType) {
                     if (ProcessOutputTypes.STDOUT.equals(outputType)) {
                         stdout.append(event.getText());
                     }
@@ -174,9 +174,9 @@ public final class CliDetectionService {
             OSProcessHandler handler = new OSProcessHandler(cmd);
             StringBuilder stdout = new StringBuilder();
 
-            handler.addProcessListener(new ProcessAdapter() {
+            handler.addProcessListener(new ProcessListener() {
                 @Override
-                public void onTextAvailable(ProcessEvent event, Key outputType) {
+                public void onTextAvailable(@org.jetbrains.annotations.NotNull ProcessEvent event, @org.jetbrains.annotations.NotNull Key outputType) {
                     if (ProcessOutputTypes.STDOUT.equals(outputType)) {
                         stdout.append(event.getText());
                     }

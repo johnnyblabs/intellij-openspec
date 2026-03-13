@@ -3,7 +3,7 @@ package com.johnnyb.openspec.actions;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.ui.Messages;
+import com.intellij.openapi.ui.popup.JBPopupFactory;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowManager;
 import com.intellij.ui.content.Content;
@@ -42,19 +42,28 @@ public class OpenSpecApplyAction extends OpenSpecBaseAction {
             return;
         }
 
-        // If multiple changes, let user pick
-        Change target;
+        // If multiple changes, let user pick via popup
         if (active.size() == 1) {
-            target = active.get(0);
+            applyChange(project, active.getFirst());
         } else {
-            String[] names = active.stream().map(Change::getName).toArray(String[]::new);
-            int choice = Messages.showChooseDialog(project,
-                    "Select a change to apply:",
-                    "Apply Change", Messages.getQuestionIcon(), names, names[0]);
-            if (choice < 0) return;
-            target = active.get(choice);
+            List<String> names = active.stream().map(Change::getName).toList();
+            JBPopupFactory.getInstance()
+                    .createPopupChooserBuilder(names)
+                    .setTitle("Apply Change")
+                    .setItemChosenCallback(name -> {
+                        Change selected = active.stream()
+                                .filter(c -> c.getName().equals(name))
+                                .findFirst().orElse(null);
+                        if (selected != null) {
+                            applyChange(project, selected);
+                        }
+                    })
+                    .createPopup()
+                    .showInFocusCenter();
         }
+    }
 
+    private void applyChange(Project project, Change target) {
         String changeName = target.getName();
         String changeDir = target.getPath();
 

@@ -2,7 +2,7 @@ package com.johnnyb.openspec.actions;
 
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.ui.Messages;
+import com.intellij.openapi.ui.popup.JBPopupFactory;
 import com.johnnyb.openspec.model.Change;
 import com.johnnyb.openspec.services.ChangeService;
 import com.johnnyb.openspec.tracking.ArchiveSyncService;
@@ -33,18 +33,27 @@ public class OpenSpecArchiveAction extends OpenSpecBaseAction {
             return;
         }
 
-        Change target;
         if (active.size() == 1) {
-            target = active.getFirst();
+            archiveChange(project, changeService, active.getFirst());
         } else {
-            String[] names = active.stream().map(Change::getName).toArray(String[]::new);
-            int choice = Messages.showChooseDialog(project,
-                    "Select a change to archive:",
-                    "Archive Change", Messages.getQuestionIcon(), names, names[0]);
-            if (choice < 0) return;
-            target = active.get(choice);
+            List<String> names = active.stream().map(Change::getName).toList();
+            JBPopupFactory.getInstance()
+                    .createPopupChooserBuilder(names)
+                    .setTitle("Archive Change")
+                    .setItemChosenCallback(name -> {
+                        Change selected = active.stream()
+                                .filter(c -> c.getName().equals(name))
+                                .findFirst().orElse(null);
+                        if (selected != null) {
+                            archiveChange(project, changeService, selected);
+                        }
+                    })
+                    .createPopup()
+                    .showInFocusCenter();
         }
+    }
 
+    private void archiveChange(Project project, ChangeService changeService, Change target) {
         String changeName = target.getName();
 
         // Phase 1: Archive (filesystem)

@@ -2,8 +2,8 @@ package com.johnnyb.openspec.util;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.execution.process.OSProcessHandler;
-import com.intellij.execution.process.ProcessAdapter;
 import com.intellij.execution.process.ProcessEvent;
+import com.intellij.execution.process.ProcessListener;
 import com.intellij.execution.process.ProcessOutputTypes;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Key;
@@ -47,9 +47,9 @@ public final class CliRunner {
             StringBuilder stdout = new StringBuilder();
             StringBuilder stderr = new StringBuilder();
 
-            handler.addProcessListener(new ProcessAdapter() {
+            handler.addProcessListener(new ProcessListener() {
                 @Override
-                public void onTextAvailable(ProcessEvent event, Key outputType) {
+                public void onTextAvailable(@org.jetbrains.annotations.NotNull ProcessEvent event, @org.jetbrains.annotations.NotNull Key outputType) {
                     if (ProcessOutputTypes.STDOUT.equals(outputType)) {
                         stdout.append(event.getText());
                     } else if (ProcessOutputTypes.STDERR.equals(outputType)) {

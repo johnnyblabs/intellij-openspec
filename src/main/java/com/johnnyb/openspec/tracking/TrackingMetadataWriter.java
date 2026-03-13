@@ -62,10 +62,11 @@ public final class TrackingMetadataWriter {
             return new LinkedHashMap<>();
         }
         String content;
-        if (ApplicationManager.getApplication() == null) {
+        if (ApplicationManager.getApplication() == null
+                || ApplicationManager.getApplication().isDispatchThread()) {
             content = new String(vf.contentsToByteArray(), StandardCharsets.UTF_8);
         } else {
-            content = ReadAction.compute(() -> new String(vf.contentsToByteArray(), StandardCharsets.UTF_8));
+            content = ReadAction.computeCancellable(() -> new String(vf.contentsToByteArray(), StandardCharsets.UTF_8));
         }
         Yaml yaml = new Yaml(new LoaderOptions());
         Object loaded = yaml.load(content);

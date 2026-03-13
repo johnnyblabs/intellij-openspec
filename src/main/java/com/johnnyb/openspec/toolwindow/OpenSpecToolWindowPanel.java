@@ -171,9 +171,7 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider {
             if (data.filePath() != null) {
                 VirtualFile file = LocalFileSystem.getInstance().findFileByPath(data.filePath());
                 if (file != null && !file.isDirectory()) {
-                    // Opening markdown files triggers slow file index operations in the
-                    // Markdown preview plugin. Allow slow operations to avoid EDT assertion.
-                    com.intellij.util.SlowOperations.allowSlowOperations(
+                    ApplicationManager.getApplication().invokeLater(
                             () -> FileEditorManager.getInstance(project).openFile(file, true));
                 }
             }
@@ -191,8 +189,9 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider {
                 AnAction action = ActionManager.getInstance().getAction("OpenSpec.Propose");
                 if (action != null) {
                     DataContext context = dataId -> CommonDataKeys.PROJECT.is(dataId) ? project : null;
-                    AnActionEvent event = AnActionEvent.createFromAnAction(action, null, "SpecTree", context);
-                    action.actionPerformed(event);
+                    Presentation presentation = action.getTemplatePresentation().clone();
+                    AnActionEvent event = new AnActionEvent(null, context, "SpecTree", presentation, ActionManager.getInstance(), 0);
+                    com.intellij.openapi.actionSystem.ex.ActionUtil.performActionDumbAwareWithCallbacks(action, event);
                 }
             }
         } else if ("OpenSpec".equals(parent.getUserObject())) {

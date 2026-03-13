@@ -230,10 +230,11 @@ public final class BuiltInValidator {
 
     private String readFile(VirtualFile file) {
         try {
-            if (ApplicationManager.getApplication() == null) {
+            if (ApplicationManager.getApplication() == null
+                    || ApplicationManager.getApplication().isDispatchThread()) {
                 return new String(file.contentsToByteArray(), StandardCharsets.UTF_8);
             }
-            return ReadAction.compute(() -> new String(file.contentsToByteArray(), StandardCharsets.UTF_8));
+            return ReadAction.computeCancellable(() -> new String(file.contentsToByteArray(), StandardCharsets.UTF_8));
         } catch (IOException e) {
             return null;
         }

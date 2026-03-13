@@ -144,13 +144,14 @@ public final class ChangeService {
             if (metaFile != null) {
                 try {
                     ChangeMetadata metadata;
-                    if (ApplicationManager.getApplication() == null) {
+                    if (ApplicationManager.getApplication() == null
+                            || ApplicationManager.getApplication().isDispatchThread()) {
                         try (InputStream is = metaFile.getInputStream()) {
                             Yaml yaml = new Yaml(new Constructor(ChangeMetadata.class, new LoaderOptions()));
                             metadata = yaml.loadAs(is, ChangeMetadata.class);
                         }
                     } else {
-                        metadata = ReadAction.compute(() -> {
+                        metadata = ReadAction.computeCancellable(() -> {
                             try (InputStream is = metaFile.getInputStream()) {
                                 Yaml yaml = new Yaml(new Constructor(ChangeMetadata.class, new LoaderOptions()));
                                 return yaml.loadAs(is, ChangeMetadata.class);
