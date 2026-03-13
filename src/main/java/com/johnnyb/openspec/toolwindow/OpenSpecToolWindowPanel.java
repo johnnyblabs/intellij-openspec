@@ -11,6 +11,7 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.vfs.VirtualFileManager;
 import com.intellij.openapi.vfs.newvfs.BulkFileListener;
 import com.intellij.openapi.vfs.newvfs.events.VFileEvent;
+import com.intellij.ui.SearchTextField;
 import com.intellij.ui.treeStructure.Tree;
 import com.intellij.util.Alarm;
 import com.johnnyb.openspec.actions.CreateDeltaSpecAction;
@@ -21,12 +22,15 @@ import com.johnnyb.openspec.settings.OpenSpecSettings;
 import com.johnnyb.openspec.util.OpenSpecFileUtil;
 
 import javax.swing.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreePath;
 import com.intellij.ui.JBColor;
 
 import java.awt.*;
+import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.*;
@@ -36,15 +40,19 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider {
 
     private final Project project;
     private final Tree tree;
+    private final SearchTextField searchField;
     private final JLabel statusLabel;
     private final JLabel aiStatusLabel;
     private final WorkflowActionPanel workflowPanel;
     private final Alarm refreshAlarm;
+    private final Alarm filterAlarm;
+    private Set<String> preFilterExpansionState;
 
     public OpenSpecToolWindowPanel(Project project) {
         super(new BorderLayout());
         this.project = project;
         this.refreshAlarm = new Alarm(Alarm.ThreadToUse.POOLED_THREAD, project);
+        this.filterAlarm = new Alarm(Alarm.ThreadToUse.POOLED_THREAD, project);
 
         // Build tree with placeholder; real model loads async
         DefaultMutableTreeNode placeholder = new DefaultMutableTreeNode("Loading...");
@@ -65,6 +73,24 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider {
             }
         });
 
+        // Search field
+        searchField = new SearchTextField(false);
+
+        // Ctrl+F / Cmd+F to focus search
+        int modifier = Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx();
+        tree.registerKeyboardAction(
+                e -> searchField.requestFocusInWindow(),
+                KeyStroke.getKeyStroke(KeyEvent.VK_F, modifier),
+                JComponent.WHEN_FOCUSED);
+        searchField.getTextEditor().getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) { debouncedFilter(); }
+            @Override
+            public void removeUpdate(DocumentEvent e) { debouncedFilter(); }
+            @Override
+            public void changedUpdate(DocumentEvent e) { debouncedFilter(); }
+        });
+
         // Status bar
         statusLabel = new JLabel();
         aiStatusLabel = new JLabel();
@@ -83,7 +109,12 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider {
         bottomPanel.add(workflowPanel, BorderLayout.CENTER);
         bottomPanel.add(statusBar, BorderLayout.SOUTH);
 
-        add(createActionToolbar(), BorderLayout.NORTH);
+        // Top panel: toolbar + search
+        JPanel topPanel = new JPanel(new BorderLayout());
+        topPanel.add(createActionToolbar(), BorderLayout.NORTH);
+        topPanel.add(searchField, BorderLayout.SOUTH);
+
+        add(topPanel, BorderLayout.NORTH);
         add(new JScrollPane(tree), BorderLayout.CENTER);
         add(bottomPanel, BorderLayout.SOUTH);
 
@@ -92,18 +123,62 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider {
     }
 
     private void refreshAsync() {
-        Set<String> expandedLabels = saveExpansionState();
+        String query = searchField.getText();
+        boolean hasFilter = query != null && !query.isBlank();
+        Set<String> expandedLabels = hasFilter ? null : saveExpansionState();
         ApplicationManager.getApplication().executeOnPooledThread(() -> {
             SpecTreeModel treeModel = new SpecTreeModel(project);
-            DefaultTreeModel model = treeModel.buildModel();
+            DefaultTreeModel model = treeModel.buildModel(hasFilter ? query : null);
             ApplicationManager.getApplication().invokeLater(() -> {
                 tree.setModel(model);
-                restoreExpansionState(expandedLabels);
+                if (hasFilter) {
+                    expandAllNodes();
+                } else if (expandedLabels != null) {
+                    restoreExpansionState(expandedLabels);
+                }
                 updateCliStatus();
                 updateAiStatus();
             });
         });
         workflowPanel.refresh();
+    }
+
+    private void debouncedFilter() {
+        filterAlarm.cancelAllRequests();
+        filterAlarm.addRequest(() -> ApplicationManager.getApplication().invokeLater(this::applyFilter), 150);
+    }
+
+    private void applyFilter() {
+        String query = searchField.getText();
+        boolean hasFilter = query != null && !query.isBlank();
+
+        // Save expansion state before first filter keystroke
+        if (hasFilter && preFilterExpansionState == null) {
+            preFilterExpansionState = saveExpansionState();
+        }
+
+        ApplicationManager.getApplication().executeOnPooledThread(() -> {
+            SpecTreeModel treeModel = new SpecTreeModel(project);
+            DefaultTreeModel model = treeModel.buildModel(hasFilter ? query : null);
+            ApplicationManager.getApplication().invokeLater(() -> {
+                tree.setModel(model);
+                if (hasFilter) {
+                    expandAllNodes();
+                } else {
+                    // Filter cleared — restore pre-filter expansion state
+                    if (preFilterExpansionState != null) {
+                        restoreExpansionState(preFilterExpansionState);
+                        preFilterExpansionState = null;
+                    }
+                }
+            });
+        });
+    }
+
+    private void expandAllNodes() {
+        for (int i = 0; i < tree.getRowCount(); i++) {
+            tree.expandRow(i);
+        }
     }
 
     private Set<String> saveExpansionState() {

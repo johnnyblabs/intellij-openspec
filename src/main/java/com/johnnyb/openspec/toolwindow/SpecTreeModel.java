@@ -23,6 +23,10 @@ public class SpecTreeModel {
     }
 
     public DefaultTreeModel buildModel() {
+        return buildModel(null);
+    }
+
+    public DefaultTreeModel buildModel(String query) {
         DefaultMutableTreeNode root = new DefaultMutableTreeNode("OpenSpec");
 
         if (!OpenSpecFileUtil.isOpenSpecProject(project)) {
@@ -32,11 +36,75 @@ public class SpecTreeModel {
             return new DefaultTreeModel(root);
         }
 
-        root.add(buildSpecsNode());
-        root.add(buildChangesNode());
-        root.add(buildArchiveNode());
+        String normalizedQuery = (query != null && !query.isBlank()) ? query.trim().toLowerCase() : null;
+
+        DefaultMutableTreeNode specsNode = buildSpecsNode();
+        DefaultMutableTreeNode changesNode = buildChangesNode();
+        DefaultMutableTreeNode archiveNode = buildArchiveNode();
+
+        if (normalizedQuery == null) {
+            root.add(specsNode);
+            root.add(changesNode);
+            root.add(archiveNode);
+        } else {
+            DefaultMutableTreeNode filteredSpecs = filterNode(specsNode, normalizedQuery);
+            DefaultMutableTreeNode filteredChanges = filterNode(changesNode, normalizedQuery);
+            DefaultMutableTreeNode filteredArchive = filterNode(archiveNode, normalizedQuery);
+
+            if (filteredSpecs != null) root.add(filteredSpecs);
+            if (filteredChanges != null) root.add(filteredChanges);
+            if (filteredArchive != null) root.add(filteredArchive);
+
+            if (root.getChildCount() == 0) {
+                String hint = "No results for '" + query.trim() + "'";
+                root.add(new DefaultMutableTreeNode(
+                        new TreeNodeData(hint, TreeNodeType.HINT, null, null, null, hint)));
+            }
+        }
 
         return new DefaultTreeModel(root);
+    }
+
+    private DefaultMutableTreeNode filterNode(DefaultMutableTreeNode node, String query) {
+        Object userObj = node.getUserObject();
+        String label = (userObj instanceof TreeNodeData data) ? data.label() : node.toString();
+        boolean selfMatches = label.toLowerCase().contains(query);
+
+        // Collect filtered children
+        java.util.List<DefaultMutableTreeNode> matchingChildren = new java.util.ArrayList<>();
+        for (int i = 0; i < node.getChildCount(); i++) {
+            DefaultMutableTreeNode child = (DefaultMutableTreeNode) node.getChildAt(i);
+            DefaultMutableTreeNode filtered = filterNode(child, query);
+            if (filtered != null) {
+                matchingChildren.add(filtered);
+            }
+        }
+
+        if (!selfMatches && matchingChildren.isEmpty()) {
+            return null;
+        }
+
+        // Clone the node (without children) and add matching children
+        DefaultMutableTreeNode clone = new DefaultMutableTreeNode(node.getUserObject());
+        if (selfMatches && matchingChildren.isEmpty()) {
+            // Self matches — include all original children
+            for (int i = 0; i < node.getChildCount(); i++) {
+                clone.add(cloneSubtree((DefaultMutableTreeNode) node.getChildAt(i)));
+            }
+        } else {
+            for (DefaultMutableTreeNode child : matchingChildren) {
+                clone.add(child);
+            }
+        }
+        return clone;
+    }
+
+    private DefaultMutableTreeNode cloneSubtree(DefaultMutableTreeNode node) {
+        DefaultMutableTreeNode clone = new DefaultMutableTreeNode(node.getUserObject());
+        for (int i = 0; i < node.getChildCount(); i++) {
+            clone.add(cloneSubtree((DefaultMutableTreeNode) node.getChildAt(i)));
+        }
+        return clone;
     }
 
     private DefaultMutableTreeNode buildSpecsNode() {
