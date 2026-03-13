@@ -1285,10 +1285,15 @@ public class WorkflowActionPanel extends JPanel {
                     }
                 }
             } catch (AiApiException ex) {
-                ApplicationManager.getApplication().invokeLater(() ->
-                        OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_GENERATION, "Generate",
-                                "AI generation failed: " + ex.getMessage(), com.intellij.notification.NotificationType.ERROR,
-                                OpenSpecNotifier.openSettingsAction()));
+                ApplicationManager.getApplication().invokeLater(() -> {
+                    String content = "AI generation failed: " + ex.getMessage();
+                    if (ex.getSuggestion() != null) {
+                        content += "\n" + ex.getSuggestion();
+                    }
+                    OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_GENERATION, "Generate",
+                            content, com.intellij.notification.NotificationType.ERROR,
+                            OpenSpecNotifier.openSettingsAction());
+                });
             } catch (Exception ex) {
                 ApplicationManager.getApplication().invokeLater(() ->
                         OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_GENERATION, "Generate",
@@ -1554,6 +1559,9 @@ public class WorkflowActionPanel extends JPanel {
                     String msg = artifactId != null
                             ? artifactId + " failed: " + exception.getMessage()
                             : "Generation failed: " + exception.getMessage();
+                    if (exception instanceof AiApiException apiEx && apiEx.getSuggestion() != null) {
+                        msg += " — " + apiEx.getSuggestion();
+                    }
                     guidanceMessageLabel.setText("\u2717 " + msg);
                     guidanceMessageLabel.setForeground(JBColor.RED);
                     guidanceWatchingLabel.setText("");
