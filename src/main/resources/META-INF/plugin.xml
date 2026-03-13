@@ -47,6 +47,16 @@
         <notificationGroup id="OpenSpec.System" displayType="STICKY_BALLOON"/>
         <notificationGroup id="OpenSpec.Tracker" displayType="BALLOON"/>
 
+        <!-- File Types -->
+        <fileType name="OpenSpec YAML"
+                  implementationClass="com.johnnyb.openspec.filetype.OpenSpecYamlFileType"
+                  fieldName="INSTANCE"
+                  language="yaml"
+                  fileNames=".openspec.yaml"/>
+
+        <!-- Icon Providers -->
+        <iconProvider implementation="com.johnnyb.openspec.filetype.OpenSpecIconProvider"/>
+
         <!-- Tool Window -->
         <toolWindow id="OpenSpec" anchor="right"
                     factoryClass="com.johnnyb.openspec.toolwindow.OpenSpecToolWindowFactory"
