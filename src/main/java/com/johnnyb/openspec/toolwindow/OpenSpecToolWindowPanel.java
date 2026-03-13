@@ -326,6 +326,20 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider {
                     });
                 }
             }
+            case DELTA_SPEC -> {
+                if (data.filePath() != null) {
+                    contextMenu.add(new com.johnnyb.openspec.actions.DeltaSpecDiffAction(data.filePath()));
+                    contextMenu.add(new AnAction("Open File") {
+                        @Override
+                        public void actionPerformed(@org.jetbrains.annotations.NotNull AnActionEvent ae) {
+                            VirtualFile file = LocalFileSystem.getInstance().findFileByPath(data.filePath());
+                            if (file != null) {
+                                FileEditorManager.getInstance(project).openFile(file, true);
+                            }
+                        }
+                    });
+                }
+            }
             case ARTIFACT_READY -> {
                 // Generation is handled via the Workflow Action Panel
             }
