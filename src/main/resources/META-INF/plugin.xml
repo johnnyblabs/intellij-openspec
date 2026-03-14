@@ -1,7 +1,7 @@
 <idea-plugin>
-    <id>com.johnnyb.openspec</id>
+    <id>com.johnnyblabs.openspec</id>
     <name>OpenSpec</name>
-    <vendor url="https://github.com/fission-ai/openspec" email="openspec@fission.ai">johnnyb</vendor>
+    <vendor url="https://johnnyblabs.com" email="openspec@johnnyblabs.com">johnnyblabs</vendor>
     <description><![CDATA[
         <p><b>OpenSpec</b> brings spec-driven development to IntelliJ IDEA. Write specifications first, then implement with confidence — your specs become living documentation that stays connected to your code.</p>
 
@@ -24,30 +24,30 @@
 
     <extensions defaultExtensionNs="com.intellij">
         <!-- Services -->
-        <projectService serviceImplementation="com.johnnyb.openspec.services.OpenSpecProjectService"/>
-        <projectService serviceImplementation="com.johnnyb.openspec.services.ConfigService"/>
-        <projectService serviceImplementation="com.johnnyb.openspec.services.SpecParsingService"/>
-        <projectService serviceImplementation="com.johnnyb.openspec.services.ChangeService"/>
-        <projectService serviceImplementation="com.johnnyb.openspec.services.CliDetectionService"/>
-        <projectService serviceImplementation="com.johnnyb.openspec.validation.BuiltInValidator"/>
-        <projectService serviceImplementation="com.johnnyb.openspec.scaffolding.ScaffoldingService"/>
-        <projectService serviceImplementation="com.johnnyb.openspec.settings.OpenSpecSettings"/>
-        <projectService serviceImplementation="com.johnnyb.openspec.services.ArtifactOrchestrationService"/>
-        <projectService serviceImplementation="com.johnnyb.openspec.services.ScaffoldingDetectionService"/>
-        <projectService serviceImplementation="com.johnnyb.openspec.services.AiToolDetectionService"/>
-        <projectService serviceImplementation="com.johnnyb.openspec.ai.DirectApiService"/>
-        <projectService serviceImplementation="com.johnnyb.openspec.services.DeliveryMethodResolver"/>
-        <projectService serviceImplementation="com.johnnyb.openspec.toolwindow.OpenSpecConsoleService"/>
-        <projectService serviceImplementation="com.johnnyb.openspec.services.SpecCoverageService"/>
+        <projectService serviceImplementation="com.johnnyblabs.openspec.services.OpenSpecProjectService"/>
+        <projectService serviceImplementation="com.johnnyblabs.openspec.services.ConfigService"/>
+        <projectService serviceImplementation="com.johnnyblabs.openspec.services.SpecParsingService"/>
+        <projectService serviceImplementation="com.johnnyblabs.openspec.services.ChangeService"/>
+        <projectService serviceImplementation="com.johnnyblabs.openspec.services.CliDetectionService"/>
+        <projectService serviceImplementation="com.johnnyblabs.openspec.validation.BuiltInValidator"/>
+        <projectService serviceImplementation="com.johnnyblabs.openspec.scaffolding.ScaffoldingService"/>
+        <projectService serviceImplementation="com.johnnyblabs.openspec.settings.OpenSpecSettings"/>
+        <projectService serviceImplementation="com.johnnyblabs.openspec.services.ArtifactOrchestrationService"/>
+        <projectService serviceImplementation="com.johnnyblabs.openspec.services.ScaffoldingDetectionService"/>
+        <projectService serviceImplementation="com.johnnyblabs.openspec.services.AiToolDetectionService"/>
+        <projectService serviceImplementation="com.johnnyblabs.openspec.ai.DirectApiService"/>
+        <projectService serviceImplementation="com.johnnyblabs.openspec.services.DeliveryMethodResolver"/>
+        <projectService serviceImplementation="com.johnnyblabs.openspec.toolwindow.OpenSpecConsoleService"/>
+        <projectService serviceImplementation="com.johnnyblabs.openspec.services.SpecCoverageService"/>
 
         <!-- Settings -->
-        <projectConfigurable instance="com.johnnyb.openspec.settings.OpenSpecConfigurable"
-                             id="com.johnnyb.openspec.settings"
+        <projectConfigurable instance="com.johnnyblabs.openspec.settings.OpenSpecConfigurable"
+                             id="com.johnnyblabs.openspec.settings"
                              displayName="OpenSpec"
                              parentId="tools"/>
 
         <!-- Startup -->
-        <postStartupActivity implementation="com.johnnyb.openspec.services.OpenSpecProjectService$StartupDetection"/>
+        <postStartupActivity implementation="com.johnnyblabs.openspec.services.OpenSpecProjectService$StartupDetection"/>
 
         <!-- Notifications -->
         <notificationGroup id="OpenSpec.Workflow" displayType="BALLOON"/>
@@ -57,17 +57,17 @@
 
         <!-- File Types -->
         <fileType name="OpenSpec YAML"
-                  implementationClass="com.johnnyb.openspec.filetype.OpenSpecYamlFileType"
+                  implementationClass="com.johnnyblabs.openspec.filetype.OpenSpecYamlFileType"
                   fieldName="INSTANCE"
                   language="yaml"
                   fileNames=".openspec.yaml"/>
 
         <!-- Icon Providers -->
-        <iconProvider implementation="com.johnnyb.openspec.filetype.OpenSpecIconProvider"/>
+        <iconProvider implementation="com.johnnyblabs.openspec.filetype.OpenSpecIconProvider"/>
 
         <!-- Tool Window -->
         <toolWindow id="OpenSpec" anchor="right"
-                    factoryClass="com.johnnyb.openspec.toolwindow.OpenSpecToolWindowFactory"
+                    factoryClass="com.johnnyblabs.openspec.toolwindow.OpenSpecToolWindowFactory"
                     icon="/icons/openspec.svg"/>
 
         <!-- Inspections -->
@@ -77,78 +77,78 @@
                          displayName="Spec format validation"
                          enabledByDefault="true"
                          level="WARNING"
-                         implementationClass="com.johnnyb.openspec.validation.SpecFormatInspection"/>
+                         implementationClass="com.johnnyblabs.openspec.validation.SpecFormatInspection"/>
         <localInspection language=""
                          groupName="OpenSpec"
                          shortName="DeltaSpecInspection"
                          displayName="Delta spec validation"
                          enabledByDefault="true"
                          level="WARNING"
-                         implementationClass="com.johnnyb.openspec.validation.DeltaSpecInspection"/>
+                         implementationClass="com.johnnyblabs.openspec.validation.DeltaSpecInspection"/>
         <localInspection language="yaml"
                          groupName="OpenSpec"
                          shortName="ConfigValidationInspection"
                          displayName="OpenSpec config validation"
                          enabledByDefault="true"
                          level="WARNING"
-                         implementationClass="com.johnnyb.openspec.validation.ConfigValidationInspection"/>
+                         implementationClass="com.johnnyblabs.openspec.validation.ConfigValidationInspection"/>
 
         <!-- Annotators -->
-        <annotator language="" implementationClass="com.johnnyb.openspec.editor.SpecAnnotator"/>
-        <annotator language="" implementationClass="com.johnnyb.openspec.editor.ScenarioAnnotator"/>
+        <annotator language="" implementationClass="com.johnnyblabs.openspec.editor.SpecAnnotator"/>
+        <annotator language="" implementationClass="com.johnnyblabs.openspec.editor.ScenarioAnnotator"/>
 
         <!-- Line Markers -->
         <codeInsight.lineMarkerProvider language=""
-                                         implementationClass="com.johnnyb.openspec.editor.OpenSpecLineMarkerProvider"/>
+                                         implementationClass="com.johnnyblabs.openspec.editor.OpenSpecLineMarkerProvider"/>
         <codeInsight.lineMarkerProvider language="JAVA"
-                                         implementationClass="com.johnnyb.openspec.editor.SpecRefLineMarkerProvider"/>
+                                         implementationClass="com.johnnyblabs.openspec.editor.SpecRefLineMarkerProvider"/>
     </extensions>
 
     <actions>
         <!-- Top-level menu bar entry -->
         <group id="OpenSpec.MainMenu" text="OpenSpec" description="OpenSpec workflow actions" popup="true">
             <action id="OpenSpec.Init"
-                    class="com.johnnyb.openspec.actions.OpenSpecInitAction"
+                    class="com.johnnyblabs.openspec.actions.OpenSpecInitAction"
                     text="Init"
                     description="Initialize OpenSpec in this project"
                     icon="/icons/openspec.svg"/>
             <action id="OpenSpec.Propose"
-                    class="com.johnnyb.openspec.actions.OpenSpecProposeAction"
+                    class="com.johnnyblabs.openspec.actions.OpenSpecProposeAction"
                     text="Propose..."
                     description="Propose a new change"
                     icon="AllIcons.General.Add"/>
             <action id="OpenSpec.Explore"
-                    class="com.johnnyb.openspec.actions.ExploreContextAction"
+                    class="com.johnnyblabs.openspec.actions.ExploreContextAction"
                     text="Explore..."
                     description="Copy project context to clipboard for AI-assisted exploration"/>
             <action id="OpenSpec.Apply"
-                    class="com.johnnyb.openspec.actions.OpenSpecApplyAction"
+                    class="com.johnnyblabs.openspec.actions.OpenSpecApplyAction"
                     text="Apply"
                     description="Apply the current change"/>
             <action id="OpenSpec.Archive"
-                    class="com.johnnyb.openspec.actions.OpenSpecArchiveAction"
+                    class="com.johnnyblabs.openspec.actions.OpenSpecArchiveAction"
                     text="Archive"
                     description="Archive the current change"
                     icon="/icons/archive.svg"/>
             <separator/>
             <action id="OpenSpec.Validate"
-                    class="com.johnnyb.openspec.actions.OpenSpecValidateAction"
+                    class="com.johnnyblabs.openspec.actions.OpenSpecValidateAction"
                     text="Validate"
                     description="Validate specs and config"
                     icon="/icons/requirement.svg"/>
             <action id="OpenSpec.List"
-                    class="com.johnnyb.openspec.actions.OpenSpecListAction"
+                    class="com.johnnyblabs.openspec.actions.OpenSpecListAction"
                     text="List"
                     description="List specs and changes"
                     icon="/icons/spec.svg"/>
             <separator/>
             <action id="OpenSpec.Refresh"
-                    class="com.johnnyb.openspec.actions.OpenSpecRefreshAction"
+                    class="com.johnnyblabs.openspec.actions.OpenSpecRefreshAction"
                     text="Refresh Tree"
                     description="Refresh the OpenSpec tool window"
                     icon="AllIcons.Actions.Refresh"/>
             <action id="OpenSpec.SetupWizard"
-                    class="com.johnnyb.openspec.actions.OpenSpecSetupWizardAction"
+                    class="com.johnnyblabs.openspec.actions.OpenSpecSetupWizardAction"
                     text="Setup Wizard..."
                     description="Run the OpenSpec setup wizard"
                     icon="AllIcons.General.GearPlain"/>
