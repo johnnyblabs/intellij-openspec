@@ -16,6 +16,7 @@ import com.johnnyblabs.openspec.settings.OpenSpecSettings;
 import com.johnnyblabs.openspec.scaffolding.ScaffoldingService;
 import com.johnnyblabs.openspec.services.AiToolDetectionService;
 import com.johnnyblabs.openspec.services.CliDetectionService;
+import com.intellij.openapi.util.IconLoader;
 import com.johnnyblabs.openspec.util.OpenSpecFileUtil;
 import org.jetbrains.annotations.Nullable;
 
@@ -27,6 +28,7 @@ public class SetupWizardDialog extends DialogWrapper {
 
     private static final int DIALOG_WIDTH = 500;
     private static final int DIALOG_HEIGHT = 400;
+    private static final Icon BRAND_ICON = IconLoader.getIcon("/icons/openspec-brand.svg", SetupWizardDialog.class);
 
     private final Project project;
     private final SetupWizardModel model = new SetupWizardModel();
@@ -94,11 +96,17 @@ public class SetupWizardDialog extends DialogWrapper {
         gbc.insets = JBUI.insets(8);
 
         gbc.gridy = 0;
+        gbc.anchor = GridBagConstraints.CENTER;
+        gbc.fill = GridBagConstraints.NONE;
+        panel.add(new JBLabel(BRAND_ICON), gbc);
+
+        gbc.gridy = 1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
         JBLabel title = new JBLabel("Welcome to OpenSpec");
         title.setFont(title.getFont().deriveFont(Font.BOLD, 18f));
         panel.add(title, gbc);
 
-        gbc.gridy = 1;
+        gbc.gridy = 2;
         JBLabel desc = new JBLabel("<html><body style='width:400px'>" +
                 "Spec-driven development for your project. Define requirements, " +
                 "generate artifacts, and track changes with AI assistance.<br><br>" +
@@ -274,15 +282,21 @@ public class SetupWizardDialog extends DialogWrapper {
         gbc.insets = JBUI.insets(8);
 
         gbc.gridy = 0;
+        gbc.anchor = GridBagConstraints.CENTER;
+        gbc.fill = GridBagConstraints.NONE;
+        panel.add(new JBLabel(BRAND_ICON), gbc);
+
+        gbc.gridy = 1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
         JBLabel title = new JBLabel("Setup Complete");
         title.setFont(title.getFont().deriveFont(Font.BOLD, 18f));
         panel.add(title, gbc);
 
-        gbc.gridy = 1;
+        gbc.gridy = 2;
         summaryLabel = new JBLabel("");
         panel.add(summaryLabel, gbc);
 
-        gbc.gridy = 2;
+        gbc.gridy = 3;
         JButton proposeBtn = new JButton("Create Your First Change");
         proposeBtn.addActionListener(e -> {
             openProposeOnClose = true;

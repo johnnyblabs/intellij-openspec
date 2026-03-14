@@ -23,10 +23,12 @@ public final class EmptyStateFactory {
 
         if (icon != null) {
             gbc.gridy = 0;
+            gbc.insets = JBUI.insets(12, 4, 8, 4);
             panel.add(new JBLabel(icon), gbc);
         }
 
         gbc.gridy = icon != null ? 1 : 0;
+        gbc.insets = JBUI.insets(4);
         JBLabel titleLabel = new JBLabel(title);
         titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD));
         panel.add(titleLabel, gbc);

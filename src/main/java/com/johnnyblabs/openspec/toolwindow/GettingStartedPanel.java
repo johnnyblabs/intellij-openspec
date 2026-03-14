@@ -29,7 +29,7 @@ import java.util.List;
 
 public class GettingStartedPanel extends JPanel implements Disposable {
 
-    private static final Icon OPENSPEC_ICON = IconLoader.getIcon("/icons/openspec.svg", GettingStartedPanel.class);
+    private static final Icon BRAND_ICON = IconLoader.getIcon("/icons/openspec-brand.svg", GettingStartedPanel.class);
 
     public enum State {
         NOT_INITIALIZED,
@@ -92,12 +92,27 @@ public class GettingStartedPanel extends JPanel implements Disposable {
         gbc.anchor = GridBagConstraints.CENTER;
         gbc.insets = JBUI.insets(8);
 
+        // Brand icon
+        gbc.insets = JBUI.insets(12, 8, 4, 8);
+        add(new JBLabel(BRAND_ICON), gbc);
+
         // Title
+        gbc.gridy++;
+        gbc.insets = JBUI.insets(2, 8, 0, 8);
         JBLabel title = new JBLabel("OpenSpec");
         title.setFont(title.getFont().deriveFont(Font.BOLD, 18f));
         add(title, gbc);
 
+        // Tagline
         gbc.gridy++;
+        gbc.insets = JBUI.insets(0, 8, 8, 8);
+        JBLabel tagline = new JBLabel("Spec-Driven Development");
+        tagline.setFont(tagline.getFont().deriveFont(Font.PLAIN, 12f));
+        tagline.setForeground(com.intellij.ui.JBColor.GRAY);
+        add(tagline, gbc);
+
+        gbc.gridy++;
+        gbc.insets = JBUI.insets(8);
 
         switch (state) {
             case NOT_INITIALIZED -> {
@@ -168,7 +183,7 @@ public class GettingStartedPanel extends JPanel implements Disposable {
     }
 
     private JPanel createCard(String title, String description, JButton button) {
-        return EmptyStateFactory.createPanel(OPENSPEC_ICON, title, description, button);
+        return EmptyStateFactory.createPanel(null, title, description, button);
     }
 
     private JButton createInitButton() {
