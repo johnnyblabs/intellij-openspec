@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "com.johnnyblabs.openspec"
-version = "0.2.0"
+version = "0.2.1"
 
 java {
     sourceCompatibility = JavaVersion.VERSION_21
