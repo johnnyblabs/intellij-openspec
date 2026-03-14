@@ -1,33 +1,38 @@
 # Editor
 
 ## Purpose
-Syntax highlighting, annotations, and gutter icons for spec files.
+In-editor features: syntax highlighting, gutter markers, spec coverage, search, and diff viewer.
 
 ## Requirements
 
-### Requirement: RFC 2119 Keyword Highlighting
+### Requirement: Syntax highlighting
 
-The plugin SHALL highlight RFC 2119 keywords (SHALL, SHOULD, MAY, SHALL NOT, SHOULD NOT) in spec files.
+The plugin SHALL highlight RFC 2119 keywords (SHALL, MUST, etc.) and scenario keywords (GIVEN, WHEN, THEN, AND) in spec files.
 
-#### Scenario: Keyword in requirement body
-- GIVEN a spec file containing the word "SHALL" in a requirement body
-- WHEN the file is displayed in the editor
-- THEN "SHALL" SHALL be highlighted with a distinct color
+#### Scenario: Keyword highlighting
+- **WHEN** a spec file is opened in the editor
+- **THEN** RFC 2119 and scenario keywords SHALL be visually highlighted
 
-### Requirement: Scenario Keyword Highlighting
+### Requirement: Spec gutter markers
 
-The plugin SHALL highlight scenario keywords (GIVEN, WHEN, THEN, AND) in spec files.
+The plugin SHALL detect `// @spec <domain>:<requirement>` comments in Java files and display gutter icons with tooltip and click-to-navigate.
 
-#### Scenario: Scenario clause keywords
-- GIVEN a spec file containing a scenario with GIVEN, WHEN, THEN clauses
-- WHEN the file is displayed in the editor
-- THEN each keyword SHALL be highlighted with a distinct color
+#### Scenario: Gutter navigation
+- **WHEN** a Java file contains `@spec` comments
+- **THEN** gutter icons SHALL appear with tooltips showing the referenced spec, and clicking SHALL navigate to the spec file
 
-### Requirement: Requirement Gutter Icons
+### Requirement: Spec coverage panel
 
-The plugin SHALL display gutter icons next to requirement headings for quick navigation when available.
+The plugin SHALL scan Java files for `@spec` references, cross-reference against specs, and display a coverage panel showing referenced vs unreferenced requirements.
 
-#### Scenario: Gutter icon display
-- GIVEN a spec file with `### Requirement:` headings
-- WHEN the file is displayed in the editor
-- THEN a gutter icon SHALL appear next to each requirement heading
+#### Scenario: Coverage display
+- **WHEN** the Coverage tab is selected
+- **THEN** it SHALL show a tree of domains/requirements with referenced (green) and unreferenced (gray) indicators
+
+### Requirement: Delta spec diff viewer
+
+The plugin SHALL provide a "Preview Diff" action on delta spec nodes showing a side-by-side diff against the corresponding main spec.
+
+#### Scenario: Diff preview
+- **WHEN** the user right-clicks a delta spec and selects "Preview Diff"
+- **THEN** a diff viewer SHALL open comparing the delta spec against its main spec
