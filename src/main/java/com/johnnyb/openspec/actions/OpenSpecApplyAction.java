@@ -12,7 +12,6 @@ import com.johnnyb.openspec.model.ChangeArtifactDag;
 import com.johnnyb.openspec.services.ArtifactOrchestrationService;
 import com.johnnyb.openspec.services.ChangeService;
 import com.johnnyb.openspec.toolwindow.OpenSpecToolWindowPanel;
-import com.johnnyb.openspec.tracking.IssueLifecycleService;
 import com.johnnyb.openspec.util.ApplyPromptBuilder;
 import com.johnnyb.openspec.util.OpenSpecNotifier;
 import org.jetbrains.annotations.NotNull;
@@ -99,12 +98,6 @@ public class OpenSpecApplyAction extends OpenSpecBaseAction {
 
             // Focus the workflow panel and trigger apply from there
             focusAndApply(project, changeName);
-
-            // Trigger issue status updates in configured trackers
-            IssueLifecycleService lifecycle = project.getService(IssueLifecycleService.class);
-            if (lifecycle != null) {
-                lifecycle.onApply(changeName, changeDir);
-            }
         });
     }
 
