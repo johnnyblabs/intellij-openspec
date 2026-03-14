@@ -70,6 +70,7 @@ public class OpenSpecToolWindowFactory implements ToolWindowFactory, DumbAware {
     private void createGettingStartedContent(Project project, ToolWindow toolWindow, GettingStartedPanel panel) {
         ContentFactory contentFactory = ContentFactory.getInstance();
         Content content = contentFactory.createContent(panel, "Get Started", false);
+        content.setDisposer(panel);
         toolWindow.getContentManager().addContent(content);
     }
 
