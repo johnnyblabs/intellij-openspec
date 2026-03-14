@@ -26,10 +26,6 @@
         <projectService serviceImplementation="com.johnnyb.openspec.ai.DirectApiService"/>
         <projectService serviceImplementation="com.johnnyb.openspec.services.DeliveryMethodResolver"/>
         <projectService serviceImplementation="com.johnnyb.openspec.toolwindow.OpenSpecConsoleService"/>
-        <projectService serviceImplementation="com.johnnyb.openspec.tracking.ForgejoService"/>
-        <projectService serviceImplementation="com.johnnyb.openspec.tracking.PlaneService"/>
-        <projectService serviceImplementation="com.johnnyb.openspec.tracking.IssueLifecycleService"/>
-        <projectService serviceImplementation="com.johnnyb.openspec.tracking.ArchiveSyncService"/>
 
         <!-- Settings -->
         <projectConfigurable instance="com.johnnyb.openspec.settings.OpenSpecConfigurable"
@@ -45,7 +41,6 @@
         <notificationGroup id="OpenSpec.Generation" displayType="BALLOON"/>
         <notificationGroup id="OpenSpec.Validation" displayType="BALLOON"/>
         <notificationGroup id="OpenSpec.System" displayType="STICKY_BALLOON"/>
-        <notificationGroup id="OpenSpec.Tracker" displayType="BALLOON"/>
 
         <!-- File Types -->
         <fileType name="OpenSpec YAML"

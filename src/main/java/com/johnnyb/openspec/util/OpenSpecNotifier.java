@@ -18,7 +18,6 @@ public final class OpenSpecNotifier {
     public static final String GROUP_GENERATION = "OpenSpec.Generation";
     public static final String GROUP_VALIDATION = "OpenSpec.Validation";
     public static final String GROUP_SYSTEM = "OpenSpec.System";
-    public static final String GROUP_TRACKER = "OpenSpec.Tracker";
 
     private OpenSpecNotifier() {
     }

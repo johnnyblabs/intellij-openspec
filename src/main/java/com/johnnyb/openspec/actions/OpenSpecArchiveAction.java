@@ -5,18 +5,13 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.popup.JBPopupFactory;
 import com.johnnyb.openspec.model.Change;
 import com.johnnyb.openspec.services.ChangeService;
-import com.johnnyb.openspec.tracking.ArchiveSyncService;
 import com.johnnyb.openspec.util.OpenSpecNotifier;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 
 /**
- * Archives a completed change by moving it from {@code changes/} to {@code archive/},
- * then triggers sync reconciliation with configured issue trackers.
- *
- * <p>Archive and sync are separate phases: if archive succeeds but sync fails,
- * the archive is preserved and the user can retry sync independently.</p>
+ * Archives a completed change by moving it from {@code changes/} to {@code archive/}.
  */
 public class OpenSpecArchiveAction extends OpenSpecBaseAction {
 
@@ -66,12 +61,6 @@ public class OpenSpecArchiveAction extends OpenSpecBaseAction {
             return;
         }
 
-        // Phase 2: Sync reconciliation (tracker updates) — only after archive success
-        ArchiveSyncService syncService = project.getService(ArchiveSyncService.class);
-        if (syncService != null) {
-            syncService.syncAsync(changeName, () -> refreshToolWindow(project));
-        } else {
-            refreshToolWindow(project);
-        }
+        refreshToolWindow(project);
     }
 }

@@ -21,7 +21,6 @@ import com.intellij.util.ui.JBUI;
 import com.johnnyb.openspec.ai.AiApiException;
 import com.johnnyb.openspec.ai.DeliveryMode;
 import com.johnnyb.openspec.ai.DirectApiService;
-import com.johnnyb.openspec.tracking.ArchiveSyncService;
 import com.johnnyb.openspec.validation.BuiltInValidator;
 import com.johnnyb.openspec.validation.ValidationIssue;
 import com.johnnyb.openspec.validation.ValidationResult;
@@ -136,7 +135,6 @@ public class WorkflowActionPanel extends JPanel {
 
     // Retry state
     private final JButton retryButton;
-    private final JButton syncRetryButton;
 
     private String activeChangeName;
     private String nextArtifactId;
@@ -248,11 +246,6 @@ public class WorkflowActionPanel extends JPanel {
         retryButton.setVisible(false);
         retryButton.addActionListener(e -> onGenerateAll());
 
-        syncRetryButton = new JButton("Retry Sync");
-        syncRetryButton.setIcon(AllIcons.Actions.Restart);
-        syncRetryButton.setVisible(false);
-        syncRetryButton.addActionListener(e -> onRetrySyncAction());
-
         // Task progress and hint labels
         taskProgressLabel = new JBLabel();
         taskProgressLabel.setFont(taskProgressLabel.getFont().deriveFont(Font.PLAIN, 12f));
@@ -339,7 +332,6 @@ public class WorkflowActionPanel extends JPanel {
         actionRow.add(archiveButton);
         actionRow.add(startNewChangeButton);
         actionRow.add(retryButton);
-        actionRow.add(syncRetryButton);
         actionRow.add(cancelButton);
 
         // Assemble vertical stack — guidance gets full panel width
@@ -1086,13 +1078,7 @@ public class WorkflowActionPanel extends JPanel {
                         }
                     });
 
-                    ArchiveSyncService syncService = project.getService(ArchiveSyncService.class);
-                    if (syncService != null) {
-                        syncService.syncAsync(changeName, () ->
-                                SwingUtilities.invokeLater(() -> showPostArchiveState(changeName, true)));
-                    } else {
-                        SwingUtilities.invokeLater(() -> showPostArchiveState(changeName, true));
-                    }
+                    SwingUtilities.invokeLater(() -> showPostArchiveState(changeName));
                 } catch (com.intellij.openapi.progress.ProcessCanceledException e) {
                     throw e;
                 } catch (Exception ex) {
@@ -1106,7 +1092,7 @@ public class WorkflowActionPanel extends JPanel {
         });
     }
 
-    private void showPostArchiveState(String changeName, boolean syncSuccess) {
+    private void showPostArchiveState(String changeName) {
         archiveButton.setVisible(false);
         generateButton.setVisible(false);
         applyButton.setVisible(false);
@@ -1118,15 +1104,8 @@ public class WorkflowActionPanel extends JPanel {
 
         startNewChangeButton.setVisible(true);
 
-        if (syncSuccess) {
-            syncRetryButton.setVisible(false);
-            guidanceMessageLabel.setText("\u2713 " + changeName + " archived");
-            guidanceMessageLabel.setForeground(COLOR_SUCCESS);
-        } else {
-            syncRetryButton.setVisible(true);
-            guidanceMessageLabel.setText("\u2713 " + changeName + " archived \u2014 sync failed");
-            guidanceMessageLabel.setForeground(COLOR_ERROR);
-        }
+        guidanceMessageLabel.setText("\u2713 " + changeName + " archived");
+        guidanceMessageLabel.setForeground(COLOR_SUCCESS);
         guidanceWatchingLabel.setVisible(false);
         guidanceNextLabel.setVisible(false);
         copyAgainButton.setVisible(false);
@@ -1726,54 +1705,6 @@ public class WorkflowActionPanel extends JPanel {
         disposeAnimations();
         disposeWatcher();
         super.removeNotify();
-    }
-
-    // --- Archive Sync ---
-
-    /**
-     * Shows the outcome of a sync operation in the guidance panel.
-     */
-    public void showSyncOutcome(com.johnnyb.openspec.tracking.ArchiveSyncService.SyncResult result, String changeName) {
-        syncRetryButton.setVisible(false);
-        switch (result.state()) {
-            case SUCCESS -> {
-                guidanceMessageLabel.setText("\u2713 Archive and sync complete for \"" + changeName + "\"");
-                guidanceMessageLabel.setForeground(COLOR_SUCCESS);
-                guidancePanel.setVisible(true);
-                guidancePanel.revalidate();
-            }
-            case PARTIAL_FAILURE, FAILURE -> {
-                guidanceMessageLabel.setText("\u2717 Sync failed: " + result.message());
-                guidanceMessageLabel.setForeground(JBColor.RED);
-                syncRetryButton.setVisible(true);
-                guidancePanel.setVisible(true);
-                guidancePanel.revalidate();
-            }
-            case SKIPPED -> {
-                // No trackers — just show archive success
-                guidanceMessageLabel.setText("\u2713 Change archived");
-                guidanceMessageLabel.setForeground(COLOR_SUCCESS);
-                guidancePanel.setVisible(true);
-                guidancePanel.revalidate();
-            }
-        }
-    }
-
-    private void onRetrySyncAction() {
-        if (activeChangeName == null) return;
-        String changeName = activeChangeName;
-        syncRetryButton.setEnabled(false);
-        guidanceMessageLabel.setText("Retrying sync...");
-        guidanceMessageLabel.setForeground(JBColor.GRAY);
-
-        com.johnnyb.openspec.tracking.ArchiveSyncService syncService = project.getService(
-                com.johnnyb.openspec.tracking.ArchiveSyncService.class);
-        if (syncService != null) {
-            syncService.syncAsync(changeName, () -> {
-                syncRetryButton.setEnabled(true);
-                if (onRefreshRequested != null) onRefreshRequested.run();
-            });
-        }
     }
 
     private static JTextArea createWrappingLabel(int fontStyle, float fontSize) {
