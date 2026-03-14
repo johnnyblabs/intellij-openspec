@@ -1,10 +1,22 @@
 <idea-plugin>
     <id>com.johnnyb.openspec</id>
     <name>OpenSpec</name>
-    <vendor>johnnyb</vendor>
+    <vendor url="https://github.com/fission-ai/openspec" email="openspec@fission.ai">johnnyb</vendor>
     <description><![CDATA[
-        IntelliJ IDEA plugin for the OpenSpec spec-driven development framework.
-        Provides spec browsing, workflow automation, and validation.
+        <p><b>OpenSpec</b> brings spec-driven development to IntelliJ IDEA. Write specifications first, then implement with confidence — your specs become living documentation that stays connected to your code.</p>
+
+        <p><b>Features:</b></p>
+        <ul>
+            <li><b>Spec browsing</b> — Tree view of domains, capabilities, and requirements with syntax highlighting</li>
+            <li><b>Workflow automation</b> — Init, Propose, Apply, and Archive actions from the IDE</li>
+            <li><b>AI-assisted generation</b> — Generate proposals, designs, and specs via Claude, OpenAI, or Gemini</li>
+            <li><b>Validation &amp; inspections</b> — Real-time spec format checks and delta spec validation</li>
+            <li><b>Coverage panel</b> — See which requirements are referenced in your code at a glance</li>
+            <li><b>Gutter markers</b> — <code>@spec</code> annotations in Java link back to their specs</li>
+            <li><b>Setup wizard</b> — Guided onboarding for new and existing projects</li>
+        </ul>
+
+        <p>Compatible with IntelliJ IDEA 2024.2+. Works with any project that uses the <a href="https://github.com/fission-ai/openspec">OpenSpec</a> framework.</p>
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
