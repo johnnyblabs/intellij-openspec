@@ -19,13 +19,13 @@ public class SpecTreeCellRenderer extends DefaultTreeCellRenderer {
     private static final Icon DELTA_SPEC_ICON = IconLoader.getIcon("/icons/delta-spec.svg", SpecTreeCellRenderer.class);
     private static final Icon MISSING_ARTIFACT_ICON = IconLoader.getIcon("/icons/missing-artifact.svg", SpecTreeCellRenderer.class);
 
-    private static final JBColor PROPOSED_COLOR = new JBColor(new Color(0, 128, 0), new Color(100, 210, 100));
-    private static final JBColor APPLIED_COLOR = new JBColor(new Color(0, 0, 200), new Color(110, 150, 255));
-    private static final JBColor MISSING_COLOR = new JBColor(Color.GRAY, new Color(140, 140, 140));
-    private static final JBColor DONE_COLOR = new JBColor(new Color(0, 128, 0), new Color(100, 210, 100));
-    private static final JBColor READY_COLOR = new JBColor(new Color(0, 0, 200), new Color(110, 150, 255));
-    private static final JBColor BLOCKED_COLOR = new JBColor(Color.GRAY, new Color(140, 140, 140));
-    private static final JBColor HINT_COLOR = new JBColor(Color.GRAY, new Color(140, 140, 140));
+    private static final JBColor PROPOSED_COLOR = new JBColor(new Color(0, 128, 0), new Color(120, 220, 120));
+    private static final JBColor APPLIED_COLOR = new JBColor(new Color(0, 0, 200), new Color(120, 160, 255));
+    private static final JBColor MISSING_COLOR = new JBColor(Color.GRAY, new Color(150, 150, 150));
+    private static final JBColor DONE_COLOR = new JBColor(new Color(0, 128, 0), new Color(120, 220, 120));
+    private static final JBColor READY_COLOR = new JBColor(new Color(0, 0, 200), new Color(120, 160, 255));
+    private static final JBColor BLOCKED_COLOR = new JBColor(Color.GRAY, new Color(150, 150, 150));
+    private static final JBColor HINT_COLOR = new JBColor(Color.GRAY, new Color(150, 150, 150));
 
     @Override
     public Component getTreeCellRendererComponent(JTree tree, Object value, boolean sel,

@@ -107,7 +107,7 @@ public class SetupWizardDialog extends DialogWrapper {
         panel.add(title, gbc);
 
         gbc.gridy = 2;
-        JBLabel desc = new JBLabel("<html><body style='width:400px'>" +
+        JBLabel desc = new JBLabel("<html><body style='width:" + JBUI.scale(400) + "px'>" +
                 "Spec-driven development for your project. Define requirements, " +
                 "generate artifacts, and track changes with AI assistance.<br><br>" +
                 "This wizard will help you set up:" +
@@ -150,7 +150,7 @@ public class SetupWizardDialog extends DialogWrapper {
         gbc.gridx = 0;
         gbc.gridy = 3;
         gbc.gridwidth = 2;
-        JBLabel hint = new JBLabel("<html><body style='width:400px;color:gray'>" +
+        JBLabel hint = new JBLabel("<html><body style='width:" + JBUI.scale(400) + "px;color:gray'>" +
                 "The CLI is optional. Built-in features work without it. " +
                 "Install with: <code>npm i -g openspec-dev</code></body></html>");
         panel.add(hint, gbc);
@@ -266,7 +266,7 @@ public class SetupWizardDialog extends DialogWrapper {
         panel.add(initButton, gbc);
 
         gbc.gridy = 3;
-        JBLabel hint = new JBLabel("<html><body style='width:400px;color:gray'>" +
+        JBLabel hint = new JBLabel("<html><body style='width:" + JBUI.scale(400) + "px;color:gray'>" +
                 "Creates the <code>openspec/</code> directory with config, specs, and changes folders." +
                 "</body></html>");
         panel.add(hint, gbc);
@@ -393,7 +393,7 @@ public class SetupWizardDialog extends DialogWrapper {
         // Collect model state before showing summary
         collectCurrentStepData();
 
-        StringBuilder sb = new StringBuilder("<html><body style='width:400px'><table>");
+        StringBuilder sb = new StringBuilder("<html><body style='width:" + JBUI.scale(400) + "px'><table>");
         sb.append("<tr><td><b>CLI:</b></td><td>").append(model.isCliFound()
                 ? model.getCliPath() + " (v" + model.getCliVersion() + ")"
                 : "Not configured").append("</td></tr>");
