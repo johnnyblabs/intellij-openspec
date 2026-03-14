@@ -1,100 +1,46 @@
 # Validation
 
 ## Purpose
-Real-time linting and inspection of spec files.
+Spec format validation, config verification, artifact file watching, and post-archive workflow enforcement.
 
 ## Requirements
 
-### Requirement: Spec Format Validation
+### Requirement: Spec format validation
 
-The plugin SHALL validate that spec files contain properly formatted requirement headings.
+The plugin SHALL validate spec files for title headings, requirement structure, RFC 2119 keywords, and Given-When-Then scenario format.
 
-#### Scenario: Missing requirement heading
-- GIVEN a spec file without any `### Requirement:` headings
-- WHEN the file is opened in the editor
-- THEN the plugin SHALL display a warning inspection
+#### Scenario: Validation rules
+- **WHEN** validation runs on a spec file
+- **THEN** it SHALL check for `# Title` heading, `### Requirement:` headings, RFC 2119 keywords, and scenario structure
 
-### Requirement: RFC 2119 Keyword Check
+### Requirement: Config validation
 
-The plugin SHOULD warn when requirements do not contain RFC 2119 keywords (SHALL, SHOULD, MAY).
+The plugin SHALL validate `config.yaml` presence and YAML syntax, reporting clear errors for missing or malformed configuration.
 
-#### Scenario: Requirement without keyword
-- GIVEN a requirement body that contains no RFC 2119 keywords
-- WHEN the file is analyzed
-- THEN the plugin SHOULD highlight the requirement with an info-level inspection
+#### Scenario: Config checks
+- **WHEN** validation runs
+- **THEN** it SHALL verify config.yaml exists and parses correctly
 
-### Requirement: Scenario Structure Validation
+### Requirement: Artifact file watching
 
-The plugin SHALL validate that scenarios follow the Given-When-Then structure.
+The plugin SHALL auto-detect artifact file changes after clipboard or editor delivery and refresh the pipeline status.
 
-#### Scenario: Scenario missing WHEN clause
-- GIVEN a scenario with GIVEN and THEN but no WHEN clause
-- WHEN the file is analyzed
-- THEN the plugin SHALL flag the scenario as incomplete
+#### Scenario: File change detection
+- **WHEN** a user saves an artifact file after pasting AI-generated content
+- **THEN** the plugin SHALL detect the change and update the artifact's status in the pipeline
 
-### Requirement: Test coverage for validation rules
+### Requirement: Scaffolding content detection
 
-The validation subsystem SHALL have unit test coverage for all built-in validation rules.
+The plugin SHALL distinguish between scaffolding placeholder content and real authored content, overriding artifact status accordingly.
 
-#### Scenario: Spec validation rules are tested
-- GIVEN the BuiltInValidator spec validation logic
-- WHEN tests execute against spec fixtures with known issues
-- THEN each rule (title-required, requirement-required, rfc-keywords, scenario-clauses) SHALL be individually verified
+#### Scenario: Placeholder detection
+- **WHEN** an artifact file contains only template placeholders
+- **THEN** the plugin SHALL report it as scaffolding and override status to READY (not DONE)
 
-#### Scenario: Change validation rules are tested
-- GIVEN the BuiltInValidator change validation logic
-- WHEN tests execute against change fixtures with known issues
-- THEN each rule (proposal-required, artifact-missing, delta-spec-sections) SHALL be individually verified
+### Requirement: Post-archive workflow
 
-#### Scenario: Config validation rules are tested
-- GIVEN the BuiltInValidator config validation logic
-- WHEN tests execute against config fixtures with known issues
-- THEN each rule (config-missing, schema-required, schema-invalid, profile-recommended) SHALL be individually verified
+After archiving, the plugin SHALL commit, push via branch+PR (main is protected), close matching Forgejo issues, update Plane work items to Done, assign to matching cycle, and cross-link trackers.
 
-### Requirement: Test coverage for spec parsing edge cases
-
-The spec parsing service SHALL have test coverage for edge cases beyond basic happy-path parsing.
-
-#### Scenario: Multi-keyword requirements are parsed
-- GIVEN a spec with SHALL NOT and SHOULD NOT keywords
-- WHEN the spec is parsed
-- THEN the first keyword in the requirement section SHALL be extracted
-
-#### Scenario: AND clauses in scenarios are parsed
-- GIVEN a spec scenario with AND clauses
-- WHEN the spec is parsed
-- THEN all clauses including AND SHALL be captured
-
-#### Scenario: Multiple scenarios per requirement are parsed
-- GIVEN a requirement with multiple scenarios
-- WHEN the spec is parsed
-- THEN all scenarios SHALL be captured with their respective clauses
-
-### Requirement: YAML syntax validation
-
-The plugin SHALL validate YAML syntax in `config.yaml` and `.openspec.yaml` files and report parse errors as IDE inspection problems.
-
-#### Scenario: Malformed YAML in config.yaml
-- **WHEN** a user opens or edits a `config.yaml` with invalid YAML syntax
-- **THEN** the plugin SHALL display an error-level inspection at the problematic location
-- **AND** the error message SHALL include the parse error description from SnakeYAML
-
-#### Scenario: Malformed YAML in .openspec.yaml
-- **WHEN** a user opens or edits a `.openspec.yaml` with invalid YAML syntax
-- **THEN** the plugin SHALL display an error-level inspection at the problematic location
-
-#### Scenario: Valid YAML passes syntax check
-- **WHEN** a user opens a `config.yaml` or `.openspec.yaml` with valid YAML syntax
-- **THEN** no YAML syntax inspection problems SHALL be reported
-
-### Requirement: Per-change validation
-The BuiltInValidator SHALL provide a method to validate a single change by name, returning validation results scoped to that change only.
-
-#### Scenario: Validate a single active change
-- **WHEN** `validateChange(changeName)` is called with a valid active change name
-- **THEN** it SHALL return a `ValidationResult` containing only issues for that change
-- **AND** it SHALL check required artifacts, delta spec format, and proposal existence
-
-#### Scenario: Validate a non-existent change
-- **WHEN** `validateChange(changeName)` is called with a name that doesn't match any active change
-- **THEN** it SHALL return a passing `ValidationResult` with no issues
+#### Scenario: Post-archive steps
+- **WHEN** a change is archived
+- **THEN** the tool SHALL execute commit, PR creation (with labels + milestone), and tracker updates automatically

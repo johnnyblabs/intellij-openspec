@@ -65,11 +65,8 @@ public class GettingStartedPanel extends JPanel implements Disposable {
         if (!OpenSpecFileUtil.isOpenSpecProject(project)) {
             return State.NOT_INITIALIZED;
         }
-        OpenSpecSettings settings = OpenSpecSettings.getInstance(project);
-        if (settings.getPreferredDeliveryMethod() == null || settings.getPreferredDeliveryMethod().isEmpty()) {
-            return State.NO_AI_CONFIGURED;
-        }
-        // Check for active changes
+        // Check for active or archived changes first — if the project has been
+        // used, skip onboarding even if AI isn't configured yet
         var changesDir = OpenSpecFileUtil.getChangesDir(project);
         if (changesDir != null) {
             for (var child : changesDir.getChildren()) {
@@ -77,6 +74,14 @@ public class GettingStartedPanel extends JPanel implements Disposable {
                     return State.READY;
                 }
             }
+            var archiveDir = changesDir.findChild("archive");
+            if (archiveDir != null && archiveDir.getChildren().length > 0) {
+                return State.READY;
+            }
+        }
+        OpenSpecSettings settings = OpenSpecSettings.getInstance(project);
+        if (settings.getPreferredDeliveryMethod() == null || settings.getPreferredDeliveryMethod().isEmpty()) {
+            return State.NO_AI_CONFIGURED;
         }
         return State.NO_CHANGES;
     }
