@@ -7,12 +7,16 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VfsUtil;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.johnnyblabs.openspec.services.AiToolDetectionService;
+import com.johnnyblabs.openspec.services.CliDetectionService;
 import com.johnnyblabs.openspec.settings.OpenSpecSettings;
+import com.johnnyblabs.openspec.util.CliRunner;
 import com.johnnyblabs.openspec.util.OpenSpecFileUtil;
 import com.johnnyblabs.openspec.version.VersionSupport;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 @Service(Service.Level.PROJECT)
 public final class ScaffoldingService {
@@ -84,6 +88,46 @@ public final class ScaffoldingService {
         String basePath = project.getBasePath();
         if (basePath == null) throw new IOException("Project base path is null");
 
+        // Try CLI-delegated init first
+        CliDetectionService cliService = project.getService(CliDetectionService.class);
+        if (cliService != null && cliService.isAvailable()) {
+            try {
+                initWithCli();
+                // Refresh VFS to pick up files created by CLI
+                VirtualFile baseDir = LocalFileSystem.getInstance().findFileByPath(basePath);
+                if (baseDir != null) {
+                    VfsUtil.markDirtyAndRefresh(false, true, true, baseDir);
+                    VirtualFile openspecDir = baseDir.findChild("openspec");
+                    if (openspecDir != null) {
+                        return openspecDir;
+                    }
+                }
+            } catch (Exception e) {
+                LOG.warn("CLI init failed, falling back to built-in: " + e.getMessage());
+            }
+        }
+
+        // Built-in fallback
+        return initBuiltIn(basePath);
+    }
+
+    private void initWithCli() throws CliRunner.CliException {
+        AiToolDetectionService toolService = project.getService(AiToolDetectionService.class);
+        if (toolService != null) {
+            toolService.detect();
+        }
+
+        List<String> toolIds = toolService != null ? toolService.getDetectedCliToolIds() : List.of();
+        String toolsArg = toolIds.isEmpty() ? "none" : String.join(",", toolIds);
+
+        CliRunner.CliResult result = CliRunner.run(project, "init", "--tools", toolsArg);
+        if (!result.isSuccess()) {
+            throw new CliRunner.CliException("openspec init exited with code " + result.exitCode()
+                    + ": " + result.stderr());
+        }
+    }
+
+    private VirtualFile initBuiltIn(String basePath) throws IOException {
         VirtualFile baseDir = LocalFileSystem.getInstance().findFileByPath(basePath);
         if (baseDir == null) throw new IOException("Project base directory not found");
 
@@ -98,9 +142,9 @@ public final class ScaffoldingService {
             // specs/
             openspecDir.createChildDirectory(this, "specs");
             // changes/
-            openspecDir.createChildDirectory(this, "changes");
-            // archive/
-            openspecDir.createChildDirectory(this, "archive");
+            VirtualFile changesDir = openspecDir.createChildDirectory(this, "changes");
+            // archive/ inside changes/
+            changesDir.createChildDirectory(this, "archive");
 
             return openspecDir;
         });

@@ -24,13 +24,19 @@ public final class AiToolDetectionService {
             boolean canAutoSave
     ) {}
 
-    private static final Map<String, ToolGuidance> TOOL_GUIDANCE = Map.of(
-            "Claude Code", new ToolGuidance("terminal", "Paste into Claude Code", "/opsx:", true),
-            "Gemini", new ToolGuidance("terminal", "Paste into Gemini", null, true),
-            "GitHub Copilot", new ToolGuidance("Copilot Chat", "Open Copilot Chat and paste the prompt", "/opsx-", false),
-            "Cursor", new ToolGuidance("Composer", "Open Composer and paste the prompt", null, false),
-            "Windsurf", new ToolGuidance("Cascade", "Open Cascade and paste the prompt", null, false),
-            "Cline", new ToolGuidance("Cline chat", "Open Cline chat and paste the prompt", null, false)
+    private static final Map<String, ToolGuidance> TOOL_GUIDANCE = Map.ofEntries(
+            Map.entry("Claude Code", new ToolGuidance("terminal", "Paste into Claude Code", "/opsx:", true)),
+            Map.entry("Gemini", new ToolGuidance("terminal", "Paste into Gemini", null, true)),
+            Map.entry("GitHub Copilot", new ToolGuidance("Copilot Chat", "Open Copilot Chat and paste the prompt", "/opsx-", false)),
+            Map.entry("Cursor", new ToolGuidance("Composer", "Open Composer and paste the prompt", null, false)),
+            Map.entry("Windsurf", new ToolGuidance("Cascade", "Open Cascade and paste the prompt", null, false)),
+            Map.entry("Cline", new ToolGuidance("Cline chat", "Open Cline chat and paste the prompt", null, false)),
+            Map.entry("Codex", new ToolGuidance("terminal", "Paste into Codex", null, true)),
+            Map.entry("OpenCode", new ToolGuidance("terminal", "Paste into OpenCode", null, true)),
+            Map.entry("Kiro", new ToolGuidance("Kiro chat", "Open Kiro chat and paste the prompt", null, false)),
+            Map.entry("Roo Code", new ToolGuidance("Roo Code chat", "Open Roo Code chat and paste the prompt", null, false)),
+            Map.entry("Continue", new ToolGuidance("Continue chat", "Open Continue chat and paste the prompt", null, false)),
+            Map.entry("Amazon Q", new ToolGuidance("Amazon Q chat", "Open Amazon Q chat and paste the prompt", null, false))
     );
 
     private static final ToolGuidance DEFAULT_GUIDANCE =
@@ -43,15 +49,78 @@ public final class AiToolDetectionService {
         put(".windsurf", "Windsurf");
         put(".cline", "Cline");
         put(".gemini", "Gemini");
+        put(".amazonq", "Amazon Q");
+        put(".agent", "Antigravity");
+        put(".augment", "Augment");
+        put(".codex", "Codex");
+        put(".codebuddy", "CodeBuddy");
+        put(".continue", "Continue");
+        put(".cospec", "Costrict");
+        put(".crush", "Crush");
+        put(".factory", "Factory");
+        put(".iflow", "iFlow");
+        put(".kilocode", "Kilocode");
+        put(".kiro", "Kiro");
+        put(".opencode", "OpenCode");
+        put(".pi", "Pi");
+        put(".qoder", "Qoder");
+        put(".qwen", "Qwen");
+        put(".roo", "Roo Code");
+        put(".trae", "Trae");
     }};
 
-    private static final Map<String, ToolType> TOOL_TYPES = Map.of(
-            "Claude Code", ToolType.CLI,
-            "Gemini", ToolType.CLI,
-            "GitHub Copilot", ToolType.IDE_PANEL,
-            "Cursor", ToolType.IDE_PANEL,
-            "Windsurf", ToolType.IDE_PANEL,
-            "Cline", ToolType.IDE_PANEL
+    private static final Map<String, ToolType> TOOL_TYPES = Map.ofEntries(
+            Map.entry("Claude Code", ToolType.CLI),
+            Map.entry("Gemini", ToolType.CLI),
+            Map.entry("Codex", ToolType.CLI),
+            Map.entry("OpenCode", ToolType.CLI),
+            Map.entry("GitHub Copilot", ToolType.IDE_PANEL),
+            Map.entry("Cursor", ToolType.IDE_PANEL),
+            Map.entry("Windsurf", ToolType.IDE_PANEL),
+            Map.entry("Cline", ToolType.IDE_PANEL),
+            Map.entry("Amazon Q", ToolType.IDE_PANEL),
+            Map.entry("Antigravity", ToolType.IDE_PANEL),
+            Map.entry("Augment", ToolType.IDE_PANEL),
+            Map.entry("CodeBuddy", ToolType.IDE_PANEL),
+            Map.entry("Continue", ToolType.IDE_PANEL),
+            Map.entry("Costrict", ToolType.IDE_PANEL),
+            Map.entry("Crush", ToolType.IDE_PANEL),
+            Map.entry("Factory", ToolType.IDE_PANEL),
+            Map.entry("iFlow", ToolType.IDE_PANEL),
+            Map.entry("Kilocode", ToolType.IDE_PANEL),
+            Map.entry("Kiro", ToolType.IDE_PANEL),
+            Map.entry("Pi", ToolType.IDE_PANEL),
+            Map.entry("Qoder", ToolType.IDE_PANEL),
+            Map.entry("Qwen", ToolType.IDE_PANEL),
+            Map.entry("Roo Code", ToolType.IDE_PANEL),
+            Map.entry("Trae", ToolType.IDE_PANEL)
+    );
+
+    private static final Map<String, String> CLI_TOOL_IDS = Map.ofEntries(
+            Map.entry("Claude Code", "claude"),
+            Map.entry("Gemini", "gemini"),
+            Map.entry("GitHub Copilot", "github-copilot"),
+            Map.entry("Cursor", "cursor"),
+            Map.entry("Windsurf", "windsurf"),
+            Map.entry("Cline", "cline"),
+            Map.entry("Amazon Q", "amazon-q"),
+            Map.entry("Antigravity", "antigravity"),
+            Map.entry("Augment", "auggie"),
+            Map.entry("Codex", "codex"),
+            Map.entry("CodeBuddy", "codebuddy"),
+            Map.entry("Continue", "continue"),
+            Map.entry("Costrict", "costrict"),
+            Map.entry("Crush", "crush"),
+            Map.entry("Factory", "factory"),
+            Map.entry("iFlow", "iflow"),
+            Map.entry("Kilocode", "kilocode"),
+            Map.entry("Kiro", "kiro"),
+            Map.entry("OpenCode", "opencode"),
+            Map.entry("Pi", "pi"),
+            Map.entry("Qoder", "qoder"),
+            Map.entry("Qwen", "qwen"),
+            Map.entry("Roo Code", "roocode"),
+            Map.entry("Trae", "trae")
     );
 
     private final Project project;
@@ -147,5 +216,27 @@ public final class AiToolDetectionService {
     public static ToolGuidance getToolGuidance(String toolName) {
         if (toolName == null) return DEFAULT_GUIDANCE;
         return TOOL_GUIDANCE.getOrDefault(toolName, DEFAULT_GUIDANCE);
+    }
+
+    /**
+     * Returns the CLI tool ID for the given display name (e.g., "GitHub Copilot" → "github-copilot").
+     */
+    public static String getCliToolId(String displayName) {
+        if (displayName == null) return null;
+        return CLI_TOOL_IDS.get(displayName);
+    }
+
+    /**
+     * Returns CLI tool IDs for all currently detected tools, suitable for the --tools flag.
+     */
+    public List<String> getDetectedCliToolIds() {
+        List<String> ids = new ArrayList<>();
+        for (String tool : detectedTools) {
+            String id = CLI_TOOL_IDS.get(tool);
+            if (id != null) {
+                ids.add(id);
+            }
+        }
+        return ids;
     }
 }
