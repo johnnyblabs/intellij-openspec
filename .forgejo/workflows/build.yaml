@@ -12,11 +12,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Verify JDK
-        run: java -version
+      - name: Verify environment
+        run: java -version && gradle --version
 
       - name: Build and Test
-        run: ./gradlew build
+        run: gradle build
 
       - name: Upload test results
         uses: actions/upload-artifact@v3
@@ -40,4 +40,4 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Run Plugin Verifier
-        run: ./gradlew verifyPlugin
+        run: gradle verifyPlugin
