@@ -26,14 +26,14 @@ jobs:
         run: ./gradlew build
 
       - name: Upload test results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         if: always()
         with:
           name: test-results
           path: build/test-results/test/
 
       - name: Upload plugin artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         if: github.ref == 'refs/heads/main'
         with:
           name: OpenSpecPlugin

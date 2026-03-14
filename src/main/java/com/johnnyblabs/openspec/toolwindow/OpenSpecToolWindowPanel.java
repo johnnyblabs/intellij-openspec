@@ -264,9 +264,7 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider {
                 AnAction action = ActionManager.getInstance().getAction("OpenSpec.Propose");
                 if (action != null) {
                     DataContext context = dataId -> CommonDataKeys.PROJECT.is(dataId) ? project : null;
-                    Presentation presentation = action.getTemplatePresentation().clone();
-                    AnActionEvent event = new AnActionEvent(null, context, "SpecTree", presentation, ActionManager.getInstance(), 0);
-                    com.intellij.openapi.actionSystem.ex.ActionUtil.performActionDumbAwareWithCallbacks(action, event);
+                    com.intellij.openapi.actionSystem.ex.ActionUtil.invokeAction(action, context, "SpecTree", null, null);
                 }
             }
         } else if ("OpenSpec".equals(parent.getUserObject())) {
