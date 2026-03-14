@@ -8,6 +8,7 @@ on:
 
 env:
   PATH: /opt/gradle-9.0.0/bin:/opt/apache-maven-3.9.9/bin:/opt/java/openjdk/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+  GRADLE_OPTS: -Dorg.gradle.daemon=false
 
 jobs:
   build:

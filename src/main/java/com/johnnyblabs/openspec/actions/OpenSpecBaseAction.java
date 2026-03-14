@@ -50,23 +50,21 @@ public abstract class OpenSpecBaseAction extends AnAction {
     }
 
     /**
-     * Refreshes the VFS and then rebuilds the OpenSpec tool window tree.
-     * The tree refresh is deferred until the VFS async refresh completes,
-     * ensuring the tree sees the updated filesystem state.
+     * Refreshes the VFS synchronously and then rebuilds the OpenSpec tool window tree.
+     * Sync refresh ensures the tree sees newly created files (e.g., after propose).
      */
     protected static void refreshToolWindow(Project project) {
-        VirtualFileManager.getInstance().asyncRefresh(() ->
-            ApplicationManager.getApplication().invokeLater(() -> {
-                ToolWindow toolWindow = ToolWindowManager.getInstance(project).getToolWindow("OpenSpec");
-                if (toolWindow == null) return;
-                for (Content content : toolWindow.getContentManager().getContents()) {
-                    Component component = content.getComponent();
-                    if (component instanceof OpenSpecToolWindowPanel panel) {
-                        panel.refresh();
-                        break;
-                    }
+        VirtualFileManager.getInstance().syncRefresh();
+        ApplicationManager.getApplication().invokeLater(() -> {
+            ToolWindow toolWindow = ToolWindowManager.getInstance(project).getToolWindow("OpenSpec");
+            if (toolWindow == null) return;
+            for (Content content : toolWindow.getContentManager().getContents()) {
+                Component component = content.getComponent();
+                if (component instanceof OpenSpecToolWindowPanel panel) {
+                    panel.refresh();
+                    break;
                 }
-            })
-        );
+            }
+        });
     }
 }

@@ -93,14 +93,14 @@ public final class ScaffoldingService {
         if (cliService != null && cliService.isAvailable()) {
             try {
                 initWithCli();
-                // Refresh VFS to pick up files created by CLI
-                VirtualFile baseDir = LocalFileSystem.getInstance().findFileByPath(basePath);
-                if (baseDir != null) {
-                    VfsUtil.markDirtyAndRefresh(false, true, true, baseDir);
-                    VirtualFile openspecDir = baseDir.findChild("openspec");
-                    if (openspecDir != null) {
-                        return openspecDir;
-                    }
+                // Synchronous VFS refresh to pick up files created by CLI
+                String openspecPath = basePath + "/openspec";
+                VirtualFile openspecDir = LocalFileSystem.getInstance()
+                        .refreshAndFindFileByPath(openspecPath);
+                if (openspecDir != null) {
+                    // Ensure children (config.yaml, specs/, changes/) are also indexed
+                    VfsUtil.markDirtyAndRefresh(false, true, true, openspecDir);
+                    return openspecDir;
                 }
             } catch (Exception e) {
                 LOG.warn("CLI init failed, falling back to built-in: " + e.getMessage());
