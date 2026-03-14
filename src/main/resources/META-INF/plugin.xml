@@ -26,6 +26,7 @@
         <projectService serviceImplementation="com.johnnyb.openspec.ai.DirectApiService"/>
         <projectService serviceImplementation="com.johnnyb.openspec.services.DeliveryMethodResolver"/>
         <projectService serviceImplementation="com.johnnyb.openspec.toolwindow.OpenSpecConsoleService"/>
+        <projectService serviceImplementation="com.johnnyb.openspec.services.SpecCoverageService"/>
 
         <!-- Settings -->
         <projectConfigurable instance="com.johnnyb.openspec.settings.OpenSpecConfigurable"
