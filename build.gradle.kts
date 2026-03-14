@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "com.johnnyb.openspec"
-version = "0.1.0"
+version = "0.2.0"
 
 java {
     sourceCompatibility = JavaVersion.VERSION_21
@@ -50,10 +50,30 @@ intellijPlatform {
         vendor {
             name = "johnnyb"
         }
+        changeNotes = """
+            <h3>v0.2.0 — Spec Intelligence</h3>
+            <ul>
+                <li>Gutter markers: <code>@spec</code> references in Java source are annotated with clickable icons linking back to the spec</li>
+                <li>Coverage panel: new Coverage tab in the OpenSpec tool window shows which requirements are referenced in code</li>
+                <li>Removed in-plugin tracker integration (Forgejo/Plane) — external AI workflows handle this better</li>
+            </ul>
+            <h3>v0.1.0 — Ship It Clean</h3>
+            <ul>
+                <li>Spec browsing with tree view (domains, capabilities, requirements)</li>
+                <li>Workflow automation: Init, Propose, Apply, Archive actions</li>
+                <li>AI-assisted generation via Claude, OpenAI, and Gemini APIs</li>
+                <li>Spec validation and format inspections</li>
+                <li>Setup wizard and onboarding</li>
+            </ul>
+        """.trimIndent()
         ideaVersion {
             sinceBuild = "242"
             untilBuild = provider { null }
         }
+    }
+
+    publishing {
+        token = providers.environmentVariable("JETBRAINS_MARKETPLACE_TOKEN")
     }
 
     pluginVerification {
