@@ -144,13 +144,20 @@ Target archive directory already exists.
 3. Wait until a different date to archive
 ```
 
-7. **Post-archive: commit, push, update trackers**
+7. **Post-archive: commit, push via PR, update trackers**
 
-   After displaying the archive summary, perform these steps automatically:
+   After displaying the archive summary, perform these steps automatically.
 
-   a. **Commit** all changes (implementation code, archived change directory, synced specs) and **push** to the remote repository.
+   **Loading credentials**: Use `export $(grep -v '^#' scripts/.env | xargs)` to load env vars. Do NOT use `source scripts/.env` as it silently fails in non-interactive shells.
 
-   b. **Close Forgejo issue**: Load credentials from `scripts/.env` (`FORGEJO_TOKEN`, `FORGEJO_URL`). Search for a matching open issue by title:
+   a. **Commit and push via branch + PR**: Main is protected — cannot push directly.
+      - Create branch `change/<change-name>` and commit all changes
+      - Push the branch with `-u`
+      - Create a PR via Forgejo API (`POST /api/v1/repos/johnb/OpenSpecPlugin/pulls`)
+      - **Add labels** to the PR via `POST /api/v1/repos/johnb/OpenSpecPlugin/issues/<pr-number>/labels` with `{"labels": [<label-id>]}`. Choose labels from the repo that match the change type (e.g., `refactor`=4, `bug`=2, `enhancement`=18, `toolwindow`=30, etc.)
+      - **Assign milestone** to the PR via `PATCH /api/v1/repos/johnb/OpenSpecPlugin/pulls/<pr-number>` with `{"milestone": <milestone-id>}`. Match the target version milestone (list milestones to find the right ID).
+
+   b. **Close Forgejo issue**: Search for a matching open issue by title:
       ```bash
       curl -s -H "Authorization: token $FORGEJO_TOKEN" \
         "$FORGEJO_URL/api/v1/repos/johnb/OpenSpecPlugin/issues?type=issues&state=open&limit=50" \
@@ -166,7 +173,7 @@ Target archive directory already exists.
         -d '{"state": "closed"}'
       ```
 
-   c. **Update Plane work item**: Load credentials from `scripts/.env` (`PLANE_API_KEY`, `PLANE_URL`, `PLANE_WORKSPACE`). Find the project ID, then search for a matching work item by title:
+   c. **Update Plane work item**: Find the project ID, then search for a matching work item by title:
       ```bash
       PLANE_PID=$(curl -s -H "X-API-Key: $PLANE_API_KEY" \
         "$PLANE_URL/api/v1/workspaces/$PLANE_WORKSPACE/projects/" \
@@ -175,15 +182,25 @@ Target archive directory already exists.
         "$PLANE_URL/api/v1/workspaces/$PLANE_WORKSPACE/projects/$PLANE_PID/work-items/?per_page=200" \
         | jq -r '(.results[]? // .[]?) | "\(.id)\t\(.name)"'
       ```
-      If a match is found, get the "Done" state ID and update:
-      ```bash
-      DONE_STATE=$(curl -s -H "X-API-Key: $PLANE_API_KEY" \
-        "$PLANE_URL/api/v1/workspaces/$PLANE_WORKSPACE/projects/$PLANE_PID/states/" \
-        | jq -r '(.results[]? // .[]?) | select(.name == "Done") | .id')
-      curl -s -X PATCH -H "X-API-Key: $PLANE_API_KEY" -H "Content-Type: application/json" \
-        "$PLANE_URL/api/v1/workspaces/$PLANE_WORKSPACE/projects/$PLANE_PID/work-items/<item-id>/" \
-        -d "{\"state\": \"$DONE_STATE\"}"
-      ```
+      If a match is found:
+      - **Set state to Done**:
+        ```bash
+        DONE_STATE=$(curl -s -H "X-API-Key: $PLANE_API_KEY" \
+          "$PLANE_URL/api/v1/workspaces/$PLANE_WORKSPACE/projects/$PLANE_PID/states/" \
+          | jq -r '(.results[]? // .[]?) | select(.name == "Done") | .id')
+        curl -s -X PATCH -H "X-API-Key: $PLANE_API_KEY" -H "Content-Type: application/json" \
+          "$PLANE_URL/api/v1/workspaces/$PLANE_WORKSPACE/projects/$PLANE_PID/work-items/<item-id>/" \
+          -d "{\"state\": \"$DONE_STATE\"}"
+        ```
+      - **Assign to matching cycle**: List cycles, find one matching the target version, and add the work item:
+        ```bash
+        CYCLE_ID=$(curl -s -H "X-API-Key: $PLANE_API_KEY" \
+          "$PLANE_URL/api/v1/workspaces/$PLANE_WORKSPACE/projects/$PLANE_PID/cycles/" \
+          | jq -r '(.results[]? // .[]?) | select(.name | startswith("<version>")) | .id')
+        curl -s -X POST -H "X-API-Key: $PLANE_API_KEY" -H "Content-Type: application/json" \
+          "$PLANE_URL/api/v1/workspaces/$PLANE_WORKSPACE/projects/$PLANE_PID/cycles/$CYCLE_ID/cycle-issues/" \
+          -d "{\"issues\": [\"<item-id>\"], \"project_id\": \"$PLANE_PID\"}"
+        ```
 
    d. **Cross-link Plane and Forgejo**: If both a Forgejo issue and Plane work item were found, link them by setting `external_id` on the Plane work item:
       ```bash
