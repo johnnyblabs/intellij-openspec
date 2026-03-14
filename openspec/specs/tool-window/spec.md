@@ -14,6 +14,10 @@ The plugin SHALL provide a tool window that displays OpenSpec project contents i
 - **THEN** it SHALL display a tree with top-level nodes: Specs, Changes, Archive
 - **AND** a Workflow Action Panel SHALL be visible below the tree showing the selected change and generation controls
 
+#### Scenario: Coverage tab
+- **WHEN** the tool window is opened in a ready state
+- **THEN** it SHALL display three tabs: Browse, Coverage, Console
+
 #### Scenario: Tool window layout
 - **WHEN** the tool window is visible
 - **THEN** the layout from top to bottom SHALL be: toolbar (project-level actions only), search field, tree, workflow action panel, status bar
