@@ -130,7 +130,7 @@ public class OpenSpecSettingsPanel {
 
     private JPanel buildDirectApiSection() {
         JBLabel helpLabel = new JBLabel(
-                "<html><body style='width:400px'>" +
+                "<html><body style='width:" + JBUI.scale(400) + "px'>" +
                 "Use your own API key to generate specs and artifacts directly. " +
                 "This is optional \u2014 not needed if you copy prompts to an AI coding tool." +
                 "</body></html>");

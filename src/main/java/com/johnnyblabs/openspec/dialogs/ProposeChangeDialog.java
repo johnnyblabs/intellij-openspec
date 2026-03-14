@@ -47,7 +47,7 @@ public class ProposeChangeDialog extends DialogWrapper {
         FormBuilder builder = FormBuilder.createFormBuilder();
 
         if (!OpenSpecSettings.getInstance(project).isFirstProposalCompleted()) {
-            JBLabel banner = new JBLabel("<html><body style='width:380px'>" +
+            JBLabel banner = new JBLabel("<html><body style='width:" + JBUI.scale(380) + "px'>" +
                     "<b>OpenSpec workflow:</b> Propose a change, then generate artifacts " +
                     "(design, specs, tasks), implement the tasks, and archive when done." +
                     "</body></html>");
