@@ -5,7 +5,7 @@ plugins {
     id("org.jetbrains.intellij.platform")
 }
 
-group = "com.johnnyb.openspec"
+group = "com.johnnyblabs.openspec"
 version = "0.2.0"
 
 java {
@@ -43,12 +43,12 @@ tasks.test {
 
 intellijPlatform {
     pluginConfiguration {
-        id = "com.johnnyb.openspec"
+        id = "com.johnnyblabs.openspec"
         name = "OpenSpec"
         version = project.version.toString()
         description = "IntelliJ IDEA plugin for OpenSpec spec-driven development framework"
         vendor {
-            name = "johnnyb"
+            name = "johnnyblabs"
         }
         changeNotes = """
             <h3>v0.2.0 — Spec Intelligence</h3>
