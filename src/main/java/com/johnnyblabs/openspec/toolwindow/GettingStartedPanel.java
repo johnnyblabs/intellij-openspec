@@ -1,10 +1,16 @@
 package com.johnnyblabs.openspec.toolwindow;
 
+import com.intellij.openapi.Disposable;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.util.IconLoader;
+import com.intellij.openapi.vfs.VirtualFileManager;
+import com.intellij.openapi.vfs.newvfs.BulkFileListener;
+import com.intellij.openapi.vfs.newvfs.events.VFileEvent;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.ui.HyperlinkLabel;
 import com.intellij.ui.components.JBLabel;
+import com.intellij.util.Alarm;
 import com.intellij.util.ui.JBUI;
 import com.intellij.openapi.actionSystem.ActionManager;
 import com.intellij.openapi.actionSystem.AnAction;
@@ -21,8 +27,9 @@ import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 import java.awt.*;
+import java.util.List;
 
-public class GettingStartedPanel extends JPanel {
+public class GettingStartedPanel extends JPanel implements Disposable {
 
     private static final Icon OPENSPEC_ICON = IconLoader.getIcon("/icons/openspec.svg", GettingStartedPanel.class);
 
@@ -35,6 +42,8 @@ public class GettingStartedPanel extends JPanel {
 
     private final Project project;
     private final @Nullable ToolWindow toolWindow;
+    private final Alarm refreshAlarm = new Alarm(Alarm.ThreadToUse.POOLED_THREAD, this);
+    private State lastState;
 
     public GettingStartedPanel(Project project) {
         this(project, null);
@@ -44,7 +53,14 @@ public class GettingStartedPanel extends JPanel {
         super(new GridBagLayout());
         this.project = project;
         this.toolWindow = toolWindow;
+        this.lastState = detectState();
+        registerFileListener();
         rebuild();
+    }
+
+    @Override
+    public void dispose() {
+        // Alarm is disposed automatically via Disposer parent (this)
     }
 
     public State detectState() {
@@ -120,6 +136,37 @@ public class GettingStartedPanel extends JPanel {
 
         revalidate();
         repaint();
+    }
+
+    private void registerFileListener() {
+        project.getMessageBus().connect(this).subscribe(VirtualFileManager.VFS_CHANGES, new BulkFileListener() {
+            @Override
+            public void after(List<? extends VFileEvent> events) {
+                for (VFileEvent event : events) {
+                    var file = event.getFile();
+                    if (file != null && OpenSpecFileUtil.isUnderOpenSpec(file, project)) {
+                        refreshAlarm.cancelAllRequests();
+                        refreshAlarm.addRequest(() -> onFileSystemChanged(), 300);
+                        break;
+                    }
+                }
+            }
+        });
+    }
+
+    private void onFileSystemChanged() {
+        State newState = detectState();
+        if (newState == lastState) return;
+        lastState = newState;
+
+        SwingUtilities.invokeLater(() -> {
+            if (newState == State.READY && toolWindow != null) {
+                toolWindow.getContentManager().removeAllContents(true);
+                OpenSpecToolWindowFactory.createNormalContent(project, toolWindow);
+            } else {
+                rebuild();
+            }
+        });
     }
 
     private JPanel createCard(String title, String description, JButton button) {
