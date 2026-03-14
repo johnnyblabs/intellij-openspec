@@ -19,6 +19,22 @@ public class GettingStartedPanelTest extends OpenSpecIntegrationTestBase {
     }
 
     public void testDetectsNoAiConfiguredWhenDeliveryMethodEmpty() {
+        // Remove all changes and archives so the state check reaches NO_AI_CONFIGURED
+        com.intellij.openapi.vfs.VirtualFile changesDir = myFixture.findFileInTempDir("openspec/changes");
+        if (changesDir != null) {
+            try {
+                com.intellij.openapi.application.WriteAction.run(() -> {
+                    for (com.intellij.openapi.vfs.VirtualFile child : changesDir.getChildren()) {
+                        if (child.isDirectory()) {
+                            child.delete(this);
+                        }
+                    }
+                });
+            } catch (Exception e) {
+                fail("Failed to clean changes dir: " + e.getMessage());
+            }
+        }
+
         OpenSpecSettings settings = OpenSpecSettings.getInstance(getProject());
         settings.setPreferredDeliveryMethod("");
 
