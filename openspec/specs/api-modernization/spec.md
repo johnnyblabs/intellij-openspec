@@ -37,6 +37,10 @@ The plugin SHALL replace deprecated IntelliJ Platform APIs with their recommende
 - **WHEN** plugin code creates a file chooser descriptor
 - **THEN** it SHALL use a typed factory method instead of the deprecated no-arg `createSingleFileDescriptor()`
 
+#### Scenario: Programmatic action invocation uses invokeAction
+- **WHEN** plugin code needs to programmatically invoke an AnAction from a UI panel
+- **THEN** it SHALL use `ActionUtil.invokeAction(action, dataContext, place, inputEvent)` instead of constructing an AnActionEvent and calling `performActionDumbAwareWithCallbacks()`
+
 ### Requirement: No override-only API violations
 
 The plugin SHALL NOT directly call methods that are designated as override-only in the IntelliJ Platform SDK.

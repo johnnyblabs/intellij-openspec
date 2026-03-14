@@ -2,7 +2,6 @@ package com.johnnyblabs.openspec.toolwindow;
 
 import com.intellij.openapi.actionSystem.ActionManager;
 import com.intellij.openapi.actionSystem.AnAction;
-import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.DataContext;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.fileEditor.FileEditorManager;
@@ -604,9 +603,7 @@ public class WorkflowActionPanel extends JPanel {
                     AnAction action = ActionManager.getInstance().getAction("OpenSpec.Propose");
                     if (action != null) {
                         DataContext ctx = dataId -> com.intellij.openapi.actionSystem.CommonDataKeys.PROJECT.is(dataId) ? project : null;
-                        com.intellij.openapi.actionSystem.Presentation pres = action.getTemplatePresentation().clone();
-                        AnActionEvent event = new AnActionEvent(null, ctx, "WorkflowPanel", pres, ActionManager.getInstance(), 0);
-                        com.intellij.openapi.actionSystem.ex.ActionUtil.performActionDumbAwareWithCallbacks(action, event);
+                        com.intellij.openapi.actionSystem.ex.ActionUtil.invokeAction(action, ctx, "WorkflowPanel", null, null);
                     }
                 });
                 pipelinePanel.add(proposeLink);
@@ -1118,9 +1115,7 @@ public class WorkflowActionPanel extends JPanel {
     private void onStartNewChange() {
         AnAction proposeAction = ActionManager.getInstance().getAction("OpenSpec.Propose");
         if (proposeAction != null) {
-            com.intellij.openapi.actionSystem.Presentation presentation = proposeAction.getTemplatePresentation().clone();
-            AnActionEvent event = new AnActionEvent(null, DataContext.EMPTY_CONTEXT, "OpenSpecWorkflowPanel", presentation, ActionManager.getInstance(), 0);
-            com.intellij.openapi.actionSystem.ex.ActionUtil.performActionDumbAwareWithCallbacks(proposeAction, event);
+            com.intellij.openapi.actionSystem.ex.ActionUtil.invokeAction(proposeAction, DataContext.EMPTY_CONTEXT, "OpenSpecWorkflowPanel", null, null);
         }
     }
 

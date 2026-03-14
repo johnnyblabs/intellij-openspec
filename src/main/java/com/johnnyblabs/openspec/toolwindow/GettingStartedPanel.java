@@ -14,10 +14,8 @@ import com.intellij.util.Alarm;
 import com.intellij.util.ui.JBUI;
 import com.intellij.openapi.actionSystem.ActionManager;
 import com.intellij.openapi.actionSystem.AnAction;
-import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.CommonDataKeys;
 import com.intellij.openapi.actionSystem.DataContext;
-import com.intellij.openapi.actionSystem.Presentation;
 import com.intellij.openapi.actionSystem.ex.ActionUtil;
 import com.johnnyblabs.openspec.dialogs.SetupWizardDialog;
 import com.johnnyblabs.openspec.scaffolding.ScaffoldingService;
@@ -206,9 +204,7 @@ public class GettingStartedPanel extends JPanel implements Disposable {
             AnAction action = ActionManager.getInstance().getAction("OpenSpec.Propose");
             if (action != null) {
                 DataContext context = dataId -> CommonDataKeys.PROJECT.is(dataId) ? project : null;
-                Presentation presentation = action.getTemplatePresentation().clone();
-                AnActionEvent event = new AnActionEvent(null, context, "GettingStartedPanel", presentation, ActionManager.getInstance(), 0);
-                ActionUtil.performActionDumbAwareWithCallbacks(action, event);
+                ActionUtil.invokeAction(action, context, "GettingStartedPanel", null, null);
             }
             // Transition to tree view if a change was created
             if (toolWindow != null && detectState() == State.READY) {
