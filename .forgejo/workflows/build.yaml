@@ -11,12 +11,8 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    container: eclipse-temurin:21-jdk-noble
+    runs-on: java-21
     steps:
-      - name: Install dependencies
-        run: apt-get update -qq && apt-get install -y -qq git nodejs > /dev/null 2>&1
-
       - uses: actions/checkout@v4
 
       - name: Verify environment
@@ -25,15 +21,25 @@ jobs:
       - name: Build and Test
         run: gradle build
 
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: test-results
+          path: build/test-results/test/
+
+      - name: Upload plugin artifact
+        uses: actions/upload-artifact@v3
+        if: github.ref == 'refs/heads/main'
+        with:
+          name: OpenSpecPlugin
+          path: build/distributions/*.zip
+
   verify:
-    runs-on: ubuntu-latest
-    container: eclipse-temurin:21-jdk-noble
+    runs-on: java-21
     needs: build
     if: github.ref == 'refs/heads/main'
     steps:
-      - name: Install dependencies
-        run: apt-get update -qq && apt-get install -y -qq git nodejs > /dev/null 2>&1
-
       - uses: actions/checkout@v4
 
       - name: Run Plugin Verifier
