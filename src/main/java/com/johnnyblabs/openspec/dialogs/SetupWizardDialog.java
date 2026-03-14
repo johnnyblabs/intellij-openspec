@@ -537,8 +537,14 @@ public class SetupWizardDialog extends DialogWrapper {
             super.doOKAction();
             if (openProposeOnClose) {
                 SwingUtilities.invokeLater(() -> {
-                    ProposeChangeDialog dialog = new ProposeChangeDialog(project);
-                    dialog.show();
+                    com.intellij.openapi.actionSystem.AnAction proposeAction =
+                            com.intellij.openapi.actionSystem.ActionManager.getInstance().getAction("OpenSpec.Propose");
+                    if (proposeAction != null) {
+                        com.intellij.openapi.actionSystem.DataContext context =
+                                dataId -> com.intellij.openapi.actionSystem.CommonDataKeys.PROJECT.is(dataId) ? project : null;
+                        com.intellij.openapi.actionSystem.ex.ActionUtil.invokeAction(
+                                proposeAction, context, "SetupWizard", null, null);
+                    }
                 });
             }
         }
