@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main]
 
+env:
+  PATH: /opt/gradle-9.0.0/bin:/opt/apache-maven-3.9.9/bin:/opt/java/openjdk/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
 jobs:
   build:
     runs-on: java-21
