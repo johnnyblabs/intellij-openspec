@@ -159,6 +159,13 @@ public final class AiToolDetectionService {
     }
 
     /**
+     * Returns all known tool display names (detected or not).
+     */
+    public static List<String> getAllToolNames() {
+        return List.copyOf(TOOL_DIRS.values());
+    }
+
+    /**
      * Returns a summary string for display.
      */
     public String getSummary() {
@@ -216,6 +223,86 @@ public final class AiToolDetectionService {
     public static ToolGuidance getToolGuidance(String toolName) {
         if (toolName == null) return DEFAULT_GUIDANCE;
         return TOOL_GUIDANCE.getOrDefault(toolName, DEFAULT_GUIDANCE);
+    }
+
+    public enum ToolStatus { CONFIGURED, DETECTED, AVAILABLE }
+
+    public record ToolInfo(String name, ToolStatus status, ToolType type, String cliId) {}
+
+    /**
+     * Returns the directory name for a tool (e.g., "Claude Code" → ".claude").
+     */
+    public static String getToolDirName(String toolName) {
+        for (Map.Entry<String, String> entry : TOOL_DIRS.entrySet()) {
+            if (entry.getValue().equals(toolName)) {
+                return entry.getKey();
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Returns the tool status: CONFIGURED (has skills), DETECTED (directory only), or AVAILABLE.
+     */
+    public ToolStatus getToolStatus(String toolName) {
+        String basePath = project.getBasePath();
+        if (basePath == null) return ToolStatus.AVAILABLE;
+
+        String dirName = getToolDirName(toolName);
+        if (dirName == null) return ToolStatus.AVAILABLE;
+
+        File toolDir = new File(basePath, dirName);
+        if (!toolDir.isDirectory()) return ToolStatus.AVAILABLE;
+
+        // Check for OpenSpec skills
+        File skillsDir = new File(toolDir, "skills");
+        if (skillsDir.isDirectory()) {
+            File[] skillFolders = skillsDir.listFiles(f -> f.isDirectory() && f.getName().startsWith("openspec-"));
+            if (skillFolders != null && skillFolders.length > 0) {
+                return ToolStatus.CONFIGURED;
+            }
+        }
+
+        // Check for OpenSpec commands (varies by tool)
+        File commandsDir = new File(toolDir, "commands");
+        if (!commandsDir.isDirectory()) commandsDir = new File(toolDir, "prompts");
+        if (!commandsDir.isDirectory()) commandsDir = new File(toolDir, "workflows");
+        if (commandsDir.isDirectory()) {
+            File[] cmdFiles = commandsDir.listFiles(f -> f.getName().contains("opsx") || f.getName().contains("openspec"));
+            if (cmdFiles != null && cmdFiles.length > 0) {
+                return ToolStatus.CONFIGURED;
+            }
+        }
+
+        return ToolStatus.DETECTED;
+    }
+
+    /**
+     * Returns all tools with their current status, grouped by status.
+     */
+    public List<ToolInfo> getAllToolsWithStatus() {
+        List<ToolInfo> configured = new ArrayList<>();
+        List<ToolInfo> detected = new ArrayList<>();
+        List<ToolInfo> available = new ArrayList<>();
+
+        for (String toolName : TOOL_DIRS.values()) {
+            ToolStatus status = getToolStatus(toolName);
+            ToolType type = TOOL_TYPES.getOrDefault(toolName, ToolType.IDE_PANEL);
+            String cliId = CLI_TOOL_IDS.get(toolName);
+            ToolInfo info = new ToolInfo(toolName, status, type, cliId);
+
+            switch (status) {
+                case CONFIGURED -> configured.add(info);
+                case DETECTED -> detected.add(info);
+                case AVAILABLE -> available.add(info);
+            }
+        }
+
+        List<ToolInfo> result = new ArrayList<>();
+        result.addAll(configured);
+        result.addAll(detected);
+        result.addAll(available);
+        return result;
     }
 
     /**

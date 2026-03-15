@@ -107,4 +107,70 @@ class DirectApiServiceTest {
             }
         }
     }
+
+    @Nested
+    class OpenAiTokenParam {
+
+        @Test
+        void gpt4o_usesMaxTokens() {
+            assertEquals("max_tokens", DirectApiService.openAiTokenParam("gpt-4o"));
+        }
+
+        @Test
+        void gpt4oMini_usesMaxTokens() {
+            assertEquals("max_tokens", DirectApiService.openAiTokenParam("gpt-4o-mini"));
+        }
+
+        @Test
+        void o1Mini_usesMaxCompletionTokens() {
+            assertEquals("max_completion_tokens", DirectApiService.openAiTokenParam("o1-mini"));
+        }
+
+        @Test
+        void o1Preview_usesMaxCompletionTokens() {
+            assertEquals("max_completion_tokens", DirectApiService.openAiTokenParam("o1-preview"));
+        }
+
+        @Test
+        void o1_usesMaxCompletionTokens() {
+            assertEquals("max_completion_tokens", DirectApiService.openAiTokenParam("o1"));
+        }
+
+        @Test
+        void gpt35_usesMaxTokens() {
+            assertEquals("max_tokens", DirectApiService.openAiTokenParam("gpt-3.5-turbo"));
+        }
+    }
+
+    @Nested
+    class AiProviderModels {
+
+        @Test
+        void claudeModelsAreCurrent() {
+            var models = AiProvider.CLAUDE.getModels();
+            assertFalse(models.isEmpty());
+            assertTrue(models.stream().allMatch(m -> m.startsWith("claude-")),
+                    "All Claude models should start with claude-");
+        }
+
+        @Test
+        void openAiModelsAreCurrent() {
+            var models = AiProvider.OPENAI.getModels();
+            assertFalse(models.isEmpty());
+            assertTrue(models.contains("gpt-4o"), "Should include gpt-4o");
+        }
+
+        @Test
+        void geminiModelsAreCurrent() {
+            var models = AiProvider.GEMINI.getModels();
+            assertFalse(models.isEmpty());
+            assertTrue(models.stream().allMatch(m -> m.startsWith("gemini-")),
+                    "All Gemini models should start with gemini-");
+        }
+
+        @Test
+        void noneHasNoModels() {
+            assertTrue(AiProvider.NONE.getModels().isEmpty());
+        }
+    }
 }

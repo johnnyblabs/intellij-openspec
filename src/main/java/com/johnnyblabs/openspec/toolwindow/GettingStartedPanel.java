@@ -136,6 +136,8 @@ public class GettingStartedPanel extends JPanel implements Disposable {
                         createConfigureButton()
                 ), gbc);
                 gbc.gridy++;
+                add(createManageToolsLink(), gbc);
+                gbc.gridy++;
                 add(createWizardLink(), gbc);
             }
             case NO_CHANGES -> {
@@ -162,7 +164,11 @@ public class GettingStartedPanel extends JPanel implements Disposable {
             public void after(List<? extends VFileEvent> events) {
                 for (VFileEvent event : events) {
                     var file = event.getFile();
-                    if (file != null && OpenSpecFileUtil.isUnderOpenSpec(file, project)) {
+                    if (file == null) continue;
+                    // Watch openspec/ changes and tool directory creation (e.g., .claude/, .github/)
+                    boolean relevant = OpenSpecFileUtil.isUnderOpenSpec(file, project)
+                            || isToolDirectoryEvent(file);
+                    if (relevant) {
                         refreshAlarm.cancelAllRequests();
                         refreshAlarm.addRequest(() -> onFileSystemChanged(), 300);
                         break;
@@ -243,5 +249,30 @@ public class GettingStartedPanel extends JPanel implements Disposable {
             rebuild();
         });
         return link;
+    }
+
+    private HyperlinkLabel createManageToolsLink() {
+        HyperlinkLabel link = new HyperlinkLabel("Manage AI Tools");
+        link.addHyperlinkListener(e -> {
+            com.johnnyblabs.openspec.dialogs.ManageAiToolsDialog dialog =
+                    new com.johnnyblabs.openspec.dialogs.ManageAiToolsDialog(project);
+            dialog.show();
+            rebuild();
+        });
+        return link;
+    }
+
+    private boolean isToolDirectoryEvent(com.intellij.openapi.vfs.VirtualFile file) {
+        String basePath = project.getBasePath();
+        if (basePath == null) return false;
+        String filePath = file.getPath();
+        // Check if the event is a tool directory being created at project root
+        for (String toolName : com.johnnyblabs.openspec.services.AiToolDetectionService.getAllToolNames()) {
+            String dirName = com.johnnyblabs.openspec.services.AiToolDetectionService.getToolDirName(toolName);
+            if (dirName != null && filePath.startsWith(basePath + "/" + dirName)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

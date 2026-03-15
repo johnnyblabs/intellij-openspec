@@ -142,12 +142,18 @@ public final class DirectApiService {
         }
     }
 
+    /**
+     * Returns the token limit parameter name for the given OpenAI model.
+     * o1-series models use "max_completion_tokens"; all others use "max_tokens".
+     */
+    static String openAiTokenParam(String model) {
+        return model.startsWith("o1") ? "max_completion_tokens" : "max_tokens";
+    }
+
     private String callOpenAi(String apiKey, String model, String prompt) throws AiApiException {
         JsonObject body = new JsonObject();
         body.addProperty("model", model);
-        // o1-series models use max_completion_tokens instead of max_tokens
-        String tokenParam = model.startsWith("o1") ? "max_completion_tokens" : "max_tokens";
-        body.addProperty(tokenParam, MAX_TOKENS);
+        body.addProperty(openAiTokenParam(model), MAX_TOKENS);
 
         JsonArray messages = new JsonArray();
         JsonObject message = new JsonObject();
