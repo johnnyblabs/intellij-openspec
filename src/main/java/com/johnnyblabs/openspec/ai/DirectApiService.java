@@ -118,7 +118,7 @@ public final class DirectApiService {
                     .uri(URI.create(CLAUDE_API_URL))
                     .header("Content-Type", "application/json")
                     .header("x-api-key", apiKey)
-                    .header("anthropic-version", "2023-06-01")
+                    .header("anthropic-version", "2024-06-01")
                     .timeout(TIMEOUT)
                     .POST(HttpRequest.BodyPublishers.ofString(new Gson().toJson(body)))
                     .build();
@@ -145,7 +145,9 @@ public final class DirectApiService {
     private String callOpenAi(String apiKey, String model, String prompt) throws AiApiException {
         JsonObject body = new JsonObject();
         body.addProperty("model", model);
-        body.addProperty("max_tokens", MAX_TOKENS);
+        // o1-series models use max_completion_tokens instead of max_tokens
+        String tokenParam = model.startsWith("o1") ? "max_completion_tokens" : "max_tokens";
+        body.addProperty(tokenParam, MAX_TOKENS);
 
         JsonArray messages = new JsonArray();
         JsonObject message = new JsonObject();
