@@ -38,7 +38,6 @@ public class ManageAiToolsDialog extends DialogWrapper {
         this.project = project;
         setTitle("Manage AI Tools");
         setOKButtonText("Close");
-        setCancelButtonText(null);
 
         searchField = new SearchTextField(false);
         searchField.addDocumentListener(new com.intellij.ui.DocumentAdapter() {
@@ -105,6 +104,11 @@ public class ManageAiToolsDialog extends DialogWrapper {
 
     private void loadTools() {
         AiToolDetectionService toolService = project.getService(AiToolDetectionService.class);
+        if (toolService == null) {
+            allTools = List.of();
+            filterTools("");
+            return;
+        }
         toolService.detect();
         allTools = toolService.getAllToolsWithStatus();
         filterTools(searchField.getText().trim());
@@ -229,7 +233,7 @@ public class ManageAiToolsDialog extends DialogWrapper {
             }
             case DETECTED -> {
                 JButton btn = new JButton("Configure");
-                if (cliAvailable) {
+                if (cliAvailable && tool.cliId() != null) {
                     btn.setToolTipText("Generate OpenSpec skills and commands for " + tool.name());
                     btn.addActionListener(e -> runCliAction(
                             "init --tools " + tool.cliId(),
@@ -246,7 +250,7 @@ public class ManageAiToolsDialog extends DialogWrapper {
             }
             case AVAILABLE -> {
                 JButton btn = new JButton("Add");
-                if (cliAvailable) {
+                if (cliAvailable && tool.cliId() != null) {
                     btn.setToolTipText("Add " + tool.name() + " to your project with OpenSpec skills");
                     btn.addActionListener(e -> runCliAction(
                             "init --tools " + tool.cliId(),
@@ -311,15 +315,17 @@ public class ManageAiToolsDialog extends DialogWrapper {
         try {
             com.intellij.openapi.vfs.VirtualFile baseDir =
                     com.intellij.openapi.vfs.LocalFileSystem.getInstance().findFileByPath(basePath);
-            if (baseDir != null) {
-                com.intellij.openapi.application.WriteAction.run(() ->
-                        baseDir.createChildDirectory(this, dirName));
-                VirtualFileManager.getInstance().syncRefresh();
-                setPreferredTool(tool.name());
-                loadTools();
-                OpenSpecNotifier.info(project, "AI Tools",
-                        tool.name() + " directory created. Install the OpenSpec CLI to generate skills.");
+            if (baseDir == null) {
+                OpenSpecNotifier.error(project, "AI Tools", "Project directory not found");
+                return;
             }
+            com.intellij.openapi.application.WriteAction.run(() ->
+                    baseDir.createChildDirectory(this, dirName));
+            VirtualFileManager.getInstance().syncRefresh();
+            setPreferredTool(tool.name());
+            loadTools();
+            OpenSpecNotifier.info(project, "AI Tools",
+                    tool.name() + " directory created. Install the OpenSpec CLI to generate skills.");
         } catch (Exception ex) {
             OpenSpecNotifier.error(project, "AI Tools",
                     "Failed to create " + dirName + ": " + ex.getMessage());

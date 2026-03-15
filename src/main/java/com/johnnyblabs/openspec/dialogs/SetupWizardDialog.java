@@ -102,7 +102,7 @@ public class SetupWizardDialog extends DialogWrapper {
 
         gbc.gridy = 1;
         gbc.fill = GridBagConstraints.HORIZONTAL;
-        JBLabel title = new JBLabel("Welcome to OpenSpec");
+        JBLabel title = new JBLabel("Welcome to OpenSpec Plugin");
         title.setFont(title.getFont().deriveFont(Font.BOLD, 18f));
         panel.add(title, gbc);
 
@@ -117,6 +117,14 @@ public class SetupWizardDialog extends DialogWrapper {
                 "<li>Project initialization</li>" +
                 "</ul></body></html>");
         panel.add(desc, gbc);
+
+        gbc.gridy = 3;
+        JBLabel attribution = new JBLabel("<html><body style='width:" + JBUI.scale(400) +
+                "px;color:gray;font-size:small'>" +
+                "Built to support the amazing work of " +
+                "<b>Fission AI</b>, the creators of OpenSpec." +
+                "</body></html>");
+        panel.add(attribution, gbc);
 
         return panel;
     }

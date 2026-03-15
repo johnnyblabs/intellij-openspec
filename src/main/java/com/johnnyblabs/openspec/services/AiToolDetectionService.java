@@ -5,6 +5,8 @@ import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.johnnyblabs.openspec.settings.OpenSpecSettings;
 
+import org.jetbrains.annotations.Nullable;
+
 import java.io.File;
 import java.util.*;
 
@@ -227,7 +229,7 @@ public final class AiToolDetectionService {
 
     public enum ToolStatus { CONFIGURED, DETECTED, AVAILABLE }
 
-    public record ToolInfo(String name, ToolStatus status, ToolType type, String cliId) {}
+    public record ToolInfo(String name, ToolStatus status, ToolType type, @Nullable String cliId) {}
 
     /**
      * Returns the directory name for a tool (e.g., "Claude Code" → ".claude").
