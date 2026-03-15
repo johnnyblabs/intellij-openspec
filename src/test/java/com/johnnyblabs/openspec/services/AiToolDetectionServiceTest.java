@@ -119,4 +119,164 @@ class AiToolDetectionServiceTest {
                     AiToolDetectionService.ToolType.valueOf("IDE_PANEL"));
         }
     }
+
+    @Nested
+    class ToolDirMapping {
+
+        @Test
+        void getToolDirName_knownTools() {
+            assertEquals(".claude", AiToolDetectionService.getToolDirName("Claude Code"));
+            assertEquals(".github", AiToolDetectionService.getToolDirName("GitHub Copilot"));
+            assertEquals(".cursor", AiToolDetectionService.getToolDirName("Cursor"));
+            assertEquals(".windsurf", AiToolDetectionService.getToolDirName("Windsurf"));
+            assertEquals(".cline", AiToolDetectionService.getToolDirName("Cline"));
+            assertEquals(".gemini", AiToolDetectionService.getToolDirName("Gemini"));
+            assertEquals(".amazonq", AiToolDetectionService.getToolDirName("Amazon Q"));
+            assertEquals(".kiro", AiToolDetectionService.getToolDirName("Kiro"));
+            assertEquals(".roo", AiToolDetectionService.getToolDirName("Roo Code"));
+            assertEquals(".trae", AiToolDetectionService.getToolDirName("Trae"));
+        }
+
+        @Test
+        void getToolDirName_unknownReturnsNull() {
+            assertNull(AiToolDetectionService.getToolDirName("Nonexistent Tool"));
+        }
+
+        @Test
+        void getToolDirName_nullReturnsNull() {
+            assertNull(AiToolDetectionService.getToolDirName(null));
+        }
+    }
+
+    @Nested
+    class CliToolIds {
+
+        @Test
+        void getCliToolId_knownTools() {
+            assertEquals("claude", AiToolDetectionService.getCliToolId("Claude Code"));
+            assertEquals("github-copilot", AiToolDetectionService.getCliToolId("GitHub Copilot"));
+            assertEquals("cursor", AiToolDetectionService.getCliToolId("Cursor"));
+            assertEquals("amazon-q", AiToolDetectionService.getCliToolId("Amazon Q"));
+            assertEquals("roocode", AiToolDetectionService.getCliToolId("Roo Code"));
+            assertEquals("auggie", AiToolDetectionService.getCliToolId("Augment"));
+        }
+
+        @Test
+        void getCliToolId_nullReturnsNull() {
+            assertNull(AiToolDetectionService.getCliToolId(null));
+        }
+
+        @Test
+        void getCliToolId_unknownReturnsNull() {
+            assertNull(AiToolDetectionService.getCliToolId("Unknown"));
+        }
+    }
+
+    @Nested
+    class AllToolNames {
+
+        @Test
+        void getAllToolNames_returns24Tools() {
+            var names = AiToolDetectionService.getAllToolNames();
+            assertEquals(24, names.size());
+        }
+
+        @Test
+        void getAllToolNames_containsExpectedTools() {
+            var names = AiToolDetectionService.getAllToolNames();
+            assertTrue(names.contains("Claude Code"));
+            assertTrue(names.contains("GitHub Copilot"));
+            assertTrue(names.contains("Cursor"));
+            assertTrue(names.contains("Amazon Q"));
+            assertTrue(names.contains("Kiro"));
+            assertTrue(names.contains("Roo Code"));
+        }
+
+        @Test
+        void getAllToolNames_returnsImmutableList() {
+            var names = AiToolDetectionService.getAllToolNames();
+            assertThrows(UnsupportedOperationException.class, () -> names.add("Test"));
+        }
+
+        @Test
+        void everyToolHasCliId() {
+            for (String tool : AiToolDetectionService.getAllToolNames()) {
+                assertNotNull(AiToolDetectionService.getCliToolId(tool),
+                        tool + " should have a CLI ID");
+            }
+        }
+
+        @Test
+        void everyToolHasDirName() {
+            for (String tool : AiToolDetectionService.getAllToolNames()) {
+                assertNotNull(AiToolDetectionService.getToolDirName(tool),
+                        tool + " should have a directory name");
+            }
+        }
+
+        @Test
+        void everyToolHasType() {
+            for (String tool : AiToolDetectionService.getAllToolNames()) {
+                assertNotNull(AiToolDetectionService.getToolType(tool),
+                        tool + " should have a tool type");
+            }
+        }
+    }
+
+    @Nested
+    class ToolStatusEnum {
+
+        @Test
+        void enumValues() {
+            AiToolDetectionService.ToolStatus[] values = AiToolDetectionService.ToolStatus.values();
+            assertEquals(3, values.length);
+        }
+
+        @Test
+        void valueOf() {
+            assertEquals(AiToolDetectionService.ToolStatus.CONFIGURED,
+                    AiToolDetectionService.ToolStatus.valueOf("CONFIGURED"));
+            assertEquals(AiToolDetectionService.ToolStatus.DETECTED,
+                    AiToolDetectionService.ToolStatus.valueOf("DETECTED"));
+            assertEquals(AiToolDetectionService.ToolStatus.AVAILABLE,
+                    AiToolDetectionService.ToolStatus.valueOf("AVAILABLE"));
+        }
+    }
+
+    @Nested
+    class ToolInfoRecord {
+
+        @Test
+        void toolInfoHoldsAllFields() {
+            var info = new AiToolDetectionService.ToolInfo(
+                    "Claude Code",
+                    AiToolDetectionService.ToolStatus.CONFIGURED,
+                    AiToolDetectionService.ToolType.CLI,
+                    "claude");
+            assertEquals("Claude Code", info.name());
+            assertEquals(AiToolDetectionService.ToolStatus.CONFIGURED, info.status());
+            assertEquals(AiToolDetectionService.ToolType.CLI, info.type());
+            assertEquals("claude", info.cliId());
+        }
+    }
+
+    @Nested
+    class MapConsistency {
+
+        @Test
+        void allMapsHaveSameSize() {
+            // TOOL_DIRS, TOOL_TYPES, and CLI_TOOL_IDS should all have 24 entries
+            var names = AiToolDetectionService.getAllToolNames();
+            assertEquals(24, names.size(), "Should have 24 tools");
+
+            for (String name : names) {
+                assertNotNull(AiToolDetectionService.getToolType(name),
+                        name + " missing from TOOL_TYPES");
+                assertNotNull(AiToolDetectionService.getCliToolId(name),
+                        name + " missing from CLI_TOOL_IDS");
+                assertNotNull(AiToolDetectionService.getToolDirName(name),
+                        name + " missing from TOOL_DIRS");
+            }
+        }
+    }
 }
