@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "com.johnnyblabs.openspec"
-version = "0.2.2"
+version = "0.2.3"
 
 java {
     sourceCompatibility = JavaVersion.VERSION_21
@@ -51,6 +51,13 @@ intellijPlatform {
             name = "johnnyblabs"
         }
         changeNotes = """
+            <h3>v0.2.3 — Manage AI Tools &amp; Branding</h3>
+            <ul>
+                <li>New Manage AI Tools dialog: view, add, remove, and configure AI tools from a central settings panel</li>
+                <li>Hardened null safety in AI tool management to prevent crashes</li>
+                <li>Welcome screen now branded as "OpenSpec Plugin" with Fission AI attribution</li>
+                <li>Added tests for v0.2.x new code paths</li>
+            </ul>
             <h3>v0.2.2 — Review Ready</h3>
             <ul>
                 <li>Updated Anthropic API to version 2024-06-01</li>
