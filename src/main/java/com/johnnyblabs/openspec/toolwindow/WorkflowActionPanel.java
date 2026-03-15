@@ -956,7 +956,7 @@ public class WorkflowActionPanel extends JPanel {
                 case DIRECT_API -> {
                     // Direct API: send prompt, but there's no single output file for apply
                     OpenSpecNotifier.warn(project, "Apply",
-                            "Direct API is not yet supported for Apply. Use clipboard or editor tab.");
+                            "Apply delivers a prompt for your AI tool to implement. Use Clipboard or Editor Tab to copy the prompt, then paste it into your AI tool.");
                     ApplicationManager.getApplication().invokeLater(() -> {
                         applyButton.setEnabled(true);
                         applyButton.setText("Apply Tasks");

@@ -39,7 +39,7 @@ This guide walks you through setting up the OpenSpec IntelliJ plugin and complet
 | **IntelliJ IDEA 2024.2+** | Community or Ultimate edition |
 | **OpenSpec plugin** | Install from JetBrains Marketplace or build from source |
 | **GitHub Copilot** | Copilot extension installed and signed in inside IntelliJ |
-| **OpenSpec CLI** | `npm install -g openspec-dev` — the plugin auto-detects it |
+| **OpenSpec CLI** | `npm install -g @fission-ai/openspec` — the plugin auto-detects it |
 | **Java 21+** | Required to build the plugin from source (not needed if installed from Marketplace) |
 
 After installing both the OpenSpec plugin and Copilot, restart IntelliJ. You should see an **OpenSpec** tool window icon on the right sidebar and an **OpenSpec** menu in the top menu bar.
@@ -63,7 +63,7 @@ The settings panel has three sections stacked vertically: **OpenSpec CLI**, **Ge
 | **Status indicator** | Shows green "OpenSpec CLI v*X.Y.Z*" when found, or orange "OpenSpec CLI not found" when missing. |
 | **Version override** | Force a specific OpenSpec schema version (e.g., `1.2.0`). Leave blank to use the version from your project's `openspec/config.yaml`. Only needed if you want to override the project config. Suggestions: `1.0.0`, `1.1.0`, `1.2.0`. |
 
-> **Tip:** If the CLI isn't detected, make sure you've installed it globally with `npm install -g openspec-dev`, then click **Detect** again.
+> **Tip:** If the CLI isn't detected, make sure you've installed it globally with `npm install -g @fission-ai/openspec`, then click **Detect** again.
 
 ### General
 

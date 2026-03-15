@@ -37,7 +37,7 @@ public abstract class OpenSpecCliAction extends OpenSpecBaseAction {
         if (detection == null || !detection.isAvailable()) {
             if (!handleCliMissing(project, e)) {
                 OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_SYSTEM, "CLI",
-                        "OpenSpec CLI not available. Cannot run '" + getCommandLabel() + "'. Install with: npm i -g openspec-dev",
+                        "OpenSpec CLI not available. Cannot run '" + getCommandLabel() + "'. Install with: npm i -g @fission-ai/openspec",
                         com.intellij.notification.NotificationType.WARNING, OpenSpecNotifier.openSettingsAction());
             }
             return;

@@ -20,7 +20,7 @@ import java.awt.*;
  *
  * <h3>CLI / Built-in Strategy</h3>
  * <p>The plugin uses a hybrid approach to ensure predictable results whether or
- * not the OpenSpec CLI ({@code openspec-dev}) is installed:</p>
+ * not the OpenSpec CLI ({@code @fission-ai/openspec}) is installed:</p>
  * <ul>
  *   <li><b>Write operations</b> (Init, Propose, Apply, Archive) — <b>Always built-in.</b>
  *       These create/move/update files on disk. The built-in implementation guarantees

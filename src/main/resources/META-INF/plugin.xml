@@ -128,13 +128,13 @@
             <action id="OpenSpec.Archive"
                     class="com.johnnyblabs.openspec.actions.OpenSpecArchiveAction"
                     text="Archive"
-                    description="Archive the current change"
+                    description="Archive the current change and update main specs"
                     icon="/icons/archive.svg"/>
             <separator/>
             <action id="OpenSpec.Validate"
                     class="com.johnnyblabs.openspec.actions.OpenSpecValidateAction"
                     text="Validate"
-                    description="Validate specs and config"
+                    description="Validate changes and specs"
                     icon="/icons/requirement.svg"/>
             <action id="OpenSpec.List"
                     class="com.johnnyblabs.openspec.actions.OpenSpecListAction"
@@ -144,7 +144,7 @@
             <separator/>
             <action id="OpenSpec.Refresh"
                     class="com.johnnyblabs.openspec.actions.OpenSpecRefreshAction"
-                    text="Refresh Tree"
+                    text="Refresh"
                     description="Refresh the OpenSpec tool window"
                     icon="AllIcons.Actions.Refresh"/>
             <action id="OpenSpec.SetupWizard"

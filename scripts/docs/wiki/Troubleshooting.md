@@ -16,12 +16,12 @@ Find the CLI path:
 which openspec
 # or
 npm root -g
-# then: <global-root>/openspec-dev/bin/openspec
+# then: <global-root>/@fission-ai/openspec/bin/openspec
 ```
 
 ### CLI Not Installed
 ```bash
-npm install -g openspec-dev
+npm install -g @fission-ai/openspec
 ```
 
 ### Detection Cascade
