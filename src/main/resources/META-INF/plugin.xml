@@ -156,7 +156,7 @@
                     class="com.johnnyblabs.openspec.actions.OpenSpecSetupWizardAction"
                     text="Setup Wizard..."
                     description="Run the OpenSpec setup wizard"
-                    icon="AllIcons.General.Settings"/>
+                    icon="AllIcons.Actions.IntentionBulb"/>
             <add-to-group group-id="MainMenu" anchor="before" relative-to-action="ToolsMenu"/>
         </group>
 
