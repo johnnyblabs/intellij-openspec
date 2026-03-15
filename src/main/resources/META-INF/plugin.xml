@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.johnnyblabs.openspec</id>
     <name>OpenSpec</name>
-    <vendor url="https://johnnyblabs.com" email="openspec@johnnyblabs.com">johnnyblabs</vendor>
+    <vendor url="https://openspec.johnnyblabs.com" email="johnboyce@comcast.net">johnnyblabs</vendor>
     <description><![CDATA[
         <p><b>OpenSpec</b> brings spec-driven development to IntelliJ IDEA. Write specifications first, then implement with confidence — your specs become living documentation that stays connected to your code.</p>
 
@@ -128,13 +128,13 @@
             <action id="OpenSpec.Archive"
                     class="com.johnnyblabs.openspec.actions.OpenSpecArchiveAction"
                     text="Archive"
-                    description="Archive the current change"
+                    description="Archive the current change and update main specs"
                     icon="/icons/archive.svg"/>
             <separator/>
             <action id="OpenSpec.Validate"
                     class="com.johnnyblabs.openspec.actions.OpenSpecValidateAction"
                     text="Validate"
-                    description="Validate specs and config"
+                    description="Validate changes and specs"
                     icon="/icons/requirement.svg"/>
             <action id="OpenSpec.List"
                     class="com.johnnyblabs.openspec.actions.OpenSpecListAction"
@@ -144,7 +144,7 @@
             <separator/>
             <action id="OpenSpec.Refresh"
                     class="com.johnnyblabs.openspec.actions.OpenSpecRefreshAction"
-                    text="Refresh Tree"
+                    text="Refresh"
                     description="Refresh the OpenSpec tool window"
                     icon="AllIcons.Actions.Refresh"/>
             <action id="OpenSpec.SetupWizard"

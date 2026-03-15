@@ -51,7 +51,7 @@ OpenSpecPlugin/
 
 ## OpenSpec CLI
 
-The plugin integrates with the `openspec` CLI (`npm i -g openspec-dev`). Key commands:
+The plugin integrates with the `openspec` CLI (`npm i -g @fission-ai/openspec`). Key commands:
 
 ```bash
 openspec init                                    # Initialize project

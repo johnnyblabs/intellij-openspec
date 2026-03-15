@@ -1,6 +1,6 @@
 # OpenSpec IntelliJ Plugin
 
-An IntelliJ IDEA plugin for the [OpenSpec](https://github.com/openspec-dev) spec-driven development framework. Browse specs, manage changes, generate artifacts with AI, and validate your project — all from within your IDE.
+An IntelliJ IDEA plugin for the [OpenSpec](https://github.com/@fission-ai/openspec) spec-driven development framework. Browse specs, manage changes, generate artifacts with AI, and validate your project — all from within your IDE.
 
 ---
 
@@ -29,7 +29,7 @@ cd OpenSpecPlugin
 The plugin works in **built-in mode** without the CLI, but the full experience — artifact DAGs, AI instruction generation, and validation — requires the CLI:
 
 ```bash
-npm i -g openspec-dev
+npm i -g @fission-ai/openspec
 ```
 
 The plugin auto-detects the CLI at startup. If it can't find it, configure the path manually in **Settings > Tools > OpenSpec**.
@@ -238,7 +238,7 @@ All actions are available from the **OpenSpec** top-level menu and the tool wind
 
 The plugin works without the CLI but artifact DAG features require it.
 
-1. Install: `npm i -g openspec-dev`
+1. Install: `npm i -g @fission-ai/openspec`
 2. If installed but not detected: **Settings > Tools > OpenSpec > Detect**, or set the path manually
 3. On macOS, GUI apps don't inherit your terminal's PATH — the plugin tries your login shell, Homebrew paths, and `/usr/local/bin` automatically
 

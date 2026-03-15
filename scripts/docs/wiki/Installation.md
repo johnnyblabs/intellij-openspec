@@ -6,7 +6,7 @@
 |------------|---------|
 | **Java JDK** | 21 or later |
 | **IntelliJ IDEA** | 2024.2+ (Community or Ultimate) |
-| **OpenSpec CLI** | Optional — `npm i -g openspec-dev` |
+| **OpenSpec CLI** | Optional — `npm i -g @fission-ai/openspec` |
 
 ## Build from Source
 
@@ -37,7 +37,7 @@ This launches a sandboxed IntelliJ instance with the plugin pre-installed.
 The CLI extends plugin capabilities with additional commands and validation. Install it via npm:
 
 ```bash
-npm install -g openspec-dev
+npm install -g @fission-ai/openspec
 ```
 
 ### CLI Detection Cascade

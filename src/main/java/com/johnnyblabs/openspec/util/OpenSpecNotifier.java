@@ -54,7 +54,7 @@ public final class OpenSpecNotifier {
 
     public static void cliMissing(@NotNull Project project) {
         notify(project, GROUP_SYSTEM, "CLI Detection",
-                "OpenSpec CLI not found. Built-in features will be used. Install with: npm i -g openspec-dev",
+                "OpenSpec CLI not found. Built-in features will be used. Install with: npm i -g @fission-ai/openspec",
                 NotificationType.WARNING,
                 openSettingsAction());
     }

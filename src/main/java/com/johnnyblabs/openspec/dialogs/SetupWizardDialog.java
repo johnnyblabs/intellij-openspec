@@ -152,7 +152,7 @@ public class SetupWizardDialog extends DialogWrapper {
         gbc.gridwidth = 2;
         JBLabel hint = new JBLabel("<html><body style='width:" + JBUI.scale(400) + "px;color:gray'>" +
                 "The CLI is optional. Built-in features work without it. " +
-                "Install with: <code>npm i -g openspec-dev</code></body></html>");
+                "Install with: <code>npm i -g @fission-ai/openspec</code></body></html>");
         panel.add(hint, gbc);
 
         return panel;
@@ -183,7 +183,7 @@ public class SetupWizardDialog extends DialogWrapper {
         gbc.gridy = 2;
         panel.add(new JBLabel("Delivery method:"), gbc);
         gbc.gridx = 1;
-        deliveryCombo = new ComboBox<>(new String[]{"clipboard", "editor", "direct-api"});
+        deliveryCombo = new ComboBox<>(new String[]{"Clipboard", "Editor Tab", "Direct API"});
         deliveryCombo.addActionListener(e -> updateDirectApiVisibility());
         panel.add(deliveryCombo, gbc);
 
@@ -261,7 +261,7 @@ public class SetupWizardDialog extends DialogWrapper {
         panel.add(initStatusLabel, gbc);
 
         gbc.gridy = 2;
-        initButton = new JButton("Initialize Project");
+        initButton = new JButton("Initialize OpenSpec");
         initButton.addActionListener(e -> doInitialize());
         panel.add(initButton, gbc);
 
@@ -419,9 +419,17 @@ public class SetupWizardDialog extends DialogWrapper {
             model.setSelectedTool(toolCombo.getSelectedItem().toString());
         }
         if (deliveryCombo.getSelectedItem() != null) {
-            model.setDeliveryMethod(deliveryCombo.getSelectedItem().toString());
+            // Map display names to enum names for persistence
+            String selected = deliveryCombo.getSelectedItem().toString();
+            String enumName = switch (selected) {
+                case "Clipboard" -> "CLIPBOARD";
+                case "Editor Tab" -> "EDITOR_TAB";
+                case "Direct API" -> "DIRECT_API";
+                default -> selected;
+            };
+            model.setDeliveryMethod(enumName);
         }
-        if ("direct-api".equals(deliveryCombo.getSelectedItem())) {
+        if ("Direct API".equals(deliveryCombo.getSelectedItem())) {
             AiProvider selected = (AiProvider) providerCombo.getSelectedItem();
             if (selected != null) {
                 model.setAiProvider(selected);
@@ -439,7 +447,7 @@ public class SetupWizardDialog extends DialogWrapper {
     // --- AI step helpers ---
 
     private void updateDirectApiVisibility() {
-        boolean show = "direct-api".equals(deliveryCombo.getSelectedItem());
+        boolean show = "Direct API".equals(deliveryCombo.getSelectedItem());
         directApiPanel.setVisible(show);
     }
 
