@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 13 13">
   <!-- Document body -->
-  <rect x="1" y="0.5" width="8" height="10" rx="1.5" fill="#A29BFE" opacity="0.25" stroke="#A29BFE" stroke-width="0.8"/>
+  <rect x="1" y="0.5" width="8" height="10" rx="1.5" fill="#AFB1B3" opacity="0.25" stroke="#AFB1B3" stroke-width="0.8"/>
   <!-- Checkmark badge -->
-  <circle cx="9.5" cy="9.5" r="3" fill="#A29BFE"/>
+  <circle cx="9.5" cy="9.5" r="3" fill="#AFB1B3"/>
   <polyline points="7.8,9.5 9,10.7 11.2,8.5" fill="none" stroke="#2B2B2B" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
