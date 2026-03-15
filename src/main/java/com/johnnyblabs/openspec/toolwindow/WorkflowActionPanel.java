@@ -306,10 +306,21 @@ public class WorkflowActionPanel extends JPanel {
         changeSelectorPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
         headerRow.add(changeSelectorPanel, BorderLayout.CENTER);
 
+        JButton manageToolsButton = new JButton(AllIcons.General.GearPlain);
+        manageToolsButton.setToolTipText("Manage AI Tools");
+        manageToolsButton.setMargin(JBUI.insets(2));
+        manageToolsButton.addActionListener(e -> {
+            com.johnnyblabs.openspec.dialogs.ManageAiToolsDialog dialog =
+                    new com.johnnyblabs.openspec.dialogs.ManageAiToolsDialog(project);
+            dialog.show();
+            populateToolSelector();
+        });
+
         JPanel toolRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, JBUI.scale(4), 0));
         toolRow.setOpaque(false);
         toolRow.add(noToolsLabel);
         toolRow.add(toolSelector);
+        toolRow.add(manageToolsButton);
         headerRow.add(toolRow, BorderLayout.EAST);
 
         // Pipeline row

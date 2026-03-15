@@ -98,15 +98,22 @@ public class OpenSpecSettingsPanel {
         // --- Direct API Section ---
         JPanel directApiSection = buildDirectApiSection();
 
-        // --- Setup Wizard shortcut ---
+        // --- Setup Wizard + Manage Tools shortcuts ---
         JButton wizardButton = new JButton("Run Setup Wizard...");
         wizardButton.addActionListener(e -> {
             com.johnnyblabs.openspec.dialogs.SetupWizardDialog dialog =
                     new com.johnnyblabs.openspec.dialogs.SetupWizardDialog(project);
             dialog.show();
         });
-        JPanel wizardRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        JButton manageToolsButton = new JButton("Manage AI Tools...");
+        manageToolsButton.addActionListener(e -> {
+            com.johnnyblabs.openspec.dialogs.ManageAiToolsDialog dialog =
+                    new com.johnnyblabs.openspec.dialogs.ManageAiToolsDialog(project);
+            dialog.show();
+        });
+        JPanel wizardRow = new JPanel(new FlowLayout(FlowLayout.LEFT, JBUI.scale(4), 0));
         wizardRow.add(wizardButton);
+        wizardRow.add(manageToolsButton);
 
         // --- Assemble main panel ---
         mainPanel = new JPanel();

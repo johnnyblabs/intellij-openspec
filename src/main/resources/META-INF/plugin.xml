@@ -147,11 +147,16 @@
                     text="Refresh"
                     description="Refresh the OpenSpec tool window"
                     icon="AllIcons.Actions.Refresh"/>
+            <action id="OpenSpec.ManageTools"
+                    class="com.johnnyblabs.openspec.actions.OpenSpecManageToolsAction"
+                    text="Manage AI Tools..."
+                    description="Add, configure, and update AI tool integrations"
+                    icon="AllIcons.General.GearPlain"/>
             <action id="OpenSpec.SetupWizard"
                     class="com.johnnyblabs.openspec.actions.OpenSpecSetupWizardAction"
                     text="Setup Wizard..."
                     description="Run the OpenSpec setup wizard"
-                    icon="AllIcons.General.GearPlain"/>
+                    icon="AllIcons.General.Settings"/>
             <add-to-group group-id="MainMenu" anchor="before" relative-to-action="ToolsMenu"/>
         </group>
 
@@ -160,6 +165,8 @@
             <reference ref="OpenSpec.Refresh"/>
             <reference ref="OpenSpec.Validate"/>
             <reference ref="OpenSpec.Propose"/>
+            <separator/>
+            <reference ref="OpenSpec.ManageTools"/>
             <reference ref="OpenSpec.SetupWizard"/>
         </group>
     </actions>

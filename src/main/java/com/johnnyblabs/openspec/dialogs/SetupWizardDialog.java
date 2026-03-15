@@ -346,19 +346,25 @@ public class SetupWizardDialog extends DialogWrapper {
     private void populateAiTools() {
         AiToolDetectionService toolService = project.getService(AiToolDetectionService.class);
         toolService.detect();
-        List<String> tools = toolService.getDetectedTools();
-        model.setDetectedTools(tools);
+        List<String> detected = toolService.getDetectedTools();
+        model.setDetectedTools(detected);
 
         toolCombo.removeAllItems();
-        if (tools.isEmpty()) {
-            toolCombo.addItem("(none detected)");
-            toolCombo.setEnabled(false);
-        } else {
-            for (String tool : tools) {
+
+        // Show detected tools first
+        for (String tool : detected) {
+            toolCombo.addItem(tool + " (detected)");
+        }
+
+        // Then all other known tools the user might want to configure
+        java.util.Set<String> detectedSet = new java.util.HashSet<>(detected);
+        for (String tool : AiToolDetectionService.getAllToolNames()) {
+            if (!detectedSet.contains(tool)) {
                 toolCombo.addItem(tool);
             }
-            toolCombo.setEnabled(true);
         }
+
+        toolCombo.setEnabled(true);
     }
 
     private void checkInitialization() {
@@ -416,7 +422,9 @@ public class SetupWizardDialog extends DialogWrapper {
             model.setCliPath(cliPathField.getText().trim());
         }
         if (toolCombo.isEnabled() && toolCombo.getSelectedItem() != null) {
-            model.setSelectedTool(toolCombo.getSelectedItem().toString());
+            String toolSelection = toolCombo.getSelectedItem().toString()
+                    .replace(" (detected)", "");
+            model.setSelectedTool(toolSelection);
         }
         if (deliveryCombo.getSelectedItem() != null) {
             // Map display names to enum names for persistence
