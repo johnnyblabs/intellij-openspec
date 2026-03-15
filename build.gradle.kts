@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "com.johnnyblabs.openspec"
-version = "0.2.1"
+version = "0.2.2"
 
 java {
     sourceCompatibility = JavaVersion.VERSION_21
@@ -51,6 +51,14 @@ intellijPlatform {
             name = "johnnyblabs"
         }
         changeNotes = """
+            <h3>v0.2.2 — Review Ready</h3>
+            <ul>
+                <li>Updated Anthropic API to version 2024-06-01</li>
+                <li>Fixed OpenAI o1-series model compatibility</li>
+                <li>Monochrome tool window icon matching JetBrains platform conventions</li>
+                <li>Corrected CLI install instructions and standardized UI terminology</li>
+                <li>Updated vendor URL and contact information</li>
+            </ul>
             <h3>v0.2.1 — Patch Fixes</h3>
             <ul>
                 <li>CLI-aligned init: delegates to <code>openspec init</code> when CLI detected, generating skills and commands for all 24 supported AI tools</li>
