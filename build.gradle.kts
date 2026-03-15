@@ -51,6 +51,17 @@ intellijPlatform {
             name = "johnnyblabs"
         }
         changeNotes = """
+            <h3>v0.2.1 — Patch Fixes</h3>
+            <ul>
+                <li>CLI-aligned init: delegates to <code>openspec init</code> when CLI detected, generating skills and commands for all 24 supported AI tools</li>
+                <li>Branded onboarding: 32x32 OpenSpec icon and "Spec-Driven Development" tagline in getting started panel and setup wizard</li>
+                <li>Fix: first-run state detection — projects with archived changes skip onboarding correctly</li>
+                <li>Fix: wizard "Create Your First Change" now actually persists the change to disk</li>
+                <li>Fix: VFS refresh timing — no more false config-missing errors after init</li>
+                <li>Fix: deprecated API cleanup (ActionUtil.performActionDumbAwareWithCallbacks)</li>
+                <li>HiDPI-safe text widths and improved dark theme tree colors</li>
+                <li>CI: custom java-21 runner with baked JDK, Gradle, and Node — zero-download builds</li>
+            </ul>
             <h3>v0.2.0 — Spec Intelligence</h3>
             <ul>
                 <li>Gutter markers: <code>@spec</code> references in Java source are annotated with clickable icons linking back to the spec</li>
