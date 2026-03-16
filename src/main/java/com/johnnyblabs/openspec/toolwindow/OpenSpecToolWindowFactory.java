@@ -60,6 +60,12 @@ public class OpenSpecToolWindowFactory implements ToolWindowFactory, DumbAware {
         Content consoleContent = contentFactory.createContent(consolePanel, "Console", false);
         toolWindow.getContentManager().addContent(consoleContent);
 
+        // Explore tab (project context)
+        ExplorePanel explorePanel = new ExplorePanel(project);
+        Content exploreContent = contentFactory.createContent(explorePanel, "Explore", false);
+        exploreContent.setDisposer(explorePanel);
+        toolWindow.getContentManager().addContent(exploreContent);
+
         // Register with service for shared access
         OpenSpecConsoleService consoleService = project.getService(OpenSpecConsoleService.class);
         if (consoleService != null) {

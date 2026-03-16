@@ -19,8 +19,11 @@ import com.johnnyblabs.openspec.ai.DirectApiService;
 import com.johnnyblabs.openspec.model.ArtifactInfo;
 import com.johnnyblabs.openspec.model.ArtifactStatus;
 import com.johnnyblabs.openspec.model.ChangeArtifactDag;
+import com.johnnyblabs.openspec.model.SchemaInfo;
 import com.johnnyblabs.openspec.services.ArtifactOrchestrationService;
 import com.johnnyblabs.openspec.services.GenerateAllListener;
+import com.johnnyblabs.openspec.services.SchemaService;
+import com.johnnyblabs.openspec.settings.OpenSpecSettings;
 import com.johnnyblabs.openspec.util.CliRunner;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -28,6 +31,7 @@ import org.jetbrains.annotations.Nullable;
 import javax.swing.*;
 import java.awt.*;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 public class FfDialog extends DialogWrapper {
@@ -35,6 +39,8 @@ public class FfDialog extends DialogWrapper {
     private final Project project;
     private final JBTextArea descriptionField;
     private final JBTextField nameOverrideField;
+    private JComboBox<String> schemaCombo;
+    private boolean schemaComboVisible;
 
     // Progress panel components
     private final JPanel progressPanel;
@@ -56,6 +62,24 @@ public class FfDialog extends DialogWrapper {
 
         nameOverrideField = new JBTextField();
         nameOverrideField.getEmptyText().setText("(optional) e.g., add-user-auth");
+
+        // Schema selector — visible only when multiple schemas exist
+        schemaComboVisible = false;
+        schemaCombo = new JComboBox<>();
+        SchemaService schemaService = project.getService(SchemaService.class);
+        if (schemaService != null) {
+            List<SchemaInfo> schemas = schemaService.listSchemas();
+            if (schemas.size() > 1) {
+                schemaComboVisible = true;
+                for (SchemaInfo info : schemas) {
+                    schemaCombo.addItem(info.name());
+                }
+                String defaultSchema = OpenSpecSettings.getInstance(project).getDefaultSchema();
+                if (defaultSchema != null && !defaultSchema.isEmpty()) {
+                    schemaCombo.setSelectedItem(defaultSchema);
+                }
+            }
+        }
 
         progressPanel = new JPanel();
         progressPanel.setLayout(new BoxLayout(progressPanel, BoxLayout.Y_AXIS));
@@ -79,8 +103,13 @@ public class FfDialog extends DialogWrapper {
         builder.addComponent(hint);
 
         builder.addLabeledComponent(new JBLabel("Description:"), new JBScrollPane(descriptionField))
-                .addLabeledComponent(new JBLabel("Name override:"), nameOverrideField)
-                .addComponent(progressPanel)
+                .addLabeledComponent(new JBLabel("Name override:"), nameOverrideField);
+
+        if (schemaComboVisible) {
+            builder.addLabeledComponent(new JBLabel("Schema:"), schemaCombo);
+        }
+
+        builder.addComponent(progressPanel)
                 .addComponent(statusLabel)
                 .addComponentFillVertically(new JPanel(), 0);
         return builder.getPanel();
@@ -129,8 +158,15 @@ public class FfDialog extends DialogWrapper {
                 try {
                     // Step 1: Create the change
                     indicator.setText("Creating change...");
-                    CliRunner.CliResult createResult = CliRunner.run(project,
-                            "new", "change", changeName);
+                    String schema = getSelectedSchema();
+                    CliRunner.CliResult createResult;
+                    if (schema != null && !schema.isEmpty()) {
+                        createResult = CliRunner.run(project,
+                                "new", "change", changeName, "--schema", schema);
+                    } else {
+                        createResult = CliRunner.run(project,
+                                "new", "change", changeName);
+                    }
                     if (!createResult.isSuccess()) {
                         showError("Failed to create change: " + createResult.stderr());
                         return;
@@ -251,6 +287,22 @@ public class FfDialog extends DialogWrapper {
 
     public boolean isCompleted() {
         return completed;
+    }
+
+    /**
+     * Returns the selected schema name, or null if the schema selector is not visible.
+     */
+    public @Nullable String getSelectedSchema() {
+        if (!schemaComboVisible) return null;
+        Object selected = schemaCombo.getSelectedItem();
+        return selected != null ? selected.toString() : null;
+    }
+
+    /**
+     * Returns whether the schema combo box is visible (for testing).
+     */
+    boolean isSchemaComboVisible() {
+        return schemaComboVisible;
     }
 
     @Override

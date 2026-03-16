@@ -10,11 +10,14 @@ import com.intellij.ui.components.JBTextArea;
 import com.intellij.ui.components.JBTextField;
 import com.intellij.util.ui.FormBuilder;
 import com.intellij.util.ui.JBUI;
+import com.johnnyblabs.openspec.model.SchemaInfo;
+import com.johnnyblabs.openspec.services.SchemaService;
 import com.johnnyblabs.openspec.settings.OpenSpecSettings;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 import java.awt.*;
+import java.util.List;
 
 public class ProposeChangeDialog extends DialogWrapper {
 
@@ -22,6 +25,8 @@ public class ProposeChangeDialog extends DialogWrapper {
     private final JBTextField nameField;
     private final JBTextArea whyField;
     private final JBTextArea whatChangesField;
+    private JComboBox<String> schemaCombo;
+    private boolean schemaComboVisible;
 
     public ProposeChangeDialog(Project project) {
         super(project, false);
@@ -38,6 +43,24 @@ public class ProposeChangeDialog extends DialogWrapper {
         whatChangesField.setLineWrap(true);
         whatChangesField.setWrapStyleWord(true);
         whatChangesField.getEmptyText().setText("e.g., Add password reset endpoint and email notification");
+
+        // Schema selector — visible only when multiple schemas exist
+        schemaComboVisible = false;
+        schemaCombo = new JComboBox<>();
+        SchemaService schemaService = project.getService(SchemaService.class);
+        if (schemaService != null) {
+            List<SchemaInfo> schemas = schemaService.listSchemas();
+            if (schemas.size() > 1) {
+                schemaComboVisible = true;
+                for (SchemaInfo info : schemas) {
+                    schemaCombo.addItem(info.name());
+                }
+                String defaultSchema = OpenSpecSettings.getInstance(project).getDefaultSchema();
+                if (defaultSchema != null && !defaultSchema.isEmpty()) {
+                    schemaCombo.setSelectedItem(defaultSchema);
+                }
+            }
+        }
 
         init();
     }
@@ -59,8 +82,13 @@ public class ProposeChangeDialog extends DialogWrapper {
 
         builder.addLabeledComponent(new JBLabel("Change name:"), nameField)
                 .addLabeledComponent(new JBLabel("Why:"), new JBScrollPane(whyField))
-                .addLabeledComponent(new JBLabel("What Changes:"), new JBScrollPane(whatChangesField))
-                .addComponentFillVertically(new JPanel(), 0);
+                .addLabeledComponent(new JBLabel("What Changes:"), new JBScrollPane(whatChangesField));
+
+        if (schemaComboVisible) {
+            builder.addLabeledComponent(new JBLabel("Schema:"), schemaCombo);
+        }
+
+        builder.addComponentFillVertically(new JPanel(), 0);
         return builder.getPanel();
     }
 
@@ -82,6 +110,22 @@ public class ProposeChangeDialog extends DialogWrapper {
 
     public String getWhatChanges() {
         return whatChangesField.getText().trim();
+    }
+
+    /**
+     * Returns the selected schema name, or null if the schema selector is not visible.
+     */
+    public @Nullable String getSelectedSchema() {
+        if (!schemaComboVisible) return null;
+        Object selected = schemaCombo.getSelectedItem();
+        return selected != null ? selected.toString() : null;
+    }
+
+    /**
+     * Returns whether the schema combo box is visible (for testing).
+     */
+    boolean isSchemaComboVisible() {
+        return schemaComboVisible;
     }
 
     @Override

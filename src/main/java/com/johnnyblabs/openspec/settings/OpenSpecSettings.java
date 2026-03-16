@@ -139,6 +139,14 @@ public final class OpenSpecSettings implements PersistentStateComponent<OpenSpec
         state.cliTimeoutSeconds = timeout;
     }
 
+    public String getDefaultSchema() {
+        return state.defaultSchema;
+    }
+
+    public void setDefaultSchema(String schema) {
+        state.defaultSchema = schema;
+    }
+
     public static class State {
         public String versionOverride = "";
         public String cliPath = "";
@@ -152,5 +160,6 @@ public final class OpenSpecSettings implements PersistentStateComponent<OpenSpec
         public boolean setupCompleted = false;
         public boolean firstProposalCompleted = false;
         public int cliTimeoutSeconds = 30;
+        public String defaultSchema = "";
     }
 }

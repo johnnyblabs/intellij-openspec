@@ -2,23 +2,33 @@ package com.johnnyblabs.openspec.settings;
 
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory;
+import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.TextBrowseFolderListener;
 import com.intellij.openapi.ui.TextFieldWithBrowseButton;
+import com.intellij.openapi.vfs.LocalFileSystem;
+import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.IdeBorderFactory;
 import com.intellij.ui.components.JBCheckBox;
 import com.intellij.ui.components.JBLabel;
+import com.intellij.ui.components.JBList;
 import com.intellij.util.ui.FormBuilder;
 import com.intellij.util.ui.JBUI;
 import com.johnnyblabs.openspec.ai.AiCredentialStore;
 import com.johnnyblabs.openspec.ai.AiProvider;
 import com.johnnyblabs.openspec.ai.DirectApiService;
+import com.johnnyblabs.openspec.dialogs.NewSchemaDialog;
+import com.johnnyblabs.openspec.model.ConfigProfileDetail;
+import com.johnnyblabs.openspec.model.SchemaInfo;
 import com.johnnyblabs.openspec.services.CliDetectionService;
+import com.johnnyblabs.openspec.services.SchemaService;
+import com.johnnyblabs.openspec.util.CliRunner;
 
 import com.intellij.ui.JBColor;
 
 import javax.swing.*;
 import java.awt.*;
+import java.util.List;
 
 public class OpenSpecSettingsPanel {
 
@@ -44,6 +54,22 @@ public class OpenSpecSettingsPanel {
     private JComboBox<String> aiModelCombo;
     private JBLabel aiTestResultLabel;
 
+
+    // Config Profile section
+    private JBLabel profileNameLabel;
+    private JBLabel profileDescriptionLabel;
+    private JPanel workflowListPanel;
+    private JBLabel profileFallbackLabel;
+
+    // Schema section
+    private JBList<SchemaInfo> schemaList;
+    private DefaultListModel<SchemaInfo> schemaListModel;
+    private JComboBox<String> defaultSchemaCombo;
+    private JButton forkButton;
+    private JButton newSchemaButton;
+    private JButton refreshSchemasButton;
+    private JBLabel schemaUnsupportedLabel;
+    private JPanel schemasContentPanel;
 
     // State
     private final Project project;
@@ -95,6 +121,12 @@ public class OpenSpecSettingsPanel {
                 .getPanel();
         generalSection.setBorder(IdeBorderFactory.createTitledBorder("General"));
 
+        // --- Config Profile Section ---
+        JPanel configProfileSection = buildConfigProfileSection();
+
+        // Wire profile combo to refresh the Config Profile section on selection change
+        profileCombo.addActionListener(e -> refreshConfigProfileSection());
+
         // --- Direct API Section ---
         JPanel directApiSection = buildDirectApiSection();
 
@@ -115,12 +147,17 @@ public class OpenSpecSettingsPanel {
         wizardRow.add(wizardButton);
         wizardRow.add(manageToolsButton);
 
+        // --- Schemas Section ---
+        JPanel schemasSection = buildSchemasSection();
+
         // --- Assemble main panel ---
         mainPanel = new JPanel();
         mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
         wizardRow.setAlignmentX(Component.LEFT_ALIGNMENT);
         cliSection.setAlignmentX(Component.LEFT_ALIGNMENT);
         generalSection.setAlignmentX(Component.LEFT_ALIGNMENT);
+        configProfileSection.setAlignmentX(Component.LEFT_ALIGNMENT);
+        schemasSection.setAlignmentX(Component.LEFT_ALIGNMENT);
         directApiSection.setAlignmentX(Component.LEFT_ALIGNMENT);
         mainPanel.add(wizardRow);
         mainPanel.add(Box.createVerticalStrut(8));
@@ -128,11 +165,276 @@ public class OpenSpecSettingsPanel {
         mainPanel.add(Box.createVerticalStrut(4));
         mainPanel.add(generalSection);
         mainPanel.add(Box.createVerticalStrut(4));
+        mainPanel.add(configProfileSection);
+        mainPanel.add(Box.createVerticalStrut(4));
+        mainPanel.add(schemasSection);
+        mainPanel.add(Box.createVerticalStrut(4));
         mainPanel.add(directApiSection);
 
         // Initialize state
         detectCli(); // Auto-detect CLI on panel creation
         onProviderChanged();
+    }
+
+    private JPanel buildConfigProfileSection() {
+        profileNameLabel = new JBLabel(" ");
+        profileDescriptionLabel = new JBLabel(" ");
+        profileDescriptionLabel.setForeground(JBUI.CurrentTheme.ContextHelp.FOREGROUND);
+
+        workflowListPanel = new JPanel();
+        workflowListPanel.setLayout(new BoxLayout(workflowListPanel, BoxLayout.Y_AXIS));
+
+        profileFallbackLabel = new JBLabel("CLI required for profile details");
+        profileFallbackLabel.setForeground(new JBColor(new Color(180, 80, 0), new Color(230, 160, 80)));
+        profileFallbackLabel.setVisible(false);
+
+        JPanel panel = FormBuilder.createFormBuilder()
+                .addLabeledComponent(new JBLabel("Active profile:"), profileNameLabel)
+                .addComponent(profileDescriptionLabel)
+                .addComponent(workflowListPanel)
+                .addComponent(profileFallbackLabel)
+                .getPanel();
+        panel.setBorder(IdeBorderFactory.createTitledBorder("Config Profile"));
+
+        // Load initial profile details
+        refreshConfigProfileSection();
+
+        return panel;
+    }
+
+    /**
+     * Refreshes the Config Profile section by querying the CLI for profile details.
+     * Falls back to displaying the locally-stored profile name when CLI is unavailable.
+     */
+    void refreshConfigProfileSection() {
+        CliDetectionService detection = project.getService(CliDetectionService.class);
+        if (detection == null || !detection.isAvailable()) {
+            showProfileFallback();
+            return;
+        }
+
+        String selectedProfile = getProfile();
+        profileNameLabel.setText(selectedProfile.isEmpty() ? "(default)" : selectedProfile);
+        profileDescriptionLabel.setText("Loading...");
+        workflowListPanel.removeAll();
+        profileFallbackLabel.setVisible(false);
+
+        com.intellij.openapi.application.ApplicationManager.getApplication().executeOnPooledThread(() -> {
+            try {
+                String[] args = selectedProfile.isEmpty()
+                        ? new String[]{"config", "profile", "--json"}
+                        : new String[]{"config", "profile", selectedProfile, "--json"};
+                CliRunner.CliResult result = CliRunner.run(project, args);
+                ConfigProfileDetail detail;
+                if (result.isSuccess()) {
+                    detail = ConfigProfileDetail.fromJson(result.stdout());
+                } else {
+                    detail = ConfigProfileDetail.fallback(selectedProfile);
+                }
+                com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater(() -> {
+                    updateProfileDisplay(detail);
+                });
+            } catch (Exception ex) {
+                LOG.debug("Failed to load profile details", ex);
+                com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater(this::showProfileFallback);
+            }
+        });
+    }
+
+    private void updateProfileDisplay(ConfigProfileDetail detail) {
+        profileNameLabel.setText(detail.getName().isEmpty() ? "(default)" : detail.getName());
+        profileDescriptionLabel.setText(detail.getDescription().isEmpty() ? " " : detail.getDescription());
+        profileFallbackLabel.setVisible(false);
+
+        workflowListPanel.removeAll();
+        if (detail.getWorkflows().isEmpty()) {
+            JBLabel noWorkflows = new JBLabel("No workflow information available");
+            noWorkflows.setForeground(JBUI.CurrentTheme.ContextHelp.FOREGROUND);
+            workflowListPanel.add(noWorkflows);
+        } else {
+            for (String workflow : detail.getWorkflows()) {
+                JBLabel workflowLabel = new JBLabel("  \u2022 " + workflow);
+                workflowListPanel.add(workflowLabel);
+            }
+        }
+        workflowListPanel.revalidate();
+        workflowListPanel.repaint();
+    }
+
+    private void showProfileFallback() {
+        String selectedProfile = getProfile();
+        profileNameLabel.setText(selectedProfile.isEmpty() ? "(not set)" : selectedProfile);
+        profileDescriptionLabel.setText(" ");
+        workflowListPanel.removeAll();
+        workflowListPanel.revalidate();
+        workflowListPanel.repaint();
+        profileFallbackLabel.setVisible(true);
+    }
+
+    private JPanel buildSchemasSection() {
+        schemaListModel = new DefaultListModel<>();
+        schemaList = new JBList<>(schemaListModel);
+        schemaList.setCellRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index,
+                                                          boolean isSelected, boolean cellHasFocus) {
+                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                if (value instanceof SchemaInfo info) {
+                    String label = info.name();
+                    if (!info.description().isEmpty()) {
+                        label += " — " + info.description();
+                    }
+                    if (info.isBuiltIn()) {
+                        label += " (built-in)";
+                    }
+                    setText(label);
+                }
+                return this;
+            }
+        });
+        schemaList.setVisibleRowCount(4);
+
+        defaultSchemaCombo = new JComboBox<>();
+        defaultSchemaCombo.setEditable(true);
+
+        forkButton = new JButton("Fork");
+        forkButton.addActionListener(e -> forkSelectedSchema());
+
+        newSchemaButton = new JButton("New...");
+        newSchemaButton.addActionListener(e -> createNewSchema());
+
+        refreshSchemasButton = new JButton("Refresh");
+        refreshSchemasButton.addActionListener(e -> refreshSchemaList());
+
+        JPanel buttonRow = new JPanel(new FlowLayout(FlowLayout.LEFT, JBUI.scale(4), 0));
+        buttonRow.add(forkButton);
+        buttonRow.add(newSchemaButton);
+        buttonRow.add(refreshSchemasButton);
+
+        schemaUnsupportedLabel = new JBLabel("Schema management requires OpenSpec CLI v1.2.0+");
+        schemaUnsupportedLabel.setForeground(new JBColor(new Color(180, 80, 0), new Color(230, 160, 80)));
+
+        schemasContentPanel = new JPanel();
+        schemasContentPanel.setLayout(new BoxLayout(schemasContentPanel, BoxLayout.Y_AXIS));
+
+        JScrollPane scrollPane = new JScrollPane(schemaList);
+        scrollPane.setAlignmentX(Component.LEFT_ALIGNMENT);
+        schemasContentPanel.add(scrollPane);
+
+        JPanel defaultRow = new JPanel(new FlowLayout(FlowLayout.LEFT, JBUI.scale(4), 0));
+        defaultRow.add(new JBLabel("Default schema:"));
+        defaultRow.add(defaultSchemaCombo);
+        defaultRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        schemasContentPanel.add(defaultRow);
+
+        buttonRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        schemasContentPanel.add(buttonRow);
+
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        schemaUnsupportedLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        schemasContentPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panel.add(schemaUnsupportedLabel);
+        panel.add(schemasContentPanel);
+        panel.setBorder(IdeBorderFactory.createTitledBorder("Schemas"));
+
+        // Initial state — will be updated after CLI detection
+        updateSchemaSectionVisibility();
+
+        return panel;
+    }
+
+    private void updateSchemaSectionVisibility() {
+        SchemaService schemaService = project.getService(SchemaService.class);
+        boolean supported = schemaService != null && schemaService.isSchemaSupported();
+        schemaUnsupportedLabel.setVisible(!supported);
+        schemasContentPanel.setVisible(supported);
+        forkButton.setEnabled(supported);
+        newSchemaButton.setEnabled(supported);
+        refreshSchemasButton.setEnabled(supported);
+        if (supported) {
+            loadSchemaList();
+        }
+    }
+
+    private void loadSchemaList() {
+        SchemaService schemaService = project.getService(SchemaService.class);
+        if (schemaService == null) return;
+
+        com.intellij.openapi.application.ApplicationManager.getApplication().executeOnPooledThread(() -> {
+            List<SchemaInfo> schemas = schemaService.listSchemas();
+            com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater(() -> {
+                schemaListModel.clear();
+                defaultSchemaCombo.removeAllItems();
+                for (SchemaInfo info : schemas) {
+                    schemaListModel.addElement(info);
+                    defaultSchemaCombo.addItem(info.name());
+                }
+                // Restore default selection
+                OpenSpecSettings settings = OpenSpecSettings.getInstance(project);
+                String defaultSchema = settings.getDefaultSchema();
+                if (defaultSchema != null && !defaultSchema.isEmpty()) {
+                    defaultSchemaCombo.setSelectedItem(defaultSchema);
+                }
+            });
+        });
+    }
+
+    private void forkSelectedSchema() {
+        SchemaInfo selected = schemaList.getSelectedValue();
+        if (selected == null) return;
+
+        String forkName = JOptionPane.showInputDialog(mainPanel, "Fork name:", "Fork Schema",
+                JOptionPane.PLAIN_MESSAGE);
+        if (forkName == null || forkName.isBlank()) return;
+
+        SchemaService schemaService = project.getService(SchemaService.class);
+        if (schemaService == null) return;
+
+        com.intellij.openapi.application.ApplicationManager.getApplication().executeOnPooledThread(() -> {
+            String path = schemaService.forkSchema(selected.name(), forkName.trim());
+            com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater(() -> {
+                if (path != null) {
+                    loadSchemaList();
+                    LocalFileSystem.getInstance().refreshAndFindFileByPath(path);
+                    VirtualFile file = LocalFileSystem.getInstance().findFileByPath(path);
+                    if (file != null) {
+                        FileEditorManager.getInstance(project).openFile(file, true);
+                    }
+                }
+            });
+        });
+    }
+
+    private void createNewSchema() {
+        NewSchemaDialog dialog = new NewSchemaDialog(project);
+        if (!dialog.showAndGet()) return;
+
+        String name = dialog.getSchemaName();
+        SchemaService schemaService = project.getService(SchemaService.class);
+        if (schemaService == null) return;
+
+        com.intellij.openapi.application.ApplicationManager.getApplication().executeOnPooledThread(() -> {
+            String path = schemaService.initSchema(name);
+            com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater(() -> {
+                if (path != null) {
+                    loadSchemaList();
+                    LocalFileSystem.getInstance().refreshAndFindFileByPath(path);
+                    VirtualFile file = LocalFileSystem.getInstance().findFileByPath(path);
+                    if (file != null) {
+                        FileEditorManager.getInstance(project).openFile(file, true);
+                    }
+                }
+            });
+        });
+    }
+
+    private void refreshSchemaList() {
+        SchemaService schemaService = project.getService(SchemaService.class);
+        if (schemaService != null) {
+            schemaService.clearCache();
+        }
+        loadSchemaList();
     }
 
     private JPanel buildDirectApiSection() {
@@ -374,6 +676,15 @@ public class OpenSpecSettingsPanel {
 
     public void setAiModel(String model) {
         aiModelCombo.setSelectedItem(model != null ? model : "");
+    }
+
+    public String getDefaultSchema() {
+        Object selected = defaultSchemaCombo.getSelectedItem();
+        return selected != null ? selected.toString() : "";
+    }
+
+    public void setDefaultSchema(String schema) {
+        defaultSchemaCombo.setSelectedItem(schema != null ? schema : "");
     }
 
 }
