@@ -185,6 +185,17 @@ public final class ArtifactOrchestrationService {
     }
 
     /**
+     * Returns the first ready artifact for a change, or null if none are ready.
+     * Must NOT be called on EDT — spawns an external process.
+     */
+    public ArtifactInfo getNextReadyArtifact(String changeName) {
+        ChangeArtifactDag dag = getArtifactStatus(changeName);
+        if (dag == null) return null;
+        List<ArtifactInfo> ready = dag.getReadyArtifacts();
+        return ready.isEmpty() ? null : ready.getFirst();
+    }
+
+    /**
      * Clears the cached DAG for a change (e.g., after generation).
      */
     public void invalidateCache(String changeName) {
@@ -280,7 +291,10 @@ public final class ArtifactOrchestrationService {
         return ready.isEmpty() ? null : ready.getFirst().id();
     }
 
-    private void writeArtifactResult(ArtifactInstruction instruction, String content) throws IOException {
+    /**
+     * Writes generated artifact content to the file specified by the instruction.
+     */
+    public void writeArtifactResult(ArtifactInstruction instruction, String content) throws IOException {
         String changeDir = instruction.changeDir();
         String outputPath = instruction.outputPath();
         if (changeDir == null || outputPath == null) {

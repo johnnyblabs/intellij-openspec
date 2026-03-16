@@ -39,6 +39,7 @@
         <projectService serviceImplementation="com.johnnyblabs.openspec.services.DeliveryMethodResolver"/>
         <projectService serviceImplementation="com.johnnyblabs.openspec.toolwindow.OpenSpecConsoleService"/>
         <projectService serviceImplementation="com.johnnyblabs.openspec.services.SpecCoverageService"/>
+        <projectService serviceImplementation="com.johnnyblabs.openspec.services.VerificationService"/>
 
         <!-- Settings -->
         <projectConfigurable instance="com.johnnyblabs.openspec.settings.OpenSpecConfigurable"
@@ -117,10 +118,20 @@
                     text="Propose..."
                     description="Propose a new change"
                     icon="AllIcons.General.Add"/>
+            <action id="OpenSpec.Ff"
+                    class="com.johnnyblabs.openspec.actions.OpenSpecFfAction"
+                    text="Fast-Forward..."
+                    description="Create a change and generate all artifacts in one step"
+                    icon="AllIcons.Actions.Lightning"/>
             <action id="OpenSpec.Explore"
                     class="com.johnnyblabs.openspec.actions.ExploreContextAction"
                     text="Explore..."
                     description="Copy project context to clipboard for AI-assisted exploration"/>
+            <action id="OpenSpec.Continue"
+                    class="com.johnnyblabs.openspec.actions.OpenSpecContinueAction"
+                    text="Continue"
+                    description="Generate the next ready artifact for the active change"
+                    icon="AllIcons.Actions.Resume"/>
             <action id="OpenSpec.Apply"
                     class="com.johnnyblabs.openspec.actions.OpenSpecApplyAction"
                     text="Apply"
@@ -131,6 +142,11 @@
                     description="Archive the current change and update main specs"
                     icon="/icons/archive.svg"/>
             <separator/>
+            <action id="OpenSpec.Verify"
+                    class="com.johnnyblabs.openspec.actions.OpenSpecVerifyAction"
+                    text="Verify"
+                    description="Verify implementation matches change artifacts"
+                    icon="AllIcons.Actions.PreviewDetailsVertically"/>
             <action id="OpenSpec.Validate"
                     class="com.johnnyblabs.openspec.actions.OpenSpecValidateAction"
                     text="Validate"
@@ -165,7 +181,9 @@
             <reference ref="OpenSpec.Refresh"/>
             <reference ref="OpenSpec.Validate"/>
             <reference ref="OpenSpec.Propose"/>
+            <reference ref="OpenSpec.Ff"/>
             <separator/>
+            <reference ref="OpenSpec.Verify"/>
             <reference ref="OpenSpec.ManageTools"/>
             <reference ref="OpenSpec.SetupWizard"/>
         </group>
