@@ -39,6 +39,7 @@
         <projectService serviceImplementation="com.johnnyblabs.openspec.services.DeliveryMethodResolver"/>
         <projectService serviceImplementation="com.johnnyblabs.openspec.toolwindow.OpenSpecConsoleService"/>
         <projectService serviceImplementation="com.johnnyblabs.openspec.services.SpecCoverageService"/>
+        <projectService serviceImplementation="com.johnnyblabs.openspec.services.SpecSyncService"/>
 
         <!-- Settings -->
         <projectConfigurable instance="com.johnnyblabs.openspec.settings.OpenSpecConfigurable"
@@ -125,6 +126,11 @@
                     class="com.johnnyblabs.openspec.actions.OpenSpecApplyAction"
                     text="Apply"
                     description="Apply the current change"/>
+            <action id="OpenSpec.SyncSpecs"
+                    class="com.johnnyblabs.openspec.actions.OpenSpecSyncAction"
+                    text="Sync Specs"
+                    description="Merge delta specs into main specs with preview"
+                    icon="AllIcons.Actions.Diff"/>
             <action id="OpenSpec.Archive"
                     class="com.johnnyblabs.openspec.actions.OpenSpecArchiveAction"
                     text="Archive"
@@ -166,6 +172,7 @@
             <reference ref="OpenSpec.Validate"/>
             <reference ref="OpenSpec.Propose"/>
             <separator/>
+            <reference ref="OpenSpec.SyncSpecs"/>
             <reference ref="OpenSpec.ManageTools"/>
             <reference ref="OpenSpec.SetupWizard"/>
         </group>
