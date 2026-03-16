@@ -128,7 +128,8 @@ public class WorkflowActionPanel extends JPanel {
     private String errorArtifactId;
     private int spinnerStep;
 
-    // Sync, archive and post-archive controls
+    // Verify, sync, archive and post-archive controls
+    private final JButton verifyButton;
     private final JButton syncSpecsButton;
     private final JButton archiveButton;
     private final JButton bulkArchiveButton;
@@ -289,6 +290,12 @@ public class WorkflowActionPanel extends JPanel {
         applyButton.setVisible(false);
         applyButton.addActionListener(e -> onApplyTasks());
 
+        verifyButton = new JButton("Verify");
+        verifyButton.setIcon(AllIcons.Actions.PreviewDetailsVertically);
+        verifyButton.setToolTipText("Check completeness, correctness, and coherence before archiving");
+        verifyButton.setVisible(false);
+        verifyButton.addActionListener(e -> onVerify());
+
         syncSpecsButton = new JButton("Sync Specs");
         syncSpecsButton.setIcon(AllIcons.Actions.Diff);
         syncSpecsButton.setToolTipText("Merge delta specs into main specs");
@@ -320,21 +327,16 @@ public class WorkflowActionPanel extends JPanel {
         changeSelectorPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
         headerRow.add(changeSelectorPanel, BorderLayout.CENTER);
 
-        JButton manageToolsButton = new JButton(AllIcons.General.GearPlain);
-        manageToolsButton.setToolTipText("Manage AI Tools");
-        manageToolsButton.setMargin(JBUI.insets(2));
-        manageToolsButton.addActionListener(e -> {
-            com.johnnyblabs.openspec.dialogs.ManageAiToolsDialog dialog =
-                    new com.johnnyblabs.openspec.dialogs.ManageAiToolsDialog(project);
-            dialog.show();
-            populateToolSelector();
-        });
+        JButton ffButton = new JButton(AllIcons.Actions.Lightning);
+        ffButton.setToolTipText("Fast-Forward: Create a change and generate all artifacts");
+        ffButton.setMargin(JBUI.insets(2));
+        ffButton.addActionListener(e -> onFastForward());
 
         JPanel toolRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, JBUI.scale(4), 0));
         toolRow.setOpaque(false);
         toolRow.add(noToolsLabel);
         toolRow.add(toolSelector);
-        toolRow.add(manageToolsButton);
+        toolRow.add(ffButton);
         headerRow.add(toolRow, BorderLayout.EAST);
 
         // Pipeline row
@@ -353,6 +355,7 @@ public class WorkflowActionPanel extends JPanel {
         actionRow.add(generateButton);
         actionRow.add(generateAllButton);
         actionRow.add(applyButton);
+        actionRow.add(verifyButton);
         actionRow.add(syncSpecsButton);
         actionRow.add(archiveButton);
         actionRow.add(bulkArchiveButton);
@@ -634,6 +637,13 @@ public class WorkflowActionPanel extends JPanel {
                     }
                 });
                 pipelinePanel.add(proposeLink);
+                JBLabel orLabel = new JBLabel(" or ");
+                orLabel.setForeground(JBColor.GRAY);
+                pipelinePanel.add(orLabel);
+                com.intellij.ui.HyperlinkLabel ffLink = new com.intellij.ui.HyperlinkLabel("Fast-Forward");
+                ffLink.setToolTipText("Create a change and generate all artifacts in one step");
+                ffLink.addHyperlinkListener(ev -> onFastForward());
+                pipelinePanel.add(ffLink);
                 pipelinePanel.revalidate();
                 pipelinePanel.repaint();
                 return;
@@ -663,12 +673,14 @@ public class WorkflowActionPanel extends JPanel {
                 generateButton.setEnabled(false);
                 generateButton.setVisible(false);
                 generateAllButton.setVisible(false);
+                verifyButton.setVisible(true);
                 showApplyState(dag);
             } else if (nextArtifactId != null) {
                 generateButton.setVisible(true);
                 generateButton.setText(buildGenerateLabel(nextArtifactId));
                 generateButton.setEnabled(true);
                 applyButton.setVisible(false);
+                verifyButton.setVisible(false);
                 syncSpecsButton.setVisible(false);
                 bulkArchiveButton.setVisible(false);
                 taskProgressLabel.setVisible(false);
@@ -680,6 +692,7 @@ public class WorkflowActionPanel extends JPanel {
                 generateButton.setEnabled(false);
                 generateAllButton.setVisible(false);
                 applyButton.setVisible(false);
+                verifyButton.setVisible(false);
                 syncSpecsButton.setVisible(false);
                 bulkArchiveButton.setVisible(false);
                 taskProgressLabel.setVisible(false);
@@ -1161,6 +1174,48 @@ public class WorkflowActionPanel extends JPanel {
         refresh();
     }
 
+    // --- Fast-Forward ---
+
+    private void onFastForward() {
+        com.johnnyblabs.openspec.dialogs.FfDialog dialog =
+                new com.johnnyblabs.openspec.dialogs.FfDialog(project);
+        if (dialog.showAndGet() && dialog.isCompleted()) {
+            String changeName = dialog.getGeneratedChangeName();
+            if (changeName != null) {
+                activeChangeName = changeName;
+            }
+            if (onRefreshRequested != null) onRefreshRequested.run();
+            refresh();
+        }
+    }
+
+    // --- Verify ---
+
+    private void onVerify() {
+        if (activeChangeName == null) return;
+        String changeName = activeChangeName;
+
+        verifyButton.setEnabled(false);
+        verifyButton.setText("Verifying...");
+
+        ProgressManager.getInstance().run(new Task.Backgroundable(project, "Verifying " + changeName, false) {
+            @Override
+            public void run(@NotNull ProgressIndicator indicator) {
+                com.johnnyblabs.openspec.services.VerificationService verificationService =
+                        project.getService(com.johnnyblabs.openspec.services.VerificationService.class);
+                com.johnnyblabs.openspec.model.VerificationReport report =
+                        verificationService.verify(changeName);
+
+                ApplicationManager.getApplication().invokeLater(() -> {
+                    verifyButton.setEnabled(true);
+                    verifyButton.setText("Verify");
+
+                    new com.johnnyblabs.openspec.dialogs.VerifyReportDialog(project, report).show();
+                });
+            }
+        });
+    }
+
     // --- Archive ---
 
     private void onArchive() {
@@ -1215,6 +1270,7 @@ public class WorkflowActionPanel extends JPanel {
     private void showPostArchiveState(String changeName) {
         archiveButton.setVisible(false);
         bulkArchiveButton.setVisible(false);
+        verifyButton.setVisible(false);
         syncSpecsButton.setVisible(false);
         generateButton.setVisible(false);
         applyButton.setVisible(false);

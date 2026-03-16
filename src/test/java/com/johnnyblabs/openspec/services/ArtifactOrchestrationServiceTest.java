@@ -185,6 +185,73 @@ class ArtifactOrchestrationServiceTest {
     }
 
     @Nested
+    class NextReadyArtifact {
+
+        @Test
+        void returnsFirstReadyArtifact() {
+            ChangeArtifactDag dag = new ChangeArtifactDag();
+            dag.setChangeName("c");
+            dag.setComplete(false);
+            dag.setArtifacts(List.of(
+                    new ArtifactInfo("proposal", "proposal.md", ArtifactStatus.DONE, List.of()),
+                    new ArtifactInfo("design", "design.md", ArtifactStatus.READY, List.of()),
+                    new ArtifactInfo("tasks", "tasks.md", ArtifactStatus.BLOCKED, List.of("design"))
+            ));
+
+            try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
+                cli.when(() -> CliRunner.run(eq(project), eq("status"), eq("--change"), eq("c"), eq("--json")))
+                        .thenReturn(new CliRunner.CliResult(0,
+                                "{\"changeName\":\"c\",\"isComplete\":false,\"artifacts\":[" +
+                                "{\"id\":\"proposal\",\"outputPath\":\"proposal.md\",\"status\":\"done\",\"missingDeps\":[]}," +
+                                "{\"id\":\"design\",\"outputPath\":\"design.md\",\"status\":\"ready\",\"missingDeps\":[]}," +
+                                "{\"id\":\"tasks\",\"outputPath\":\"tasks.md\",\"status\":\"blocked\",\"missingDeps\":[\"design\"]}" +
+                                "]}", ""));
+                when(project.getBasePath()).thenReturn("/tmp/test");
+                when(project.getService(ScaffoldingDetectionService.class)).thenReturn(scaffoldingService);
+
+                ArtifactInfo next = service.getNextReadyArtifact("c");
+                assertNotNull(next);
+                assertEquals("design", next.id());
+            }
+        }
+
+        @Test
+        void returnsNull_whenAllComplete() {
+            try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
+                cli.when(() -> CliRunner.run(eq(project), eq("status"), eq("--change"), eq("c"), eq("--json")))
+                        .thenReturn(new CliRunner.CliResult(0,
+                                "{\"changeName\":\"c\",\"isComplete\":true,\"artifacts\":[" +
+                                "{\"id\":\"proposal\",\"outputPath\":\"proposal.md\",\"status\":\"done\",\"missingDeps\":[]}," +
+                                "{\"id\":\"tasks\",\"outputPath\":\"tasks.md\",\"status\":\"done\",\"missingDeps\":[]}" +
+                                "]}", ""));
+                when(project.getBasePath()).thenReturn("/tmp/test");
+                when(project.getService(ScaffoldingDetectionService.class)).thenReturn(scaffoldingService);
+                when(scaffoldingService.isScaffolding(anyString())).thenReturn(false);
+
+                ArtifactInfo next = service.getNextReadyArtifact("c");
+                assertNull(next);
+            }
+        }
+
+        @Test
+        void returnsNull_whenAllBlocked() {
+            try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
+                cli.when(() -> CliRunner.run(eq(project), eq("status"), eq("--change"), eq("c"), eq("--json")))
+                        .thenReturn(new CliRunner.CliResult(0,
+                                "{\"changeName\":\"c\",\"isComplete\":false,\"artifacts\":[" +
+                                "{\"id\":\"design\",\"outputPath\":\"design.md\",\"status\":\"blocked\",\"missingDeps\":[\"proposal\"]}," +
+                                "{\"id\":\"tasks\",\"outputPath\":\"tasks.md\",\"status\":\"blocked\",\"missingDeps\":[\"design\"]}" +
+                                "]}", ""));
+                when(project.getBasePath()).thenReturn("/tmp/test");
+                when(project.getService(ScaffoldingDetectionService.class)).thenReturn(scaffoldingService);
+
+                ArtifactInfo next = service.getNextReadyArtifact("c");
+                assertNull(next);
+            }
+        }
+    }
+
+    @Nested
     class GenerateAllLoop {
 
         @Mock DirectApiService apiService;
