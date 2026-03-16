@@ -128,8 +128,9 @@ public class WorkflowActionPanel extends JPanel {
     private String errorArtifactId;
     private int spinnerStep;
 
-    // Verify and archive controls
+    // Verify, sync, archive and post-archive controls
     private final JButton verifyButton;
+    private final JButton syncSpecsButton;
     private final JButton archiveButton;
     private final JButton startNewChangeButton;
 
@@ -294,6 +295,12 @@ public class WorkflowActionPanel extends JPanel {
         verifyButton.setVisible(false);
         verifyButton.addActionListener(e -> onVerify());
 
+        syncSpecsButton = new JButton("Sync Specs");
+        syncSpecsButton.setIcon(AllIcons.Actions.Diff);
+        syncSpecsButton.setToolTipText("Merge delta specs into main specs");
+        syncSpecsButton.setVisible(false);
+        syncSpecsButton.addActionListener(e -> onSyncSpecs());
+
         archiveButton = new JButton("Archive");
         archiveButton.setIcon(AllIcons.Actions.Checked);
         archiveButton.setVisible(false);
@@ -342,6 +349,7 @@ public class WorkflowActionPanel extends JPanel {
         actionRow.add(generateAllButton);
         actionRow.add(applyButton);
         actionRow.add(verifyButton);
+        actionRow.add(syncSpecsButton);
         actionRow.add(archiveButton);
         actionRow.add(startNewChangeButton);
         actionRow.add(retryButton);
@@ -665,6 +673,7 @@ public class WorkflowActionPanel extends JPanel {
                 generateButton.setEnabled(true);
                 applyButton.setVisible(false);
                 verifyButton.setVisible(false);
+                syncSpecsButton.setVisible(false);
                 taskProgressLabel.setVisible(false);
                 taskHintLabel.setVisible(false);
                 updateGenerateAllVisibility(dag);
@@ -675,6 +684,7 @@ public class WorkflowActionPanel extends JPanel {
                 generateAllButton.setVisible(false);
                 applyButton.setVisible(false);
                 verifyButton.setVisible(false);
+                syncSpecsButton.setVisible(false);
                 taskProgressLabel.setVisible(false);
                 taskHintLabel.setVisible(false);
             }
@@ -883,6 +893,7 @@ public class WorkflowActionPanel extends JPanel {
             startNewChangeButton.setVisible(false);
             taskProgressLabel.setVisible(false);
             taskHintLabel.setVisible(false);
+            updateSyncSpecsVisibility();
             runChangeValidation();
             return;
         }
@@ -902,6 +913,7 @@ public class WorkflowActionPanel extends JPanel {
             taskProgressLabel.setText(total > 0 ? complete + "/" + total + " tasks complete" : "");
             taskProgressLabel.setVisible(total > 0);
             taskHintLabel.setVisible(false);
+            updateSyncSpecsVisibility();
             runChangeValidation();
             return;
         }
@@ -1062,6 +1074,72 @@ public class WorkflowActionPanel extends JPanel {
         });
     }
 
+    // --- Sync Specs ---
+
+    private void updateSyncSpecsVisibility() {
+        if (activeChangeName == null) {
+            syncSpecsButton.setVisible(false);
+            return;
+        }
+        String changeName = activeChangeName;
+        ApplicationManager.getApplication().executeOnPooledThread(() -> {
+            com.johnnyblabs.openspec.services.SpecSyncService syncService =
+                    project.getService(com.johnnyblabs.openspec.services.SpecSyncService.class);
+            boolean hasDelta = syncService.hasDeltaSpecs(changeName);
+            ApplicationManager.getApplication().invokeLater(() -> syncSpecsButton.setVisible(hasDelta));
+        });
+    }
+
+    private void onSyncSpecs() {
+        if (activeChangeName == null) return;
+        String changeName = activeChangeName;
+
+        syncSpecsButton.setEnabled(false);
+        syncSpecsButton.setText("Computing...");
+
+        ProgressManager.getInstance().run(new Task.Backgroundable(project, "Computing spec sync...", false) {
+            @Override
+            public void run(@NotNull ProgressIndicator indicator) {
+                com.johnnyblabs.openspec.services.SpecSyncService syncService =
+                        project.getService(com.johnnyblabs.openspec.services.SpecSyncService.class);
+                java.util.List<com.johnnyblabs.openspec.model.SpecSyncResult> results =
+                        syncService.computeSync(changeName);
+
+                ApplicationManager.getApplication().invokeLater(() -> {
+                    syncSpecsButton.setEnabled(true);
+                    syncSpecsButton.setText("Sync Specs");
+
+                    if (results.isEmpty()) {
+                        com.johnnyblabs.openspec.util.OpenSpecNotifier.info(project, "Sync Specs",
+                                "No delta specs to sync for \"" + changeName + "\"");
+                        return;
+                    }
+
+                    com.johnnyblabs.openspec.dialogs.SyncPreviewDialog dialog =
+                            new com.johnnyblabs.openspec.dialogs.SyncPreviewDialog(project, results);
+                    if (dialog.showAndGet()) {
+                        ProgressManager.getInstance().run(new Task.Backgroundable(project, "Applying spec sync...", false) {
+                            @Override
+                            public void run(@NotNull ProgressIndicator ind) {
+                                try {
+                                    syncService.applySync(results);
+                                    com.johnnyblabs.openspec.util.OpenSpecNotifier.info(project, "Sync Specs",
+                                            "Specs synced for \"" + changeName + "\"");
+                                    if (onRefreshRequested != null) {
+                                        ApplicationManager.getApplication().invokeLater(onRefreshRequested);
+                                    }
+                                } catch (java.io.IOException ex) {
+                                    com.johnnyblabs.openspec.util.OpenSpecNotifier.error(project, "Sync Specs",
+                                            "Failed to apply sync: " + ex.getMessage());
+                                }
+                            }
+                        });
+                    }
+                });
+            }
+        });
+    }
+
     // --- Fast-Forward ---
 
     private void onFastForward() {
@@ -1158,6 +1236,7 @@ public class WorkflowActionPanel extends JPanel {
     private void showPostArchiveState(String changeName) {
         archiveButton.setVisible(false);
         verifyButton.setVisible(false);
+        syncSpecsButton.setVisible(false);
         generateButton.setVisible(false);
         applyButton.setVisible(false);
         generateAllButton.setVisible(false);
