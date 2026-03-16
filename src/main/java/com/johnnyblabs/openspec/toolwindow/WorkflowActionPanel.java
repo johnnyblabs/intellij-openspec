@@ -131,6 +131,7 @@ public class WorkflowActionPanel extends JPanel {
     // Sync, archive and post-archive controls
     private final JButton syncSpecsButton;
     private final JButton archiveButton;
+    private final JButton bulkArchiveButton;
     private final JButton startNewChangeButton;
 
     // Retry state
@@ -299,6 +300,12 @@ public class WorkflowActionPanel extends JPanel {
         archiveButton.setVisible(false);
         archiveButton.addActionListener(e -> onArchive());
 
+        bulkArchiveButton = new JButton("Bulk Archive...");
+        bulkArchiveButton.setIcon(AllIcons.Actions.Checked);
+        bulkArchiveButton.setToolTipText("Archive multiple changes at once");
+        bulkArchiveButton.setVisible(false);
+        bulkArchiveButton.addActionListener(e -> onBulkArchive());
+
         startNewChangeButton = new JButton("Start New Change");
         startNewChangeButton.setIcon(AllIcons.General.Add);
         startNewChangeButton.setVisible(false);
@@ -348,6 +355,7 @@ public class WorkflowActionPanel extends JPanel {
         actionRow.add(applyButton);
         actionRow.add(syncSpecsButton);
         actionRow.add(archiveButton);
+        actionRow.add(bulkArchiveButton);
         actionRow.add(startNewChangeButton);
         actionRow.add(retryButton);
         actionRow.add(cancelButton);
@@ -662,6 +670,7 @@ public class WorkflowActionPanel extends JPanel {
                 generateButton.setEnabled(true);
                 applyButton.setVisible(false);
                 syncSpecsButton.setVisible(false);
+                bulkArchiveButton.setVisible(false);
                 taskProgressLabel.setVisible(false);
                 taskHintLabel.setVisible(false);
                 updateGenerateAllVisibility(dag);
@@ -672,6 +681,7 @@ public class WorkflowActionPanel extends JPanel {
                 generateAllButton.setVisible(false);
                 applyButton.setVisible(false);
                 syncSpecsButton.setVisible(false);
+                bulkArchiveButton.setVisible(false);
                 taskProgressLabel.setVisible(false);
                 taskHintLabel.setVisible(false);
             }
@@ -881,6 +891,7 @@ public class WorkflowActionPanel extends JPanel {
             taskProgressLabel.setVisible(false);
             taskHintLabel.setVisible(false);
             updateSyncSpecsVisibility();
+            updateBulkArchiveVisibility();
             runChangeValidation();
             return;
         }
@@ -901,6 +912,7 @@ public class WorkflowActionPanel extends JPanel {
             taskProgressLabel.setVisible(total > 0);
             taskHintLabel.setVisible(false);
             updateSyncSpecsVisibility();
+            updateBulkArchiveVisibility();
             runChangeValidation();
             return;
         }
@@ -1127,6 +1139,28 @@ public class WorkflowActionPanel extends JPanel {
         });
     }
 
+    // --- Bulk Archive ---
+
+    private void updateBulkArchiveVisibility() {
+        com.johnnyblabs.openspec.services.ChangeService changeService =
+                project.getService(com.johnnyblabs.openspec.services.ChangeService.class);
+        bulkArchiveButton.setVisible(changeService.getActiveChanges().size() >= 2);
+    }
+
+    private void onBulkArchive() {
+        com.johnnyblabs.openspec.services.ChangeService changeService =
+                project.getService(com.johnnyblabs.openspec.services.ChangeService.class);
+        java.util.List<com.johnnyblabs.openspec.model.Change> active = changeService.getActiveChanges();
+        if (active.size() < 2) return;
+
+        com.johnnyblabs.openspec.dialogs.BulkArchiveDialog dialog =
+                new com.johnnyblabs.openspec.dialogs.BulkArchiveDialog(project, active);
+        dialog.show();
+
+        if (onRefreshRequested != null) onRefreshRequested.run();
+        refresh();
+    }
+
     // --- Archive ---
 
     private void onArchive() {
@@ -1180,6 +1214,7 @@ public class WorkflowActionPanel extends JPanel {
 
     private void showPostArchiveState(String changeName) {
         archiveButton.setVisible(false);
+        bulkArchiveButton.setVisible(false);
         syncSpecsButton.setVisible(false);
         generateButton.setVisible(false);
         applyButton.setVisible(false);
