@@ -221,6 +221,31 @@ public final class SpecSyncService {
         return !parseDeltaSpecs(changeName).isEmpty();
     }
 
+    /**
+     * Returns the set of capability names touched by a change's delta specs.
+     */
+    public Set<String> getCapabilities(String changeName) {
+        return parseDeltaSpecs(changeName).stream()
+                .map(DeltaSpecOperation::capabilityName)
+                .collect(Collectors.toSet());
+    }
+
+    /**
+     * Detects conflicts among the given change names: capabilities touched by 2+ changes.
+     * Returns a map of capability name → list of conflicting change names.
+     */
+    public Map<String, List<String>> detectConflicts(List<String> changeNames) {
+        Map<String, List<String>> capToChanges = new LinkedHashMap<>();
+        for (String name : changeNames) {
+            for (String cap : getCapabilities(name)) {
+                capToChanges.computeIfAbsent(cap, k -> new ArrayList<>()).add(name);
+            }
+        }
+        // Only return capabilities with 2+ changes
+        capToChanges.entrySet().removeIf(e -> e.getValue().size() < 2);
+        return capToChanges;
+    }
+
     // --- Internal helpers ---
 
     List<DeltaSpecOperation> sortOperations(List<DeltaSpecOperation> ops) {

@@ -147,6 +147,11 @@
                     text="Archive"
                     description="Archive the current change and update main specs"
                     icon="/icons/archive.svg"/>
+            <action id="OpenSpec.BulkArchive"
+                    class="com.johnnyblabs.openspec.actions.OpenSpecBulkArchiveAction"
+                    text="Bulk Archive..."
+                    description="Archive multiple changes at once with conflict detection"
+                    icon="AllIcons.Actions.Checked"/>
             <separator/>
             <action id="OpenSpec.Verify"
                     class="com.johnnyblabs.openspec.actions.OpenSpecVerifyAction"
@@ -191,6 +196,7 @@
             <separator/>
             <reference ref="OpenSpec.Verify"/>
             <reference ref="OpenSpec.SyncSpecs"/>
+            <reference ref="OpenSpec.BulkArchive"/>
             <reference ref="OpenSpec.ManageTools"/>
             <reference ref="OpenSpec.SetupWizard"/>
         </group>
