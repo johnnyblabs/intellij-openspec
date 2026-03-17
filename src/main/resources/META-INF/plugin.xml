@@ -43,6 +43,7 @@
         <projectService serviceImplementation="com.johnnyblabs.openspec.services.SpecSyncService"/>
         <projectService serviceImplementation="com.johnnyblabs.openspec.services.SchemaService"/>
         <projectService serviceImplementation="com.johnnyblabs.openspec.services.ExploreContextService"/>
+        <projectService serviceImplementation="com.johnnyblabs.openspec.services.ComplianceService"/>
 
         <!-- Settings -->
         <projectConfigurable instance="com.johnnyblabs.openspec.settings.OpenSpecConfigurable"
@@ -58,6 +59,7 @@
         <notificationGroup id="OpenSpec.Generation" displayType="BALLOON"/>
         <notificationGroup id="OpenSpec.Validation" displayType="BALLOON"/>
         <notificationGroup id="OpenSpec.System" displayType="STICKY_BALLOON"/>
+        <notificationGroup id="OpenSpec.Compliance" displayType="STICKY_BALLOON"/>
 
         <!-- File Types -->
         <fileType name="OpenSpec YAML"

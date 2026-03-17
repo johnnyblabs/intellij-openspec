@@ -3,8 +3,11 @@ package com.johnnyblabs.openspec.actions;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.popup.JBPopupFactory;
+import com.johnnyblabs.openspec.dialogs.CompliancePreFlightDialog;
 import com.johnnyblabs.openspec.model.Change;
+import com.johnnyblabs.openspec.model.ComplianceResult;
 import com.johnnyblabs.openspec.services.ChangeService;
+import com.johnnyblabs.openspec.services.ComplianceService;
 import com.johnnyblabs.openspec.util.OpenSpecNotifier;
 import org.jetbrains.annotations.NotNull;
 
@@ -12,6 +15,7 @@ import java.util.List;
 
 /**
  * Archives a completed change by moving it from {@code changes/} to {@code archive/}.
+ * Runs a pre-flight compliance check before archiving.
  */
 public class OpenSpecArchiveAction extends OpenSpecBaseAction {
 
@@ -29,7 +33,7 @@ public class OpenSpecArchiveAction extends OpenSpecBaseAction {
         }
 
         if (active.size() == 1) {
-            archiveChange(project, changeService, active.getFirst());
+            runComplianceAndArchive(project, changeService, active.getFirst());
         } else {
             List<String> names = active.stream().map(Change::getName).toList();
             JBPopupFactory.getInstance()
@@ -40,7 +44,7 @@ public class OpenSpecArchiveAction extends OpenSpecBaseAction {
                                 .filter(c -> c.getName().equals(name))
                                 .findFirst().orElse(null);
                         if (selected != null) {
-                            archiveChange(project, changeService, selected);
+                            runComplianceAndArchive(project, changeService, selected);
                         }
                     })
                     .createPopup()
@@ -48,15 +52,24 @@ public class OpenSpecArchiveAction extends OpenSpecBaseAction {
         }
     }
 
+    private void runComplianceAndArchive(Project project, ChangeService changeService, Change target) {
+        ComplianceService complianceService = project.getService(ComplianceService.class);
+        ComplianceResult result = complianceService.checkCompliance(target.getName());
+
+        // Show pre-flight dialog
+        CompliancePreFlightDialog dialog = new CompliancePreFlightDialog(project, result);
+        if (dialog.showAndGet()) {
+            archiveChange(project, changeService, target);
+        }
+    }
+
     private void archiveChange(Project project, ChangeService changeService, Change target) {
         String changeName = target.getName();
 
-        // Phase 1: Archive (filesystem)
         try {
             changeService.archiveChange(target);
             OpenSpecNotifier.info(project, "Archive", "Change archived: " + changeName);
         } catch (Exception ex) {
-            // Archive failed — do NOT proceed to sync
             OpenSpecNotifier.error(project, "Archive", "Failed to archive change: " + ex.getMessage());
             return;
         }

@@ -8,7 +8,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Tests the schema combo box visibility logic used in ProposeChangeDialog and FfDialog.
+ * Tests the schema combo box visibility logic used in ProposeChangeDialog and WorkflowActionPanel FF form.
  * The combo is visible only when the schema list has more than one entry.
  */
 class SchemaComboVisibilityTest {

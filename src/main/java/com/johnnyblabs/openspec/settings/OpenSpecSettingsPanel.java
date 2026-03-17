@@ -555,10 +555,16 @@ public class OpenSpecSettingsPanel {
         aiTestResultLabel.setText("Testing...");
         aiTestResultLabel.setForeground(JBColor.GRAY);
 
-        String key = getApiKey();
         AiProvider provider = getSelectedProvider();
+        String key = getApiKey();
+        String model = getAiModel();
+
+        // Store the key so the API call can use it
         if (key != null && !key.isBlank() && !key.equals(API_KEY_MASK)) {
             AiCredentialStore.storeApiKey(provider, key);
+        } else if (key != null && key.equals(API_KEY_MASK)) {
+            // Masked key means use the already-stored one
+            key = AiCredentialStore.getApiKey(provider);
         }
 
         DirectApiService apiService = project.getService(DirectApiService.class);
@@ -568,10 +574,13 @@ public class OpenSpecSettingsPanel {
             return;
         }
 
+        // Pass current UI values directly — don't rely on persisted settings
+        final String apiKey = key;
+        final String apiModel = model;
         new SwingWorker<String, Void>() {
             @Override
             protected String doInBackground() throws Exception {
-                return apiService.testConnection();
+                return apiService.testConnection(provider, apiKey, apiModel);
             }
 
             @Override

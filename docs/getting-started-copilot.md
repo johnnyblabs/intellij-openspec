@@ -1,8 +1,10 @@
-# Getting Started: OpenSpec Plugin + GitHub Copilot
+# Getting Started: IDE-First Developer
 
-*Last verified: 2026-03-11 against plugin source*
+*For developers using GitHub Copilot, Cursor, Windsurf, or Cline inside IntelliJ.*
 
-This guide walks you through setting up the OpenSpec IntelliJ plugin and completing your first spec-driven change using GitHub Copilot as your AI tool. By the end, you'll have proposed, generated, implemented, and archived a change — the full OpenSpec lifecycle.
+*Last verified: 2026-03-16 against plugin v0.2.3 source*
+
+This guide walks you through setting up the OpenSpec IntelliJ plugin and completing your first spec-driven change using an IDE-based AI tool. The examples use GitHub Copilot, but the clipboard workflow works identically with Cursor, Windsurf, and Cline. By the end, you'll have proposed, generated, implemented, and archived a change — the full OpenSpec lifecycle.
 
 ---
 
@@ -52,7 +54,7 @@ After installing both the OpenSpec plugin and Copilot, restart IntelliJ. You sho
 
 Navigate to **Settings > Tools > OpenSpec** (or **Preferences > Tools > OpenSpec** on macOS).
 
-The settings panel has three sections stacked vertically: **OpenSpec CLI**, **General**, and a tabbed pane with **Tools & Delivery** and **Direct API** tabs.
+The settings panel has sections stacked vertically: **CLI**, **General**, **Config Profile**, **Schemas**, and a tabbed pane with **Tools & Delivery** and **Direct API** tabs.
 
 ### OpenSpec CLI
 
@@ -72,6 +74,25 @@ The settings panel has three sections stacked vertically: **OpenSpec CLI**, **Ge
 | **Schema profile** | The workflow profile used for new changes. Options: `spec-driven` (full proposal → design → specs → tasks pipeline), `tdd` (test-first), `rapid` (lightweight). Editable — you can type a custom profile name. Most users should start with `spec-driven`. |
 | **Auto-refresh tool window on file changes** | When checked (default: on), the tool window tree automatically refreshes when OpenSpec files change on disk. Useful when an external AI tool writes artifact files directly. |
 | **Strict validation (warnings become errors)** | When checked (default: off), validation warnings are promoted to errors. Useful for enforcing strict compliance, but can be noisy during early development. |
+
+### Config Profile
+
+| Field | Description |
+|-------|-------------|
+| **Active profile** | Displays the current profile name and description from your project's `config.yaml`. |
+| **Workflows** | Shows available workflows from the CLI. |
+
+> **Note:** This section is read-only — it reflects your project's current configuration.
+
+### Schemas
+
+| Field | Description |
+|-------|-------------|
+| **Schema list** | Available workflow schemas. Select one as the default for new changes. |
+| **Fork** | Fork an existing schema to customize its artifact pipeline. |
+| **New** | Create a new schema with selected artifact types. |
+
+> **Note:** Schema management requires the OpenSpec CLI v1.2.0 or later. For this guide, the default `spec-driven` schema is used.
 
 ### Tools & Delivery
 
@@ -214,20 +235,20 @@ openspec/changes/add-greeting-message/
 └── tasks.md          ← Scaffolded
 ```
 
-In the **tool window**, the change appears under **Changes** with the pipeline chips:
+In the **tool window**, the change appears under **Changes**. The **Workflow Action Panel** at the bottom of the tool window shows the pipeline chips:
 
 ```
 ● proposal  →  ○ design  →  ○ specs  →  ○ tasks
   (ready)      (blocked)    (blocked)    (blocked)
 ```
 
-The **Generate** button shows: **"Generate proposal → clipboard"**
+The **Generate** button in the Workflow Action Panel shows: **"Generate proposal → clipboard"**
 
 ### Step 2: Generate the Proposal
 
 > **`OPENSPEC`** — Generating the prompt
 
-1. Click the **"Generate proposal → clipboard"** button in the Workflow Action Panel
+1. Click the **Generate** button in the **Workflow Action Panel** (shows "Generate proposal → clipboard")
 2. The plugin assembles a prompt containing:
    - Your project context from `config.yaml`
    - The proposal template (sections: Why, What Changes, Capabilities, Impact)
@@ -250,20 +271,20 @@ The **Generate** button shows: **"Generate proposal → clipboard"**
 
 > **`OPENSPEC`** — Pipeline advances
 
-The plugin's file watcher detects the change. The pipeline updates automatically:
+The Workflow Action Panel detects the change. The pipeline updates automatically:
 
 ```
 ✓ proposal  →  ● design  →  ● specs  →  ○ tasks
   (done)       (ready)      (ready)     (blocked)
 ```
 
-The Generate button now shows: **"Generate design → clipboard"**
+The Generate button in the Workflow Action Panel now shows: **"Generate design → clipboard"**
 
 ### Step 3: Generate the Design
 
 > **`OPENSPEC`** — Generating the prompt (with context)
 
-1. Click **"Generate design → clipboard"**
+1. Click the **Generate** button (now targeting design)
 2. This time, the prompt includes your **completed proposal** as context — the AI will reference your stated goals and capabilities when writing the design
 3. Guidance appears: **"Copied to clipboard"**
 
@@ -286,7 +307,7 @@ Notice how each artifact builds on the previous ones. The design references the 
 
 > **`OPENSPEC`** — Generating the prompt (with accumulated context)
 
-1. Click **"Generate specs → clipboard"**
+1. Click the **Generate** button (now targeting specs)
 2. The prompt now includes both the **proposal** and **design** as context
 3. Guidance appears: **"Copied to clipboard"**
 
@@ -312,7 +333,7 @@ Notice how each artifact builds on the previous ones. The design references the 
 
 > **`OPENSPEC`** — Generating the prompt (full context)
 
-1. Click **"Generate tasks → clipboard"**
+1. Click the **Generate** button (now targeting tasks)
 2. The prompt includes the **proposal**, **design**, and **specs** — the AI has full context of what to build, how to build it, and the exact requirements
 3. Guidance appears: **"Copied to clipboard"**
 
@@ -332,7 +353,7 @@ Notice how each artifact builds on the previous ones. The design references the 
   (done)       (done)       (done)      (done)
 ```
 
-The Generate button is replaced by an **Archive** button, and the panel shows that validation has been run automatically for the completed pipeline state.
+The Generate button in the Workflow Action Panel is replaced by an **Archive** button, and the panel shows that validation has been run automatically for the completed pipeline state.
 
 Your change now has a complete specification. Four artifacts, each building on the last, transforming a vague idea into a concrete implementation plan.
 
@@ -374,7 +395,7 @@ You can use Copilot throughout implementation — for code completion, asking qu
 
 Once all tasks are done:
 
-1. In the Workflow Action Panel, click the **Archive** button that appears automatically once all tasks are complete
+1. In the **Workflow Action Panel**, click the **Archive** button that appears automatically once all tasks are complete
 2. The plugin checks that all artifacts are complete and all tasks are checked
 3. The panel shows the validation results from the automatic pre-archive validation
 4. If delta specs exist, it asks whether to **sync them to main specs** (recommended — this merges your change's specs into `openspec/specs/`)
@@ -388,9 +409,9 @@ Your main specs at `openspec/specs/` now include the requirements from this chan
 
 ---
 
-## What's Next
+## You Might Also Want to Explore
 
-- **Try Direct API mode** — Configure an API key in Settings > Tools > OpenSpec > Direct API to generate artifacts without copy-pasting. The **Generate All** button chains all artifacts automatically.
-- **Explore the tool window** — Click on spec files in the tree to browse requirements. Right-click artifacts to regenerate them. Use the change selector dropdown when working on multiple changes.
-- **Read the full reference** — See the [README](../README.md) for complete documentation of all features, menu actions, validation, and troubleshooting.
-- **OpenSpec CLI** — Run `openspec --help` to explore the CLI directly. The plugin wraps most CLI commands, but the CLI offers additional flexibility for scripting and automation.
+- **[Standalone API User Guide](getting-started-api.md)** — If you want to skip copy-pasting and have the plugin call Claude, OpenAI, or Gemini APIs directly
+- **[CLI Companion Guide](getting-started-cli-companion.md)** — If you also use Claude Code or another terminal AI alongside IntelliJ
+- **[Spec Browser Guide](getting-started-browser.md)** — Share with reviewers or leads who just need to read specs
+- **[Feature Reference](feature-reference.md)** — Complete reference for all plugin features, settings, and troubleshooting

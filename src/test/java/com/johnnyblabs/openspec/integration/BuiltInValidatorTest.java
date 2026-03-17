@@ -62,30 +62,30 @@ public class BuiltInValidatorTest extends OpenSpecIntegrationTestBase {
                         i.filePath().contains("bad-req")));
     }
 
-    public void testMissingKeywordTriggersWarning() {
+    public void testMissingKeywordTriggersError() {
         myFixture.addFileToProject("openspec/specs/bad-kw/spec.md",
-                "# Keywords Spec\n\n### Requirement: No Keywords\n\nThis has no RFC 2119 keywords at all.\n");
+                "# Keywords Spec\n\n### Requirement: No Keywords\n\nThis has no RFC 2119 keywords at all.\n\n#### Scenario: Test\n- **WHEN** triggered\n- **THEN** nothing\n");
         refreshVfs();
 
         ValidationResult result = validator.validateSpecs();
-        assertTrue("Should have spec-rfc-keywords issue",
+        assertTrue("Should have spec-rfc-keywords ERROR issue",
                 result.issues().stream().anyMatch(i ->
                         "spec-rfc-keywords".equals(i.rule()) &&
-                        i.severity() == ValidationIssue.Severity.WARNING &&
+                        i.severity() == ValidationIssue.Severity.ERROR &&
                         i.filePath().contains("bad-kw")));
     }
 
-    public void testEmptyScenarioTriggersWarning() {
+    public void testEmptyScenarioTriggersError() {
         myFixture.addFileToProject("openspec/specs/bad-scenario/spec.md",
                 "# Scenario Spec\n\n### Requirement: Bad Scenario\n\nThe system SHALL work.\n\n" +
-                "#### Scenario: Missing clauses\nJust description, no GIVEN/WHEN/THEN.\n");
+                "#### Scenario: Missing clauses\nJust a description with no structured clauses.\n");
         refreshVfs();
 
         ValidationResult result = validator.validateSpecs();
-        assertTrue("Should have spec-scenario-clauses issue",
+        assertTrue("Should have spec-scenario-clauses ERROR issue",
                 result.issues().stream().anyMatch(i ->
                         "spec-scenario-clauses".equals(i.rule()) &&
-                        i.severity() == ValidationIssue.Severity.WARNING &&
+                        i.severity() == ValidationIssue.Severity.ERROR &&
                         i.filePath().contains("bad-scenario")));
     }
 

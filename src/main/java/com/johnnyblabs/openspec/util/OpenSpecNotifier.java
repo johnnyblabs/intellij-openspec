@@ -18,6 +18,7 @@ public final class OpenSpecNotifier {
     public static final String GROUP_GENERATION = "OpenSpec.Generation";
     public static final String GROUP_VALIDATION = "OpenSpec.Validation";
     public static final String GROUP_SYSTEM = "OpenSpec.System";
+    public static final String GROUP_COMPLIANCE = "OpenSpec.Compliance";
 
     private OpenSpecNotifier() {
     }
@@ -112,5 +113,24 @@ public final class OpenSpecNotifier {
                 notification.expire();
             }
         };
+    }
+
+    // --- Compliance notifications (sticky) ---
+
+    public static void compliance(@NotNull Project project, @NotNull String title, @NotNull String content,
+                                   @NotNull NotificationType type) {
+        notify(project, GROUP_COMPLIANCE, title, content, type);
+    }
+
+    public static void complianceError(@NotNull Project project, @NotNull String title, @NotNull String content) {
+        compliance(project, title, content, NotificationType.ERROR);
+    }
+
+    public static void complianceWarning(@NotNull Project project, @NotNull String title, @NotNull String content) {
+        compliance(project, title, content, NotificationType.WARNING);
+    }
+
+    public static void complianceInfo(@NotNull Project project, @NotNull String title, @NotNull String content) {
+        compliance(project, title, content, NotificationType.INFORMATION);
     }
 }

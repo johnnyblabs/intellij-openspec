@@ -16,6 +16,9 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.icons.AllIcons;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.components.JBLabel;
+import com.intellij.ui.components.JBScrollPane;
+import com.intellij.ui.components.JBTextArea;
+import com.intellij.ui.components.JBTextField;
 import com.intellij.util.ui.JBUI;
 import com.johnnyblabs.openspec.ai.AiApiException;
 import com.johnnyblabs.openspec.ai.DeliveryMode;
@@ -29,6 +32,7 @@ import com.johnnyblabs.openspec.model.ArtifactStatus;
 import com.johnnyblabs.openspec.model.Change;
 import com.johnnyblabs.openspec.model.ChangeArtifactDag;
 import com.johnnyblabs.openspec.services.AiToolDetectionService;
+import com.johnnyblabs.openspec.services.ComplianceService;
 import com.johnnyblabs.openspec.services.ArtifactOrchestrationService;
 import com.johnnyblabs.openspec.services.ChangeService;
 import com.johnnyblabs.openspec.services.GenerateAllListener;
@@ -83,6 +87,11 @@ public class WorkflowActionPanel extends JPanel {
 
     private static final String SEPARATOR_ITEM = "───────────────";
 
+    // CardLayout card names
+    private static final String CARD_NO_CHANGES = "noChanges";
+    private static final String CARD_FF_INPUT = "ffInput";
+    private static final String CARD_PIPELINE = "pipeline";
+
     private final Project project;
 
     // Change selector
@@ -114,6 +123,7 @@ public class WorkflowActionPanel extends JPanel {
     private final JTextArea guidanceNextLabel;
     private final JButton copyAgainButton;
     private final JButton checkUpdatesButton;
+    private final JPanel guidanceDetailsPanel;
 
     // Progress bar and elapsed time for Generate All
     private final JProgressBar generateAllProgressBar;
@@ -138,6 +148,23 @@ public class WorkflowActionPanel extends JPanel {
     // Retry state
     private final JButton retryButton;
 
+    // CardLayout for content area
+    private final CardLayout contentCardLayout;
+    private final JPanel contentCards;
+
+    // FF input form
+    private final JBTextArea ffDescriptionField;
+    private final JBTextField ffNameOverrideField;
+    private JComboBox<String> ffSchemaCombo;
+    private boolean ffSchemaComboVisible;
+    private final JButton ffGoButton;
+    private final JButton ffCancelButton;
+    private final JBLabel ffStatusLabel;
+    private boolean ffInputActive = false;
+
+    // Compliance status chip
+    private final JBLabel complianceChip;
+
     private String activeChangeName;
     private String nextArtifactId;
     private String lastPrompt;
@@ -149,10 +176,10 @@ public class WorkflowActionPanel extends JPanel {
 
     public WorkflowActionPanel(Project project) {
         this.project = project;
-        setLayout(new BorderLayout(8, 4));
+        setLayout(new BorderLayout(4, 2));
         setBorder(JBUI.Borders.compound(
                 JBUI.Borders.customLine(JBColor.border(), 1, 0, 0, 0),
-                JBUI.Borders.empty(JBUI.scale(6), JBUI.scale(8))
+                JBUI.Borders.empty(JBUI.scale(4), JBUI.scale(6))
         ));
         setOpaque(false);
 
@@ -167,9 +194,11 @@ public class WorkflowActionPanel extends JPanel {
         changeCombo.setFont(changeCombo.getFont().deriveFont(Font.BOLD, 13f));
         changeCombo.addActionListener(e -> {
             if (updatingCombo) return;
+            if (ffInputActive) onFfCancel();
             String selected = (String) changeCombo.getSelectedItem();
             if (selected != null && !selected.equals(activeChangeName)) {
                 activeChangeName = selected;
+                resetComplianceChip();
                 disposeWatcher();
                 refreshForChange(selected);
             }
@@ -189,7 +218,7 @@ public class WorkflowActionPanel extends JPanel {
         guidancePanel.setVisible(false);
         guidancePanel.setBorder(JBUI.Borders.compound(
                 JBUI.Borders.customLine(JBColor.border(), 1, 0, 0, 0),
-                JBUI.Borders.empty(JBUI.scale(4), 0, 0, 0)));
+                JBUI.Borders.empty(JBUI.scale(2), 0, 0, 0)));
 
         guidanceMessageLabel = createWrappingLabel(Font.BOLD, 13f);
 
@@ -217,12 +246,17 @@ public class WorkflowActionPanel extends JPanel {
         guidanceButtons.add(copyAgainButton);
         guidanceButtons.add(checkUpdatesButton);
 
+        guidanceDetailsPanel = new JPanel();
+        guidanceDetailsPanel.setLayout(new BoxLayout(guidanceDetailsPanel, BoxLayout.Y_AXIS));
+        guidanceDetailsPanel.setOpaque(false);
+        guidanceDetailsPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        guidanceDetailsPanel.add(guidanceWatchingLabel);
+        guidanceDetailsPanel.add(guidanceNextLabel);
+        guidanceDetailsPanel.add(Box.createVerticalStrut(JBUI.scale(2)));
+        guidanceDetailsPanel.add(guidanceButtons);
+
         guidancePanel.add(guidanceMessageLabel);
-        guidancePanel.add(Box.createVerticalStrut(JBUI.scale(2)));
-        guidancePanel.add(guidanceWatchingLabel);
-        guidancePanel.add(guidanceNextLabel);
-        guidancePanel.add(Box.createVerticalStrut(JBUI.scale(4)));
-        guidancePanel.add(guidanceButtons);
+        guidancePanel.add(guidanceDetailsPanel);
 
         // Progress bar and elapsed time for Generate All
         JPanel progressRow = new JPanel(new FlowLayout(FlowLayout.LEFT, JBUI.scale(8), 0));
@@ -318,32 +352,86 @@ public class WorkflowActionPanel extends JPanel {
         startNewChangeButton.setVisible(false);
         startNewChangeButton.addActionListener(e -> onStartNewChange());
 
+        // Compliance status chip
+        complianceChip = new JBLabel("Not checked");
+        complianceChip.setForeground(COLOR_BLOCKED);
+        complianceChip.setFont(complianceChip.getFont().deriveFont(Font.PLAIN, 11f));
+        complianceChip.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        complianceChip.setToolTipText("Click to run compliance check");
+        complianceChip.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                onComplianceCheck();
+            }
+        });
+
+        // FF input form
+        ffDescriptionField = new JBTextArea(4, 50);
+        ffDescriptionField.setLineWrap(true);
+        ffDescriptionField.setWrapStyleWord(true);
+        ffDescriptionField.getEmptyText().setText("Describe what you want to build or fix...");
+        ffDescriptionField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            public void insertUpdate(javax.swing.event.DocumentEvent e) { updateFfGoEnabled(); }
+            public void removeUpdate(javax.swing.event.DocumentEvent e) { updateFfGoEnabled(); }
+            public void changedUpdate(javax.swing.event.DocumentEvent e) { updateFfGoEnabled(); }
+        });
+
+        ffNameOverrideField = new JBTextField();
+        ffNameOverrideField.getEmptyText().setText("(optional) e.g., add-user-auth");
+
+        // Schema selector for FF
+        ffSchemaComboVisible = false;
+        ffSchemaCombo = new JComboBox<>();
+        com.johnnyblabs.openspec.services.SchemaService schemaService = project.getService(com.johnnyblabs.openspec.services.SchemaService.class);
+        if (schemaService != null) {
+            List<com.johnnyblabs.openspec.model.SchemaInfo> schemas = schemaService.listSchemas();
+            if (schemas.size() > 1) {
+                ffSchemaComboVisible = true;
+                for (com.johnnyblabs.openspec.model.SchemaInfo info : schemas) {
+                    ffSchemaCombo.addItem(info.name());
+                }
+                String defaultSchema = OpenSpecSettings.getInstance(project).getDefaultSchema();
+                if (defaultSchema != null && !defaultSchema.isEmpty()) {
+                    ffSchemaCombo.setSelectedItem(defaultSchema);
+                }
+            }
+        }
+
+        ffGoButton = new JButton("Go");
+        ffGoButton.setIcon(AllIcons.Actions.Execute);
+        ffGoButton.setFont(ffGoButton.getFont().deriveFont(Font.BOLD));
+        ffGoButton.setEnabled(false);
+        ffGoButton.addActionListener(e -> onFfGo());
+
+        ffCancelButton = new JButton("Cancel");
+        ffCancelButton.addActionListener(e -> onFfCancel());
+
+        ffStatusLabel = new JBLabel("");
+        ffStatusLabel.setForeground(JBColor.GRAY);
+
         // --- Layout: vertical stack with full-width guidance ---
 
         // Header row: change selector (left) + tool dropdown (right)
-        JPanel headerRow = new JPanel(new BorderLayout(JBUI.scale(8), 0));
+        JPanel headerRow = new JPanel(new BorderLayout(JBUI.scale(4), 0));
         headerRow.setOpaque(false);
         headerRow.setAlignmentX(Component.LEFT_ALIGNMENT);
         changeSelectorPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
         headerRow.add(changeSelectorPanel, BorderLayout.CENTER);
 
-        JButton ffButton = new JButton(AllIcons.Actions.Lightning);
-        ffButton.setToolTipText("Fast-Forward: Create a change and generate all artifacts");
-        ffButton.setMargin(JBUI.insets(2));
-        ffButton.addActionListener(e -> onFastForward());
+        toolSelector.setMaximumRowCount(10);
+        toolSelector.setPrototypeDisplayValue("Direct API  [API]");
 
         JPanel toolRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, JBUI.scale(4), 0));
         toolRow.setOpaque(false);
         toolRow.add(noToolsLabel);
         toolRow.add(toolSelector);
-        toolRow.add(ffButton);
         headerRow.add(toolRow, BorderLayout.EAST);
 
         // Pipeline row
         pipelinePanel.setAlignmentX(Component.LEFT_ALIGNMENT);
         pipelinePanel.setBorder(JBUI.Borders.compound(
                 JBUI.Borders.customLine(JBColor.border(), 1, 0, 0, 0),
-                JBUI.Borders.empty(JBUI.scale(4), 0, JBUI.scale(2), 0)));
+                JBUI.Borders.empty(JBUI.scale(2), 0, JBUI.scale(1), 0)));
 
         // Action buttons row (below pipeline, not competing with text)
         JPanel actionRow = new JPanel(new FlowLayout(FlowLayout.LEFT, JBUI.scale(4), 0));
@@ -351,7 +439,7 @@ public class WorkflowActionPanel extends JPanel {
         actionRow.setAlignmentX(Component.LEFT_ALIGNMENT);
         actionRow.setBorder(JBUI.Borders.compound(
                 JBUI.Borders.customLine(JBColor.border(), 1, 0, 0, 0),
-                JBUI.Borders.empty(JBUI.scale(4), 0, JBUI.scale(2), 0)));
+                JBUI.Borders.empty(JBUI.scale(2), 0, JBUI.scale(1), 0)));
         actionRow.add(generateButton);
         actionRow.add(generateAllButton);
         actionRow.add(applyButton);
@@ -366,16 +454,44 @@ public class WorkflowActionPanel extends JPanel {
         // Assemble vertical stack — guidance gets full panel width
         guidancePanel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
+        // --- CardLayout for main content area ---
+        contentCardLayout = new CardLayout();
+        contentCards = new JPanel(contentCardLayout);
+        contentCards.setOpaque(false);
+
+        // Card 1: No changes
+        JPanel noChangesCard = buildNoChangesCard();
+        contentCards.add(noChangesCard, CARD_NO_CHANGES);
+
+        // Card 2: FF input
+        JPanel ffInputCard = buildFfInputCard();
+        contentCards.add(ffInputCard, CARD_FF_INPUT);
+
+        // Card 3: Pipeline (existing components)
+        JPanel pipelineCard = new JPanel();
+        pipelineCard.setLayout(new BoxLayout(pipelineCard, BoxLayout.Y_AXIS));
+        pipelineCard.setOpaque(false);
+        pipelineCard.add(pipelinePanel);
+
+        // Compliance chip row
+        JPanel complianceRow = new JPanel(new FlowLayout(FlowLayout.LEFT, JBUI.scale(6), 0));
+        complianceRow.setOpaque(false);
+        complianceRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        complianceRow.add(complianceChip);
+        pipelineCard.add(complianceRow);
+
+        pipelineCard.add(actionRow);
+        pipelineCard.add(progressRow);
+        pipelineCard.add(taskProgressLabel);
+        pipelineCard.add(taskHintLabel);
+        pipelineCard.add(guidancePanel);
+        contentCards.add(pipelineCard, CARD_PIPELINE);
+
         JPanel contentPanel = new JPanel();
         contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
         contentPanel.setOpaque(false);
         contentPanel.add(headerRow);
-        contentPanel.add(pipelinePanel);
-        contentPanel.add(actionRow);
-        contentPanel.add(progressRow);
-        contentPanel.add(taskProgressLabel);
-        contentPanel.add(taskHintLabel);
-        contentPanel.add(guidancePanel);
+        contentPanel.add(contentCards);
 
         add(contentPanel, BorderLayout.CENTER);
 
@@ -617,39 +733,18 @@ public class WorkflowActionPanel extends JPanel {
             guidancePanel.setVisible(false);
 
             if (dag == null) {
-                generateButton.setVisible(true);
-                generateButton.setEnabled(false);
-                generateButton.setText("Generate");
+                generateButton.setVisible(false);
                 generateAllButton.setVisible(false);
                 applyButton.setVisible(false);
                 taskProgressLabel.setVisible(false);
                 taskHintLabel.setVisible(false);
                 activeChangeName = null;
-                JBLabel emptyLabel = new JBLabel("No changes yet.");
-                emptyLabel.setForeground(JBColor.GRAY);
-                pipelinePanel.add(emptyLabel);
-                com.intellij.ui.HyperlinkLabel proposeLink = new com.intellij.ui.HyperlinkLabel("Propose a change");
-                proposeLink.addHyperlinkListener(ev -> {
-                    AnAction action = ActionManager.getInstance().getAction("OpenSpec.Propose");
-                    if (action != null) {
-                        DataContext ctx = dataId -> com.intellij.openapi.actionSystem.CommonDataKeys.PROJECT.is(dataId) ? project : null;
-                        com.intellij.openapi.actionSystem.ex.ActionUtil.invokeAction(action, ctx, "WorkflowPanel", null, null);
-                    }
-                });
-                pipelinePanel.add(proposeLink);
-                JBLabel orLabel = new JBLabel(" or ");
-                orLabel.setForeground(JBColor.GRAY);
-                pipelinePanel.add(orLabel);
-                com.intellij.ui.HyperlinkLabel ffLink = new com.intellij.ui.HyperlinkLabel("Fast-Forward");
-                ffLink.setToolTipText("Create a change and generate all artifacts in one step");
-                ffLink.addHyperlinkListener(ev -> onFastForward());
-                pipelinePanel.add(ffLink);
-                pipelinePanel.revalidate();
-                pipelinePanel.repaint();
+                contentCardLayout.show(contentCards, CARD_NO_CHANGES);
                 return;
             }
 
             activeChangeName = dag.getChangeName();
+            contentCardLayout.show(contentCards, CARD_PIPELINE);
 
             // Build interactive pipeline chips
             List<ArtifactInfo> artifacts = dag.getArtifacts();
@@ -770,43 +865,67 @@ public class WorkflowActionPanel extends JPanel {
         chip.add(iconLabel);
         chip.add(nameLabel);
 
-        // Tooltip with artifact description
-        String desc = ARTIFACT_DESCRIPTIONS.getOrDefault(artifact.id(), artifact.id());
-        chip.setToolTipText(artifact.id() + ": " + desc);
+        // State-aware tooltips
+        switch (artifact.status()) {
+            case READY -> chip.setToolTipText("Click to generate · Right-click for options");
+            case DONE -> chip.setToolTipText("Click to open · Right-click for options");
+            case GENERATING -> chip.setToolTipText("Generating...");
+            case BLOCKED -> {
+                // Show dependency names in tooltip
+                String desc = ARTIFACT_DESCRIPTIONS.getOrDefault(artifact.id(), artifact.id());
+                String deps = artifact.missingDeps() != null && !artifact.missingDeps().isEmpty()
+                        ? "Waiting on: " + String.join(", ", artifact.missingDeps())
+                        : desc;
+                chip.setToolTipText(deps);
+            }
+            default -> chip.setToolTipText(ARTIFACT_DESCRIPTIONS.getOrDefault(artifact.id(), artifact.id()));
+        }
 
-        // Click handlers
-        if (artifact.status() == ArtifactStatus.DONE) {
-            chip.addMouseListener(new MouseAdapter() {
-                @Override
-                public void mouseClicked(MouseEvent e) {
-                    if (SwingUtilities.isLeftMouseButton(e)) {
-                        openArtifactFile(artifact);
-                    }
-                }
-
-                @Override
-                public void mousePressed(MouseEvent e) {
-                    if (e.isPopupTrigger()) showChipContextMenu(e, artifact);
-                }
-
-                @Override
-                public void mouseReleased(MouseEvent e) {
-                    if (e.isPopupTrigger()) showChipContextMenu(e, artifact);
-                }
-            });
-        } else if (artifact.status() == ArtifactStatus.READY) {
+        // Cursors
+        if (artifact.status() == ArtifactStatus.READY || artifact.status() == ArtifactStatus.DONE) {
             chip.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-            chip.setToolTipText("Click to generate " + artifact.id());
+        }
+
+        // Hover effect for READY chips
+        if (artifact.status() == ArtifactStatus.READY) {
+            Color normalBg = COLOR_READY_BG;
+            Color hoverBg = new JBColor(new Color(200, 220, 255), new Color(45, 60, 90));
             chip.addMouseListener(new MouseAdapter() {
                 @Override
-                public void mouseClicked(MouseEvent e) {
-                    if (SwingUtilities.isLeftMouseButton(e)) {
-                        nextArtifactId = artifact.id();
-                        onGenerate();
-                    }
+                public void mouseEntered(MouseEvent e) {
+                    chip.setBackground(hoverBg);
+                }
+                @Override
+                public void mouseExited(MouseEvent e) {
+                    chip.setBackground(normalBg);
                 }
             });
         }
+
+        // Click and context menu handlers for all interactive states
+        chip.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (SwingUtilities.isLeftMouseButton(e)) {
+                    switch (artifact.status()) {
+                        case READY -> {
+                            nextArtifactId = artifact.id();
+                            onGenerate();
+                        }
+                        case DONE -> openArtifactFile(artifact);
+                        default -> { /* BLOCKED, GENERATING: no click action */ }
+                    }
+                }
+            }
+            @Override
+            public void mousePressed(MouseEvent e) {
+                if (e.isPopupTrigger()) showChipContextMenu(e, artifact);
+            }
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                if (e.isPopupTrigger()) showChipContextMenu(e, artifact);
+            }
+        });
 
         return chip;
     }
@@ -831,13 +950,49 @@ public class WorkflowActionPanel extends JPanel {
     private void showChipContextMenu(MouseEvent e, ArtifactInfo artifact) {
         JPopupMenu menu = new JPopupMenu();
 
-        JMenuItem openItem = new JMenuItem("Open");
-        openItem.addActionListener(ev -> openArtifactFile(artifact));
-        menu.add(openItem);
+        switch (artifact.status()) {
+            case DONE -> {
+                JMenuItem openItem = new JMenuItem("Open file");
+                openItem.addActionListener(ev -> openArtifactFile(artifact));
+                menu.add(openItem);
 
-        JMenuItem regenItem = new JMenuItem("Regenerate");
-        regenItem.addActionListener(ev -> onRegenerateArtifact(artifact));
-        menu.add(regenItem);
+                JMenuItem regenItem = new JMenuItem("Regenerate");
+                regenItem.addActionListener(ev -> onRegenerateArtifact(artifact));
+                menu.add(regenItem);
+
+                JMenuItem copyPromptItem = new JMenuItem("Copy prompt");
+                copyPromptItem.addActionListener(ev -> onCopyPromptForArtifact(artifact));
+                menu.add(copyPromptItem);
+            }
+            case READY -> {
+                JMenuItem genItem = new JMenuItem("Generate");
+                genItem.addActionListener(ev -> {
+                    nextArtifactId = artifact.id();
+                    onGenerate();
+                });
+                menu.add(genItem);
+
+                // Generate All Remaining — only if Direct API and 2+ ready
+                if (getSelectedDeliveryMode() == DeliveryMode.DIRECT_API && countReadyArtifacts() >= 2) {
+                    JMenuItem genAllItem = new JMenuItem("Generate All Remaining");
+                    genAllItem.addActionListener(ev -> onGenerateAll());
+                    menu.add(genAllItem);
+                }
+
+                JMenuItem copyPromptItem = new JMenuItem("Copy prompt");
+                copyPromptItem.addActionListener(ev -> onCopyPromptForArtifact(artifact));
+                menu.add(copyPromptItem);
+            }
+            case GENERATING -> {
+                JMenuItem cancelItem = new JMenuItem("Cancel");
+                cancelItem.addActionListener(ev -> onCancelGeneration());
+                menu.add(cancelItem);
+            }
+            default -> {
+                // BLOCKED — no context menu
+                return;
+            }
+        }
 
         menu.show(e.getComponent(), e.getX(), e.getY());
     }
@@ -861,6 +1016,30 @@ public class WorkflowActionPanel extends JPanel {
         // Treat as if this artifact is the next one to generate
         nextArtifactId = artifact.id();
         executeGeneration(getSelectedDeliveryMode());
+    }
+
+    private void onCopyPromptForArtifact(ArtifactInfo artifact) {
+        if (activeChangeName == null) return;
+        nextArtifactId = artifact.id();
+        // Force clipboard delivery to copy the prompt
+        executeGeneration(DeliveryMode.CLIPBOARD);
+    }
+
+    private int countReadyArtifacts() {
+        int count = 0;
+        for (Component comp : pipelinePanel.getComponents()) {
+            if (comp instanceof JPanel chipPanel) {
+                String tooltip = ((JComponent) chipPanel).getToolTipText();
+                if (tooltip != null && tooltip.startsWith("Click to generate")) {
+                    count++;
+                }
+            }
+        }
+        return count;
+    }
+
+    private void onCancelGeneration() {
+        onCancelGenerateAll();
     }
 
     // --- Apply ---
@@ -1027,8 +1206,11 @@ public class WorkflowActionPanel extends JPanel {
             guidanceWatchingLabel.setText(guidance.pasteAction() + ". Save tasks.md when the tool finishes working through the tasks.");
         }
 
+        guidanceWatchingLabel.setVisible(true);
         guidanceNextLabel.setVisible(false);
         copyAgainButton.setVisible(true);
+        checkUpdatesButton.setVisible(false);
+        guidanceDetailsPanel.setVisible(true);
         guidancePanel.setVisible(true);
         guidancePanel.revalidate();
 
@@ -1174,19 +1356,253 @@ public class WorkflowActionPanel extends JPanel {
         refresh();
     }
 
-    // --- Fast-Forward ---
+    // --- Fast-Forward (inline) ---
 
-    private void onFastForward() {
-        com.johnnyblabs.openspec.dialogs.FfDialog dialog =
-                new com.johnnyblabs.openspec.dialogs.FfDialog(project);
-        if (dialog.showAndGet() && dialog.isCompleted()) {
-            String changeName = dialog.getGeneratedChangeName();
-            if (changeName != null) {
-                activeChangeName = changeName;
+    private JPanel buildNoChangesCard() {
+        JPanel card = new JPanel(new FlowLayout(FlowLayout.LEFT, JBUI.scale(6), JBUI.scale(4)));
+        card.setOpaque(false);
+
+        JBLabel emptyLabel = new JBLabel("No changes yet.");
+        emptyLabel.setForeground(JBColor.GRAY);
+        card.add(emptyLabel);
+
+        com.intellij.ui.HyperlinkLabel proposeLink = new com.intellij.ui.HyperlinkLabel("Propose a change");
+        proposeLink.addHyperlinkListener(ev -> {
+            AnAction action = ActionManager.getInstance().getAction("OpenSpec.Propose");
+            if (action != null) {
+                DataContext ctx = dataId -> com.intellij.openapi.actionSystem.CommonDataKeys.PROJECT.is(dataId) ? project : null;
+                com.intellij.openapi.actionSystem.ex.ActionUtil.invokeAction(action, ctx, "WorkflowPanel", null, null);
             }
-            if (onRefreshRequested != null) onRefreshRequested.run();
-            refresh();
+        });
+        card.add(proposeLink);
+
+        JBLabel orLabel = new JBLabel(" or ");
+        orLabel.setForeground(JBColor.GRAY);
+        card.add(orLabel);
+
+        com.intellij.ui.HyperlinkLabel ffLink = new com.intellij.ui.HyperlinkLabel("Fast-Forward");
+        ffLink.setToolTipText("Create a change and generate all artifacts in one step");
+        ffLink.addHyperlinkListener(ev -> activateFfInput());
+        card.add(ffLink);
+
+        return card;
+    }
+
+    private JPanel buildFfInputCard() {
+        JPanel card = new JPanel();
+        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
+        card.setOpaque(false);
+        card.setBorder(JBUI.Borders.empty(JBUI.scale(2), 0));
+
+        JBLabel hint = new JBLabel("<html><body style='width:" + JBUI.scale(380) + "px'>" +
+                "Describe what you want to build. A change will be created and artifacts " +
+                "generated using your selected tool." +
+                "</body></html>");
+        hint.setAlignmentX(Component.LEFT_ALIGNMENT);
+        hint.setBorder(JBUI.Borders.emptyBottom(4));
+        card.add(hint);
+
+        // Description
+        JBLabel descLabel = new JBLabel("Description:");
+        descLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        card.add(descLabel);
+
+        JBScrollPane descScroll = new JBScrollPane(ffDescriptionField);
+        descScroll.setAlignmentX(Component.LEFT_ALIGNMENT);
+        descScroll.setMaximumSize(new Dimension(Integer.MAX_VALUE, JBUI.scale(60)));
+        card.add(descScroll);
+        card.add(Box.createVerticalStrut(JBUI.scale(2)));
+
+        // Name override
+        JBLabel nameLabel = new JBLabel("Name override:");
+        nameLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        card.add(nameLabel);
+
+        ffNameOverrideField.setAlignmentX(Component.LEFT_ALIGNMENT);
+        ffNameOverrideField.setMaximumSize(new Dimension(Integer.MAX_VALUE, ffNameOverrideField.getPreferredSize().height));
+        card.add(ffNameOverrideField);
+        card.add(Box.createVerticalStrut(JBUI.scale(2)));
+
+        // Schema combo (conditional)
+        if (ffSchemaComboVisible) {
+            JBLabel schemaLabel = new JBLabel("Schema:");
+            schemaLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+            card.add(schemaLabel);
+            ffSchemaCombo.setAlignmentX(Component.LEFT_ALIGNMENT);
+            ffSchemaCombo.setMaximumSize(new Dimension(Integer.MAX_VALUE, ffSchemaCombo.getPreferredSize().height));
+            card.add(ffSchemaCombo);
+            card.add(Box.createVerticalStrut(JBUI.scale(2)));
         }
+
+        // Status label
+        ffStatusLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        card.add(ffStatusLabel);
+
+        // Buttons
+        JPanel buttonRow = new JPanel(new FlowLayout(FlowLayout.LEFT, JBUI.scale(4), 0));
+        buttonRow.setOpaque(false);
+        buttonRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        buttonRow.add(ffGoButton);
+        buttonRow.add(ffCancelButton);
+        card.add(buttonRow);
+
+        return card;
+    }
+
+    /**
+     * Activates the FF input form in the panel. Can be called externally
+     * (e.g., from OpenSpecFfAction) to show the FF form without opening a dialog.
+     */
+    public void activateFfInput() {
+        ffInputActive = true;
+        ffDescriptionField.setText("");
+        ffNameOverrideField.setText("");
+        ffStatusLabel.setText("");
+        ffGoButton.setEnabled(false);
+        ffCancelButton.setEnabled(true);
+        contentCardLayout.show(contentCards, CARD_FF_INPUT);
+        ffDescriptionField.requestFocusInWindow();
+    }
+
+    private void onFfCancel() {
+        ffInputActive = false;
+        ChangeService changeService = project.getService(ChangeService.class);
+        if (changeService.getActiveChanges().isEmpty()) {
+            contentCardLayout.show(contentCards, CARD_NO_CHANGES);
+        } else {
+            contentCardLayout.show(contentCards, CARD_PIPELINE);
+        }
+    }
+
+    private void resetComplianceChip() {
+        complianceChip.setText("Not checked");
+        complianceChip.setForeground(COLOR_BLOCKED);
+    }
+
+    private void onComplianceCheck() {
+        if (activeChangeName == null) return;
+        ComplianceService complianceService = project.getService(ComplianceService.class);
+        com.johnnyblabs.openspec.model.ComplianceResult result = complianceService.checkCompliance(activeChangeName);
+
+        // Update chip
+        if (result.isCompliant() && result.warningCount() == 0) {
+            complianceChip.setText("Compliant");
+            complianceChip.setForeground(COLOR_DONE);
+        } else if (result.isCompliant()) {
+            complianceChip.setText(result.warningCount() + " warning" + (result.warningCount() > 1 ? "s" : ""));
+            complianceChip.setForeground(new JBColor(new java.awt.Color(200, 150, 0), new java.awt.Color(230, 180, 50)));
+        } else {
+            int total = result.errorCount() + result.warningCount();
+            complianceChip.setText(total + " issue" + (total > 1 ? "s" : ""));
+            complianceChip.setForeground(COLOR_ERROR);
+        }
+
+        // Show compliance dialog
+        com.johnnyblabs.openspec.dialogs.CompliancePreFlightDialog dialog =
+                new com.johnnyblabs.openspec.dialogs.CompliancePreFlightDialog(project, result);
+        dialog.show();
+    }
+
+    private void updateFfGoEnabled() {
+        ffGoButton.setEnabled(!ffDescriptionField.getText().isBlank());
+    }
+
+    private void onFfGo() {
+        ffInputActive = false;
+        String description = ffDescriptionField.getText().trim();
+        String changeName = ffNameOverrideField.getText().isBlank()
+                ? deriveKebabName(description)
+                : ffNameOverrideField.getText().trim();
+
+        // Disable form
+        ffGoButton.setEnabled(false);
+        ffCancelButton.setEnabled(false);
+        ffDescriptionField.setEnabled(false);
+        ffNameOverrideField.setEnabled(false);
+        ffStatusLabel.setText("Creating change '" + changeName + "'...");
+        ffStatusLabel.setForeground(JBColor.GRAY);
+
+        String schema = ffSchemaComboVisible && ffSchemaCombo.getSelectedItem() != null
+                ? ffSchemaCombo.getSelectedItem().toString() : null;
+
+        String finalChangeName = changeName;
+        ProgressManager.getInstance().run(new Task.Backgroundable(project, "Fast-Forward: " + changeName, false) {
+            @Override
+            public void run(@NotNull ProgressIndicator indicator) {
+                try {
+                    // Create the change via CLI
+                    com.johnnyblabs.openspec.util.CliRunner.CliResult result;
+                    if (schema != null && !schema.isEmpty()) {
+                        result = com.johnnyblabs.openspec.util.CliRunner.run(project,
+                                "new", "change", finalChangeName, "--schema", schema);
+                    } else {
+                        result = com.johnnyblabs.openspec.util.CliRunner.run(project,
+                                "new", "change", finalChangeName);
+                    }
+
+                    if (!result.isSuccess()) {
+                        ApplicationManager.getApplication().invokeLater(() -> {
+                            ffStatusLabel.setText("Error: " + result.stderr());
+                            ffStatusLabel.setForeground(COLOR_ERROR);
+                            ffGoButton.setEnabled(true);
+                            ffCancelButton.setEnabled(true);
+                            ffDescriptionField.setEnabled(true);
+                            ffNameOverrideField.setEnabled(true);
+                        });
+                        return;
+                    }
+
+                    // Success: switch to pipeline and trigger generation
+                    ApplicationManager.getApplication().invokeLater(() -> {
+                        activeChangeName = finalChangeName;
+
+                        // Reset FF form for next use
+                        ffDescriptionField.setEnabled(true);
+                        ffNameOverrideField.setEnabled(true);
+                        ffGoButton.setEnabled(false);
+                        ffCancelButton.setEnabled(true);
+
+                        // Refresh to load the new change into the selector and pipeline
+                        if (onRefreshRequested != null) onRefreshRequested.run();
+
+                        // Refresh pipeline, then trigger generation based on delivery mode
+                        ApplicationManager.getApplication().executeOnPooledThread(() -> {
+                            refreshForChangeOnPool(finalChangeName);
+                            ApplicationManager.getApplication().invokeLater(() -> {
+                                DeliveryMode mode = getSelectedDeliveryMode();
+                                if (mode == DeliveryMode.DIRECT_API) {
+                                    onGenerateAll();
+                                } else {
+                                    onGenerate();
+                                }
+                            });
+                        });
+                    });
+                } catch (com.johnnyblabs.openspec.util.CliRunner.CliException e) {
+                    ApplicationManager.getApplication().invokeLater(() -> {
+                        ffStatusLabel.setText("CLI error: " + e.getMessage());
+                        ffStatusLabel.setForeground(COLOR_ERROR);
+                        ffGoButton.setEnabled(true);
+                        ffCancelButton.setEnabled(true);
+                        ffDescriptionField.setEnabled(true);
+                        ffNameOverrideField.setEnabled(true);
+                    });
+                }
+            }
+        });
+    }
+
+    public static String deriveKebabName(String description) {
+        if (description == null || description.isBlank()) return "unnamed-change";
+        String kebab = description.toLowerCase()
+                .replaceAll("[^a-z0-9\\s-]", "")
+                .trim()
+                .replaceAll("\\s+", "-");
+        String[] parts = kebab.split("-");
+        if (parts.length > 5) {
+            kebab = String.join("-", java.util.Arrays.copyOf(parts, 5));
+        }
+        return kebab.isEmpty() ? "unnamed-change" : kebab;
     }
 
     // --- Verify ---
@@ -1284,11 +1700,9 @@ public class WorkflowActionPanel extends JPanel {
 
         guidanceMessageLabel.setText("\u2713 " + changeName + " archived");
         guidanceMessageLabel.setForeground(COLOR_SUCCESS);
-        guidanceWatchingLabel.setVisible(false);
-        guidanceNextLabel.setVisible(false);
-        copyAgainButton.setVisible(false);
-        checkUpdatesButton.setVisible(false);
+        guidanceDetailsPanel.setVisible(false);
         guidancePanel.setVisible(true);
+        guidancePanel.revalidate();
 
         if (onRefreshRequested != null) onRefreshRequested.run();
     }
@@ -1336,11 +1750,9 @@ public class WorkflowActionPanel extends JPanel {
                         guidanceMessageLabel.setText("\u2713 Change valid");
                         guidanceMessageLabel.setForeground(COLOR_SUCCESS);
                     }
-                    guidanceWatchingLabel.setVisible(false);
-                    guidanceNextLabel.setVisible(false);
-                    copyAgainButton.setVisible(false);
-                    checkUpdatesButton.setVisible(false);
+                    guidanceDetailsPanel.setVisible(false);
                     guidancePanel.setVisible(true);
+                    guidancePanel.revalidate();
                 });
             }
         });
@@ -1519,6 +1931,9 @@ public class WorkflowActionPanel extends JPanel {
             guidanceNextLabel.setVisible(false);
         }
 
+        guidanceWatchingLabel.setVisible(true);
+        checkUpdatesButton.setVisible(false);
+        guidanceDetailsPanel.setVisible(true);
         guidancePanel.setVisible(true);
         guidancePanel.revalidate();
 
@@ -1690,9 +2105,11 @@ public class WorkflowActionPanel extends JPanel {
                     guidanceMessageLabel.setText("\u2713 All artifacts generated");
                     guidanceMessageLabel.setForeground(COLOR_SUCCESS);
                     guidanceWatchingLabel.setText("Ready to review or apply tasks");
+                    guidanceWatchingLabel.setVisible(true);
                     guidanceNextLabel.setVisible(false);
                     copyAgainButton.setVisible(false);
                     checkUpdatesButton.setVisible(false);
+                    guidanceDetailsPanel.setVisible(true);
                     guidancePanel.setVisible(true);
                     guidancePanel.revalidate();
 
@@ -1739,10 +2156,7 @@ public class WorkflowActionPanel extends JPanel {
                     }
                     guidanceMessageLabel.setText("\u2717 " + msg);
                     guidanceMessageLabel.setForeground(JBColor.RED);
-                    guidanceWatchingLabel.setText("");
-                    guidanceNextLabel.setVisible(false);
-                    copyAgainButton.setVisible(false);
-                    checkUpdatesButton.setVisible(false);
+                    guidanceDetailsPanel.setVisible(false);
                     guidancePanel.setVisible(true);
                     guidancePanel.revalidate();
 
