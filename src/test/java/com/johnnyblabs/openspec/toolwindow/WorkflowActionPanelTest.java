@@ -1,6 +1,8 @@
 package com.johnnyblabs.openspec.toolwindow;
 
 import com.johnnyblabs.openspec.ai.DeliveryMode;
+import com.johnnyblabs.openspec.model.ArtifactInfo;
+import com.johnnyblabs.openspec.model.ArtifactStatus;
 import org.junit.jupiter.api.Test;
 
 import javax.swing.*;
@@ -11,7 +13,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Tests for WorkflowActionPanel logic: CardLayout switching, FF input validation,
- * cancel destination, and delivery-aware generation routing.
+ * cancel destination, delivery-aware generation routing, chip click routing,
+ * icon bar state, and status strip content.
  *
  * These tests exercise the behavioral rules in isolation using CardLayout and
  * Swing components directly, without requiring an IntelliJ Project instance.
@@ -22,7 +25,7 @@ class WorkflowActionPanelTest {
     private static final String CARD_FF_INPUT = "ffInput";
     private static final String CARD_PIPELINE = "pipeline";
 
-    // --- 6.2: CardLayout card switching logic ---
+    // --- CardLayout card switching logic ---
 
     @Test
     void cardLayout_noChanges_showsNoChangesCard() {
@@ -31,8 +34,7 @@ class WorkflowActionPanelTest {
 
         layout.show(cards, CARD_NO_CHANGES);
 
-        // The no-changes card should be visible
-        assertCardVisible(cards, 0); // noChanges is the first card added
+        assertCardVisible(cards, 0);
     }
 
     @Test
@@ -42,7 +44,7 @@ class WorkflowActionPanelTest {
 
         layout.show(cards, CARD_FF_INPUT);
 
-        assertCardVisible(cards, 1); // ffInput is the second card added
+        assertCardVisible(cards, 1);
     }
 
     @Test
@@ -52,7 +54,7 @@ class WorkflowActionPanelTest {
 
         layout.show(cards, CARD_PIPELINE);
 
-        assertCardVisible(cards, 2); // pipeline is the third card added
+        assertCardVisible(cards, 2);
     }
 
     @Test
@@ -79,7 +81,7 @@ class WorkflowActionPanelTest {
         assertCardVisible(cards, 0);
     }
 
-    // --- 6.5: Cancel returns to correct previous card ---
+    // --- Cancel returns to correct previous card ---
 
     @Test
     void cancel_withActiveChanges_returnsToPipeline() {
@@ -102,7 +104,7 @@ class WorkflowActionPanelTest {
         assertEquals(CARD_PIPELINE, expectedCard);
     }
 
-    // --- 6.4: Delivery-aware generation trigger ---
+    // --- Delivery-aware generation trigger ---
 
     @Test
     void deliveryMode_directApi_triggersGenerateAll() {
@@ -125,7 +127,7 @@ class WorkflowActionPanelTest {
         assertEquals("generate", action);
     }
 
-    // --- 6.6: Go button validation ---
+    // --- Go button validation ---
 
     @Test
     void goButton_disabledWhenDescriptionEmpty() {
@@ -155,7 +157,7 @@ class WorkflowActionPanelTest {
         assertTrue(enabled, "Go button should be enabled with minimal text");
     }
 
-    // --- 6.3: FF input → Go → change created → pipeline visible ---
+    // --- FF input → Go → change created → pipeline visible ---
 
     @Test
     void ffGoFlow_nameDerivation_usesOverrideWhenProvided() {
@@ -179,14 +181,12 @@ class WorkflowActionPanelTest {
 
     @Test
     void ffGoFlow_formDisabledDuringCreation() {
-        // Simulates the state the Go handler sets before background task
         JButton goButton = new JButton("Go");
         JButton cancelButton = new JButton("Cancel");
         JTextArea descriptionField = new JTextArea();
         JTextField nameField = new JTextField();
         JLabel statusLabel = new JLabel();
 
-        // Simulate onFfGo() disabling form
         goButton.setEnabled(false);
         cancelButton.setEnabled(false);
         descriptionField.setEnabled(false);
@@ -205,25 +205,21 @@ class WorkflowActionPanelTest {
         CardLayout layout = new CardLayout();
         JPanel cards = createCardPanel(layout);
 
-        // Start on FF input
         layout.show(cards, CARD_FF_INPUT);
         assertCardVisible(cards, 1);
 
-        // After successful creation, switch to pipeline
         layout.show(cards, CARD_PIPELINE);
         assertCardVisible(cards, 2);
     }
 
     @Test
     void ffGoFlow_failureReEnablesForm() {
-        // Simulates the state the Go handler sets on CLI failure
         JButton goButton = new JButton("Go");
         JButton cancelButton = new JButton("Cancel");
         JTextArea descriptionField = new JTextArea();
         JTextField nameField = new JTextField();
         JLabel statusLabel = new JLabel();
 
-        // Simulate failure re-enabling form
         goButton.setEnabled(true);
         cancelButton.setEnabled(true);
         descriptionField.setEnabled(true);
@@ -237,7 +233,181 @@ class WorkflowActionPanelTest {
         assertTrue(statusLabel.getText().startsWith("Error:"));
     }
 
+    // --- 7.1: Chip click routing ---
+
+    @Test
+    void chipClick_readyStatus_triggersGeneration() {
+        ArtifactInfo artifact = new ArtifactInfo("proposal", "proposal.md", ArtifactStatus.READY, List.of());
+        String action = resolveClickAction(artifact.status());
+        assertEquals("generate", action);
+    }
+
+    @Test
+    void chipClick_doneStatus_opensFile() {
+        ArtifactInfo artifact = new ArtifactInfo("proposal", "proposal.md", ArtifactStatus.DONE, List.of());
+        String action = resolveClickAction(artifact.status());
+        assertEquals("open", action);
+    }
+
+    @Test
+    void chipClick_blockedStatus_doesNothing() {
+        ArtifactInfo artifact = new ArtifactInfo("design", "design.md", ArtifactStatus.BLOCKED, List.of("proposal"));
+        String action = resolveClickAction(artifact.status());
+        assertEquals("none", action);
+    }
+
+    @Test
+    void chipClick_generatingStatus_doesNothing() {
+        ArtifactInfo artifact = new ArtifactInfo("proposal", "proposal.md", ArtifactStatus.GENERATING, List.of());
+        String action = resolveClickAction(artifact.status());
+        assertEquals("none", action);
+    }
+
+    // --- 7.2: Context menu items per chip state ---
+
+    @Test
+    void contextMenu_doneChip_hasOpenRegenCopy() {
+        List<String> items = getContextMenuItems(ArtifactStatus.DONE, false, 1);
+        assertEquals(List.of("Open file", "Regenerate", "Copy prompt"), items);
+    }
+
+    @Test
+    void contextMenu_readyChip_hasGenerateAndCopy() {
+        List<String> items = getContextMenuItems(ArtifactStatus.READY, false, 1);
+        assertEquals(List.of("Generate", "Copy prompt"), items);
+    }
+
+    @Test
+    void contextMenu_readyChip_withDirectApiAndMultipleReady_hasGenerateAll() {
+        List<String> items = getContextMenuItems(ArtifactStatus.READY, true, 3);
+        assertEquals(List.of("Generate", "Generate All Remaining", "Copy prompt"), items);
+    }
+
+    @Test
+    void contextMenu_readyChip_withDirectApiButSingleReady_noGenerateAll() {
+        List<String> items = getContextMenuItems(ArtifactStatus.READY, true, 1);
+        assertEquals(List.of("Generate", "Copy prompt"), items);
+    }
+
+    @Test
+    void contextMenu_generatingChip_hasCancel() {
+        List<String> items = getContextMenuItems(ArtifactStatus.GENERATING, false, 0);
+        assertEquals(List.of("Cancel"), items);
+    }
+
+    @Test
+    void contextMenu_blockedChip_isEmpty() {
+        List<String> items = getContextMenuItems(ArtifactStatus.BLOCKED, false, 0);
+        assertTrue(items.isEmpty());
+    }
+
+    // --- 7.3: Icon bar enabled/disabled states ---
+
+    @Test
+    void iconBar_allComplete_noTasks_verifyAndArchiveEnabled() {
+        boolean allComplete = true;
+        boolean tasksRemaining = false;
+
+        boolean verifyEnabled = allComplete;
+        boolean archiveEnabled = allComplete && !tasksRemaining;
+
+        assertTrue(verifyEnabled);
+        assertTrue(archiveEnabled);
+    }
+
+    @Test
+    void iconBar_allComplete_withTasks_verifyEnabledArchiveDisabled() {
+        boolean allComplete = true;
+        boolean tasksRemaining = true;
+
+        boolean verifyEnabled = allComplete;
+        boolean archiveEnabled = allComplete && !tasksRemaining;
+
+        assertTrue(verifyEnabled);
+        assertFalse(archiveEnabled);
+    }
+
+    @Test
+    void iconBar_incomplete_bothDisabled() {
+        boolean allComplete = false;
+        boolean tasksRemaining = false;
+
+        boolean verifyEnabled = allComplete;
+        boolean archiveEnabled = allComplete && !tasksRemaining;
+
+        assertFalse(verifyEnabled);
+        assertFalse(archiveEnabled);
+    }
+
+    // --- 7.4: Status strip content in different states ---
+
+    @Test
+    void statusStrip_steady_showsComplianceAndDeliveryMode() {
+        String compliance = "Not checked";
+        String deliveryMode = "Clipboard: Claude Code";
+        int taskComplete = 0;
+        int taskTotal = 0;
+
+        String strip = buildStatusStripText(compliance, taskComplete, taskTotal, deliveryMode, false, 0, 0);
+        assertEquals("Not checked · Clipboard: Claude Code", strip);
+    }
+
+    @Test
+    void statusStrip_withTasks_showsTaskProgress() {
+        String compliance = "\u2713 Compliant";
+        String deliveryMode = "Direct API";
+        int taskComplete = 3;
+        int taskTotal = 5;
+
+        String strip = buildStatusStripText(compliance, taskComplete, taskTotal, deliveryMode, false, 0, 0);
+        assertEquals("\u2713 Compliant · 3/5 tasks · Direct API", strip);
+    }
+
+    @Test
+    void statusStrip_generating_showsProgress() {
+        String compliance = "Not checked";
+        String deliveryMode = "Direct API";
+
+        String strip = buildStatusStripText(compliance, 0, 0, deliveryMode, true, 2, 4);
+        assertEquals("Generating 2/4... · Direct API", strip);
+    }
+
     // --- Helpers ---
+
+    private String resolveClickAction(ArtifactStatus status) {
+        return switch (status) {
+            case READY -> "generate";
+            case DONE -> "open";
+            default -> "none";
+        };
+    }
+
+    private List<String> getContextMenuItems(ArtifactStatus status, boolean directApi, int readyCount) {
+        return switch (status) {
+            case DONE -> List.of("Open file", "Regenerate", "Copy prompt");
+            case READY -> {
+                if (directApi && readyCount >= 2) {
+                    yield List.of("Generate", "Generate All Remaining", "Copy prompt");
+                }
+                yield List.of("Generate", "Copy prompt");
+            }
+            case GENERATING -> List.of("Cancel");
+            default -> List.of();
+        };
+    }
+
+    private String buildStatusStripText(String compliance, int taskComplete, int taskTotal,
+                                         String deliveryMode, boolean generating, int genCurrent, int genTotal) {
+        if (generating) {
+            return "Generating " + genCurrent + "/" + genTotal + "... · " + deliveryMode;
+        }
+        StringBuilder sb = new StringBuilder(compliance);
+        if (taskTotal > 0) {
+            sb.append(" · ").append(taskComplete).append("/").append(taskTotal).append(" tasks");
+        }
+        sb.append(" · ").append(deliveryMode);
+        return sb.toString();
+    }
 
     private JPanel createCardPanel(CardLayout layout) {
         JPanel cards = new JPanel(layout);

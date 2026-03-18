@@ -29,19 +29,47 @@ jobs:
           name: test-results
           path: build/test-results/test/
 
+      - name: Sign plugin
+        if: github.ref == 'refs/heads/main'
+        run: gradle signPlugin
+        env:
+          PLUGIN_SIGNING_KEY: ${{ secrets.PLUGIN_SIGNING_KEY }}
+          PLUGIN_SIGNING_CERTIFICATE: ${{ secrets.PLUGIN_SIGNING_CERTIFICATE }}
+          PLUGIN_SIGNING_KEY_PASSWORD: ${{ secrets.PLUGIN_SIGNING_KEY_PASSWORD }}
+
+      - name: Verify plugin signature
+        if: github.ref == 'refs/heads/main'
+        run: gradle verifyPluginSignature
+
       - name: Upload plugin artifact
         uses: actions/upload-artifact@v3
         if: github.ref == 'refs/heads/main'
         with:
           name: OpenSpecPlugin
-          path: build/distributions/*.zip
+          path: build/distributions/*-signed.zip
 
   verify:
     runs-on: java-21
-    needs: build
-    if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
 
       - name: Run Plugin Verifier
         run: gradle verifyPlugin
+
+  qodana:
+    runs-on: java-21
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Qodana Analysis
+        run: qodana scan --baseline qodana-baseline.sarif.json --fail-threshold 0 --save-report --report-dir build/qodana-report
+
+      - name: Upload Qodana results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: qodana-report
+          path: build/qodana-report/

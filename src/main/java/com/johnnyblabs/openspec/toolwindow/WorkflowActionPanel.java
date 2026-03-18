@@ -11,6 +11,8 @@ import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.Task;
 import org.jetbrains.annotations.NotNull;
 import com.intellij.openapi.ui.Messages;
+import com.intellij.openapi.ui.popup.JBPopup;
+import com.intellij.openapi.ui.popup.JBPopupFactory;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.icons.AllIcons;
@@ -56,25 +58,22 @@ import java.util.Map;
 
 /**
  * Workflow action panel displayed below the tree in the tool window.
- * Shows a change selector, interactive artifact pipeline, tool selector, and Generate button.
+ * Shows a change selector, interactive artifact pipeline chips, a compact icon bar,
+ * and a single-line status strip. Pipeline chips are the primary action surface.
  */
 public class WorkflowActionPanel extends JPanel {
 
     // --- Color constants (light, dark) ---
-    // Chip foreground
     private static final JBColor COLOR_DONE = new JBColor(new Color(0, 128, 0), new Color(100, 210, 100));
     private static final JBColor COLOR_READY = JBColor.BLUE;
     private static final JBColor COLOR_GENERATING = new JBColor(new Color(60, 130, 230), new Color(80, 150, 250));
     private static final JBColor COLOR_ERROR = JBColor.RED;
     private static final JBColor COLOR_BLOCKED = new JBColor(new Color(128, 128, 128), new Color(140, 140, 140));
-    // Chip backgrounds
     private static final JBColor COLOR_CHIP_BG_TRANSPARENT = new JBColor(new Color(0, 0, 0, 0), new Color(0, 0, 0, 0));
     private static final JBColor COLOR_READY_BG = new JBColor(new Color(220, 235, 255), new Color(35, 50, 75));
     private static final JBColor COLOR_ERROR_BG = new JBColor(new Color(255, 230, 230), new Color(90, 25, 25));
-    // Chip borders (pulsing pair for GENERATING)
     private static final JBColor COLOR_GENERATING_BORDER_BRIGHT = new JBColor(new Color(60, 130, 230), new Color(80, 150, 250));
     private static final JBColor COLOR_GENERATING_BORDER_DIM = new JBColor(new Color(140, 180, 240), new Color(50, 90, 160));
-    // Guidance / feedback text
     private static final JBColor COLOR_SUCCESS = new JBColor(new Color(0, 128, 0), new Color(100, 210, 100));
     private static final JBColor COLOR_FLASH_GREEN = new JBColor(new Color(0, 180, 0), new Color(80, 220, 80));
 
@@ -106,47 +105,30 @@ public class WorkflowActionPanel extends JPanel {
     private final JComboBox<String> toolSelector;
     private final JBLabel noToolsLabel;
 
-    // Generate controls
-    private final JButton generateButton;
-    private final JButton generateAllButton;
-    private final JButton cancelButton;
+    // Icon action bar
+    private final JButton ffIconButton;
+    private final JButton verifyIconButton;
+    private final JButton archiveIconButton;
+    private final JButton overflowButton;
+    private final JPanel iconBar;
 
-    // Apply controls
-    private final JButton applyButton;
-    private final JBLabel taskProgressLabel;
-    private final JBLabel taskHintLabel;
-
-    // Inline guidance (replaces old card-based guidance)
-    private final JPanel guidancePanel;
-    private final JTextArea guidanceMessageLabel;
-    private final JTextArea guidanceWatchingLabel;
-    private final JTextArea guidanceNextLabel;
-    private final JButton copyAgainButton;
-    private final JButton checkUpdatesButton;
-    private final JPanel guidanceDetailsPanel;
-
-    // Progress bar and elapsed time for Generate All
-    private final JProgressBar generateAllProgressBar;
-    private final JBLabel elapsedTimeLabel;
-    private javax.swing.Timer elapsedTimer;
-    private long generateAllStartNanos;
+    // Status strip
+    private final JPanel statusStrip;
+    private final JBLabel complianceStatusLabel;
+    private final JBLabel taskProgressStatusLabel;
+    private final JBLabel deliveryModeStatusLabel;
 
     // Animation state
     private javax.swing.Timer pulseTimer;
     private javax.swing.Timer spinnerTimer;
+    private javax.swing.Timer elapsedTimer;
     private String generatingArtifactId;
     private String errorArtifactId;
     private int spinnerStep;
 
-    // Verify, sync, archive and post-archive controls
-    private final JButton verifyButton;
-    private final JButton syncSpecsButton;
-    private final JButton archiveButton;
-    private final JButton bulkArchiveButton;
-    private final JButton startNewChangeButton;
-
-    // Retry state
-    private final JButton retryButton;
+    // Generate All state
+    private long generateAllStartNanos;
+    private volatile boolean generateAllInProgress;
 
     // CardLayout for content area
     private final CardLayout contentCardLayout;
@@ -162,9 +144,6 @@ public class WorkflowActionPanel extends JPanel {
     private final JBLabel ffStatusLabel;
     private boolean ffInputActive = false;
 
-    // Compliance status chip
-    private final JBLabel complianceChip;
-
     private String activeChangeName;
     private String nextArtifactId;
     private String lastPrompt;
@@ -173,6 +152,11 @@ public class WorkflowActionPanel extends JPanel {
     private boolean updatingCombo;
     private boolean updatingToolSelector;
     private ArtifactFileWatcher activeWatcher;
+    private Component lastClickedChip;
+    private JBPopup activeGuidancePopup;
+    private boolean hasDeltaSpecs;
+    private boolean allArtifactsComplete;
+    private boolean hasTasksRemaining;
 
     public WorkflowActionPanel(Project project) {
         this.project = project;
@@ -198,7 +182,7 @@ public class WorkflowActionPanel extends JPanel {
             String selected = (String) changeCombo.getSelectedItem();
             if (selected != null && !selected.equals(activeChangeName)) {
                 activeChangeName = selected;
-                resetComplianceChip();
+                resetComplianceStatus();
                 disposeWatcher();
                 refreshForChange(selected);
             }
@@ -211,89 +195,53 @@ public class WorkflowActionPanel extends JPanel {
         pipelinePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, JBUI.scale(6), 0));
         pipelinePanel.setOpaque(false);
 
-        // Inline guidance (below pipeline, visible during waiting)
-        guidancePanel = new JPanel();
-        guidancePanel.setLayout(new BoxLayout(guidancePanel, BoxLayout.Y_AXIS));
-        guidancePanel.setOpaque(false);
-        guidancePanel.setVisible(false);
-        guidancePanel.setBorder(JBUI.Borders.compound(
-                JBUI.Borders.customLine(JBColor.border(), 1, 0, 0, 0),
-                JBUI.Borders.empty(JBUI.scale(2), 0, 0, 0)));
+        // --- Icon action bar ---
+        iconBar = new JPanel(new FlowLayout(FlowLayout.RIGHT, JBUI.scale(2), 0));
+        iconBar.setOpaque(false);
+        iconBar.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        guidanceMessageLabel = createWrappingLabel(Font.BOLD, 13f);
+        ffIconButton = createIconButton(AllIcons.Actions.Lightning, "Fast-Forward", this::activateFfInput);
+        verifyIconButton = createIconButton(AllIcons.Actions.PreviewDetailsVertically, "Verify", this::onVerify);
+        archiveIconButton = createIconButton(AllIcons.Actions.Checked, "Archive", this::onArchive);
+        overflowButton = createIconButton(AllIcons.Actions.More, "More actions...", this::showOverflowMenu);
 
-        guidanceWatchingLabel = createWrappingLabel(Font.ITALIC, 11f);
-        guidanceWatchingLabel.setForeground(JBColor.GRAY);
+        verifyIconButton.setEnabled(false);
+        archiveIconButton.setEnabled(false);
 
-        guidanceNextLabel = createWrappingLabel(Font.ITALIC, 11f);
-        guidanceNextLabel.setForeground(JBColor.BLUE);
+        iconBar.add(ffIconButton);
+        iconBar.add(verifyIconButton);
+        iconBar.add(archiveIconButton);
+        iconBar.add(overflowButton);
 
-        copyAgainButton = new JButton("Copy again");
-        copyAgainButton.addActionListener(e -> {
-            if (lastPrompt != null) {
-                Toolkit.getDefaultToolkit().getSystemClipboard()
-                        .setContents(new StringSelection(lastPrompt), null);
-                OpenSpecNotifier.info(project, "Generate", "Prompt re-copied to clipboard");
+        // --- Status strip ---
+        statusStrip = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        statusStrip.setOpaque(false);
+        statusStrip.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        complianceStatusLabel = new JBLabel("Not checked");
+        complianceStatusLabel.setFont(complianceStatusLabel.getFont().deriveFont(Font.PLAIN, 11f));
+        complianceStatusLabel.setForeground(COLOR_BLOCKED);
+        complianceStatusLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        complianceStatusLabel.setToolTipText("Click to run compliance check");
+        complianceStatusLabel.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                onComplianceCheck();
             }
         });
 
-        checkUpdatesButton = new JButton("Check for updates");
-        checkUpdatesButton.addActionListener(e -> onCheckForUpdates());
+        taskProgressStatusLabel = new JBLabel();
+        taskProgressStatusLabel.setFont(taskProgressStatusLabel.getFont().deriveFont(Font.PLAIN, 11f));
+        taskProgressStatusLabel.setForeground(JBColor.GRAY);
+        taskProgressStatusLabel.setVisible(false);
 
-        JPanel guidanceButtons = new JPanel(new FlowLayout(FlowLayout.LEFT, JBUI.scale(8), 0));
-        guidanceButtons.setOpaque(false);
-        guidanceButtons.setAlignmentX(Component.LEFT_ALIGNMENT);
-        guidanceButtons.add(copyAgainButton);
-        guidanceButtons.add(checkUpdatesButton);
+        deliveryModeStatusLabel = new JBLabel();
+        deliveryModeStatusLabel.setFont(deliveryModeStatusLabel.getFont().deriveFont(Font.PLAIN, 11f));
+        deliveryModeStatusLabel.setForeground(JBColor.GRAY);
 
-        guidanceDetailsPanel = new JPanel();
-        guidanceDetailsPanel.setLayout(new BoxLayout(guidanceDetailsPanel, BoxLayout.Y_AXIS));
-        guidanceDetailsPanel.setOpaque(false);
-        guidanceDetailsPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        guidanceDetailsPanel.add(guidanceWatchingLabel);
-        guidanceDetailsPanel.add(guidanceNextLabel);
-        guidanceDetailsPanel.add(Box.createVerticalStrut(JBUI.scale(2)));
-        guidanceDetailsPanel.add(guidanceButtons);
-
-        guidancePanel.add(guidanceMessageLabel);
-        guidancePanel.add(guidanceDetailsPanel);
-
-        // Progress bar and elapsed time for Generate All
-        JPanel progressRow = new JPanel(new FlowLayout(FlowLayout.LEFT, JBUI.scale(8), 0));
-        progressRow.setOpaque(false);
-        progressRow.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        generateAllProgressBar = new JProgressBar(0, 1);
-        generateAllProgressBar.setStringPainted(true);
-        generateAllProgressBar.setVisible(false);
-        generateAllProgressBar.setPreferredSize(new Dimension(JBUI.scale(200), JBUI.scale(18)));
-
-        elapsedTimeLabel = new JBLabel();
-        elapsedTimeLabel.setFont(elapsedTimeLabel.getFont().deriveFont(Font.PLAIN, 11f));
-        elapsedTimeLabel.setForeground(JBColor.GRAY);
-        elapsedTimeLabel.setVisible(false);
-
-        progressRow.add(generateAllProgressBar);
-        progressRow.add(elapsedTimeLabel);
-
-        // Retry button for error recovery
-        retryButton = new JButton("Retry");
-        retryButton.setIcon(AllIcons.Actions.Restart);
-        retryButton.setVisible(false);
-        retryButton.addActionListener(e -> onGenerateAll());
-
-        // Task progress and hint labels
-        taskProgressLabel = new JBLabel();
-        taskProgressLabel.setFont(taskProgressLabel.getFont().deriveFont(Font.PLAIN, 12f));
-        taskProgressLabel.setForeground(JBColor.GRAY);
-        taskProgressLabel.setVisible(false);
-        taskProgressLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        taskHintLabel = new JBLabel();
-        taskHintLabel.setFont(taskHintLabel.getFont().deriveFont(Font.ITALIC, 11f));
-        taskHintLabel.setForeground(JBColor.ORANGE);
-        taskHintLabel.setVisible(false);
-        taskHintLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        statusStrip.add(complianceStatusLabel);
+        statusStrip.add(taskProgressStatusLabel);
+        statusStrip.add(deliveryModeStatusLabel);
 
         // Tool selector
         toolSelector = new JComboBox<>();
@@ -303,67 +251,6 @@ public class WorkflowActionPanel extends JPanel {
                 "<html><small>Configure an AI tool or API key to get started.</small></html>");
         noToolsLabel.setForeground(JBColor.GRAY);
         noToolsLabel.setVisible(false);
-
-        // Buttons
-        generateButton = new JButton("Generate");
-        generateButton.setEnabled(false);
-        generateButton.addActionListener(e -> onGenerate());
-
-        generateAllButton = new JButton("Generate All");
-        generateAllButton.setIcon(AllIcons.Actions.Execute);
-        generateAllButton.setFont(generateAllButton.getFont().deriveFont(Font.BOLD));
-        generateAllButton.putClientProperty("JButton.buttonType", "gradient");
-        generateAllButton.setVisible(false);
-        generateAllButton.addActionListener(e -> onGenerateAll());
-
-        cancelButton = new JButton("Cancel");
-        cancelButton.setVisible(false);
-        cancelButton.addActionListener(e -> onCancelGenerateAll());
-
-        applyButton = new JButton("Apply Tasks");
-        applyButton.setVisible(false);
-        applyButton.addActionListener(e -> onApplyTasks());
-
-        verifyButton = new JButton("Verify");
-        verifyButton.setIcon(AllIcons.Actions.PreviewDetailsVertically);
-        verifyButton.setToolTipText("Check completeness, correctness, and coherence before archiving");
-        verifyButton.setVisible(false);
-        verifyButton.addActionListener(e -> onVerify());
-
-        syncSpecsButton = new JButton("Sync Specs");
-        syncSpecsButton.setIcon(AllIcons.Actions.Diff);
-        syncSpecsButton.setToolTipText("Merge delta specs into main specs");
-        syncSpecsButton.setVisible(false);
-        syncSpecsButton.addActionListener(e -> onSyncSpecs());
-
-        archiveButton = new JButton("Archive");
-        archiveButton.setIcon(AllIcons.Actions.Checked);
-        archiveButton.setVisible(false);
-        archiveButton.addActionListener(e -> onArchive());
-
-        bulkArchiveButton = new JButton("Bulk Archive...");
-        bulkArchiveButton.setIcon(AllIcons.Actions.Checked);
-        bulkArchiveButton.setToolTipText("Archive multiple changes at once");
-        bulkArchiveButton.setVisible(false);
-        bulkArchiveButton.addActionListener(e -> onBulkArchive());
-
-        startNewChangeButton = new JButton("Start New Change");
-        startNewChangeButton.setIcon(AllIcons.General.Add);
-        startNewChangeButton.setVisible(false);
-        startNewChangeButton.addActionListener(e -> onStartNewChange());
-
-        // Compliance status chip
-        complianceChip = new JBLabel("Not checked");
-        complianceChip.setForeground(COLOR_BLOCKED);
-        complianceChip.setFont(complianceChip.getFont().deriveFont(Font.PLAIN, 11f));
-        complianceChip.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        complianceChip.setToolTipText("Click to run compliance check");
-        complianceChip.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                onComplianceCheck();
-            }
-        });
 
         // FF input form
         ffDescriptionField = new JBTextArea(4, 50);
@@ -409,7 +296,7 @@ public class WorkflowActionPanel extends JPanel {
         ffStatusLabel = new JBLabel("");
         ffStatusLabel.setForeground(JBColor.GRAY);
 
-        // --- Layout: vertical stack with full-width guidance ---
+        // --- Layout ---
 
         // Header row: change selector (left) + tool dropdown (right)
         JPanel headerRow = new JPanel(new BorderLayout(JBUI.scale(4), 0));
@@ -419,7 +306,7 @@ public class WorkflowActionPanel extends JPanel {
         headerRow.add(changeSelectorPanel, BorderLayout.CENTER);
 
         toolSelector.setMaximumRowCount(10);
-        toolSelector.setPrototypeDisplayValue("Direct API  [API]");
+        toolSelector.setPrototypeDisplayValue("Direct API  [API]xx");
 
         JPanel toolRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, JBUI.scale(4), 0));
         toolRow.setOpaque(false);
@@ -427,32 +314,9 @@ public class WorkflowActionPanel extends JPanel {
         toolRow.add(toolSelector);
         headerRow.add(toolRow, BorderLayout.EAST);
 
-        // Pipeline row
+        // Pipeline row — no separator, just minimal vertical padding
         pipelinePanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        pipelinePanel.setBorder(JBUI.Borders.compound(
-                JBUI.Borders.customLine(JBColor.border(), 1, 0, 0, 0),
-                JBUI.Borders.empty(JBUI.scale(2), 0, JBUI.scale(1), 0)));
-
-        // Action buttons row (below pipeline, not competing with text)
-        JPanel actionRow = new JPanel(new FlowLayout(FlowLayout.LEFT, JBUI.scale(4), 0));
-        actionRow.setOpaque(false);
-        actionRow.setAlignmentX(Component.LEFT_ALIGNMENT);
-        actionRow.setBorder(JBUI.Borders.compound(
-                JBUI.Borders.customLine(JBColor.border(), 1, 0, 0, 0),
-                JBUI.Borders.empty(JBUI.scale(2), 0, JBUI.scale(1), 0)));
-        actionRow.add(generateButton);
-        actionRow.add(generateAllButton);
-        actionRow.add(applyButton);
-        actionRow.add(verifyButton);
-        actionRow.add(syncSpecsButton);
-        actionRow.add(archiveButton);
-        actionRow.add(bulkArchiveButton);
-        actionRow.add(startNewChangeButton);
-        actionRow.add(retryButton);
-        actionRow.add(cancelButton);
-
-        // Assemble vertical stack — guidance gets full panel width
-        guidancePanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        pipelinePanel.setBorder(JBUI.Borders.empty(JBUI.scale(2), 0, 0, 0));
 
         // --- CardLayout for main content area ---
         contentCardLayout = new CardLayout();
@@ -467,36 +331,43 @@ public class WorkflowActionPanel extends JPanel {
         JPanel ffInputCard = buildFfInputCard();
         contentCards.add(ffInputCard, CARD_FF_INPUT);
 
-        // Card 3: Pipeline (existing components)
-        JPanel pipelineCard = new JPanel();
-        pipelineCard.setLayout(new BoxLayout(pipelineCard, BoxLayout.Y_AXIS));
+        // Card 3: Pipeline (chips → icon bar → status strip)
+        // Use GridBagLayout so each row fills the full width
+        JPanel pipelineCard = new JPanel(new GridBagLayout());
         pipelineCard.setOpaque(false);
-        pipelineCard.add(pipelinePanel);
-
-        // Compliance chip row
-        JPanel complianceRow = new JPanel(new FlowLayout(FlowLayout.LEFT, JBUI.scale(6), 0));
-        complianceRow.setOpaque(false);
-        complianceRow.setAlignmentX(Component.LEFT_ALIGNMENT);
-        complianceRow.add(complianceChip);
-        pipelineCard.add(complianceRow);
-
-        pipelineCard.add(actionRow);
-        pipelineCard.add(progressRow);
-        pipelineCard.add(taskProgressLabel);
-        pipelineCard.add(taskHintLabel);
-        pipelineCard.add(guidancePanel);
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
+        gbc.gridy = 0;
+        pipelineCard.add(pipelinePanel, gbc);
+        gbc.gridy = 1;
+        pipelineCard.add(iconBar, gbc);
+        gbc.gridy = 2;
+        pipelineCard.add(statusStrip, gbc);
         contentCards.add(pipelineCard, CARD_PIPELINE);
 
-        JPanel contentPanel = new JPanel();
-        contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
+        // Use BorderLayout for contentPanel so it fills the parent width
+        JPanel contentPanel = new JPanel(new BorderLayout(0, 0));
         contentPanel.setOpaque(false);
-        contentPanel.add(headerRow);
-        contentPanel.add(contentCards);
+        contentPanel.add(headerRow, BorderLayout.NORTH);
+        contentPanel.add(contentCards, BorderLayout.CENTER);
 
         add(contentPanel, BorderLayout.CENTER);
 
         // Populate tool selector
         populateToolSelector();
+        updateDeliveryModeLabel();
+    }
+
+    private JButton createIconButton(Icon icon, String tooltip, Runnable action) {
+        JButton btn = new JButton(icon);
+        btn.setToolTipText(tooltip);
+        btn.putClientProperty("JButton.buttonType", "borderless");
+        btn.setPreferredSize(new Dimension(JBUI.scale(24), JBUI.scale(24)));
+        btn.setMaximumSize(new Dimension(JBUI.scale(24), JBUI.scale(24)));
+        btn.addActionListener(e -> action.run());
+        return btn;
     }
 
     public void setOnRefreshRequested(Runnable callback) {
@@ -640,19 +511,8 @@ public class WorkflowActionPanel extends JPanel {
         settings.setPreferredTool(ts.toolName);
         settings.setPreferredDeliveryMethod(ts.mode.name());
 
-        // Update button labels
-        if (nextArtifactId != null) {
-            generateButton.setText(buildGenerateLabel(nextArtifactId));
-        }
-        if (applyButton.isVisible() && applyButton.isEnabled()) {
-            DeliveryMode m = ts.mode;
-            String suffix = switch (m) {
-                case CLIPBOARD -> "clipboard";
-                case EDITOR_TAB -> "editor tab";
-                case DIRECT_API -> "API";
-            };
-            applyButton.setText("Apply tasks \u2192 " + suffix);
-        }
+        // Update status strip delivery mode
+        updateDeliveryModeLabel();
     }
 
     private record ToolSelection(String toolName, DeliveryMode mode) {}
@@ -683,6 +543,20 @@ public class WorkflowActionPanel extends JPanel {
     private String getSelectedToolName() {
         String selected = (String) toolSelector.getSelectedItem();
         return parseToolSelection(selected).toolName;
+    }
+
+    private String getDeliveryModeLabel() {
+        String selected = (String) toolSelector.getSelectedItem();
+        ToolSelection ts = parseToolSelection(selected);
+        return switch (ts.mode) {
+            case DIRECT_API -> "Direct API";
+            case EDITOR_TAB -> "Editor Tab";
+            case CLIPBOARD -> ts.toolName.isBlank() ? "Clipboard" : "Clipboard: " + ts.toolName;
+        };
+    }
+
+    private void updateDeliveryModeLabel() {
+        deliveryModeStatusLabel.setText(" \u00B7 " + getDeliveryModeLabel());
     }
 
     // --- Change selector ---
@@ -730,15 +604,13 @@ public class WorkflowActionPanel extends JPanel {
     private void updatePipelineAndButton(ChangeArtifactDag dag) {
         ApplicationManager.getApplication().invokeLater(() -> {
             pipelinePanel.removeAll();
-            guidancePanel.setVisible(false);
 
             if (dag == null) {
-                generateButton.setVisible(false);
-                generateAllButton.setVisible(false);
-                applyButton.setVisible(false);
-                taskProgressLabel.setVisible(false);
-                taskHintLabel.setVisible(false);
                 activeChangeName = null;
+                allArtifactsComplete = false;
+                hasTasksRemaining = false;
+                hasDeltaSpecs = false;
+                updateIconBarState();
                 contentCardLayout.show(contentCards, CARD_NO_CHANGES);
                 return;
             }
@@ -760,50 +632,46 @@ public class WorkflowActionPanel extends JPanel {
             pipelinePanel.revalidate();
             pipelinePanel.repaint();
 
-            // Update generate button with delivery method
+            // Determine next artifact
             List<ArtifactInfo> ready = dag.getReadyArtifacts();
             nextArtifactId = ready.isEmpty() ? null : ready.getFirst().id();
 
-            if (dag.isComplete()) {
-                generateButton.setEnabled(false);
-                generateButton.setVisible(false);
-                generateAllButton.setVisible(false);
-                verifyButton.setVisible(true);
+            allArtifactsComplete = dag.isComplete();
+
+            if (allArtifactsComplete) {
                 showApplyState(dag);
-            } else if (nextArtifactId != null) {
-                generateButton.setVisible(true);
-                generateButton.setText(buildGenerateLabel(nextArtifactId));
-                generateButton.setEnabled(true);
-                applyButton.setVisible(false);
-                verifyButton.setVisible(false);
-                syncSpecsButton.setVisible(false);
-                bulkArchiveButton.setVisible(false);
-                taskProgressLabel.setVisible(false);
-                taskHintLabel.setVisible(false);
-                updateGenerateAllVisibility(dag);
             } else {
-                generateButton.setVisible(true);
-                generateButton.setText("Generate");
-                generateButton.setEnabled(false);
-                generateAllButton.setVisible(false);
-                applyButton.setVisible(false);
-                verifyButton.setVisible(false);
-                syncSpecsButton.setVisible(false);
-                bulkArchiveButton.setVisible(false);
-                taskProgressLabel.setVisible(false);
-                taskHintLabel.setVisible(false);
+                hasTasksRemaining = false;
+                taskProgressStatusLabel.setVisible(false);
+            }
+
+            // Update icon bar and status strip
+            updateIconBarState();
+            checkDeltaSpecs();
+            updateDeliveryModeLabel();
+
+            if (allArtifactsComplete) {
+                runChangeValidation();
             }
         });
     }
 
-    private String buildGenerateLabel(String artifactId) {
-        DeliveryMode mode = getSelectedDeliveryMode();
-        String suffix = switch (mode) {
-            case CLIPBOARD -> "clipboard";
-            case EDITOR_TAB -> "editor tab";
-            case DIRECT_API -> "API";
-        };
-        return "Generate " + artifactId + " \u2192 " + suffix;
+    private void updateIconBarState() {
+        verifyIconButton.setEnabled(allArtifactsComplete);
+        archiveIconButton.setEnabled(allArtifactsComplete && !hasTasksRemaining);
+    }
+
+    private void checkDeltaSpecs() {
+        if (activeChangeName == null) {
+            hasDeltaSpecs = false;
+            return;
+        }
+        String changeName = activeChangeName;
+        ApplicationManager.getApplication().executeOnPooledThread(() -> {
+            com.johnnyblabs.openspec.services.SpecSyncService syncService =
+                    project.getService(com.johnnyblabs.openspec.services.SpecSyncService.class);
+            hasDeltaSpecs = syncService.hasDeltaSpecs(changeName);
+        });
     }
 
     private JPanel createPipelineChip(ArtifactInfo artifact) {
@@ -826,7 +694,6 @@ public class WorkflowActionPanel extends JPanel {
             case GENERATING -> {
                 color = COLOR_GENERATING;
                 chip.setBackground(COLOR_READY_BG);
-                // Pulsing border — alternates via repaint driven by pulseTimer
                 boolean bright = (pulseTimer != null && System.currentTimeMillis() % 1200 < 600);
                 Color borderColor = bright ? COLOR_GENERATING_BORDER_BRIGHT : COLOR_GENERATING_BORDER_DIM;
                 chip.setBorder(BorderFactory.createLineBorder(borderColor, 2, true));
@@ -843,7 +710,7 @@ public class WorkflowActionPanel extends JPanel {
             }
         }
 
-        // Icon: use AllIcons for generating/error/done states, unicode for others
+        // Icon
         JBLabel iconLabel;
         if (artifact.status() == ArtifactStatus.GENERATING) {
             iconLabel = new JBLabel(getSpinnerIcon());
@@ -867,11 +734,10 @@ public class WorkflowActionPanel extends JPanel {
 
         // State-aware tooltips
         switch (artifact.status()) {
-            case READY -> chip.setToolTipText("Click to generate · Right-click for options");
-            case DONE -> chip.setToolTipText("Click to open · Right-click for options");
+            case READY -> chip.setToolTipText("Click to generate \u00B7 Right-click for options");
+            case DONE -> chip.setToolTipText("Click to open \u00B7 Right-click for options");
             case GENERATING -> chip.setToolTipText("Generating...");
             case BLOCKED -> {
-                // Show dependency names in tooltip
                 String desc = ARTIFACT_DESCRIPTIONS.getOrDefault(artifact.id(), artifact.id());
                 String deps = artifact.missingDeps() != null && !artifact.missingDeps().isEmpty()
                         ? "Waiting on: " + String.join(", ", artifact.missingDeps())
@@ -902,7 +768,7 @@ public class WorkflowActionPanel extends JPanel {
             });
         }
 
-        // Click and context menu handlers for all interactive states
+        // Click and context menu handlers
         chip.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -910,6 +776,7 @@ public class WorkflowActionPanel extends JPanel {
                     switch (artifact.status()) {
                         case READY -> {
                             nextArtifactId = artifact.id();
+                            lastClickedChip = chip;
                             onGenerate();
                         }
                         case DONE -> openArtifactFile(artifact);
@@ -936,7 +803,6 @@ public class WorkflowActionPanel extends JPanel {
         if (basePath == null) return;
 
         String outputPath = artifact.outputPath();
-        // For glob paths (specs), open the change directory instead
         if (outputPath.contains("*")) {
             outputPath = "";
         }
@@ -968,11 +834,12 @@ public class WorkflowActionPanel extends JPanel {
                 JMenuItem genItem = new JMenuItem("Generate");
                 genItem.addActionListener(ev -> {
                     nextArtifactId = artifact.id();
+                    lastClickedChip = (Component) e.getSource();
                     onGenerate();
                 });
                 menu.add(genItem);
 
-                // Generate All Remaining — only if Direct API and 2+ ready
+                // Generate All Remaining
                 if (getSelectedDeliveryMode() == DeliveryMode.DIRECT_API && countReadyArtifacts() >= 2) {
                     JMenuItem genAllItem = new JMenuItem("Generate All Remaining");
                     genAllItem.addActionListener(ev -> onGenerateAll());
@@ -989,7 +856,6 @@ public class WorkflowActionPanel extends JPanel {
                 menu.add(cancelItem);
             }
             default -> {
-                // BLOCKED — no context menu
                 return;
             }
         }
@@ -1013,7 +879,6 @@ public class WorkflowActionPanel extends JPanel {
             if (result != Messages.YES) return;
         }
 
-        // Treat as if this artifact is the next one to generate
         nextArtifactId = artifact.id();
         executeGeneration(getSelectedDeliveryMode());
     }
@@ -1021,7 +886,6 @@ public class WorkflowActionPanel extends JPanel {
     private void onCopyPromptForArtifact(ArtifactInfo artifact) {
         if (activeChangeName == null) return;
         nextArtifactId = artifact.id();
-        // Force clipboard delivery to copy the prompt
         executeGeneration(DeliveryMode.CLIPBOARD);
     }
 
@@ -1074,17 +938,9 @@ public class WorkflowActionPanel extends JPanel {
 
     private void applyStateToUi(String tasksContent) {
         if (tasksContent == null) {
-            generateButton.setVisible(false);
-            applyButton.setVisible(false);
-            archiveButton.setVisible(true);
-            archiveButton.setEnabled(true);
-            archiveButton.setText("Archive");
-            startNewChangeButton.setVisible(false);
-            taskProgressLabel.setVisible(false);
-            taskHintLabel.setVisible(false);
-            updateSyncSpecsVisibility();
-            updateBulkArchiveVisibility();
-            runChangeValidation();
+            hasTasksRemaining = false;
+            taskProgressStatusLabel.setVisible(false);
+            updateIconBarState();
             return;
         }
 
@@ -1094,49 +950,28 @@ public class WorkflowActionPanel extends JPanel {
         int remaining = total - complete;
 
         if (total == 0 || remaining == 0) {
-            generateButton.setVisible(false);
-            applyButton.setVisible(false);
-            archiveButton.setVisible(true);
-            archiveButton.setEnabled(true);
-            archiveButton.setText("Archive");
-            startNewChangeButton.setVisible(false);
-            taskProgressLabel.setText(total > 0 ? complete + "/" + total + " tasks complete" : "");
-            taskProgressLabel.setVisible(total > 0);
-            taskHintLabel.setVisible(false);
-            updateSyncSpecsVisibility();
-            updateBulkArchiveVisibility();
-            runChangeValidation();
+            hasTasksRemaining = false;
+            if (total > 0) {
+                taskProgressStatusLabel.setText(" \u00B7 " + complete + "/" + total + " tasks");
+                taskProgressStatusLabel.setVisible(true);
+            } else {
+                taskProgressStatusLabel.setVisible(false);
+            }
+            updateIconBarState();
             return;
         }
 
-        // Show apply button with delivery label
-        DeliveryMode mode = getSelectedDeliveryMode();
-        String suffix = switch (mode) {
-            case CLIPBOARD -> "clipboard";
-            case EDITOR_TAB -> "editor tab";
-            case DIRECT_API -> "API";
-        };
-        applyButton.setText("Apply tasks \u2192 " + suffix);
-        applyButton.setEnabled(true);
-        applyButton.setVisible(true);
-
-        taskProgressLabel.setText(complete + "/" + total + " tasks complete");
-        taskProgressLabel.setVisible(true);
-
-        // Hint for large task lists
-        taskHintLabel.setVisible(remaining >= 10);
-        if (remaining >= 10) {
-            taskHintLabel.setText("Large task list \u2014 consider reviewing tasks.md first");
-        }
+        // Tasks remaining
+        hasTasksRemaining = true;
+        taskProgressStatusLabel.setText(" \u00B7 " + complete + "/" + total + " tasks");
+        taskProgressStatusLabel.setVisible(true);
+        updateIconBarState();
     }
 
     private void onApplyTasks() {
         if (activeChangeName == null) return;
         String changeName = activeChangeName;
         String changeDir = project.getBasePath() + "/openspec/changes/" + changeName;
-
-        applyButton.setEnabled(false);
-        applyButton.setText("Preparing...");
 
         ApplicationManager.getApplication().executeOnPooledThread(() -> {
             String prompt = ApplyPromptBuilder.build(changeName, changeDir);
@@ -1154,9 +989,22 @@ public class WorkflowActionPanel extends JPanel {
                     lastPrompt = clipboardPrompt;
                     Toolkit.getDefaultToolkit().getSystemClipboard()
                             .setContents(new StringSelection(clipboardPrompt), null);
-                    ApplicationManager.getApplication().invokeLater(() ->
-                            showApplyGuidance(changeName, changeDir,
-                                    toolName.isBlank() ? null : toolName));
+                    ApplicationManager.getApplication().invokeLater(() -> {
+                        String toolLabel = toolName.isBlank() ? null : toolName;
+                        AiToolDetectionService.ToolGuidance guidance =
+                                AiToolDetectionService.getToolGuidance(toolLabel != null ? toolLabel : "your AI tool");
+                        String detail = guidance.canAutoSave()
+                                ? guidance.pasteAction() + " \u2014 watching tasks.md for progress..."
+                                : guidance.pasteAction() + ". Save tasks.md when done.";
+                        showGuidancePopover(overflowButton,
+                                "\u2713 Implementation prompt copied", detail,
+                                () -> {
+                                    Toolkit.getDefaultToolkit().getSystemClipboard()
+                                            .setContents(new StringSelection(lastPrompt), null);
+                                    OpenSpecNotifier.info(project, "Generate", "Prompt re-copied to clipboard");
+                                });
+                        startTaskWatcher(changeName, changeDir);
+                    });
                 }
                 case EDITOR_TAB -> ApplicationManager.getApplication().invokeLater(() -> {
                     try {
@@ -1174,64 +1022,30 @@ public class WorkflowActionPanel extends JPanel {
                         if (scratch != null) {
                             FileEditorManager.getInstance(project).openFile(scratch, true);
                         }
-                        showApplyGuidance(changeName, changeDir, null);
+                        showGuidancePopover(overflowButton,
+                                "\u2713 Opened in editor tab",
+                                "Copy the prompt to your AI tool, then save tasks.md when done.",
+                                null);
+                        startTaskWatcher(changeName, changeDir);
                     } catch (IOException ex) {
                         OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_SYSTEM, "Apply",
                                 "Failed to open prompt: " + ex.getMessage(), com.intellij.notification.NotificationType.ERROR);
                     }
                 });
                 case DIRECT_API -> {
-                    // Direct API: send prompt, but there's no single output file for apply
                     OpenSpecNotifier.warn(project, "Apply",
                             "Apply delivers a prompt for your AI tool to implement. Use Clipboard or Editor Tab to copy the prompt, then paste it into your AI tool.");
-                    ApplicationManager.getApplication().invokeLater(() -> {
-                        applyButton.setEnabled(true);
-                        applyButton.setText("Apply Tasks");
-                    });
                 }
             }
         });
-    }
-
-    private void showApplyGuidance(String changeName, String changeDir, String toolLabel) {
-        String toolName = toolLabel != null ? toolLabel : "your AI tool";
-        AiToolDetectionService.ToolGuidance guidance = AiToolDetectionService.getToolGuidance(toolName);
-
-        guidanceMessageLabel.setText("\u2713 Implementation prompt copied");
-        guidanceMessageLabel.setForeground(COLOR_SUCCESS);
-
-        if (guidance.canAutoSave()) {
-            guidanceWatchingLabel.setText(guidance.pasteAction() + " \u2014 watching tasks.md for progress...");
-        } else {
-            guidanceWatchingLabel.setText(guidance.pasteAction() + ". Save tasks.md when the tool finishes working through the tasks.");
-        }
-
-        guidanceWatchingLabel.setVisible(true);
-        guidanceNextLabel.setVisible(false);
-        copyAgainButton.setVisible(true);
-        checkUpdatesButton.setVisible(false);
-        guidanceDetailsPanel.setVisible(true);
-        guidancePanel.setVisible(true);
-        guidancePanel.revalidate();
-
-        applyButton.setText("Waiting...");
-        applyButton.setEnabled(false);
-
-        // Watch tasks.md for changes
-        startTaskWatcher(changeName, changeDir);
     }
 
     private void startTaskWatcher(String changeName, String changeDir) {
         disposeWatcher();
         activeWatcher = new ArtifactFileWatcher(
                 changeDir, "tasks.md",
-                () -> {
-                    // tasks.md changed — re-parse and update progress
-                    onTaskFileChanged(changeName, changeDir);
-                },
-                () -> {
-                    guidanceWatchingLabel.setText("No progress detected yet. Click 'Check progress' to refresh.");
-                }
+                () -> onTaskFileChanged(changeName, changeDir),
+                () -> OpenSpecNotifier.info(project, "Apply", "No task progress detected yet. Check tasks.md manually.")
         );
         activeWatcher.start();
     }
@@ -1245,22 +1059,17 @@ public class WorkflowActionPanel extends JPanel {
                 int total = counts[1];
 
                 ApplicationManager.getApplication().invokeLater(() -> {
-                    taskProgressLabel.setText(complete + "/" + total + " tasks complete");
+                    taskProgressStatusLabel.setText(" \u00B7 " + complete + "/" + total + " tasks");
+                    taskProgressStatusLabel.setVisible(true);
 
                     if (total > 0 && complete == total) {
-                        // All done — show archive button
-                        guidancePanel.setVisible(false);
-                        applyButton.setVisible(false);
-                        generateButton.setVisible(false);
-                        archiveButton.setVisible(true);
-                        archiveButton.setEnabled(true);
-                        archiveButton.setText("Archive");
-                        startNewChangeButton.setVisible(false);
-                        taskHintLabel.setVisible(false);
+                        hasTasksRemaining = false;
+                        updateIconBarState();
                         runChangeValidation();
                         if (onRefreshRequested != null) onRefreshRequested.run();
                     } else {
-                        guidanceWatchingLabel.setText("Progress: " + complete + "/" + total + " \u2014 still watching...");
+                        hasTasksRemaining = true;
+                        updateIconBarState();
                     }
                 });
             } catch (IOException ignored) {
@@ -1270,26 +1079,9 @@ public class WorkflowActionPanel extends JPanel {
 
     // --- Sync Specs ---
 
-    private void updateSyncSpecsVisibility() {
-        if (activeChangeName == null) {
-            syncSpecsButton.setVisible(false);
-            return;
-        }
-        String changeName = activeChangeName;
-        ApplicationManager.getApplication().executeOnPooledThread(() -> {
-            com.johnnyblabs.openspec.services.SpecSyncService syncService =
-                    project.getService(com.johnnyblabs.openspec.services.SpecSyncService.class);
-            boolean hasDelta = syncService.hasDeltaSpecs(changeName);
-            ApplicationManager.getApplication().invokeLater(() -> syncSpecsButton.setVisible(hasDelta));
-        });
-    }
-
     private void onSyncSpecs() {
         if (activeChangeName == null) return;
         String changeName = activeChangeName;
-
-        syncSpecsButton.setEnabled(false);
-        syncSpecsButton.setText("Computing...");
 
         ProgressManager.getInstance().run(new Task.Backgroundable(project, "Computing spec sync...", false) {
             @Override
@@ -1300,11 +1092,8 @@ public class WorkflowActionPanel extends JPanel {
                         syncService.computeSync(changeName);
 
                 ApplicationManager.getApplication().invokeLater(() -> {
-                    syncSpecsButton.setEnabled(true);
-                    syncSpecsButton.setText("Sync Specs");
-
                     if (results.isEmpty()) {
-                        com.johnnyblabs.openspec.util.OpenSpecNotifier.info(project, "Sync Specs",
+                        OpenSpecNotifier.info(project, "Sync Specs",
                                 "No delta specs to sync for \"" + changeName + "\"");
                         return;
                     }
@@ -1317,13 +1106,13 @@ public class WorkflowActionPanel extends JPanel {
                             public void run(@NotNull ProgressIndicator ind) {
                                 try {
                                     syncService.applySync(results);
-                                    com.johnnyblabs.openspec.util.OpenSpecNotifier.info(project, "Sync Specs",
+                                    OpenSpecNotifier.info(project, "Sync Specs",
                                             "Specs synced for \"" + changeName + "\"");
                                     if (onRefreshRequested != null) {
                                         ApplicationManager.getApplication().invokeLater(onRefreshRequested);
                                     }
                                 } catch (java.io.IOException ex) {
-                                    com.johnnyblabs.openspec.util.OpenSpecNotifier.error(project, "Sync Specs",
+                                    OpenSpecNotifier.error(project, "Sync Specs",
                                             "Failed to apply sync: " + ex.getMessage());
                                 }
                             }
@@ -1336,16 +1125,9 @@ public class WorkflowActionPanel extends JPanel {
 
     // --- Bulk Archive ---
 
-    private void updateBulkArchiveVisibility() {
-        com.johnnyblabs.openspec.services.ChangeService changeService =
-                project.getService(com.johnnyblabs.openspec.services.ChangeService.class);
-        bulkArchiveButton.setVisible(changeService.getActiveChanges().size() >= 2);
-    }
-
     private void onBulkArchive() {
-        com.johnnyblabs.openspec.services.ChangeService changeService =
-                project.getService(com.johnnyblabs.openspec.services.ChangeService.class);
-        java.util.List<com.johnnyblabs.openspec.model.Change> active = changeService.getActiveChanges();
+        ChangeService changeService = project.getService(ChangeService.class);
+        java.util.List<Change> active = changeService.getActiveChanges();
         if (active.size() < 2) return;
 
         com.johnnyblabs.openspec.dialogs.BulkArchiveDialog dialog =
@@ -1474,9 +1256,9 @@ public class WorkflowActionPanel extends JPanel {
         }
     }
 
-    private void resetComplianceChip() {
-        complianceChip.setText("Not checked");
-        complianceChip.setForeground(COLOR_BLOCKED);
+    private void resetComplianceStatus() {
+        complianceStatusLabel.setText("Not checked");
+        complianceStatusLabel.setForeground(COLOR_BLOCKED);
     }
 
     private void onComplianceCheck() {
@@ -1484,17 +1266,17 @@ public class WorkflowActionPanel extends JPanel {
         ComplianceService complianceService = project.getService(ComplianceService.class);
         com.johnnyblabs.openspec.model.ComplianceResult result = complianceService.checkCompliance(activeChangeName);
 
-        // Update chip
+        // Update status strip
         if (result.isCompliant() && result.warningCount() == 0) {
-            complianceChip.setText("Compliant");
-            complianceChip.setForeground(COLOR_DONE);
+            complianceStatusLabel.setText("\u2713 Compliant");
+            complianceStatusLabel.setForeground(COLOR_DONE);
         } else if (result.isCompliant()) {
-            complianceChip.setText(result.warningCount() + " warning" + (result.warningCount() > 1 ? "s" : ""));
-            complianceChip.setForeground(new JBColor(new java.awt.Color(200, 150, 0), new java.awt.Color(230, 180, 50)));
+            complianceStatusLabel.setText(result.warningCount() + " warning" + (result.warningCount() > 1 ? "s" : ""));
+            complianceStatusLabel.setForeground(new JBColor(new Color(200, 150, 0), new Color(230, 180, 50)));
         } else {
             int total = result.errorCount() + result.warningCount();
-            complianceChip.setText(total + " issue" + (total > 1 ? "s" : ""));
-            complianceChip.setForeground(COLOR_ERROR);
+            complianceStatusLabel.setText(total + " issue" + (total > 1 ? "s" : ""));
+            complianceStatusLabel.setForeground(COLOR_ERROR);
         }
 
         // Show compliance dialog
@@ -1530,7 +1312,6 @@ public class WorkflowActionPanel extends JPanel {
             @Override
             public void run(@NotNull ProgressIndicator indicator) {
                 try {
-                    // Create the change via CLI
                     com.johnnyblabs.openspec.util.CliRunner.CliResult result;
                     if (schema != null && !schema.isEmpty()) {
                         result = com.johnnyblabs.openspec.util.CliRunner.run(project,
@@ -1562,10 +1343,8 @@ public class WorkflowActionPanel extends JPanel {
                         ffGoButton.setEnabled(false);
                         ffCancelButton.setEnabled(true);
 
-                        // Refresh to load the new change into the selector and pipeline
                         if (onRefreshRequested != null) onRefreshRequested.run();
 
-                        // Refresh pipeline, then trigger generation based on delivery mode
                         ApplicationManager.getApplication().executeOnPooledThread(() -> {
                             refreshForChangeOnPool(finalChangeName);
                             ApplicationManager.getApplication().invokeLater(() -> {
@@ -1611,9 +1390,6 @@ public class WorkflowActionPanel extends JPanel {
         if (activeChangeName == null) return;
         String changeName = activeChangeName;
 
-        verifyButton.setEnabled(false);
-        verifyButton.setText("Verifying...");
-
         ProgressManager.getInstance().run(new Task.Backgroundable(project, "Verifying " + changeName, false) {
             @Override
             public void run(@NotNull ProgressIndicator indicator) {
@@ -1622,12 +1398,8 @@ public class WorkflowActionPanel extends JPanel {
                 com.johnnyblabs.openspec.model.VerificationReport report =
                         verificationService.verify(changeName);
 
-                ApplicationManager.getApplication().invokeLater(() -> {
-                    verifyButton.setEnabled(true);
-                    verifyButton.setText("Verify");
-
-                    new com.johnnyblabs.openspec.dialogs.VerifyReportDialog(project, report).show();
-                });
+                ApplicationManager.getApplication().invokeLater(() ->
+                        new com.johnnyblabs.openspec.dialogs.VerifyReportDialog(project, report).show());
             }
         });
     }
@@ -1638,8 +1410,7 @@ public class WorkflowActionPanel extends JPanel {
         if (activeChangeName == null) return;
         String changeName = activeChangeName;
 
-        archiveButton.setEnabled(false);
-        archiveButton.setText("Archiving...");
+        archiveIconButton.setEnabled(false);
 
         ChangeService changeService = project.getService(ChangeService.class);
         Change target = null;
@@ -1650,8 +1421,7 @@ public class WorkflowActionPanel extends JPanel {
             }
         }
         if (target == null) {
-            archiveButton.setEnabled(true);
-            archiveButton.setText("Archive");
+            archiveIconButton.setEnabled(true);
             OpenSpecNotifier.error(project, "Archive", "Change not found: " + changeName);
             return;
         }
@@ -1669,13 +1439,17 @@ public class WorkflowActionPanel extends JPanel {
                         }
                     });
 
-                    SwingUtilities.invokeLater(() -> showPostArchiveState(changeName));
+                    SwingUtilities.invokeLater(() -> {
+                        showGuidancePopover(archiveIconButton,
+                                "\u2713 " + changeName + " archived", null, null);
+                        if (onRefreshRequested != null) onRefreshRequested.run();
+                        refresh();
+                    });
                 } catch (com.intellij.openapi.progress.ProcessCanceledException e) {
                     throw e;
                 } catch (Exception ex) {
                     SwingUtilities.invokeLater(() -> {
-                        archiveButton.setEnabled(true);
-                        archiveButton.setText("Archive");
+                        archiveIconButton.setEnabled(true);
                         OpenSpecNotifier.error(project, "Archive", "Archive failed: " + ex.getMessage());
                     });
                 }
@@ -1683,35 +1457,53 @@ public class WorkflowActionPanel extends JPanel {
         });
     }
 
-    private void showPostArchiveState(String changeName) {
-        archiveButton.setVisible(false);
-        bulkArchiveButton.setVisible(false);
-        verifyButton.setVisible(false);
-        syncSpecsButton.setVisible(false);
-        generateButton.setVisible(false);
-        applyButton.setVisible(false);
-        generateAllButton.setVisible(false);
-        cancelButton.setVisible(false);
-        retryButton.setVisible(false);
-        taskHintLabel.setVisible(false);
-        taskProgressLabel.setVisible(false);
-
-        startNewChangeButton.setVisible(true);
-
-        guidanceMessageLabel.setText("\u2713 " + changeName + " archived");
-        guidanceMessageLabel.setForeground(COLOR_SUCCESS);
-        guidanceDetailsPanel.setVisible(false);
-        guidancePanel.setVisible(true);
-        guidancePanel.revalidate();
-
-        if (onRefreshRequested != null) onRefreshRequested.run();
-    }
-
     private void onStartNewChange() {
         AnAction proposeAction = ActionManager.getInstance().getAction("OpenSpec.Propose");
         if (proposeAction != null) {
             com.intellij.openapi.actionSystem.ex.ActionUtil.invokeAction(proposeAction, DataContext.EMPTY_CONTEXT, "OpenSpecWorkflowPanel", null, null);
         }
+    }
+
+    // --- Overflow menu ---
+
+    private void showOverflowMenu() {
+        JPopupMenu menu = new JPopupMenu();
+
+        JMenuItem applyItem = new JMenuItem("Apply Tasks");
+        applyItem.setEnabled(allArtifactsComplete && hasTasksRemaining);
+        applyItem.addActionListener(e -> onApplyTasks());
+        menu.add(applyItem);
+
+        JMenuItem syncItem = new JMenuItem("Sync Specs");
+        syncItem.setEnabled(hasDeltaSpecs);
+        syncItem.addActionListener(e -> onSyncSpecs());
+        menu.add(syncItem);
+
+        JMenuItem bulkItem = new JMenuItem("Bulk Archive...");
+        ChangeService cs = project.getService(ChangeService.class);
+        bulkItem.setEnabled(cs.getActiveChanges().size() >= 2);
+        bulkItem.addActionListener(e -> onBulkArchive());
+        menu.add(bulkItem);
+
+        JMenuItem complianceItem = new JMenuItem("Compliance Check");
+        complianceItem.addActionListener(e -> onComplianceCheck());
+        menu.add(complianceItem);
+
+        if (generateAllInProgress) {
+            menu.addSeparator();
+            JMenuItem cancelItem = new JMenuItem("Cancel Generation");
+            cancelItem.addActionListener(e -> onCancelGenerateAll());
+            menu.add(cancelItem);
+        }
+
+        menu.addSeparator();
+
+        JMenuItem newItem = new JMenuItem("Start New Change");
+        newItem.setIcon(AllIcons.General.Add);
+        newItem.addActionListener(e -> onStartNewChange());
+        menu.add(newItem);
+
+        menu.show(overflowButton, 0, overflowButton.getHeight());
     }
 
     // --- Change-level validation ---
@@ -1733,26 +1525,15 @@ public class WorkflowActionPanel extends JPanel {
                             .filter(i -> i.severity() == ValidationIssue.Severity.WARNING).count();
 
                     if (errorCount > 0) {
-                        String firstError = result.issues().stream()
-                                .filter(i -> i.severity() == ValidationIssue.Severity.ERROR)
-                                .findFirst().map(ValidationIssue::message).orElse("");
-                        guidanceMessageLabel.setText("\u2717 " + errorCount + " error" +
-                                (errorCount > 1 ? "s" : "") + ": " + firstError);
-                        guidanceMessageLabel.setForeground(COLOR_ERROR);
+                        complianceStatusLabel.setText("\u2717 " + errorCount + " error" + (errorCount > 1 ? "s" : ""));
+                        complianceStatusLabel.setForeground(COLOR_ERROR);
                     } else if (warnCount > 0) {
-                        String firstWarn = result.issues().stream()
-                                .filter(i -> i.severity() == ValidationIssue.Severity.WARNING)
-                                .findFirst().map(ValidationIssue::message).orElse("");
-                        guidanceMessageLabel.setText("\u26A0 " + warnCount + " warning" +
-                                (warnCount > 1 ? "s" : "") + ": " + firstWarn);
-                        guidanceMessageLabel.setForeground(JBColor.ORANGE);
+                        complianceStatusLabel.setText("\u26A0 " + warnCount + " warning" + (warnCount > 1 ? "s" : ""));
+                        complianceStatusLabel.setForeground(JBColor.ORANGE);
                     } else {
-                        guidanceMessageLabel.setText("\u2713 Change valid");
-                        guidanceMessageLabel.setForeground(COLOR_SUCCESS);
+                        complianceStatusLabel.setText("\u2713 Valid");
+                        complianceStatusLabel.setForeground(COLOR_SUCCESS);
                     }
-                    guidanceDetailsPanel.setVisible(false);
-                    guidancePanel.setVisible(true);
-                    guidancePanel.revalidate();
                 });
             }
         });
@@ -1768,11 +1549,9 @@ public class WorkflowActionPanel extends JPanel {
     private void executeGeneration(DeliveryMode mode) {
         if (activeChangeName == null || nextArtifactId == null) return;
 
-        generateButton.setEnabled(false);
-        generateButton.setText("Generating...");
-
         String changeName = activeChangeName;
         String artifactId = nextArtifactId;
+        Component chipAnchor = lastClickedChip;
 
         ProgressManager.getInstance().run(new Task.Backgroundable(project, "Generating " + artifactId, true) {
             @Override
@@ -1784,9 +1563,6 @@ public class WorkflowActionPanel extends JPanel {
 
                     lastPrompt = prompt;
                     lastOutputPath = instruction.outputPath();
-
-                    List<String> unlocks = instruction.unlocks();
-                    String nextAfterThis = unlocks.isEmpty() ? null : unlocks.getFirst();
 
                     switch (mode) {
                         case CLIPBOARD -> {
@@ -1800,9 +1576,25 @@ public class WorkflowActionPanel extends JPanel {
                             lastPrompt = clipboardPrompt;
                             Toolkit.getDefaultToolkit().getSystemClipboard()
                                     .setContents(new StringSelection(clipboardPrompt), null);
-                            ApplicationManager.getApplication().invokeLater(() ->
-                                    showInlineGuidance("clipboard", instruction.changeDir(),
-                                            lastOutputPath, toolName.isBlank() ? null : toolName, nextAfterThis));
+                            ApplicationManager.getApplication().invokeLater(() -> {
+                                String toolLabel = toolName.isBlank() ? null : toolName;
+                                AiToolDetectionService.ToolGuidance guidance =
+                                        AiToolDetectionService.getToolGuidance(toolLabel != null ? toolLabel : "your AI tool");
+                                String savePath = (instruction.changeDir() != null && lastOutputPath != null)
+                                        ? instruction.changeDir() + "/" + lastOutputPath : lastOutputPath;
+                                String detail = guidance.canAutoSave()
+                                        ? guidance.pasteAction() + " \u2014 it will save automatically."
+                                        : guidance.pasteAction() + ". Save to: " + savePath;
+                                showGuidancePopover(chipAnchor, "\u2713 Copied to clipboard", detail,
+                                        () -> {
+                                            Toolkit.getDefaultToolkit().getSystemClipboard()
+                                                    .setContents(new StringSelection(lastPrompt), null);
+                                            OpenSpecNotifier.info(project, "Generate", "Prompt re-copied to clipboard");
+                                        });
+                                if (instruction.changeDir() != null && lastOutputPath != null) {
+                                    startFileWatcher(instruction.changeDir(), lastOutputPath);
+                                }
+                            });
                         }
                         case EDITOR_TAB -> ApplicationManager.getApplication().invokeLater(() -> {
                             try {
@@ -1820,8 +1612,13 @@ public class WorkflowActionPanel extends JPanel {
                                 if (scratch != null) {
                                     FileEditorManager.getInstance(project).openFile(scratch, true);
                                 }
-                                showInlineGuidance("editor", instruction.changeDir(),
-                                        lastOutputPath, null, nextAfterThis);
+                                String savePath = (instruction.changeDir() != null && lastOutputPath != null)
+                                        ? instruction.changeDir() + "/" + lastOutputPath : lastOutputPath;
+                                showGuidancePopover(chipAnchor, "\u2713 Opened in editor tab",
+                                        "Copy to your AI tool. Save response to: " + savePath, null);
+                                if (instruction.changeDir() != null && lastOutputPath != null) {
+                                    startFileWatcher(instruction.changeDir(), lastOutputPath);
+                                }
                             } catch (IOException ex) {
                                 OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_GENERATION, "Generate",
                                         "Failed to open prompt: " + ex.getMessage(), com.intellij.notification.NotificationType.ERROR);
@@ -1855,6 +1652,9 @@ public class WorkflowActionPanel extends JPanel {
                                         OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_GENERATION, "Generate",
                                                 "Generated " + artifactId, com.intellij.notification.NotificationType.INFORMATION);
                                     }
+                                    showGuidancePopover(chipAnchor,
+                                            "\u2713 Generated " + artifactId,
+                                            "Saved to: " + outputPath, null);
                                     orchestration.invalidateCache(changeName);
                                     refresh();
                                     if (onRefreshRequested != null) onRefreshRequested.run();
@@ -1879,83 +1679,78 @@ public class WorkflowActionPanel extends JPanel {
                     ApplicationManager.getApplication().invokeLater(() ->
                             OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_GENERATION, "Generate",
                                     "Generation failed: " + ex.getMessage(), com.intellij.notification.NotificationType.ERROR));
-                } finally {
-                    ApplicationManager.getApplication().invokeLater(() -> {
-                        generateButton.setEnabled(true);
-                        generateButton.setText(buildGenerateLabel(artifactId));
-                    });
                 }
             }
         });
     }
 
-    // --- Inline guidance ---
+    // --- Guidance popover ---
 
-    private void showInlineGuidance(String deliveryType, String changeDir,
-                                     String outputPath, String toolLabel, String nextArtifact) {
-        String toolName = toolLabel != null ? toolLabel : "your AI tool";
-        AiToolDetectionService.ToolGuidance guidance = AiToolDetectionService.getToolGuidance(toolName);
+    private void showGuidancePopover(Component anchor, String title, String detail, Runnable copyAction) {
+        dismissActivePopup();
 
-        if ("clipboard".equals(deliveryType)) {
-            guidanceMessageLabel.setText("\u2713 Copied to clipboard");
-            guidanceMessageLabel.setForeground(COLOR_SUCCESS);
+        JPanel content = new JPanel();
+        content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
+        content.setBorder(JBUI.Borders.empty(8));
 
-            if (guidance.canAutoSave()) {
-                guidanceWatchingLabel.setText(guidance.pasteAction() + " \u2014 it will save automatically.");
-            } else {
-                String savePath = (changeDir != null && outputPath != null)
-                        ? changeDir + "/" + outputPath : (outputPath != null ? outputPath : "change directory");
-                guidanceWatchingLabel.setText(guidance.pasteAction() + ". Save the response to: " + savePath);
-            }
-            copyAgainButton.setVisible(true);
+        JBLabel titleLabel = new JBLabel(title);
+        titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD, 12f));
+        titleLabel.setForeground(title.contains("\u2717") ? COLOR_ERROR : COLOR_SUCCESS);
+        titleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        content.add(titleLabel);
+
+        if (detail != null) {
+            JBLabel detailLabel = new JBLabel("<html><body style='width:250px'>" + detail + "</body></html>");
+            detailLabel.setFont(detailLabel.getFont().deriveFont(Font.PLAIN, 11f));
+            detailLabel.setForeground(JBColor.GRAY);
+            detailLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+            content.add(Box.createVerticalStrut(JBUI.scale(4)));
+            content.add(detailLabel);
+        }
+
+        if (copyAction != null) {
+            com.intellij.ui.HyperlinkLabel copyLink = new com.intellij.ui.HyperlinkLabel("Copy again");
+            copyLink.setAlignmentX(Component.LEFT_ALIGNMENT);
+            copyLink.addHyperlinkListener(ev -> copyAction.run());
+            content.add(Box.createVerticalStrut(JBUI.scale(4)));
+            content.add(copyLink);
+        }
+
+        activeGuidancePopup = JBPopupFactory.getInstance()
+                .createComponentPopupBuilder(content, null)
+                .setResizable(false)
+                .setMovable(false)
+                .setRequestFocus(false)
+                .setCancelOnClickOutside(true)
+                .setCancelOnOtherWindowOpen(true)
+                .createPopup();
+
+        if (anchor != null && anchor.isShowing()) {
+            activeGuidancePopup.showUnderneathOf(anchor);
         } else {
-            guidanceMessageLabel.setText("\u2713 Opened in editor tab");
-            guidanceMessageLabel.setForeground(COLOR_SUCCESS);
-            String savePath = (changeDir != null && outputPath != null)
-                    ? changeDir + "/" + outputPath : (outputPath != null ? outputPath : "change directory");
-            guidanceWatchingLabel.setText("Copy the prompt to " + guidance.chatPanelName() + ", then save output to: " + savePath);
-            copyAgainButton.setVisible(false);
+            activeGuidancePopup.showInFocusCenter();
         }
 
-        if (nextArtifact != null) {
-            String nextText = "Next: Generate " + nextArtifact;
-            if (guidance.promptPrefix() != null) {
-                nextText += "  |  Tip: You can also use " + guidance.promptPrefix() + "propose directly in " + guidance.chatPanelName();
-            }
-            guidanceNextLabel.setText(nextText);
-            guidanceNextLabel.setVisible(true);
-        } else if (guidance.promptPrefix() != null) {
-            guidanceNextLabel.setText("Tip: You can also use " + guidance.promptPrefix() + "propose directly in " + guidance.chatPanelName());
-            guidanceNextLabel.setVisible(true);
-        } else {
-            guidanceNextLabel.setVisible(false);
-        }
-
-        guidanceWatchingLabel.setVisible(true);
-        checkUpdatesButton.setVisible(false);
-        guidanceDetailsPanel.setVisible(true);
-        guidancePanel.setVisible(true);
-        guidancePanel.revalidate();
-
-        // Set generate button to waiting state
-        if (nextArtifactId != null) {
-            generateButton.setText("Waiting for " + nextArtifactId + "...");
-            generateButton.setEnabled(false);
-        }
-
-        // Start file watcher
-        if (changeDir != null && outputPath != null) {
-            startFileWatcher(changeDir, outputPath);
-        }
+        // Auto-dismiss after 8 seconds
+        javax.swing.Timer dismissTimer = new javax.swing.Timer(8000, e -> dismissActivePopup());
+        dismissTimer.setRepeats(false);
+        dismissTimer.start();
     }
+
+    private void dismissActivePopup() {
+        if (activeGuidancePopup != null && !activeGuidancePopup.isDisposed()) {
+            activeGuidancePopup.cancel();
+        }
+        activeGuidancePopup = null;
+    }
+
+    // --- File watcher ---
 
     private void startFileWatcher(String changeDir, String outputPath) {
         disposeWatcher();
         activeWatcher = new ArtifactFileWatcher(
                 changeDir, outputPath,
                 () -> {
-                    // File detected — refresh
-                    guidancePanel.setVisible(false);
                     ArtifactOrchestrationService orchestration = project.getService(ArtifactOrchestrationService.class);
                     if (activeChangeName != null) {
                         orchestration.invalidateCache(activeChangeName);
@@ -1963,10 +1758,8 @@ public class WorkflowActionPanel extends JPanel {
                     refresh();
                     if (onRefreshRequested != null) onRefreshRequested.run();
                 },
-                () -> {
-                    // Timeout — show manual hint
-                    guidanceWatchingLabel.setText("Artifact not detected yet. Click 'Check for updates' to refresh manually.");
-                }
+                () -> OpenSpecNotifier.info(project, "Generate",
+                        "Artifact not detected yet. Right-click chip for options.")
         );
         activeWatcher.start();
     }
@@ -1978,34 +1771,7 @@ public class WorkflowActionPanel extends JPanel {
         }
     }
 
-    private void onCheckForUpdates() {
-        disposeWatcher();
-        guidancePanel.setVisible(false);
-        ArtifactOrchestrationService orchestration = project.getService(ArtifactOrchestrationService.class);
-        if (activeChangeName != null) {
-            orchestration.invalidateCache(activeChangeName);
-            // If in apply state, also check task progress
-            String changeDir = project.getBasePath() + "/openspec/changes/" + activeChangeName;
-            onTaskFileChanged(activeChangeName, changeDir);
-        }
-        refresh();
-        if (onRefreshRequested != null) onRefreshRequested.run();
-    }
-
     // --- Generate All ---
-
-    private void updateGenerateAllVisibility(ChangeArtifactDag dag) {
-        DirectApiService apiService = project.getService(DirectApiService.class);
-        boolean hasApi = apiService != null && apiService.isConfigured();
-        long remaining = dag.getArtifacts().stream()
-                .filter(a -> a.status() != ArtifactStatus.DONE)
-                .count();
-        boolean visible = hasApi && remaining >= 2;
-        generateAllButton.setVisible(visible);
-        if (visible) {
-            generateAllButton.setText("Generate All (" + remaining + ")");
-        }
-    }
 
     private void onGenerateAll() {
         if (activeChangeName == null) return;
@@ -2015,33 +1781,22 @@ public class WorkflowActionPanel extends JPanel {
         // Reset UI state
         disposeAnimations();
         generatingArtifactId = null;
-        generateButton.setEnabled(false);
-        generateButton.setText("Generating...");
-        generateAllButton.setVisible(false);
-        retryButton.setVisible(false);
-        cancelButton.setVisible(true);
-        guidancePanel.setVisible(false);
+        generateAllInProgress = true;
 
-        // Count remaining artifacts for progress bar
+        // Count remaining artifacts
         ArtifactOrchestrationService orch = project.getService(ArtifactOrchestrationService.class);
         ChangeArtifactDag currentDag = orch.getCachedArtifactStatus(changeName);
         int totalRemaining = currentDag != null
                 ? (int) currentDag.getArtifacts().stream().filter(a -> a.status() != ArtifactStatus.DONE).count()
                 : 4;
 
-        // Show progress bar
-        generateAllProgressBar.setMaximum(totalRemaining);
-        generateAllProgressBar.setValue(0);
-        generateAllProgressBar.setString("0 of " + totalRemaining + " artifacts");
-        generateAllProgressBar.setForeground(null); // reset to default color
-        generateAllProgressBar.setVisible(true);
-
         // Start elapsed timer
         generateAllStartNanos = System.nanoTime();
-        elapsedTimeLabel.setText("0s elapsed");
-        elapsedTimeLabel.setVisible(true);
-        elapsedTimer = new javax.swing.Timer(1000, e -> updateElapsedTime());
+        elapsedTimer = new javax.swing.Timer(1000, e -> updateGenerateAllStatus());
         elapsedTimer.start();
+
+        // Update status strip for generation progress
+        updateGenerateAllStatusText(0, totalRemaining);
 
         final int totalCount = totalRemaining;
 
@@ -2053,8 +1808,7 @@ public class WorkflowActionPanel extends JPanel {
                 ApplicationManager.getApplication().invokeLater(() -> {
                     if (!isDisplayable()) return;
                     generatingArtifactId = artifactId;
-                    generateButton.setText("Generating " + artifactId + "... " + index + "/" + total);
-                    // Refresh chips to show GENERATING state
+                    updateGenerateAllStatusText(completedCount, totalCount);
                     ArtifactOrchestrationService o = project.getService(ArtifactOrchestrationService.class);
                     ChangeArtifactDag dag = o.getCachedArtifactStatus(changeName);
                     if (dag != null) {
@@ -2071,12 +1825,7 @@ public class WorkflowActionPanel extends JPanel {
                     completedCount++;
                     generatingArtifactId = null;
                     stopPulseAnimation();
-
-                    // Update progress bar
-                    generateAllProgressBar.setValue(completedCount);
-                    generateAllProgressBar.setString(completedCount + " of " + totalCount + " artifacts");
-
-                    // Refresh chips
+                    updateGenerateAllStatusText(completedCount, totalCount);
                     ArtifactOrchestrationService o = project.getService(ArtifactOrchestrationService.class);
                     ChangeArtifactDag dag = o.getCachedArtifactStatus(changeName);
                     if (dag != null) {
@@ -2091,40 +1840,30 @@ public class WorkflowActionPanel extends JPanel {
                     if (!isDisplayable()) return;
                     disposeAnimations();
                     generatingArtifactId = null;
-                    cancelButton.setVisible(false);
+                    generateAllInProgress = false;
 
-                    // Completion celebration
-                    generateAllProgressBar.setValue(generateAllProgressBar.getMaximum());
-                    generateAllProgressBar.setString("All complete");
-                    generateAllProgressBar.setForeground(COLOR_SUCCESS);
+                    long elapsedSeconds = (System.nanoTime() - generateAllStartNanos) / 1_000_000_000L;
 
-                    // Flash all chips green
+                    // Flash chips green
                     flashPipelineChipsGreen(changeName);
 
-                    // Show success message
-                    guidanceMessageLabel.setText("\u2713 All artifacts generated");
-                    guidanceMessageLabel.setForeground(COLOR_SUCCESS);
-                    guidanceWatchingLabel.setText("Ready to review or apply tasks");
-                    guidanceWatchingLabel.setVisible(true);
-                    guidanceNextLabel.setVisible(false);
-                    copyAgainButton.setVisible(false);
-                    checkUpdatesButton.setVisible(false);
-                    guidanceDetailsPanel.setVisible(true);
-                    guidancePanel.setVisible(true);
-                    guidancePanel.revalidate();
+                    // Show completion in status strip briefly
+                    complianceStatusLabel.setText("\u2713 All generated");
+                    complianceStatusLabel.setForeground(COLOR_SUCCESS);
+                    taskProgressStatusLabel.setText(" \u00B7 " + formatElapsed(elapsedSeconds));
+                    taskProgressStatusLabel.setVisible(true);
 
-                    // Auto-hide progress bar and elapsed time after 3 seconds
-                    javax.swing.Timer hideTimer = new javax.swing.Timer(3000, ev -> {
-                        generateAllProgressBar.setVisible(false);
-                        elapsedTimeLabel.setVisible(false);
+                    // Notify
+                    OpenSpecNotifier.generateAllSummary(project, totalCount, elapsedSeconds);
+
+                    // Restore normal state after 3 seconds
+                    javax.swing.Timer restoreTimer = new javax.swing.Timer(3000, ev -> {
+                        resetComplianceStatus();
                         refresh();
                         if (onRefreshRequested != null) onRefreshRequested.run();
                     });
-                    hideTimer.setRepeats(false);
-                    hideTimer.start();
-
-                    long elapsedSeconds = (System.nanoTime() - generateAllStartNanos) / 1_000_000_000L;
-                    OpenSpecNotifier.generateAllSummary(project, generateAllProgressBar.getMaximum(), elapsedSeconds);
+                    restoreTimer.setRepeats(false);
+                    restoreTimer.start();
                 });
             }
 
@@ -2134,12 +1873,14 @@ public class WorkflowActionPanel extends JPanel {
                     if (!isDisplayable()) return;
                     disposeAnimations();
                     generatingArtifactId = null;
-                    cancelButton.setVisible(false);
+                    generateAllInProgress = false;
 
-                    // Error state: red progress bar
-                    generateAllProgressBar.setForeground(JBColor.RED);
+                    // Show error in status strip
+                    String msg = artifactId != null ? artifactId + " failed" : "Generation failed";
+                    complianceStatusLabel.setText("\u2717 " + msg);
+                    complianceStatusLabel.setForeground(COLOR_ERROR);
 
-                    // Show error chip state
+                    // Show error chip
                     errorArtifactId = artifactId;
                     ArtifactOrchestrationService o = project.getService(ArtifactOrchestrationService.class);
                     ChangeArtifactDag dag = o.getCachedArtifactStatus(changeName);
@@ -2147,21 +1888,12 @@ public class WorkflowActionPanel extends JPanel {
                         refreshPipelineChips(dag);
                     }
 
-                    // Show inline error message
-                    String msg = artifactId != null
-                            ? artifactId + " failed: " + exception.getMessage()
-                            : "Generation failed: " + exception.getMessage();
+                    // Show error details via notification
+                    String detail = exception.getMessage();
                     if (exception instanceof AiApiException apiEx && apiEx.getSuggestion() != null) {
-                        msg += " — " + apiEx.getSuggestion();
+                        detail += " \u2014 " + apiEx.getSuggestion();
                     }
-                    guidanceMessageLabel.setText("\u2717 " + msg);
-                    guidanceMessageLabel.setForeground(JBColor.RED);
-                    guidanceDetailsPanel.setVisible(false);
-                    guidancePanel.setVisible(true);
-                    guidancePanel.revalidate();
-
-                    // Show retry button
-                    retryButton.setVisible(true);
+                    OpenSpecNotifier.error(project, "Generate All", msg + ": " + detail);
                 });
             }
 
@@ -2171,9 +1903,7 @@ public class WorkflowActionPanel extends JPanel {
                     if (!isDisplayable()) return;
                     disposeAnimations();
                     generatingArtifactId = null;
-                    cancelButton.setVisible(false);
-                    generateAllProgressBar.setVisible(false);
-                    elapsedTimeLabel.setVisible(false);
+                    generateAllInProgress = false;
                     OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_GENERATION, "Generate All",
                             "Generation cancelled", com.intellij.notification.NotificationType.INFORMATION);
                     refresh();
@@ -2189,11 +1919,31 @@ public class WorkflowActionPanel extends JPanel {
         });
     }
 
+    private void updateGenerateAllStatus() {
+        // Called by elapsedTimer every second during Generate All
+        if (!generateAllInProgress) return;
+        // Status strip is already being updated by the listener callbacks
+        // Just update the elapsed time portion
+        long elapsed = (System.nanoTime() - generateAllStartNanos) / 1_000_000_000L;
+        deliveryModeStatusLabel.setText(" \u00B7 " + formatElapsed(elapsed) + " \u00B7 Direct API");
+    }
+
+    private void updateGenerateAllStatusText(int completed, int total) {
+        long elapsed = (System.nanoTime() - generateAllStartNanos) / 1_000_000_000L;
+        complianceStatusLabel.setText("Generating " + (completed + 1) + "/" + total + "...");
+        complianceStatusLabel.setForeground(COLOR_GENERATING);
+        taskProgressStatusLabel.setVisible(false);
+        deliveryModeStatusLabel.setText(" \u00B7 " + formatElapsed(elapsed) + " \u00B7 Direct API");
+    }
+
+    private String formatElapsed(long seconds) {
+        if (seconds < 60) return seconds + "s";
+        return (seconds / 60) + "m " + (seconds % 60) + "s";
+    }
+
     private void onCancelGenerateAll() {
         ArtifactOrchestrationService orchestration = project.getService(ArtifactOrchestrationService.class);
         orchestration.cancelGenerateAll();
-        cancelButton.setEnabled(false);
-        cancelButton.setText("Cancelling...");
     }
 
     private void refreshPipelineChips(ChangeArtifactDag dag) {
@@ -2201,7 +1951,6 @@ public class WorkflowActionPanel extends JPanel {
         List<ArtifactInfo> artifacts = dag.getArtifacts();
         for (int i = 0; i < artifacts.size(); i++) {
             ArtifactInfo a = artifacts.get(i);
-            // Override status for generating/error artifacts
             ArtifactInfo displayArtifact = a;
             if (a.id().equals(generatingArtifactId) && a.status() != ArtifactStatus.DONE) {
                 displayArtifact = new ArtifactInfo(a.id(), a.outputPath(), ArtifactStatus.GENERATING, a.missingDeps());
@@ -2221,29 +1970,15 @@ public class WorkflowActionPanel extends JPanel {
 
     // --- Animation helpers ---
 
-    private void updateElapsedTime() {
-        long elapsed = (System.nanoTime() - generateAllStartNanos) / 1_000_000_000L;
-        String text;
-        if (elapsed < 60) {
-            text = elapsed + "s elapsed";
-        } else {
-            text = (elapsed / 60) + "m " + (elapsed % 60) + "s elapsed";
-        }
-        elapsedTimeLabel.setText(text);
-    }
-
     private void startPulseAnimation() {
         stopPulseAnimation();
-        // Start spinner icon rotation
         spinnerStep = 0;
         spinnerTimer = new javax.swing.Timer(100, e -> {
             spinnerStep = (spinnerStep + 1) % 12;
-            // Trigger chip repaint by refreshing the pipeline
             pipelinePanel.repaint();
         });
         spinnerTimer.start();
 
-        // Pulse border animation
         pulseTimer = new javax.swing.Timer(600, e -> pipelinePanel.repaint());
         pulseTimer.start();
     }
@@ -2260,7 +1995,6 @@ public class WorkflowActionPanel extends JPanel {
     }
 
     private void flashPipelineChipsGreen(String changeName) {
-        // Set all chip borders to bright green
         Color flashColor = COLOR_FLASH_GREEN;
         for (Component comp : pipelinePanel.getComponents()) {
             if (comp instanceof JPanel chip) {
@@ -2269,7 +2003,6 @@ public class WorkflowActionPanel extends JPanel {
         }
         pipelinePanel.repaint();
 
-        // Restore normal state after 300ms
         javax.swing.Timer flashTimer = new javax.swing.Timer(300, e -> {
             ArtifactOrchestrationService o = project.getService(ArtifactOrchestrationService.class);
             ChangeArtifactDag dag = o.getCachedArtifactStatus(changeName);
@@ -2294,19 +2027,8 @@ public class WorkflowActionPanel extends JPanel {
     public void removeNotify() {
         disposeAnimations();
         disposeWatcher();
+        dismissActivePopup();
         super.removeNotify();
-    }
-
-    private static JTextArea createWrappingLabel(int fontStyle, float fontSize) {
-        JTextArea area = new JTextArea();
-        area.setEditable(false);
-        area.setOpaque(false);
-        area.setLineWrap(true);
-        area.setWrapStyleWord(true);
-        area.setFont(UIManager.getFont("Label.font").deriveFont(fontStyle, fontSize));
-        area.setBorder(null);
-        area.setAlignmentX(Component.LEFT_ALIGNMENT);
-        return area;
     }
 
     Icon getSpinnerIcon() {

@@ -6,12 +6,17 @@ import com.johnnyblabs.openspec.model.*;
 import com.johnnyblabs.openspec.services.ArtifactOrchestrationService;
 import com.johnnyblabs.openspec.services.ChangeService;
 import com.johnnyblabs.openspec.services.CliDetectionService;
+import com.johnnyblabs.openspec.services.ConfigService;
 import com.johnnyblabs.openspec.services.SpecParsingService;
+import com.johnnyblabs.openspec.settings.OpenSpecSettings;
 import com.johnnyblabs.openspec.util.OpenSpecFileUtil;
+import com.johnnyblabs.openspec.version.VersionSupport;
 
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeModel;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class SpecTreeModel {
     private static final Logger LOG = Logger.getInstance(SpecTreeModel.class);
@@ -41,19 +46,23 @@ public class SpecTreeModel {
         DefaultMutableTreeNode specsNode = buildSpecsNode();
         DefaultMutableTreeNode changesNode = buildChangesNode();
         DefaultMutableTreeNode archiveNode = buildArchiveNode();
+        DefaultMutableTreeNode configNode = buildConfigNode();
 
         if (normalizedQuery == null) {
             root.add(specsNode);
             root.add(changesNode);
             root.add(archiveNode);
+            root.add(configNode);
         } else {
             DefaultMutableTreeNode filteredSpecs = filterNode(specsNode, normalizedQuery);
             DefaultMutableTreeNode filteredChanges = filterNode(changesNode, normalizedQuery);
             DefaultMutableTreeNode filteredArchive = filterNode(archiveNode, normalizedQuery);
+            DefaultMutableTreeNode filteredConfig = filterNode(configNode, normalizedQuery);
 
             if (filteredSpecs != null) root.add(filteredSpecs);
             if (filteredChanges != null) root.add(filteredChanges);
             if (filteredArchive != null) root.add(filteredArchive);
+            if (filteredConfig != null) root.add(filteredConfig);
 
             if (root.getChildCount() == 0) {
                 String hint = "No results for '" + query.trim() + "'";
@@ -214,6 +223,20 @@ public class SpecTreeModel {
                 changeNode.add(new DefaultMutableTreeNode(
                         new TreeNodeData(artifactLabel, nodeType, filePath, change.getName(), artifact.id(), artifactTooltip)));
             }
+
+            // Add MISSING_ARTIFACT nodes for required artifacts not in the DAG
+            Set<String> dagIds = dag.getArtifacts().stream()
+                    .map(ArtifactInfo::id)
+                    .collect(Collectors.toSet());
+            String versionStr = OpenSpecSettings.getInstance(project).getEffectiveVersion(project);
+            VersionSupport version = VersionSupport.fromString(versionStr);
+            for (String required : version.getRequiredArtifacts()) {
+                if (!dagIds.contains(required)) {
+                    changeNode.add(new DefaultMutableTreeNode(
+                            new TreeNodeData(required, TreeNodeType.MISSING_ARTIFACT, null, change.getName(), required, "Not yet created")));
+                }
+            }
+
             return true;
         } catch (Exception e) {
             LOG.debug("Failed to load DAG for change: " + change.getName(), e);
@@ -272,10 +295,62 @@ public class SpecTreeModel {
         return archiveNode;
     }
 
+    private DefaultMutableTreeNode buildConfigNode() {
+        String configPath = project.getBasePath() + "/openspec/config.yaml";
+        ConfigService configService = project.getService(ConfigService.class);
+        OpenSpecConfig config = configService != null ? configService.getConfig() : null;
+        return buildConfigNode(config, configPath);
+    }
+
+    static DefaultMutableTreeNode buildConfigNode(OpenSpecConfig config, String configPath) {
+        DefaultMutableTreeNode configNode = new DefaultMutableTreeNode(
+                new TreeNodeData("Config", TreeNodeType.CONFIG, configPath, null, null, "openspec/config.yaml"));
+
+        if (config == null) {
+            String hint = "No config.yaml found";
+            configNode.add(new DefaultMutableTreeNode(
+                    new TreeNodeData(hint, TreeNodeType.HINT, null, null, null, hint)));
+            return configNode;
+        }
+
+        if (config.getSchema() != null && !config.getSchema().isEmpty()) {
+            configNode.add(new DefaultMutableTreeNode(
+                    new TreeNodeData("schema: " + config.getSchema(), TreeNodeType.CONFIG_ENTRY, configPath)));
+        }
+        if (config.getVersion() != null && !config.getVersion().isEmpty()) {
+            configNode.add(new DefaultMutableTreeNode(
+                    new TreeNodeData("version: " + config.getVersion(), TreeNodeType.CONFIG_ENTRY, configPath)));
+        }
+        if (config.getProfile() != null && !config.getProfile().isEmpty()) {
+            String profileName = config.getProfile().getOrDefault("name", "unnamed");
+            configNode.add(new DefaultMutableTreeNode(
+                    new TreeNodeData("profile: " + profileName, TreeNodeType.CONFIG_ENTRY, configPath,
+                            null, null, "Profile: " + config.getProfile().entrySet().stream()
+                            .map(e -> e.getKey() + "=" + e.getValue())
+                            .collect(Collectors.joining(", ")))));
+        }
+        if (config.getContext() != null && !config.getContext().isEmpty()) {
+            String truncated = config.getContext().length() > 60
+                    ? config.getContext().substring(0, 60) + "..."
+                    : config.getContext();
+            configNode.add(new DefaultMutableTreeNode(
+                    new TreeNodeData("context: " + truncated, TreeNodeType.CONFIG_ENTRY, configPath,
+                            null, null, config.getContext())));
+        }
+        if (config.getRules() != null && !config.getRules().isEmpty()) {
+            int count = config.getRules().size();
+            configNode.add(new DefaultMutableTreeNode(
+                    new TreeNodeData("rules: " + count + " defined", TreeNodeType.CONFIG_ENTRY, configPath,
+                            null, null, "Rules: " + String.join(", ", config.getRules().keySet()))));
+        }
+
+        return configNode;
+    }
+
     public enum TreeNodeType {
         SPECS, SPEC_DOMAIN, REQUIREMENT, CHANGES, CHANGE, ARTIFACT, MISSING_ARTIFACT,
         ARTIFACT_DONE, ARTIFACT_READY, ARTIFACT_BLOCKED,
-        DELTA_SPEC, ARCHIVE, HINT
+        DELTA_SPEC, ARCHIVE, CONFIG, CONFIG_ENTRY, HINT
     }
 
     public record TreeNodeData(String label, TreeNodeType type, String filePath, String changeName, String artifactId, String tooltip) {

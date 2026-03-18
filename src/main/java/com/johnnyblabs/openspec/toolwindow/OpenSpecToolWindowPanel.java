@@ -123,12 +123,14 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider {
 
         // Use a split pane so the tree gets priority and the user can resize
         JScrollPane treeScroll = new JScrollPane(tree);
+        treeScroll.setBorder(JBUI.Borders.empty());
         JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, treeScroll, bottomPanel);
         splitPane.setResizeWeight(1.0); // Tree gets all extra space
         splitPane.setContinuousLayout(true);
+        splitPane.setDividerSize(0);
         splitPane.setBorder(null);
-        // Let the bottom panel shrink to its natural size
-        bottomPanel.setMinimumSize(new Dimension(0, JBUI.scale(60)));
+        // Minimum must fit: header row + pipeline chips + icon bar + status strip
+        bottomPanel.setMinimumSize(new Dimension(0, JBUI.scale(140)));
 
         add(topPanel, BorderLayout.NORTH);
         add(splitPane, BorderLayout.CENTER);

@@ -98,6 +98,12 @@ intellijPlatform {
         }
     }
 
+    signing {
+        privateKey = providers.environmentVariable("PLUGIN_SIGNING_KEY")
+        certificateChain = providers.environmentVariable("PLUGIN_SIGNING_CERTIFICATE")
+        password = providers.environmentVariable("PLUGIN_SIGNING_KEY_PASSWORD")
+    }
+
     publishing {
         token = providers.environmentVariable("JETBRAINS_MARKETPLACE_TOKEN")
     }
