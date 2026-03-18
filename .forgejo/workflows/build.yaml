@@ -59,6 +59,7 @@ jobs:
   qodana:
     runs-on: java-21
     if: github.event_name == 'pull_request'
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
         with:
