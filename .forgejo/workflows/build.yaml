@@ -66,23 +66,10 @@ jobs:
           fetch-depth: 0
 
       - name: Check Qodana availability
-        run: |
-          echo "=== PATH ==="
-          echo "$PATH"
-          echo ""
-          echo "=== Which qodana ==="
-          which qodana || echo "qodana not found in PATH"
-          echo ""
-          echo "=== Qodana version ==="
-          qodana version || echo "qodana command failed"
-          echo ""
-          echo "=== Check common install locations ==="
-          ls -la /usr/local/bin/qodana 2>/dev/null || echo "Not in /usr/local/bin/"
-          ls -la /opt/qodana* 2>/dev/null || echo "Not in /opt/"
-          ls -la "$HOME/.local/bin/qodana" 2>/dev/null || echo "Not in ~/.local/bin/"
+        run: qodana version
 
       - name: Run Qodana Analysis
-        run: qodana scan --baseline qodana-baseline.sarif.json --fail-threshold 0 --save-report --report-dir build/qodana-report
+        run: qodana scan --ide QDJVM --baseline qodana-baseline.sarif.json --fail-threshold 0 --save-report --report-dir build/qodana-report
 
       - name: Upload Qodana results
         uses: actions/upload-artifact@v3

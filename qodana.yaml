@@ -1,11 +1,9 @@
 version: "1.0"
 
-linter: jetbrains/qodana-jvm:latest
+ide: QDJVM
 
 include:
   - name: All
-
-bootstrap: export JAVA_HOME=$QODANA_JDK_21
 
 profile:
   name: qodana.recommended
