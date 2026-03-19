@@ -18,7 +18,7 @@
 - **Conclusion**: Views API endpoint does not exist in your Plane instance
 
 ### 3. Verification
-- ✅ Plane server is running at http://plane.geek
+- ✅ Plane server is running at http://<your-plane-url>
 - ✅ API authentication is working (tested with work-items endpoint)
 - ✅ Project exists and is accessible (ID: d358203d-16dd-48c4-ba22-f82be6781dd2)
 - ✅ Other APIs work fine (projects, labels, cycles, modules, work-items)
@@ -39,7 +39,7 @@ The original setup script comments were actually **correct**:
 
 ### For Pages
 **Manual creation required** until API is available:
-1. Navigate to your Plane project at http://plane.geek
+1. Navigate to your Plane project at http://<your-plane-url>
 2. Go to Pages section
 3. Create pages manually using content from:
    - `scripts/docs/data/plane-pages/architecture.md`
@@ -57,7 +57,7 @@ The original setup script comments were actually **correct**:
    - Blocked / Stale (filter: all priorities, sort by last updated)
 
 ## Plane Version Info
-- Instance: Self-hosted at http://plane.geek
+- Instance: Self-hosted at http://<your-plane-url>
 - API Version: v1
 - Pages API: ❌ Not available
 - Views API: ❌ Not available

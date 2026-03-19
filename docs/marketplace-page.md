@@ -163,7 +163,8 @@ Paste this HTML into the "Getting Started" field:
 | **Bugtracker** | `https://github.com/fission-ai/openspec/issues` |
 | **Forum** | *(leave empty for now)* |
 | **Privacy Policy** | *(leave empty — plugin doesn't collect data)* |
-| **License / EULA** | Temporary decision: distribution currently uses JetBrains Marketplace EULA |
+| **License / EULA** | Apache License 2.0 |
+| **Source Code URL** | `https://github.com/johnnyblabs/intellij-openspec` |
 | **Copyright** | `Copyright 2026 John Boyce` |
 
 ---

@@ -49,6 +49,7 @@ intellijPlatform {
         description = "IntelliJ IDEA plugin for OpenSpec spec-driven development framework"
         vendor {
             name = "johnnyblabs"
+            url = "https://github.com/johnnyblabs/intellij-openspec"
         }
         changeNotes = """
             <h3>v0.2.3 — Manage AI Tools &amp; Branding</h3>
