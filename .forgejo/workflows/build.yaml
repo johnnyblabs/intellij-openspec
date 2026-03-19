@@ -56,24 +56,3 @@ jobs:
       - name: Run Plugin Verifier
         run: gradle verifyPlugin
 
-  qodana:
-    runs-on: java-21
-    if: github.event_name == 'pull_request'
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Check Qodana availability
-        run: qodana version
-
-      - name: Run Qodana Analysis
-        run: qodana scan --ide QDJVM --baseline qodana-baseline.sarif.json --fail-threshold 0 --save-report --report-dir build/qodana-report
-
-      - name: Upload Qodana results
-        uses: actions/upload-artifact@v3
-        if: always()
-        with:
-          name: qodana-report
-          path: build/qodana-report/

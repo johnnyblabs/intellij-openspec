@@ -1,6 +1,6 @@
-# Manual Tasks — CI, Signing & Qodana
+# Manual Tasks — CI & Signing
 
-Three changes have in-repo code complete but need manual steps on your machines.
+Two changes have in-repo code complete but need manual steps on your machines.
 This guide tells you what to do, where to do it, and why.
 
 ---
@@ -64,17 +64,7 @@ echo "DO NOT commit .pem or .b64 files to the repo."
 
 **Why:** JetBrains Marketplace uses asymmetric signing to verify plugin authenticity. The private key signs the ZIP; the public certificate lets JetBrains (and users) verify it wasn't tampered with. A 10-year cert avoids frequent rotation.
 
-### Task 2: Upload certificate to JetBrains Marketplace
-
-**Where:** MacBook (browser)
-
-1. Go to https://plugins.jetbrains.com/plugin/30678-openspec/edit
-2. Navigate to the **Signing** or **Keys** section
-3. Upload `plugin-signing-cert.pem` (the public certificate, NOT the private key)
-
-**Why:** The Marketplace needs your public certificate to verify signatures on uploaded ZIPs. This is a one-time step — the cert is valid for 10 years.
-
-### Task 3: Add secrets to Forgejo
+### Task 2: Add secrets to Forgejo
 
 **Where:** MacBook (browser) → Forgejo web UI
 
@@ -89,7 +79,7 @@ echo "DO NOT commit .pem or .b64 files to the repo."
 
 **Why:** CI needs the signing credentials at build time but they must never be in the repo. Forgejo Actions secrets are encrypted at rest and only exposed to workflow runs.
 
-### Task 4: Verify signing works
+### Task 3: Verify signing works
 
 **Where:** MacBook (push) → Server (CI runs) → Forgejo (observe)
 
@@ -102,91 +92,12 @@ echo "DO NOT commit .pem or .b64 files to the repo."
 
 ---
 
-## 3. qodana-analysis
-
-### Task 1: Install Qodana CLI on runner image
-
-**Where:** Server (Docker host)
-
-Update your `java-21` runner Dockerfile:
-
-```dockerfile
-# Add Qodana CLI
-RUN curl -fsSL https://jb.gg/qodana-cli/install | bash
-```
-
-Then rebuild and restart the runner:
-
-```bash
-docker build -t java-21 .
-# Restart the Forgejo runner container to pick up the new image
-```
-
-Verify it works:
-
-```bash
-docker run --rm java-21 qodana version
-```
-
-**Why:** Qodana is JetBrains' static analysis engine, specifically tuned for IntelliJ platform code. It catches deprecated API usage, null safety issues, and Java quality problems that generic linters miss. The CLI approach avoids Docker-in-Docker complexity on your runner.
-
-### Task 2: Generate baseline
-
-**Where:** MacBook (if Qodana CLI installed) OR Server
-
-Option A — Run locally on MacBook:
-```bash
-# Install Qodana CLI
-brew install jetbrains/utils/qodana
-
-# Run analysis and generate baseline
-qodana scan --save-report --report-dir build/qodana-report
-
-# The SARIF report becomes your baseline
-cp build/qodana-report/qodana.sarif.json qodana-baseline.sarif.json
-```
-
-Option B — Run on server via Docker:
-```bash
-docker run --rm \
-  -v "$(pwd)":/data/project \
-  -v "$(pwd)/build/qodana-report":/data/results \
-  jetbrains/qodana-jvm:latest \
-  --save-report
-
-cp build/qodana-report/qodana.sarif.json qodana-baseline.sarif.json
-```
-
-Then commit the baseline:
-```bash
-git add qodana-baseline.sarif.json
-git commit -m "Add Qodana baseline for existing issues"
-```
-
-**Why:** The baseline captures all existing issues so they don't block PRs. Only *new* issues (introduced after the baseline) will fail CI. This lets you adopt Qodana without fixing 100+ existing warnings first — you can chip away at them over time.
-
-### Task 3: Verify Qodana CI
-
-**Where:** MacBook (push) → Server (CI runs) → Forgejo (observe)
-
-1. Open a PR targeting main
-2. Confirm the `qodana` job runs (it only runs on PRs, not pushes)
-3. Check that it passes (no new issues beyond baseline)
-4. Optionally: introduce a deliberate issue (e.g., unused variable) and confirm the job fails
-
-**Why:** Validates the full pipeline works end-to-end before relying on it.
-
----
-
 ## Summary: What goes where
 
 | Task | MacBook | Server | Forgejo UI |
 |------|---------|--------|------------|
 | Generate signing key | `openssl` commands | | |
-| Upload cert to Marketplace | browser | | |
 | Add Forgejo secrets | | | settings page |
-| Install Qodana on runner | | Dockerfile update | |
-| Generate Qodana baseline | `brew install qodana` | or via Docker | |
 | Verify CI jobs | `git push` | runs the jobs | observe results |
 
 ---
@@ -198,7 +109,6 @@ Mark the remaining checkboxes in each change's `tasks.md`, then archive:
 ```
 /opsx:archive ci-verify-plugin
 /opsx:archive plugin-signing
-/opsx:archive qodana-analysis
 ```
 
 ## Cleanup
