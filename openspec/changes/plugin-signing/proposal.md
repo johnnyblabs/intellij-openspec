@@ -8,6 +8,7 @@ JetBrains Marketplace supports plugin signing — signed plugins get a verified 
 - Configure `signPlugin` in `build.gradle.kts` with environment variable-based credentials
 - Add a `sign` step to the CI workflow that signs the plugin ZIP after build
 - Upload the public certificate to JetBrains Marketplace
+- Document temporary licensing decision: distribution currently uses JetBrains Marketplace EULA
 
 ## Capabilities
 
@@ -24,3 +25,4 @@ JetBrains Marketplace supports plugin signing — signed plugins get a verified 
 - `build.gradle.kts` — add signing configuration block with env var references
 - `.forgejo/workflows/build.yaml` — add sign step after build on main
 - Runner secrets — need `PLUGIN_SIGNING_KEY`, `PLUGIN_SIGNING_CERTIFICATE`, `PLUGIN_SIGNING_KEY_PASSWORD`
+- `docs/marketplace-page.md` — keep Marketplace listing metadata in sync with the temporary EULA decision
