@@ -1,6 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 13 13">
   <!-- Document body -->
-  <rect x="1" y="0.5" width="8" height="10" rx="1.5" fill="#6E6E6E" opacity="0.2" stroke="#6E6E6E" stroke-width="0.8"/>
+  <rect x="1" y="0.5" width="8" height="10" rx="1.0" fill="#6E6E6E" opacity="0.45" stroke="#6E6E6E" stroke-width="0.8"/>
+  <!-- Dog-ear fold -->
+  <path d="M6.5 0.5 L9 0.5 L9 3 L6.5 0.5Z" fill="#6E6E6E" opacity="0.6"/>
+  <!-- Text lines -->
+  <line x1="3" y1="3.5" x2="6" y2="3.5" stroke="#6E6E6E" stroke-width="0.8" stroke-linecap="round"/>
+  <line x1="3" y1="5.5" x2="7" y2="5.5" stroke="#6E6E6E" stroke-width="0.8" stroke-linecap="round"/>
+  <line x1="3" y1="7.5" x2="5" y2="7.5" stroke="#6E6E6E" stroke-width="0.8" stroke-linecap="round"/>
   <!-- Checkmark badge -->
   <circle cx="9.5" cy="9.5" r="3" fill="#6E6E6E"/>
   <polyline points="7.8,9.5 9,10.7 11.2,8.5" fill="none" stroke="white" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
