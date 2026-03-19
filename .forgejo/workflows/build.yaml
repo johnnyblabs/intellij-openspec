@@ -9,7 +9,6 @@ on:
 env:
   PATH: /opt/gradle-9.0.0/bin:/opt/apache-maven-3.9.9/bin:/opt/java/openjdk/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
   GRADLE_OPTS: -Dorg.gradle.daemon=false
-  TERM: dumb
 
 jobs:
   build:
@@ -18,10 +17,10 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Verify environment
-        run: java -version 2>&1 | cat && gradle --version 2>&1 | cat
+        run: java -version && gradle --version
 
       - name: Build and Test
-        run: gradle build --console=plain 2>&1 | cat
+        run: gradle build
 
       - name: Upload test results
         uses: actions/upload-artifact@v3
@@ -32,7 +31,7 @@ jobs:
 
       - name: Sign plugin
         if: github.ref == 'refs/heads/main'
-        run: gradle signPlugin --console=plain 2>&1 | cat
+        run: gradle signPlugin
         env:
           PLUGIN_SIGNING_KEY: ${{ secrets.PLUGIN_SIGNING_KEY }}
           PLUGIN_SIGNING_CERTIFICATE: ${{ secrets.PLUGIN_SIGNING_CERTIFICATE }}
@@ -40,7 +39,7 @@ jobs:
 
       - name: Verify plugin signature
         if: github.ref == 'refs/heads/main'
-        run: gradle verifyPluginSignature --console=plain 2>&1 | cat
+        run: gradle verifyPluginSignature
 
       - name: Upload plugin artifact
         uses: actions/upload-artifact@v3
@@ -55,5 +54,5 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Run Plugin Verifier
-        run: gradle verifyPlugin --console=plain 2>&1 | cat
+        run: gradle verifyPlugin
 
