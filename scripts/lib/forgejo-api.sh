@@ -5,7 +5,7 @@
 # Expects FORGEJO_TOKEN and FORGEJO_URL from environment
 
 FORGEJO_OWNER="johnb"
-FORGEJO_REPO="OpenSpecPlugin"
+FORGEJO_REPO="intellij-openspec"
 FORGEJO_API="${FORGEJO_URL}/api/v1"
 FORGEJO_REPO_API="${FORGEJO_API}/repos/${FORGEJO_OWNER}/${FORGEJO_REPO}"
 

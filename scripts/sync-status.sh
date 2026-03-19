@@ -290,6 +290,6 @@ link_plane_to_forgejo
 echo "\n========================================"
 log_success "Status sync complete!"
 echo ""
-echo "  Forgejo: ${FORGEJO_URL}/johnb/OpenSpecPlugin/issues"
+echo "  Forgejo: ${FORGEJO_URL}/johnb/intellij-openspec/issues"
 echo "  Plane:   ${PLANE_URL}/openspec/projects/"
 echo "========================================"

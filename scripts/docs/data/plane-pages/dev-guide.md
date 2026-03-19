@@ -12,8 +12,8 @@
 ### Clone and Build
 
 ```bash
-git clone ssh://git@geek:222/johnb/OpenSpecPlugin.git
-cd OpenSpecPlugin
+git clone ssh://git@geek:222/johnb/intellij-openspec.git
+cd intellij-openspec
 ./gradlew build
 ```
 

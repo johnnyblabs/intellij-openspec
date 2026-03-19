@@ -19,7 +19,7 @@ KEY_FILE="${KEY_DIR}/plugin-signing-key.pem"
 CERT_FILE="${KEY_DIR}/plugin-signing-cert.pem"
 CSR_FILE="${KEY_DIR}/plugin-signing-csr.pem"
 
-REPO="johnb/OpenSpecPlugin"
+REPO="johnb/intellij-openspec"
 
 echo ""
 echo "========================================"

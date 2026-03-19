@@ -12,7 +12,7 @@
 
 ```bash
 git clone <repo-url>
-cd OpenSpecPlugin
+cd intellij-openspec
 ./gradlew build
 ```
 

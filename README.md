@@ -21,7 +21,7 @@ Install from the [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/30
 
 ```bash
 git clone <repo-url>
-cd OpenSpecPlugin
+cd intellij-openspec
 ./gradlew build
 # Install from: build/distributions/OpenSpec-*.zip
 ```

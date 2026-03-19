@@ -54,7 +54,7 @@ jobs:
         uses: actions/upload-artifact@v3
         if: github.ref == 'refs/heads/main'
         with:
-          name: OpenSpecPlugin
+          name: intellij-openspec
           path: build/distributions/*-signed.zip
 
   verify:

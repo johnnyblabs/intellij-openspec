@@ -68,7 +68,7 @@ echo "DO NOT commit .pem or .b64 files to the repo."
 
 **Where:** MacBook (browser) → Forgejo web UI
 
-1. Go to `http://forgejo.geek/johnb/OpenSpecPlugin/settings/actions/secrets`
+1. Go to `http://forgejo.geek/johnb/intellij-openspec/settings/actions/secrets`
 2. Add three secrets:
 
 | Secret Name | Value (paste from) | Notes |
