@@ -20,7 +20,7 @@
 ### 3. Verification
 - ✅ Plane server is running at http://<your-plane-url>
 - ✅ API authentication is working (tested with work-items endpoint)
-- ✅ Project exists and is accessible (ID: d358203d-16dd-48c4-ba22-f82be6781dd2)
+- ✅ Project exists and is accessible
 - ✅ Other APIs work fine (projects, labels, cycles, modules, work-items)
 
 ## Analysis
