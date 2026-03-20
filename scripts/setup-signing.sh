@@ -1,10 +1,12 @@
 #!/usr/bin/env zsh
-# setup-signing.sh — Generate plugin signing key and configure Forgejo secrets
+# setup-signing.sh — Generate plugin signing key and configure CI secrets
 #
 # Idempotent: skips key generation if keys exist, updates secrets in place
 #
 # Keys stored at: ~/.ssh/openspec/
-# Secrets set on: Forgejo repo via API
+# Secrets set on: Forgejo and GitHub repos via API
+#
+# Uses OPENSPEC_PLUGIN_PASSPHRASE env var if set, otherwise prompts interactively
 
 set -euo pipefail
 
@@ -38,23 +40,29 @@ else
   mkdir -p "$KEY_DIR"
   chmod 700 "$KEY_DIR"
 
-  echo ""
-  echo "  Choose a passphrase for the signing key."
-  echo "  This protects the key at rest and will be stored as a Forgejo secret."
-  echo ""
-  read -rs "KEY_PASSWORD?  Passphrase (hidden): "
-  echo ""
-  read -rs "KEY_PASSWORD_CONFIRM?  Confirm passphrase (hidden): "
-  echo ""
+  if [[ -n "${OPENSPEC_PLUGIN_PASSPHRASE:-}" ]]; then
+    KEY_PASSWORD="$OPENSPEC_PLUGIN_PASSPHRASE"
+    log_info "Using passphrase from OPENSPEC_PLUGIN_PASSPHRASE environment variable"
+  else
+    echo ""
+    echo "  Choose a passphrase for the signing key."
+    echo "  This protects the key at rest and will be stored as a CI secret."
+    echo "  Tip: set OPENSPEC_PLUGIN_PASSPHRASE in your shell profile to skip this prompt."
+    echo ""
+    read -rs "KEY_PASSWORD?  Passphrase (hidden): "
+    echo ""
+    read -rs "KEY_PASSWORD_CONFIRM?  Confirm passphrase (hidden): "
+    echo ""
 
-  if [[ "$KEY_PASSWORD" != "$KEY_PASSWORD_CONFIRM" ]]; then
-    log_error "Passphrases do not match. Aborting."
-    exit 1
-  fi
+    if [[ "$KEY_PASSWORD" != "$KEY_PASSWORD_CONFIRM" ]]; then
+      log_error "Passphrases do not match. Aborting."
+      exit 1
+    fi
 
-  if [[ -z "$KEY_PASSWORD" ]]; then
-    log_error "Passphrase cannot be empty. Aborting."
-    exit 1
+    if [[ -z "$KEY_PASSWORD" ]]; then
+      log_error "Passphrase cannot be empty. Aborting."
+      exit 1
+    fi
   fi
 
   # Generate private key with passphrase
@@ -91,9 +99,13 @@ echo ""
 # 2. Read passphrase if keys already existed
 # ------------------------------------------------------------------
 if [[ -z "${KEY_PASSWORD:-}" ]]; then
-  log_info "Enter the passphrase for the existing signing key:"
-  read -rs "KEY_PASSWORD?  Passphrase (hidden): "
-  echo ""
+  if [[ -n "${OPENSPEC_PLUGIN_PASSPHRASE:-}" ]]; then
+    KEY_PASSWORD="$OPENSPEC_PLUGIN_PASSPHRASE"
+  else
+    log_info "Enter the passphrase for the existing signing key:"
+    read -rs "KEY_PASSWORD?  Passphrase (hidden): "
+    echo ""
+  fi
 fi
 
 # ------------------------------------------------------------------
@@ -110,29 +122,50 @@ echo ""
 # ------------------------------------------------------------------
 # 4. Set Forgejo repository secrets
 # ------------------------------------------------------------------
-log_info "Step 3: Setting Forgejo repository secrets..."
+log_info "Step 3: Setting CI secrets..."
 
-API_AUTH_HEADER="Authorization: token ${FORGEJO_TOKEN}"
+# --- Forgejo ---
+if [[ -n "${FORGEJO_TOKEN:-}" && -n "${FORGEJO_URL:-}" ]]; then
+  log_info "Setting Forgejo repository secrets..."
+  API_AUTH_HEADER="Authorization: token ${FORGEJO_TOKEN}"
 
-set_secret() {
-  local name="$1"
-  local value="$2"
+  set_forgejo_secret() {
+    local name="$1"
+    local value="$2"
 
-  api_call PUT "${FORGEJO_URL}/api/v1/repos/${REPO}/actions/secrets/${name}" \
-    "{\"data\": $(echo -n "$value" | jq -Rs .)}"
-  local rc=$?
+    api_call PUT "${FORGEJO_URL}/api/v1/repos/${REPO}/actions/secrets/${name}" \
+      "{\"data\": $(echo -n "$value" | jq -Rs .)}"
+    local rc=$?
 
-  if [[ $rc -eq 0 || $rc -eq 2 ]]; then
-    log_success "  ${name}"
-  else
-    log_error "  Failed to set ${name}"
-    return 1
-  fi
-}
+    if [[ $rc -eq 0 || $rc -eq 2 ]]; then
+      log_success "  Forgejo: ${name}"
+    else
+      log_error "  Forgejo: Failed to set ${name}"
+      return 1
+    fi
+  }
 
-set_secret "PLUGIN_SIGNING_KEY" "$KEY_B64"
-set_secret "PLUGIN_SIGNING_CERTIFICATE" "$CERT_B64"
-set_secret "PLUGIN_SIGNING_KEY_PASSWORD" "$KEY_PASSWORD"
+  set_forgejo_secret "PLUGIN_SIGNING_KEY" "$KEY_B64"
+  set_forgejo_secret "PLUGIN_SIGNING_CERTIFICATE" "$CERT_B64"
+  set_forgejo_secret "PLUGIN_SIGNING_KEY_PASSWORD" "$KEY_PASSWORD"
+else
+  log_info "Skipping Forgejo (FORGEJO_TOKEN or FORGEJO_URL not set)"
+fi
+
+# --- GitHub ---
+GITHUB_REPO="johnnyblabs/intellij-openspec"
+if command -v gh &>/dev/null && gh auth status &>/dev/null; then
+  log_info "Setting GitHub repository secrets..."
+
+  echo "$KEY_B64" | gh secret set PLUGIN_SIGNING_KEY --repo "$GITHUB_REPO" && \
+    log_success "  GitHub: PLUGIN_SIGNING_KEY"
+  echo "$CERT_B64" | gh secret set PLUGIN_SIGNING_CERTIFICATE --repo "$GITHUB_REPO" && \
+    log_success "  GitHub: PLUGIN_SIGNING_CERTIFICATE"
+  gh secret set PLUGIN_SIGNING_KEY_PASSWORD --repo "$GITHUB_REPO" --body "$KEY_PASSWORD" && \
+    log_success "  GitHub: PLUGIN_SIGNING_KEY_PASSWORD"
+else
+  log_info "Skipping GitHub (gh CLI not authenticated)"
+fi
 
 echo ""
 
@@ -146,6 +179,7 @@ echo "========================================"
 echo ""
 echo "  Keys:    ${KEY_DIR}/"
 echo "  Secrets: PLUGIN_SIGNING_KEY, PLUGIN_SIGNING_CERTIFICATE, PLUGIN_SIGNING_KEY_PASSWORD"
+echo "  Targets: Forgejo + GitHub"
 echo ""
 echo "  The certificate is embedded in the signed ZIP automatically."
 echo "  No manual upload to JetBrains Marketplace is needed."
