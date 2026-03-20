@@ -20,7 +20,7 @@ An IDE-native client for the [OpenSpec](https://github.com/fission-ai/openspec) 
 Install from the [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/30678-openspec) (search for **OpenSpec**), or build from source:
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/johnnyblabs/intellij-openspec.git
 cd intellij-openspec
 ./gradlew build
 # Install from: build/distributions/OpenSpec-*.zip

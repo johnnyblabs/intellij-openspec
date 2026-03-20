@@ -47,6 +47,9 @@ bin/
 
 ### Secrets & signing keys ###
 scripts/.env
+
+### Personal workflow scripts (Forgejo/Plane integration) ###
+scripts/personal/
 *.pem
 *.b64
 *.p12
