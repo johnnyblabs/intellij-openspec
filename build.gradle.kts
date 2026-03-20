@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "com.johnnyblabs.openspec"
-version = "0.2.3"
+version = "0.3.0"
 
 java {
     sourceCompatibility = JavaVersion.VERSION_21
@@ -52,12 +52,21 @@ intellijPlatform {
             url = "https://github.com/johnnyblabs/intellij-openspec"
         }
         changeNotes = """
-            <h3>v0.2.3 — Manage AI Tools &amp; Branding</h3>
+            <h3>v0.3.0 — Open Source &amp; Workflow Engine</h3>
             <ul>
-                <li>New Manage AI Tools dialog: view, add, remove, and configure AI tools from a central settings panel</li>
-                <li>Hardened null safety in AI tool management to prevent crashes</li>
-                <li>Welcome screen now branded as "OpenSpec Plugin" with Fission AI attribution</li>
-                <li>Added tests for v0.2.x new code paths</li>
+                <li><b>Fast-Forward</b>: one-click change creation + full artifact generation</li>
+                <li><b>Continue</b>: incremental one-artifact-at-a-time generation</li>
+                <li><b>Verify</b>: check artifact completeness and requirement coverage</li>
+                <li><b>Pipeline redesign</b>: interactive chips with click-to-generate, context menus, icon bar, and status strip</li>
+                <li><b>Explore panel</b>: assembled project context for AI conversations with auto-refresh</li>
+                <li><b>Custom schemas</b>: list, fork, and create workflow schemas via CLI</li>
+                <li><b>Config viewer</b>: browse openspec/config.yaml as tree nodes</li>
+                <li><b>Compliance pre-flight</b>: three-category check gate before archiving</li>
+                <li><b>Delta spec sync</b>: merge ADDED/MODIFIED/REMOVED sections with diff preview</li>
+                <li><b>Bulk archive</b>: multi-change archive with conflict detection</li>
+                <li><b>Built-in validation</b>: 14 rule codes covering config, specs, changes, and delta specs</li>
+                <li><b>CLI update action</b>: refresh agent instruction files from the IDE</li>
+                <li><b>Open source</b>: Apache 2.0 license, GitHub CI, community files</li>
             </ul>
             <h3>v0.2.2 — Review Ready</h3>
             <ul>
