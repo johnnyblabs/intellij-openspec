@@ -6,5 +6,5 @@
 
 ## 2. Verification
 
-- [ ] 2.1 Push to a feature branch and confirm both `build` and `verify` jobs run in parallel
-- [ ] 2.2 Confirm verify job reports status on PRs (visible as a check)
+- [x] 2.1 Push to a feature branch and confirm both `build` and `verify` jobs run in parallel
+- [x] 2.2 Confirm verify job reports status on PRs (visible as a check)

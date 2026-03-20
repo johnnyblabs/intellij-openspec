@@ -49,6 +49,8 @@ jobs:
       - name: Verify plugin signature
         if: github.ref == 'refs/heads/main'
         run: gradle verifyPluginSignature
+        env:
+          PLUGIN_SIGNING_CERTIFICATE: ${{ secrets.PLUGIN_SIGNING_CERTIFICATE }}
 
       - name: Upload plugin artifact
         uses: actions/upload-artifact@v3

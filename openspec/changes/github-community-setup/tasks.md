@@ -1,15 +1,15 @@
 ## 1. Community Files
 
-- [ ] 1.1 Add `CONTRIBUTING.md` — dev setup (JDK 21, Gradle 9, IntelliJ 2024.2+), coding standards, PR process, branch naming conventions
-- [ ] 1.2 Add `CODE_OF_CONDUCT.md` — Contributor Covenant v2.1
-- [ ] 1.3 Add `SECURITY.md` — vulnerability reporting via email (not public issues)
+- [x] 1.1 Add `CONTRIBUTING.md` — dev setup (JDK 21, Gradle 9, IntelliJ 2024.2+), coding standards, PR process, branch naming conventions
+- [x] 1.2 Add `CODE_OF_CONDUCT.md` — Contributor Covenant v2.1
+- [x] 1.3 Add `SECURITY.md` — vulnerability reporting via email (not public issues)
 
 ## 2. Issue & PR Templates
 
-- [ ] 2.1 Create `.github/ISSUE_TEMPLATE/bug_report.md` — environment, steps to reproduce, expected vs actual behavior
-- [ ] 2.2 Create `.github/ISSUE_TEMPLATE/feature_request.md` — problem, proposed solution, alternatives
-- [ ] 2.3 Create `.github/ISSUE_TEMPLATE/config.yml` — optional: add link to Discussions for questions
-- [ ] 2.4 Create `.github/PULL_REQUEST_TEMPLATE.md` — description, testing checklist, documentation checklist
+- [x] 2.1 Create `.github/ISSUE_TEMPLATE/bug_report.md` — environment, steps to reproduce, expected vs actual behavior
+- [x] 2.2 Create `.github/ISSUE_TEMPLATE/feature_request.md` — problem, proposed solution, alternatives
+- [x] 2.3 Create `.github/ISSUE_TEMPLATE/config.yml` — optional: add link to Discussions for questions
+- [x] 2.4 Create `.github/PULL_REQUEST_TEMPLATE.md` — description, testing checklist, documentation checklist
 
 ## 3. GitHub Actions CI
 
@@ -18,10 +18,10 @@
 
 ## 4. README Updates
 
-- [ ] 4.1 Add badges to `README.md` — license, Marketplace version, build status
-- [ ] 4.2 Rewrite README for a public audience — remove internal dev references, add screenshots, link to CONTRIBUTING.md
-- [ ] 4.3 Add "Getting Started" section for users (install from Marketplace)
-- [ ] 4.4 Add "Development" section for contributors (link to CONTRIBUTING.md)
+- [x] 4.1 Add badges to `README.md` — license, Marketplace version, build status
+- [x] 4.2 Rewrite README for a public audience — remove internal dev references, add screenshots, link to CONTRIBUTING.md
+- [x] 4.3 Add "Getting Started" section for users (install from Marketplace)
+- [x] 4.4 Add "Development" section for contributors (link to CONTRIBUTING.md)
 
 ## 5. GitHub Repository Configuration (manual)
 
