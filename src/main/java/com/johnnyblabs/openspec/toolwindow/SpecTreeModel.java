@@ -14,6 +14,7 @@ import com.johnnyblabs.openspec.version.VersionSupport;
 
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeModel;
+import javax.swing.tree.TreePath;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -345,6 +346,27 @@ public class SpecTreeModel {
         }
 
         return configNode;
+    }
+
+    /**
+     * Resolves the active change name from a tree selection path.
+     * Walks up from the selected node to find a CHANGE node, returning its changeName.
+     * Returns null if the selection is not under a change (e.g., main specs, config, archive).
+     */
+    public static String resolveChangeName(TreePath path) {
+        if (path == null) return null;
+        Object[] nodes = path.getPath();
+        for (Object node : nodes) {
+            if (node instanceof DefaultMutableTreeNode treeNode) {
+                Object userObject = treeNode.getUserObject();
+                if (userObject instanceof TreeNodeData data
+                        && data.type() == TreeNodeType.CHANGE
+                        && data.changeName() != null) {
+                    return data.changeName();
+                }
+            }
+        }
+        return null;
     }
 
     public enum TreeNodeType {

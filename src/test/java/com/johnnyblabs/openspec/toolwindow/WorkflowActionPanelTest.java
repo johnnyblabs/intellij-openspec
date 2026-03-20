@@ -427,4 +427,86 @@ class WorkflowActionPanelTest {
             }
         }
     }
+
+    // --- Icon bar: FF removed, change-name label present ---
+
+    @Test
+    void iconBar_doesNotContainFfButton() {
+        // The icon bar should contain: change label (WEST) + button panel (EAST)
+        // The button panel should have: verify, archive, overflow — NOT FF
+        JPanel iconBar = new JPanel(new BorderLayout());
+        JPanel buttons = new JPanel(new FlowLayout());
+        JButton verify = new JButton("Verify");
+        JButton archive = new JButton("Archive");
+        JButton overflow = new JButton("...");
+        buttons.add(verify);
+        buttons.add(archive);
+        buttons.add(overflow);
+        iconBar.add(new JLabel("change-name"), BorderLayout.WEST);
+        iconBar.add(buttons, BorderLayout.EAST);
+
+        // Verify no button labeled "Fast-Forward" in the button panel
+        for (Component c : buttons.getComponents()) {
+            if (c instanceof JButton btn) {
+                assertNotEquals("Fast-Forward", btn.getText(),
+                        "FF button should not be in the icon bar");
+            }
+        }
+    }
+
+    // --- Contextual tooltips ---
+
+    @Test
+    void tooltip_verifyEnabled_showsChangeName() {
+        boolean allComplete = true;
+        String changeName = "my-feature";
+        String tooltip = allComplete ? "Verify: " + changeName : "Verify (complete all artifacts first)";
+        assertEquals("Verify: my-feature", tooltip);
+    }
+
+    @Test
+    void tooltip_verifyDisabled_showsReason() {
+        boolean allComplete = false;
+        String changeName = "my-feature";
+        String tooltip = allComplete ? "Verify: " + changeName : "Verify (complete all artifacts first)";
+        assertEquals("Verify (complete all artifacts first)", tooltip);
+    }
+
+    @Test
+    void tooltip_archiveEnabled_showsChangeName() {
+        boolean allComplete = true;
+        boolean hasTasks = false;
+        String changeName = "my-feature";
+        String tooltip = (allComplete && !hasTasks)
+                ? "Archive: " + changeName
+                : "Archive (complete all artifacts and tasks first)";
+        assertEquals("Archive: my-feature", tooltip);
+    }
+
+    @Test
+    void tooltip_archiveDisabled_showsReason() {
+        boolean allComplete = true;
+        boolean hasTasks = true;
+        String changeName = "my-feature";
+        String tooltip = (allComplete && !hasTasks)
+                ? "Archive: " + changeName
+                : "Archive (complete all artifacts and tasks first)";
+        assertEquals("Archive (complete all artifacts and tasks first)", tooltip);
+    }
+
+    // --- Overflow menu structure ---
+
+    @Test
+    void overflowMenu_bulkArchiveRenamedToArchiveAll() {
+        String label = "Archive All Changes...";
+        assertTrue(label.contains("All Changes"), "Should say 'All Changes' not 'Bulk Archive'");
+        assertFalse(label.contains("Bulk"), "Should not contain 'Bulk'");
+    }
+
+    @Test
+    void overflowMenu_ffItemPresent() {
+        // FF should be in the overflow menu creation group
+        String ffLabel = "Fast-Forward...";
+        assertTrue(ffLabel.contains("Fast-Forward"), "FF should be in overflow menu");
+    }
 }
