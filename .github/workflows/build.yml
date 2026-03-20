@@ -52,7 +52,9 @@ jobs:
         if: github.ref == 'refs/heads/main'
         run: ./gradlew verifyPluginSignature
         env:
+          PLUGIN_SIGNING_KEY: ${{ secrets.PLUGIN_SIGNING_KEY }}
           PLUGIN_SIGNING_CERTIFICATE: ${{ secrets.PLUGIN_SIGNING_CERTIFICATE }}
+          PLUGIN_SIGNING_KEY_PASSWORD: ${{ secrets.PLUGIN_SIGNING_KEY_PASSWORD }}
 
       - name: Upload plugin artifact
         uses: actions/upload-artifact@v4
