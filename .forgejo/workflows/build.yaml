@@ -38,15 +38,8 @@ jobs:
           name: test-results
           path: build/test-results/test/
 
-      - name: Debug ref context
-        run: |
-          echo "github.ref=${{ github.ref }}"
-          echo "github.event_name=${{ github.event_name }}"
-          echo "github.base_ref=${{ github.base_ref }}"
-          echo "github.head_ref=${{ github.head_ref }}"
-
       - name: Sign plugin
-        if: github.ref == 'refs/heads/main' || (github.event_name == 'push' && github.base_ref == 'main')
+        if: github.ref == 'refs/heads/main' || github.base_ref == 'main'
         run: gradle signPlugin
         env:
           PLUGIN_SIGNING_KEY: ${{ secrets.PLUGIN_SIGNING_KEY }}
@@ -54,7 +47,7 @@ jobs:
           PLUGIN_SIGNING_KEY_PASSWORD: ${{ secrets.PLUGIN_SIGNING_KEY_PASSWORD }}
 
       - name: Verify plugin signature
-        if: github.ref == 'refs/heads/main' || (github.event_name == 'push' && github.base_ref == 'main')
+        if: github.ref == 'refs/heads/main' || github.base_ref == 'main'
         continue-on-error: true
         run: gradle verifyPluginSignature
         env:
@@ -63,7 +56,7 @@ jobs:
           PLUGIN_SIGNING_KEY_PASSWORD: ${{ secrets.PLUGIN_SIGNING_KEY_PASSWORD }}
 
       - name: Upload plugin artifact
-        if: github.ref == 'refs/heads/main' || (github.event_name == 'push' && github.base_ref == 'main')
+        if: github.ref == 'refs/heads/main' || github.base_ref == 'main'
         uses: actions/upload-artifact@v3
         with:
           name: intellij-openspec
