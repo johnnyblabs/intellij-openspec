@@ -12,7 +12,7 @@ An IntelliJ IDEA plugin for the OpenSpec spec-driven development framework. It l
 ## Project Structure
 
 ```
-OpenSpecPlugin/
+intellij-openspec/
 ├── openspec/                          # OpenSpec project metadata
 │   ├── config.yaml                    # Schema, profile, rules
 │   ├── specs/                         # Main specifications (source of truth)

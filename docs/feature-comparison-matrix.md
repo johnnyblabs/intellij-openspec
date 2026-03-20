@@ -8,7 +8,7 @@ A comprehensive comparison of the OpenSpec IntelliJ plugin against all known VS 
 
 | Extension | IDE | Publisher | Version | Installs | Status |
 |---|---|---|---|---|---|
-| **OpenSpec IntelliJ Plugin** | IntelliJ IDEA 2024.2+ | johnb | 0.1.0-dev | — | In development |
+| **OpenSpec IntelliJ Plugin** | IntelliJ IDEA 2024.2+ | johnb | 0.2.3 | — | Published |
 | **OpenSpec** (Codder13) | VS Code | Denis Bolba | 0.0.5 | 1,972 | Community, proposed official |
 | **OpenSpec for Copilot** | VS Code | atman-dev | 1.0.0 | 956 | Community |
 | **OpenSpec VSCode** | VS Code | AngDrew | 1.3.0 | 592 | Community |
@@ -26,6 +26,13 @@ A comprehensive comparison of the OpenSpec IntelliJ plugin against all known VS 
 | Archive change | Yes (panel action) | No | Yes | No | No |
 | List specs/changes | Yes (tree + menu) | No | Partial | Yes | Yes |
 | Full lifecycle (init -> archive) | Yes | No | Partial | No | No |
+| Fast-Forward (create + generate all) | Yes (one-click) | No | No | No | No |
+| Continue (generate next artifact) | Yes | No | No | No | No |
+| Verify (check completeness) | Yes (report dialog) | No | No | No | No |
+| Sync delta specs to main specs | Yes (preview dialog) | No | No | No | No |
+| Bulk archive (multi-change) | Yes (conflict detection) | No | No | No | No |
+| CLI update (refresh agent files) | Yes | No | No | No | No |
+| Explore (project context assembly) | Yes (panel + copy) | No | No | No | No |
 
 ---
 
@@ -124,6 +131,8 @@ A comprehensive comparison of the OpenSpec IntelliJ plugin against all known VS 
 | Auto-refresh toggle | Yes | No | No | No | No |
 | AI provider/model selection | Yes | No | No | No | No |
 | Preferred delivery method | Yes (persisted) | No | No | No | No |
+| Config profile display | Yes | No | No | No | No |
+| Custom schema management (fork/new) | Yes (CLI v1.2.0+) | No | No | No | No |
 
 ---
 
@@ -143,12 +152,19 @@ A comprehensive comparison of the OpenSpec IntelliJ plugin against all known VS 
 
 ### IntelliJ Plugin (This Plugin)
 - Full IDE-native experience (inspections, annotations, line markers, tool window)
-- Multi-provider Direct API generation with secure credential storage
+- Multi-provider Direct API generation with secure credential storage (Claude, OpenAI, Gemini)
 - Visual artifact pipeline with DAG-driven workflow
 - Scaffolding detection preventing false "complete" status
 - AI tool detection with type-aware guidance (CLI vs IDE panel)
 - Built-in + CLI-enhanced validation with inline results
 - Works fully offline without CLI (built-in fallback mode)
+- Fast-Forward: one-click change creation + full artifact generation
+- Spec sync: merge delta specs into main specs with preview dialog
+- Bulk archive with conflict detection for multi-change projects
+- Explore panel: assembled project context for AI conversations
+- Custom schema management: fork, create, and switch workflow schemas
+- Config profile display and workflow management
+- Verify action: completeness and coverage checking with report dialog
 
 ### Codder13 (VS Code)
 - CodeLens integration on `tasks.md` — click a task to open Copilot Chat with full project context injected
@@ -204,7 +220,7 @@ AvantMedia:      Narrow and simple (monitoring only)
 
 | Feature | Who Has It | Priority | Planned |
 |---|---|---|---|
-| CodeLens on tasks (click to start AI chat) | Codder13 | High | v0.2.0 |
+| CodeLens on tasks (click to start AI chat) | Codder13 | High | Partial — gutter markers on `@spec` annotations exist |
 | Chat Participant API (write into Copilot Chat) | Codder13, atman-dev | Medium | No IntelliJ equivalent API |
 | Auto-inject project context into AI chat | Codder13 | Medium | Investigate |
 | GitHub issue creation from changes | atman-dev | Low | — |

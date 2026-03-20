@@ -4,7 +4,7 @@ plugins {
     id("org.jetbrains.intellij.platform.settings") version "2.13.0"
 }
 
-rootProject.name = "OpenSpecPlugin"
+rootProject.name = "intellij-openspec"
 
 dependencyResolutionManagement {
     repositoriesMode = RepositoriesMode.FAIL_ON_PROJECT_REPOS

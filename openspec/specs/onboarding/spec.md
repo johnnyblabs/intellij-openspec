@@ -22,7 +22,8 @@ The plugin SHALL provide a multi-step wizard (CLI detection, AI tool selection, 
 The plugin SHALL display a state-aware onboarding panel with states: NOT_INITIALIZED, NO_AI_CONFIGURED, NO_CHANGES, and READY.
 
 #### Scenario: State detection priority
-- **WHEN** detecting state, the plugin SHALL check in order: initialized → has active/archived changes → AI configured → no changes
+- **WHEN** detecting state
+- **THEN** the plugin SHALL check in order: initialized → has active/archived changes → AI configured → no changes
 
 #### Scenario: Projects with history skip onboarding
 - **WHEN** `openspec/changes/archive/` contains archived changes

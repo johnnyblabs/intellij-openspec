@@ -41,6 +41,9 @@
         <projectService serviceImplementation="com.johnnyblabs.openspec.services.SpecCoverageService"/>
         <projectService serviceImplementation="com.johnnyblabs.openspec.services.VerificationService"/>
         <projectService serviceImplementation="com.johnnyblabs.openspec.services.SpecSyncService"/>
+        <projectService serviceImplementation="com.johnnyblabs.openspec.services.SchemaService"/>
+        <projectService serviceImplementation="com.johnnyblabs.openspec.services.ExploreContextService"/>
+        <projectService serviceImplementation="com.johnnyblabs.openspec.services.ComplianceService"/>
 
         <!-- Settings -->
         <projectConfigurable instance="com.johnnyblabs.openspec.settings.OpenSpecConfigurable"
@@ -56,6 +59,7 @@
         <notificationGroup id="OpenSpec.Generation" displayType="BALLOON"/>
         <notificationGroup id="OpenSpec.Validation" displayType="BALLOON"/>
         <notificationGroup id="OpenSpec.System" displayType="STICKY_BALLOON"/>
+        <notificationGroup id="OpenSpec.Compliance" displayType="STICKY_BALLOON"/>
 
         <!-- File Types -->
         <fileType name="OpenSpec YAML"
@@ -174,6 +178,11 @@
                     text="Refresh"
                     description="Refresh the OpenSpec tool window"
                     icon="AllIcons.Actions.Refresh"/>
+            <action id="OpenSpec.Update"
+                    class="com.johnnyblabs.openspec.actions.OpenSpecUpdateAction"
+                    text="Update OpenSpec"
+                    description="Refresh agent instruction files via openspec update"
+                    icon="AllIcons.Actions.Download"/>
             <action id="OpenSpec.ManageTools"
                     class="com.johnnyblabs.openspec.actions.OpenSpecManageToolsAction"
                     text="Manage AI Tools..."
@@ -197,6 +206,7 @@
             <reference ref="OpenSpec.Verify"/>
             <reference ref="OpenSpec.SyncSpecs"/>
             <reference ref="OpenSpec.BulkArchive"/>
+            <reference ref="OpenSpec.Update"/>
             <reference ref="OpenSpec.ManageTools"/>
             <reference ref="OpenSpec.SetupWizard"/>
         </group>

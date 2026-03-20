@@ -76,16 +76,28 @@ public final class DirectApiService {
      */
     public String testConnection() throws AiApiException {
         AiProvider provider = getProvider();
-        if (provider == AiProvider.NONE) {
-            throw new AiApiException("No AI provider configured");
-        }
-
         String apiKey = AiCredentialStore.getApiKey(provider);
-        if (apiKey == null || apiKey.isBlank()) {
-            throw new AiApiException("No API key stored for " + provider.getDisplayName());
+        String model = getModel(provider);
+        return testConnection(provider, apiKey, model);
+    }
+
+    /**
+     * Tests the API connection using explicit provider, key, and model values.
+     * Used by the settings panel to test before Apply is clicked.
+     */
+    public String testConnection(AiProvider provider, String apiKey, String model) throws AiApiException {
+        if (provider == AiProvider.NONE) {
+            throw new AiApiException("No AI provider selected");
         }
 
-        String model = getModel(provider);
+        if (apiKey == null || apiKey.isBlank()) {
+            throw new AiApiException("No API key provided for " + provider.getDisplayName());
+        }
+
+        if (model == null || model.isBlank()) {
+            model = provider.getDefaultModel();
+        }
+
         String testPrompt = "Respond with exactly: OK";
 
         try {

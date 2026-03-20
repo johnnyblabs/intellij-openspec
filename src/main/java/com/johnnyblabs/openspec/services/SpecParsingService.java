@@ -25,7 +25,7 @@ public final class SpecParsingService {
 
     private static final Pattern TITLE_PATTERN = Pattern.compile("^#\\s+(.+)$", Pattern.MULTILINE);
     private static final Pattern REQUIREMENT_PATTERN = Pattern.compile("^###\\s+Requirement:\\s+(.+)$", Pattern.MULTILINE);
-    private static final Pattern SCENARIO_PATTERN = Pattern.compile("^\\*\\*Scenario:\\s+(.+?)\\*\\*$", Pattern.MULTILINE);
+    private static final Pattern SCENARIO_PATTERN = Pattern.compile("^(?:#{4}\\s+Scenario:\\s+(.+)|\\*\\*Scenario:\\s+(.+?)\\*\\*)$", Pattern.MULTILINE);
     private static final Pattern KEYWORD_PATTERN = Pattern.compile("\\b(SHALL NOT|SHOULD NOT|SHALL|SHOULD|MAY)\\b");
 
     private final Project project;
@@ -99,15 +99,26 @@ public final class SpecParsingService {
 
             String bodyStart = reqSection.substring(nameMatcher.end()).trim();
             int scenarioIdx = bodyStart.indexOf("**Scenario:");
-            if (scenarioIdx > 0) {
-                req.setBody(bodyStart.substring(0, scenarioIdx).trim());
+            int headingScenarioIdx = bodyStart.indexOf("#### Scenario:");
+            int firstScenario = -1;
+            if (scenarioIdx > 0 && headingScenarioIdx > 0) {
+                firstScenario = Math.min(scenarioIdx, headingScenarioIdx);
+            } else if (scenarioIdx > 0) {
+                firstScenario = scenarioIdx;
+            } else if (headingScenarioIdx > 0) {
+                firstScenario = headingScenarioIdx;
+            }
+            if (firstScenario > 0) {
+                req.setBody(bodyStart.substring(0, firstScenario).trim());
             } else {
                 req.setBody(bodyStart.trim());
             }
 
             Matcher scenarioMatcher = SCENARIO_PATTERN.matcher(reqSection);
             while (scenarioMatcher.find()) {
-                String scenarioName = scenarioMatcher.group(1).trim();
+                String scenarioName = scenarioMatcher.group(1) != null
+                        ? scenarioMatcher.group(1).trim()
+                        : scenarioMatcher.group(2).trim();
                 Scenario scenario = new Scenario(scenarioName);
 
                 int scenarioStart = scenarioMatcher.end();

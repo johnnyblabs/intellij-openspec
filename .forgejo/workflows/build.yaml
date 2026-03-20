@@ -16,6 +16,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-build-${{ hashFiles('**/*.gradle.kts', 'gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: gradle-build-
+
       - name: Verify environment
         run: java -version && gradle --version
 
@@ -29,19 +38,39 @@ jobs:
           name: test-results
           path: build/test-results/test/
 
+      - name: Sign plugin
+        if: github.ref == 'refs/heads/main'
+        run: gradle signPlugin
+        env:
+          PLUGIN_SIGNING_KEY: ${{ secrets.PLUGIN_SIGNING_KEY }}
+          PLUGIN_SIGNING_CERTIFICATE: ${{ secrets.PLUGIN_SIGNING_CERTIFICATE }}
+          PLUGIN_SIGNING_KEY_PASSWORD: ${{ secrets.PLUGIN_SIGNING_KEY_PASSWORD }}
+
+      - name: Verify plugin signature
+        if: github.ref == 'refs/heads/main'
+        run: gradle verifyPluginSignature
+
       - name: Upload plugin artifact
         uses: actions/upload-artifact@v3
         if: github.ref == 'refs/heads/main'
         with:
-          name: OpenSpecPlugin
-          path: build/distributions/*.zip
+          name: intellij-openspec
+          path: build/distributions/*-signed.zip
 
   verify:
     runs-on: java-21
-    needs: build
-    if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
 
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-verify-${{ hashFiles('**/*.gradle.kts', 'gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: gradle-verify-
+
       - name: Run Plugin Verifier
         run: gradle verifyPlugin
+

@@ -49,6 +49,7 @@ intellijPlatform {
         description = "IntelliJ IDEA plugin for OpenSpec spec-driven development framework"
         vendor {
             name = "johnnyblabs"
+            url = "https://github.com/johnnyblabs/intellij-openspec"
         }
         changeNotes = """
             <h3>v0.2.3 — Manage AI Tools &amp; Branding</h3>
@@ -96,6 +97,12 @@ intellijPlatform {
             sinceBuild = "242"
             untilBuild = provider { null }
         }
+    }
+
+    signing {
+        privateKey = providers.environmentVariable("PLUGIN_SIGNING_KEY")
+        certificateChain = providers.environmentVariable("PLUGIN_SIGNING_CERTIFICATE")
+        password = providers.environmentVariable("PLUGIN_SIGNING_KEY_PASSWORD")
     }
 
     publishing {

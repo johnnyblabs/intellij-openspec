@@ -45,8 +45,12 @@ bin/
 ### IntelliJ Platform Gradle Plugin ###
 .intellijPlatform/
 
-### Setup tokens ###
+### Secrets & signing keys ###
 scripts/.env
+*.pem
+*.b64
+*.p12
+plugin-signing-*
 
 ### Per-user plugin settings ###
 .idea/openspec.xml

@@ -12,7 +12,7 @@
 ## Project Structure
 
 ```
-OpenSpecPlugin/
+intellij-openspec/
 ├── build.gradle.kts           # Build configuration
 ├── settings.gradle.kts        # Project settings
 ├── gradle/wrapper/            # Gradle wrapper

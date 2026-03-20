@@ -12,6 +12,7 @@ import com.intellij.openapi.vfs.VirtualFileManager;
 import com.intellij.openapi.vfs.newvfs.BulkFileListener;
 import com.intellij.openapi.vfs.newvfs.events.VFileEvent;
 import com.intellij.ui.SearchTextField;
+import com.intellij.util.ui.JBUI;
 import com.intellij.ui.treeStructure.Tree;
 import com.intellij.util.Alarm;
 import com.johnnyblabs.openspec.actions.CreateDeltaSpecAction;
@@ -91,21 +92,27 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider {
             public void changedUpdate(DocumentEvent e) { debouncedFilter(); }
         });
 
-        // Status bar
+        // Status bar — compact single row
         statusLabel = new JLabel();
+        statusLabel.setFont(statusLabel.getFont().deriveFont(Font.PLAIN, 11f));
         aiStatusLabel = new JLabel();
+        aiStatusLabel.setFont(aiStatusLabel.getFont().deriveFont(Font.PLAIN, 11f));
         updateCliStatus();
         updateAiStatus();
-        JPanel statusBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
+        JPanel statusBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        statusBar.setBorder(JBUI.Borders.empty(2, 4, 2, 4));
         statusBar.add(statusLabel);
-        statusBar.add(new JLabel(" | "));
+        JLabel sep = new JLabel("|");
+        sep.setForeground(JBColor.GRAY);
+        sep.setFont(sep.getFont().deriveFont(Font.PLAIN, 11f));
+        statusBar.add(sep);
         statusBar.add(aiStatusLabel);
 
         // Workflow action panel
         workflowPanel = new WorkflowActionPanel(project);
         workflowPanel.setOnRefreshRequested(this::refreshAsync);
 
-        JPanel bottomPanel = new JPanel(new BorderLayout());
+        JPanel bottomPanel = new JPanel(new BorderLayout(0, 0));
         bottomPanel.add(workflowPanel, BorderLayout.CENTER);
         bottomPanel.add(statusBar, BorderLayout.SOUTH);
 
@@ -114,33 +121,52 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider {
         topPanel.add(createActionToolbar(), BorderLayout.NORTH);
         topPanel.add(searchField, BorderLayout.SOUTH);
 
+        // Use a split pane so the tree gets priority and the user can resize
+        JScrollPane treeScroll = new JScrollPane(tree);
+        treeScroll.setBorder(JBUI.Borders.empty());
+        JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, treeScroll, bottomPanel);
+        splitPane.setResizeWeight(1.0); // Tree gets all extra space
+        splitPane.setContinuousLayout(true);
+        splitPane.setDividerSize(0);
+        splitPane.setBorder(null);
+        // Minimum must fit: header row + pipeline chips + icon bar + status strip
+        bottomPanel.setMinimumSize(new Dimension(0, JBUI.scale(140)));
+
         add(topPanel, BorderLayout.NORTH);
-        add(new JScrollPane(tree), BorderLayout.CENTER);
-        add(bottomPanel, BorderLayout.SOUTH);
+        add(splitPane, BorderLayout.CENTER);
 
         registerFileListener();
         refreshAsync();
     }
 
     private void refreshAsync() {
-        String query = searchField.getText();
-        boolean hasFilter = query != null && !query.isBlank();
-        Set<String> expandedLabels = hasFilter ? null : saveExpansionState();
-        ApplicationManager.getApplication().executeOnPooledThread(() -> {
-            SpecTreeModel treeModel = new SpecTreeModel(project);
-            DefaultTreeModel model = treeModel.buildModel(hasFilter ? query : null);
-            ApplicationManager.getApplication().invokeLater(() -> {
-                tree.setModel(model);
-                if (hasFilter) {
-                    expandAllNodes();
-                } else if (expandedLabels != null) {
-                    restoreExpansionState(expandedLabels);
-                }
-                updateCliStatus();
-                updateAiStatus();
+        // Ensure expansion state is captured on EDT before background work
+        Runnable doRefresh = () -> {
+            String query = searchField.getText();
+            boolean hasFilter = query != null && !query.isBlank();
+            Set<String> expandedLabels = hasFilter ? null : saveExpansionState();
+            ApplicationManager.getApplication().executeOnPooledThread(() -> {
+                SpecTreeModel treeModel = new SpecTreeModel(project);
+                DefaultTreeModel model = treeModel.buildModel(hasFilter ? query : null);
+                ApplicationManager.getApplication().invokeLater(() -> {
+                    tree.setModel(model);
+                    if (hasFilter) {
+                        expandAllNodes();
+                    } else if (expandedLabels != null) {
+                        restoreExpansionState(expandedLabels);
+                    }
+                    updateCliStatus();
+                    updateAiStatus();
+                });
             });
-        });
-        workflowPanel.refresh();
+            workflowPanel.refresh();
+        };
+
+        if (ApplicationManager.getApplication().isDispatchThread()) {
+            doRefresh.run();
+        } else {
+            ApplicationManager.getApplication().invokeLater(doRefresh);
+        }
     }
 
     private void debouncedFilter() {

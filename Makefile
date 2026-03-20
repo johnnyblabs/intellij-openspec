@@ -1,4 +1,4 @@
-PLUGIN_NAME  := OpenSpecPlugin
+PLUGIN_NAME  := intellij-openspec
 IDEA_VERSION := IntelliJIdea2025.3
 PLUGINS_DIR  := $(HOME)/Library/Application Support/JetBrains/$(IDEA_VERSION)/plugins
 DIST_DIR     := build/distributions

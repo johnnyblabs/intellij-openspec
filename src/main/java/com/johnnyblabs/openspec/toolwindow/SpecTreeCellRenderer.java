@@ -1,5 +1,6 @@
 package com.johnnyblabs.openspec.toolwindow;
 
+import com.intellij.icons.AllIcons;
 import com.intellij.openapi.util.IconLoader;
 import com.intellij.ui.JBColor;
 
@@ -104,6 +105,8 @@ public class SpecTreeCellRenderer extends DefaultTreeCellRenderer {
             case MISSING_ARTIFACT -> MISSING_ARTIFACT_ICON;
             case DELTA_SPEC -> DELTA_SPEC_ICON;
             case ARCHIVE -> ARCHIVE_ICON;
+            case CONFIG -> AllIcons.General.Settings;
+            case CONFIG_ENTRY -> null;
             case HINT -> null;
         };
     }

@@ -2,17 +2,25 @@ schema: spec-driven
 version: "1.2.0"
 
 profile:
-  name: OpenSpecPlugin
-  description: IntelliJ IDEA plugin for OpenSpec spec-driven development
+  name: intellij-openspec
+  description: IDE-native client for the OpenSpec spec-driven development framework
   language: Java 21
   framework: IntelliJ Platform SDK 2024.2+
   build: Gradle with IntelliJ Platform Gradle Plugin 2.11.0
+  license: Apache-2.0
+  repository: https://github.com/johnnyblabs/intellij-openspec
+  vendor: johnnyblabs
 
-context: "IntelliJ Platform plugin (extensions, services, actions) with YAML/Markdown parsing, OpenSpec CLI integration, and tree-based UI (JTree, tool windows)"
+context: >
+  IntelliJ Platform plugin providing spec browsing (JTree tool window),
+  workflow orchestration (propose → design → specify → implement → archive),
+  AI bridge (clipboard, editor tab, and direct API delivery to Claude, OpenAI,
+  and Gemini), coverage analysis (@spec gutter markers), and OpenSpec CLI
+  integration with built-in fallback for CLI-less environments.
 
 rules:
   services: "All services SHALL be registered as IntelliJ project services"
   rfc-keywords: "Specs SHALL use RFC 2119 keywords (SHALL, SHOULD, MAY)"
   scenarios: "Scenarios SHALL follow Given-When-Then structure"
   compatibility: "Plugin SHALL support IntelliJ IDEA 2024.2 and later"
-  post-archive: "After archiving a change, the tool SHALL commit all changes, push to remote, close the related Forgejo issue with a completion comment, and move the related Plane work item to Done"
+  post-archive: "After archiving a change, the tool SHALL commit all changes and push to remote"

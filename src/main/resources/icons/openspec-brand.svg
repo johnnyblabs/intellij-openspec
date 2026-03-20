@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
   <!-- Document body -->
-  <rect x="4.8" y="2.4" width="17.6" height="24" rx="2.4" fill="#6C5CE7" opacity="0.15" stroke="#6C5CE7" stroke-width="1.2"/>
+  <rect x="4.8" y="2.4" width="17.6" height="24" rx="2.4" fill="#6C5CE7" opacity="0.35" stroke="#6C5CE7" stroke-width="1.2"/>
   <!-- Dog-ear fold -->
-  <path d="M17.6 2.4 L22.4 2.4 L22.4 7.2 L17.6 2.4Z" fill="#6C5CE7" opacity="0.25"/>
+  <path d="M17.6 2.4 L22.4 2.4 L22.4 7.2 L17.6 2.4Z" fill="#6C5CE7" opacity="0.45"/>
   <!-- Text lines -->
   <line x1="8" y1="10.4" x2="19.2" y2="10.4" stroke="#6C5CE7" stroke-width="1.2" stroke-linecap="round"/>
   <line x1="8" y1="14.4" x2="16.8" y2="14.4" stroke="#6C5CE7" stroke-width="1.2" stroke-linecap="round"/>

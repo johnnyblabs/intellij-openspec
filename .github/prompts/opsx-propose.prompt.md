@@ -9,7 +9,7 @@ I'll create a change with artifacts:
 - design.md (how)
 - tasks.md (implementation steps)
 
-When ready to implement, run /opsx-apply
+When ready to implement, run /opsx:apply
 
 ---
 
@@ -19,7 +19,8 @@ When ready to implement, run /opsx-apply
 
 1. **If no input provided, ask what they want to build**
 
-   Ask the user: "What change do you want to work on? Describe what you want to build or fix."
+   Use the **AskUserQuestion tool** (open-ended, no preset options) to ask:
+   > "What change do you want to work on? Describe what you want to build or fix."
 
    From their description, derive a kebab-case name (e.g., "add user authentication" → `add-user-auth`).
 
@@ -40,6 +41,8 @@ When ready to implement, run /opsx-apply
    - `artifacts`: list of all artifacts with their status and dependencies
 
 4. **Create artifacts in sequence until apply-ready**
+
+   Use the **TodoWrite tool** to track progress through the artifacts.
 
    Loop through artifacts in dependency order (artifacts with no pending dependencies first):
 
@@ -66,7 +69,7 @@ When ready to implement, run /opsx-apply
       - Stop when all `applyRequires` artifacts are done
 
    c. **If an artifact requires user input** (unclear context):
-      - Ask the user for clarification
+      - Use **AskUserQuestion tool** to clarify
       - Then continue with creation
 
 5. **Show final status**
@@ -80,7 +83,7 @@ After completing all artifacts, summarize:
 - Change name and location
 - List of artifacts created with brief descriptions
 - What's ready: "All artifacts created! Ready for implementation."
-- Prompt: "Run `/opsx-apply` to start implementing."
+- Prompt: "Run `/opsx:apply` to start implementing."
 
 **Artifact Creation Guidelines**
 

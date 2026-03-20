@@ -1,0 +1,75 @@
+## ADDED Requirements
+
+### Requirement: Documentation defines four user personas
+The project documentation SHALL define exactly four user personas that represent the distinct ways the plugin is used: Spec Browser, IDE-First Developer, CLI Companion, and Standalone API User. Each persona definition SHALL include the persona's primary value proposition, whether AI setup is required, and which plugin features are most relevant.
+
+#### Scenario: All four personas are defined
+- **WHEN** a user reads the project README
+- **THEN** the README SHALL present a persona table containing all four personas (Spec Browser, IDE-First Developer, CLI Companion, Standalone API User) with a brief description and link to each persona's getting-started guide
+
+#### Scenario: Personas differentiate by AI setup requirement
+- **WHEN** a user compares the four personas
+- **THEN** the documentation SHALL make clear that Spec Browser requires no AI setup, IDE-First Developer and CLI Companion use the user's existing AI tool, and Standalone API User requires only an API key
+
+### Requirement: Per-persona getting-started guide exists
+The project SHALL provide a dedicated getting-started guide for each of the four personas. Each guide SHALL include installation steps, persona-specific configuration, and a concrete end-to-end workflow example demonstrating the plugin's value for that persona.
+
+#### Scenario: Spec Browser guide covers zero-AI-setup workflow
+- **WHEN** a reviewer or team lead reads `docs/getting-started-browser.md`
+- **THEN** the guide SHALL walk through installing the plugin, opening the tool window, browsing the spec tree, viewing coverage, and navigating via gutter markers — with no AI configuration steps
+
+#### Scenario: IDE-First Developer guide covers clipboard delivery workflow
+- **WHEN** a Copilot/Cursor user reads the IDE-first getting-started guide
+- **THEN** the guide SHALL walk through selecting clipboard delivery mode, proposing a change, generating an artifact, and pasting the clipboard content into their AI tool's chat panel
+
+#### Scenario: CLI Companion guide covers dashboard-alongside-terminal workflow
+- **WHEN** a Claude Code or Gemini CLI user reads `docs/getting-started-cli-companion.md`
+- **THEN** the guide SHALL walk through using the plugin as a spec browser and coverage tracker while running AI commands in the terminal, including how copy prompts include save-path hints
+
+#### Scenario: Standalone API User guide covers Direct API workflow
+- **WHEN** an API-key user reads `docs/getting-started-api.md`
+- **THEN** the guide SHALL walk through configuring a Direct API provider (Claude, OpenAI, or Gemini), storing credentials, and using Fast-Forward to create a change with all artifacts generated in one click
+
+### Requirement: Canonical feature reference exists
+The project SHALL maintain a single canonical feature reference document (`docs/feature-reference.md`) that describes all plugin features organized by functional area. Persona getting-started guides SHALL link to the feature reference for detailed descriptions rather than duplicating feature content.
+
+#### Scenario: Feature reference covers all functional areas
+- **WHEN** a user reads `docs/feature-reference.md`
+- **THEN** the document SHALL contain sections for: Browsing & Navigation, Workflow Orchestration, AI Integration & Delivery, Editor Integration, Validation, and Settings & Configuration
+
+#### Scenario: Getting-started guides link to feature reference
+- **WHEN** a persona getting-started guide mentions a plugin feature
+- **THEN** the guide SHALL link to the corresponding section in `docs/feature-reference.md` rather than providing a full standalone description of that feature
+
+### Requirement: README serves as landing page
+The project README SHALL function as a concise landing page that enables a new user to determine within 30 seconds whether the plugin is relevant to them and how to proceed. The README SHALL NOT contain exhaustive feature documentation — it SHALL link to the feature reference and persona guides instead.
+
+#### Scenario: README contains persona selection table
+- **WHEN** a new user opens the project README
+- **THEN** the README SHALL display a persona table within the first screenful of content, with each row containing the persona name, a one-sentence value proposition, and a link to the corresponding getting-started guide
+
+#### Scenario: README includes essential information only
+- **WHEN** a user reads the README end-to-end
+- **THEN** the README SHALL contain only: a one-paragraph plugin description, the persona table, installation instructions, links to getting-started guides, links to marketplace and OpenSpec framework, and a link to the feature reference — no menu reference, no troubleshooting, no exhaustive settings documentation
+
+### Requirement: Marketplace page leads with persona value propositions
+The marketplace page content (`docs/marketplace-page.md`) SHALL lead with persona-based framing that communicates "four ways to use this plugin" before listing features. The "Who It's For" section SHALL appear before or integrated with the "What It Does" section.
+
+#### Scenario: Marketplace description opens with value framing
+- **WHEN** a user views the JetBrains Marketplace plugin page
+- **THEN** the description SHALL present the persona/use-case framing within the first paragraph or section, before any feature bullet lists
+
+#### Scenario: Marketplace content aligns with documentation personas
+- **WHEN** comparing the marketplace page personas with the README personas
+- **THEN** the same four personas SHALL appear in both, using consistent naming and descriptions
+
+### Requirement: Persona guides cross-link to other personas
+Each persona getting-started guide SHALL end with a "You might also want to explore" section that links to other relevant persona guides, acknowledging that users may span multiple personas.
+
+#### Scenario: Cross-links are contextually relevant
+- **WHEN** a user finishes the Spec Browser getting-started guide
+- **THEN** the guide SHALL suggest the IDE-First Developer or CLI Companion guide as a next step for users who want to start generating artifacts, not just browsing
+
+#### Scenario: Cross-links exist in all guides
+- **WHEN** reviewing any of the four persona getting-started guides
+- **THEN** each guide SHALL contain at least one cross-link to another persona guide with a brief explanation of when that other guide would be relevant
