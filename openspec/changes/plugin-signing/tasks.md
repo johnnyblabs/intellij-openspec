@@ -1,6 +1,6 @@
 ## 1. Key Generation
 
-- [ ] 1.1 Generate private key and certificate chain using openssl per JetBrains docs
+- [x] 1.1 Generate private key and certificate chain using openssl per JetBrains docs
 - [ ] 1.2 Upload public certificate to JetBrains Marketplace plugin settings
 
 ## 2. Build Configuration
@@ -10,10 +10,12 @@
 
 ## 3. CI Integration
 
-- [ ] 3.1 Add `PLUGIN_SIGNING_KEY`, `PLUGIN_SIGNING_CERTIFICATE`, `PLUGIN_SIGNING_KEY_PASSWORD` as Forgejo repository secrets
-- [x] 3.2 Add `signPlugin` step to build workflow on main (after build, before artifact upload)
-- [x] 3.3 Add `verifyPluginSignature` step after signing
-- [x] 3.4 Update artifact upload to use the signed ZIP
+- [x] 3.1 Add signing secrets to Forgejo repository
+- [x] 3.2 Add signing secrets to GitHub repository
+- [x] 3.3 Add `signPlugin` step to build workflow on main (after build, before artifact upload)
+- [x] 3.4 Add `verifyPluginSignature` step after signing
+- [x] 3.5 Update artifact upload to use the signed ZIP
+- [x] 3.6 Update setup-signing.sh to use OPENSPEC_PLUGIN_PASSPHRASE env var and set secrets on both Forgejo and GitHub
 
 ## 4. Verification
 
