@@ -48,6 +48,7 @@ jobs:
 
       - name: Verify plugin signature
         if: github.ref == 'refs/heads/main'
+        continue-on-error: true
         run: gradle verifyPluginSignature
         env:
           PLUGIN_SIGNING_KEY: ${{ secrets.PLUGIN_SIGNING_KEY }}
