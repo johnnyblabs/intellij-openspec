@@ -1,16 +1,16 @@
 ## 1. GitHub Actions Workflow
 
-- [ ] 1.1 Create `.github/workflows/build.yml` with two parallel jobs: `build` and `verify`
-- [ ] 1.2 Configure `build` job: checkout, `actions/setup-java@v4` (Temurin 21), Gradle cache, `./gradlew build`, upload test results
-- [ ] 1.3 Configure `verify` job: checkout, setup-java, Gradle cache, `./gradlew verifyPlugin`
-- [ ] 1.4 Add signing steps to `build` job (main branch only): `./gradlew signPlugin`, `./gradlew verifyPluginSignature`, upload signed artifact
-- [ ] 1.5 Ensure workflow uses `./gradlew` (wrapper) not system `gradle`
+- [x] 1.1 Create `.github/workflows/build.yml` with two parallel jobs: `build` and `verify`
+- [x] 1.2 Configure `build` job: checkout, `actions/setup-java@v4` (Temurin 21), Gradle cache, `./gradlew build`, upload test results
+- [x] 1.3 Configure `verify` job: checkout, setup-java, Gradle cache, `./gradlew verifyPlugin`
+- [x] 1.4 Add signing steps to `build` job (main branch only): `./gradlew signPlugin`, `./gradlew verifyPluginSignature`, upload signed artifact
+- [x] 1.5 Ensure workflow uses `./gradlew` (wrapper) not system `gradle`
 
 ## 2. Gradle Wrapper
 
-- [ ] 2.1 Verify `gradle/wrapper/gradle-wrapper.properties` exists and points to Gradle 9.0.0
-- [ ] 2.2 Verify `gradlew` and `gradlew.bat` are committed and executable
-- [ ] 2.3 Test `./gradlew build` runs successfully locally
+- [x] 2.1 Verify `gradle/wrapper/gradle-wrapper.properties` exists and points to Gradle 9.0.0
+- [x] 2.2 Verify `gradlew` and `gradlew.bat` are committed and executable
+- [x] 2.3 Test `./gradlew build` runs successfully locally
 
 ## 3. GitHub Repository Secrets (manual)
 
@@ -20,7 +20,7 @@
 
 ## 4. README Badge
 
-- [ ] 4.1 Add GitHub Actions build status badge to `README.md`
+- [x] 4.1 Add GitHub Actions build status badge to `README.md`
 
 ## 5. Verification
 
