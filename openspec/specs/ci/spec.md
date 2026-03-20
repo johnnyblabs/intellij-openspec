@@ -1,34 +1,74 @@
 # CI Pipeline
 
 ## Purpose
-Continuous integration: build, test, and Plugin Verifier checks via Forgejo Actions.
+Continuous integration for build, test, plugin verification, and signing — ensuring every change is compilable, tested, and compatible across supported IDE versions.
 
 ## Requirements
 
-### Requirement: CI pipeline
+### Requirement: Dual-job pipeline
 
-The plugin SHALL have a Forgejo Actions pipeline that builds, runs tests, and runs Plugin Verifier on push to main.
+The CI pipeline SHALL run two parallel jobs on every push to main and on every pull request targeting main: a **build** job (compile, test, and optionally sign) and a **verify** job (Plugin Verifier compatibility checks). The jobs SHALL have no dependency on each other and SHALL run concurrently.
 
-#### Scenario: Build pipeline
-- **WHEN** code is pushed to main or a PR targets main
-- **THEN** the pipeline SHALL compile, run tests, and report results
+#### Scenario: PR triggers both jobs
+- **WHEN** a pull request targets main
+- **THEN** the pipeline SHALL start both the build and verify jobs in parallel
 
-#### Scenario: Plugin Verifier on main
-- **WHEN** code is merged to main
-- **THEN** the pipeline SHALL run Plugin Verifier across supported IDE versions
+#### Scenario: Push to main triggers both jobs
+- **WHEN** code is pushed to main
+- **THEN** the pipeline SHALL start both the build and verify jobs in parallel
 
-### Requirement: Runner configuration
+### Requirement: Build job
 
-The pipeline SHALL use the `java-21` runner label mapped to a Docker image with JDK 21, Gradle 9.0.0, Node 20, and git pre-installed. Gradle daemon SHALL be disabled for ephemeral containers.
+The build job SHALL compile the project, run the full test suite, and upload test results as a build artifact. On the main branch, the build job SHALL additionally sign the plugin and upload the signed artifact.
 
-#### Scenario: Zero-download builds
+#### Scenario: Build and test
+- **WHEN** the build job runs
+- **THEN** it SHALL execute `gradle build`, run all tests, and upload test results regardless of pass or fail
+
+#### Scenario: Signing on main
+- **WHEN** the build job runs on the main branch
+- **THEN** it SHALL execute `gradle signPlugin` and `gradle verifyPluginSignature` using signing credentials from repository secrets
+
+#### Scenario: Signing skipped on PR
+- **WHEN** the build job runs on a pull request branch
+- **THEN** the signing and signature verification steps SHALL be skipped
+
+### Requirement: Plugin Verifier compatibility
+
+The verify job SHALL run the IntelliJ Plugin Verifier against all IDE versions in the declared compatibility range, reporting binary compatibility, deprecated API usage, and experimental API usage.
+
+#### Scenario: All declared versions checked
+- **WHEN** the verify job runs
+- **THEN** it SHALL verify the plugin against every IDE version from the minimum declared version (2024.2) through the latest available release
+
+#### Scenario: Compatible result
+- **WHEN** the Plugin Verifier reports "Compatible" for all checked versions
+- **THEN** the verify job SHALL pass
+
+#### Scenario: Incompatible result
+- **WHEN** the Plugin Verifier reports binary incompatibilities for any checked version
+- **THEN** the verify job SHALL fail, blocking the PR from merging
+
+### Requirement: Dependency caching
+
+The pipeline SHALL cache Gradle dependencies between runs using a cache key derived from the build file and wrapper properties, reducing build times for cache-hit runs.
+
+#### Scenario: Cache hit
+- **WHEN** the build files have not changed since the last run
+- **THEN** the pipeline SHALL restore cached Gradle dependencies and skip downloading them
+
+#### Scenario: Cache miss
+- **WHEN** the build files have changed
+- **THEN** the pipeline SHALL download dependencies and store them in the cache for subsequent runs
+
+### Requirement: Runner environment
+
+The pipeline SHALL run on a `java-21` runner with JDK 21, Gradle 9, and git pre-installed. The Gradle daemon SHALL be disabled for ephemeral container environments.
+
+#### Scenario: No tool downloads
 - **WHEN** the CI build runs
-- **THEN** no JDK, Gradle, or Node downloads SHALL occur — all tools are baked into the runner image
+- **THEN** no JDK, Gradle, or Node downloads SHALL occur — all tools SHALL be pre-installed in the runner image
 
-### Requirement: Test coverage
-
-The plugin SHALL maintain unit tests for core services (BuiltInValidator, CliOutputParser, SpecParsingService, ArtifactOrchestrationService, DirectApiService) and integration tests for action lifecycle.
-
-#### Scenario: Test suite
-- **WHEN** tests run
-- **THEN** all core services SHALL have test coverage and no regressions SHALL be introduced
+#### Scenario: Gradle daemon disabled
+- **WHEN** the pipeline executes Gradle commands
+- **THEN** the Gradle daemon SHALL be disabled via `-Dorg.gradle.daemon=false`
