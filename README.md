@@ -1,5 +1,6 @@
 # OpenSpec IntelliJ Plugin
 
+[![Build](https://github.com/johnnyblabs/intellij-openspec/actions/workflows/build.yml/badge.svg)](https://github.com/johnnyblabs/intellij-openspec/actions/workflows/build.yml)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![JetBrains Marketplace](https://img.shields.io/jetbrains/plugin/v/30678-openspec.svg)](https://plugins.jetbrains.com/plugin/30678-openspec)
 
