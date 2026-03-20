@@ -1,0 +1,94 @@
+# Contributing to OpenSpec IntelliJ Plugin
+
+Thanks for your interest in contributing! This guide covers everything you need to get started.
+
+## Development Setup
+
+### Prerequisites
+
+- **Java 21** (JDK) — [Adoptium Temurin](https://adoptium.net/) recommended
+- **IntelliJ IDEA 2024.2+** — Community or Ultimate
+- **Gradle 9** — included via wrapper, no separate install needed
+
+### Build and Run
+
+```bash
+git clone https://github.com/johnnyblabs/intellij-openspec.git
+cd intellij-openspec
+./gradlew build        # Compile and run tests
+./gradlew runIde       # Launch sandboxed IDE with the plugin
+./gradlew test         # Run tests only
+```
+
+Or use the Makefile shortcuts: `make build`, `make test`, `make install`.
+
+### Project Structure
+
+```
+src/main/java/com/johnnyblabs/openspec/
+├── actions/          # IntelliJ actions (menu items, toolbar)
+├── ai/               # AI provider integration (Claude, OpenAI, Gemini)
+├── dialogs/          # UI dialogs
+├── model/            # Data models
+├── services/         # Project services (core logic)
+├── settings/         # Plugin settings
+├── toolwindow/       # Tool window UI (tree, panels)
+├── util/             # Utilities
+└── validation/       # Built-in validation
+```
+
+The `openspec/` directory contains the project's own specs and change history — this plugin uses the [OpenSpec](https://github.com/fission-ai/openspec) framework for its own development.
+
+## Making Changes
+
+### Branch Naming
+
+Use `change/<description>` for feature branches:
+
+```
+change/fix-tree-refresh
+change/add-kotlin-support
+change/update-marketplace-docs
+```
+
+### Coding Standards
+
+- **Java 21** — use modern language features where they improve readability
+- **Services** — register as IntelliJ project services via `plugin.xml`
+- **Settings** — use `PersistentStateComponent` with `@State` annotation
+- **Credentials** — store in IntelliJ `PasswordSafe`, never in files
+- **Tests** — JUnit 5, use `@ExtendWith(MockitoExtension.class)` for mocking
+
+### Commit Messages
+
+Write concise commit messages that explain *why*, not just *what*:
+
+```
+Fix tree refresh after archive — VFS listener was missing recursive flag
+
+Add Kotlin file type support for @spec gutter markers
+```
+
+## Pull Requests
+
+1. Fork the repo and create a branch from `main`
+2. Make your changes with tests
+3. Run `./gradlew build` to verify everything passes
+4. Open a PR against `main`
+
+### PR Checklist
+
+- [ ] Code compiles and tests pass (`./gradlew build`)
+- [ ] New features have tests
+- [ ] No hardcoded credentials or internal URLs
+- [ ] Plugin runs correctly (`./gradlew runIde`)
+
+## Reporting Issues
+
+- **Bugs** — use the [bug report template](https://github.com/johnnyblabs/intellij-openspec/issues/new?template=bug_report.md)
+- **Feature requests** — use the [feature request template](https://github.com/johnnyblabs/intellij-openspec/issues/new?template=feature_request.md)
+- **Security vulnerabilities** — see [SECURITY.md](SECURITY.md) (do not file public issues)
+
+## License
+
+By contributing, you agree that your contributions will be licensed under the [Apache License 2.0](LICENSE).

@@ -1,5 +1,8 @@
 # OpenSpec IntelliJ Plugin
 
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![JetBrains Marketplace](https://img.shields.io/jetbrains/plugin/v/30678-openspec.svg)](https://plugins.jetbrains.com/plugin/30678-openspec)
+
 An IDE-native client for the [OpenSpec](https://github.com/fission-ai/openspec) spec-driven development framework by [Fission AI](https://github.com/fission-ai). Browse specs, orchestrate the propose → generate → implement → archive lifecycle, and route AI-generated artifacts through the tool of your choice — all without leaving IntelliJ.
 
 ---
@@ -32,6 +35,18 @@ cd intellij-openspec
 
 ```bash
 npm i -g @fission-ai/openspec
+```
+
+---
+
+## Contributing
+
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, coding standards, and PR process.
+
+```bash
+./gradlew build      # Compile and run tests
+./gradlew runIde     # Launch sandboxed IDE with plugin
+./gradlew test       # Tests only
 ```
 
 ---

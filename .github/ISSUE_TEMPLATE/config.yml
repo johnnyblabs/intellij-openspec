@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: OpenSpec Framework
+    url: https://github.com/fission-ai/openspec
+    about: For issues with the OpenSpec CLI or framework itself (not this plugin)
