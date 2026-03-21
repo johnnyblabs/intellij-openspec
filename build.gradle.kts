@@ -52,7 +52,7 @@ intellijPlatform {
             url = "https://github.com/johnnyblabs/intellij-openspec"
         }
         changeNotes = """
-            <h3>v0.3.0 — Open Source &amp; Workflow Engine</h3>
+            <h3>v0.2.4 — Open Source &amp; Workflow Engine</h3>
             <ul>
                 <li><b>Fast-Forward</b>: one-click change creation + full artifact generation</li>
                 <li><b>Continue</b>: incremental one-artifact-at-a-time generation</li>
