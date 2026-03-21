@@ -160,7 +160,7 @@ Paste this HTML into the "Getting Started" field:
 | Field | Value |
 |-------|-------|
 | **Documentation URL** | `https://github.com/fission-ai/openspec` |
-| **Bugtracker** | `https://github.com/fission-ai/openspec/issues` |
+| **Bugtracker** | `https://github.com/johnnyblabs/intellij-openspec/issues` |
 | **Forum** | *(leave empty for now)* |
 | **Privacy Policy** | *(leave empty — plugin doesn't collect data)* |
 | **License / EULA** | Apache License 2.0 |

@@ -111,6 +111,7 @@ public class WorkflowActionPanel extends JPanel {
     private final JButton archiveIconButton;
     private final JButton overflowButton;
     private final JPanel iconBar;
+    private final JBLabel iconBarChangeLabel;
 
     // Status strip
     private final JPanel statusStrip;
@@ -196,9 +197,13 @@ public class WorkflowActionPanel extends JPanel {
         pipelinePanel.setOpaque(false);
 
         // --- Icon action bar ---
-        iconBar = new JPanel(new FlowLayout(FlowLayout.RIGHT, JBUI.scale(2), 0));
+        iconBar = new JPanel(new BorderLayout(JBUI.scale(4), 0));
         iconBar.setOpaque(false);
         iconBar.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        iconBarChangeLabel = new JBLabel();
+        iconBarChangeLabel.setFont(iconBarChangeLabel.getFont().deriveFont(Font.PLAIN, 11f));
+        iconBarChangeLabel.setForeground(JBColor.GRAY);
 
         ffIconButton = createIconButton(AllIcons.Actions.Lightning, "Fast-Forward", this::activateFfInput);
         verifyIconButton = createIconButton(AllIcons.Actions.PreviewDetailsVertically, "Verify", this::onVerify);
@@ -208,10 +213,14 @@ public class WorkflowActionPanel extends JPanel {
         verifyIconButton.setEnabled(false);
         archiveIconButton.setEnabled(false);
 
-        iconBar.add(ffIconButton);
-        iconBar.add(verifyIconButton);
-        iconBar.add(archiveIconButton);
-        iconBar.add(overflowButton);
+        JPanel iconButtons = new JPanel(new FlowLayout(FlowLayout.RIGHT, JBUI.scale(2), 0));
+        iconButtons.setOpaque(false);
+        iconButtons.add(verifyIconButton);
+        iconButtons.add(archiveIconButton);
+        iconButtons.add(overflowButton);
+
+        iconBar.add(iconBarChangeLabel, BorderLayout.WEST);
+        iconBar.add(iconButtons, BorderLayout.EAST);
 
         // --- Status strip ---
         statusStrip = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
@@ -415,6 +424,19 @@ public class WorkflowActionPanel extends JPanel {
     public void selectChange(String changeName) {
         activeChangeName = changeName;
         refresh();
+    }
+
+    /**
+     * Sets the active change from external sources (e.g., tree selection).
+     * Updates the combo box if visible, refreshes the pipeline display.
+     */
+    public void setActiveChange(String changeName) {
+        if (changeName == null || changeName.equals(activeChangeName)) return;
+        activeChangeName = changeName;
+        if (changeCombo != null && changeCombo.isVisible()) {
+            changeCombo.setSelectedItem(changeName);
+        }
+        refreshForChangeOnPool(changeName);
     }
 
     // --- Tool selector ---
@@ -659,6 +681,19 @@ public class WorkflowActionPanel extends JPanel {
     private void updateIconBarState() {
         verifyIconButton.setEnabled(allArtifactsComplete);
         archiveIconButton.setEnabled(allArtifactsComplete && !hasTasksRemaining);
+
+        // Update change-name badge
+        iconBarChangeLabel.setText(activeChangeName != null ? activeChangeName : "");
+
+        // Contextual tooltips with change name and disabled reasons
+        if (activeChangeName != null) {
+            verifyIconButton.setToolTipText(allArtifactsComplete
+                    ? "Verify: " + activeChangeName
+                    : "Verify (complete all artifacts first)");
+            archiveIconButton.setToolTipText(allArtifactsComplete && !hasTasksRemaining
+                    ? "Archive: " + activeChangeName
+                    : "Archive (complete all artifacts and tasks first)");
+        }
     }
 
     private void checkDeltaSpecs() {
@@ -1469,6 +1504,7 @@ public class WorkflowActionPanel extends JPanel {
     private void showOverflowMenu() {
         JPopupMenu menu = new JPopupMenu();
 
+        // --- Change-scoped actions ---
         JMenuItem applyItem = new JMenuItem("Apply Tasks");
         applyItem.setEnabled(allArtifactsComplete && hasTasksRemaining);
         applyItem.addActionListener(e -> onApplyTasks());
@@ -1478,12 +1514,6 @@ public class WorkflowActionPanel extends JPanel {
         syncItem.setEnabled(hasDeltaSpecs);
         syncItem.addActionListener(e -> onSyncSpecs());
         menu.add(syncItem);
-
-        JMenuItem bulkItem = new JMenuItem("Bulk Archive...");
-        ChangeService cs = project.getService(ChangeService.class);
-        bulkItem.setEnabled(cs.getActiveChanges().size() >= 2);
-        bulkItem.addActionListener(e -> onBulkArchive());
-        menu.add(bulkItem);
 
         JMenuItem complianceItem = new JMenuItem("Compliance Check");
         complianceItem.addActionListener(e -> onComplianceCheck());
@@ -1496,12 +1526,27 @@ public class WorkflowActionPanel extends JPanel {
             menu.add(cancelItem);
         }
 
+        // --- All-changes actions ---
         menu.addSeparator();
 
-        JMenuItem newItem = new JMenuItem("Start New Change");
+        JMenuItem bulkItem = new JMenuItem("Archive All Changes...");
+        ChangeService cs = project.getService(ChangeService.class);
+        bulkItem.setEnabled(cs.getActiveChanges().size() >= 2);
+        bulkItem.addActionListener(e -> onBulkArchive());
+        menu.add(bulkItem);
+
+        // --- Creation actions ---
+        menu.addSeparator();
+
+        JMenuItem newItem = new JMenuItem("Start New Change...");
         newItem.setIcon(AllIcons.General.Add);
         newItem.addActionListener(e -> onStartNewChange());
         menu.add(newItem);
+
+        JMenuItem ffItem = new JMenuItem("Fast-Forward...");
+        ffItem.setIcon(AllIcons.Actions.Lightning);
+        ffItem.addActionListener(e -> activateFfInput());
+        menu.add(ffItem);
 
         menu.show(overflowButton, 0, overflowButton.getHeight());
     }

@@ -2,9 +2,7 @@
 
 ## Purpose
 Tree-based browsing of specs, changes, and archives with icons, tooltips, search, and theme support.
-
 ## Requirements
-
 ### Requirement: Tree view display
 
 The plugin SHALL display a tree with Specs, Changes, Archive, and Config sections. Double-clicking navigates to files. The tree auto-refreshes on filesystem changes.
@@ -76,3 +74,20 @@ The tree model SHALL define `CONFIG` and `CONFIG_ENTRY` node types for the confi
 #### Scenario: Null or empty config fields
 - **WHEN** a top-level config field is null or empty
 - **THEN** the corresponding CONFIG_ENTRY node SHALL be omitted from the tree
+
+### Requirement: Tree selection drives workflow panel
+
+The tree view SHALL emit change selection events when the user clicks a change node or any descendant of a change node. The tree model SHALL provide a method to resolve the change name from any selected tree node.
+
+#### Scenario: Resolve change name from change node
+- **WHEN** the user selects a node representing an active change
+- **THEN** the tree model SHALL return the change name for that node
+
+#### Scenario: Resolve change name from child node
+- **WHEN** the user selects a node that is a descendant of a change node (e.g., an artifact or spec under the change)
+- **THEN** the tree model SHALL walk up the tree and return the parent change name
+
+#### Scenario: Non-change node returns null
+- **WHEN** the user selects a node that is not under a change (e.g., main specs, config, archive)
+- **THEN** the tree model SHALL return null, indicating no change context
+
