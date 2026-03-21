@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.3.0 — Open Source & Workflow Engine
+## v0.2.4 — Open Source & Workflow Engine
 
 - **Fast-Forward**: one-click change creation + full artifact generation
 - **Continue**: incremental one-artifact-at-a-time generation

@@ -25,6 +25,8 @@ import com.johnnyblabs.openspec.util.OpenSpecFileUtil;
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+import javax.swing.event.TreeSelectionEvent;
+import javax.swing.event.TreeSelectionListener;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreePath;
@@ -111,6 +113,14 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider {
         // Workflow action panel
         workflowPanel = new WorkflowActionPanel(project);
         workflowPanel.setOnRefreshRequested(this::refreshAsync);
+
+        // Sync tree selection → workflow panel (after workflowPanel is constructed)
+        tree.addTreeSelectionListener(e -> {
+            String changeName = SpecTreeModel.resolveChangeName(e.getPath());
+            if (changeName != null) {
+                workflowPanel.setActiveChange(changeName);
+            }
+        });
 
         JPanel bottomPanel = new JPanel(new BorderLayout(0, 0));
         bottomPanel.add(workflowPanel, BorderLayout.CENTER);
