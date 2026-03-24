@@ -12,11 +12,11 @@ public enum VersionSupport {
     V1_1("1.1.0",
             Set.of("schema", "version"),
             Set.of("proposal", "design"),
-            Set.of("spec-driven", "tdd")),
+            Set.of("spec-driven")),
     V1_2("1.2.0",
             Set.of("schema", "version"),
             Set.of("proposal", "design", "specs", "tasks"),
-            Set.of("spec-driven", "tdd", "rapid"));
+            Set.of("spec-driven"));
 
     private final String version;
     private final Set<String> requiredConfigFields;

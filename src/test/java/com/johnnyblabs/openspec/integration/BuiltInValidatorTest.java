@@ -136,6 +136,40 @@ public class BuiltInValidatorTest extends OpenSpecIntegrationTestBase {
                         i.severity() == ValidationIssue.Severity.WARNING));
     }
 
+    public void testMissingVersionTriggersWarning() throws Exception {
+        overwriteFile("openspec/config.yaml",
+                "schema: spec-driven\n\nprofile:\n  name: Test\n");
+
+        ValidationResult result = validator.validateConfig();
+        assertTrue("Should have config-version-required issue",
+                result.issues().stream().anyMatch(i ->
+                        "config-version-required".equals(i.rule()) &&
+                        i.severity() == ValidationIssue.Severity.WARNING));
+    }
+
+    public void testUnknownVersionTriggersWarning() throws Exception {
+        overwriteFile("openspec/config.yaml",
+                "schema: spec-driven\nversion: \"9.9.9\"\n\nprofile:\n  name: Test\n");
+
+        ValidationResult result = validator.validateConfig();
+        assertTrue("Should have config-version-unknown issue",
+                result.issues().stream().anyMatch(i ->
+                        "config-version-unknown".equals(i.rule()) &&
+                        i.severity() == ValidationIssue.Severity.WARNING));
+    }
+
+    public void testValidVersionProducesNoVersionIssues() throws Exception {
+        overwriteFile("openspec/config.yaml",
+                "schema: spec-driven\nversion: \"1.2.0\"\n\nprofile:\n  name: Test\n");
+
+        ValidationResult result = validator.validateConfig();
+        assertTrue("Valid version should produce no version issues",
+                result.issues().stream().noneMatch(i ->
+                        "config-version-required".equals(i.rule()) ||
+                        "config-version-unknown".equals(i.rule()) ||
+                        "config-field-required".equals(i.rule())));
+    }
+
     // ---------------------------------------------------------------
     // Change Validation
     // ---------------------------------------------------------------
@@ -172,6 +206,24 @@ public class BuiltInValidatorTest extends OpenSpecIntegrationTestBase {
         assertTrue("Should have change-artifact-missing issue for missing artifacts",
                 result.issues().stream().anyMatch(i ->
                         "change-artifact-missing".equals(i.rule())));
+    }
+
+    public void testChangeWithIncompatibleSchemaTriggersWarning() throws Exception {
+        // Set project to version 1.0.0 which only supports spec-driven
+        overwriteFile("openspec/config.yaml",
+                "schema: spec-driven\nversion: \"1.0.0\"\n\nprofile:\n  name: Test\n");
+        myFixture.addFileToProject("openspec/changes/incompat-change/.openspec.yaml",
+                "schema: tdd\n");
+        myFixture.addFileToProject("openspec/changes/incompat-change/proposal.md",
+                "## Why\n\nTest\n");
+        refreshVfs();
+
+        ValidationResult result = validator.validateChanges();
+        assertTrue("Should have change-schema-incompatible issue",
+                result.issues().stream().anyMatch(i ->
+                        "change-schema-incompatible".equals(i.rule()) &&
+                        i.severity() == ValidationIssue.Severity.WARNING &&
+                        i.message().contains("incompat-change")));
     }
 
     public void testDeltaSpecWithoutSectionsTriggersWarning() {

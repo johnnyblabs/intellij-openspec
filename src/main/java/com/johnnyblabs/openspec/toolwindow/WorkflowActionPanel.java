@@ -106,7 +106,8 @@ public class WorkflowActionPanel extends JPanel {
     private final JBLabel noToolsLabel;
 
     // Icon action bar
-    private final JButton ffIconButton;
+    private final JButton applyIconButton;
+    private final JButton complianceIconButton;
     private final JButton verifyIconButton;
     private final JButton archiveIconButton;
     private final JButton overflowButton;
@@ -205,16 +206,21 @@ public class WorkflowActionPanel extends JPanel {
         iconBarChangeLabel.setFont(iconBarChangeLabel.getFont().deriveFont(Font.PLAIN, 11f));
         iconBarChangeLabel.setForeground(JBColor.GRAY);
 
-        ffIconButton = createIconButton(AllIcons.Actions.Lightning, "Fast-Forward", this::activateFfInput);
+        applyIconButton = createIconButton(AllIcons.Actions.Execute, "Apply", this::onApplyTasks);
+        complianceIconButton = createIconButton(AllIcons.Actions.ProjectWideAnalysisOn, "Compliance", this::onComplianceCheck);
         verifyIconButton = createIconButton(AllIcons.Actions.PreviewDetailsVertically, "Verify", this::onVerify);
         archiveIconButton = createIconButton(AllIcons.Actions.Checked, "Archive", this::onArchive);
         overflowButton = createIconButton(AllIcons.Actions.More, "More actions...", this::showOverflowMenu);
 
+        applyIconButton.setEnabled(false);
+        complianceIconButton.setEnabled(false);
         verifyIconButton.setEnabled(false);
         archiveIconButton.setEnabled(false);
 
         JPanel iconButtons = new JPanel(new FlowLayout(FlowLayout.RIGHT, JBUI.scale(2), 0));
         iconButtons.setOpaque(false);
+        iconButtons.add(applyIconButton);
+        iconButtons.add(complianceIconButton);
         iconButtons.add(verifyIconButton);
         iconButtons.add(archiveIconButton);
         iconButtons.add(overflowButton);
@@ -679,6 +685,8 @@ public class WorkflowActionPanel extends JPanel {
     }
 
     private void updateIconBarState() {
+        applyIconButton.setEnabled(allArtifactsComplete);
+        complianceIconButton.setEnabled(allArtifactsComplete);
         verifyIconButton.setEnabled(allArtifactsComplete);
         archiveIconButton.setEnabled(allArtifactsComplete && !hasTasksRemaining);
 
@@ -687,6 +695,12 @@ public class WorkflowActionPanel extends JPanel {
 
         // Contextual tooltips with change name and disabled reasons
         if (activeChangeName != null) {
+            applyIconButton.setToolTipText(allArtifactsComplete
+                    ? "Apply: " + activeChangeName
+                    : "Apply (complete all artifacts first)");
+            complianceIconButton.setToolTipText(allArtifactsComplete
+                    ? "Compliance: " + activeChangeName
+                    : "Compliance (complete all artifacts first)");
             verifyIconButton.setToolTipText(allArtifactsComplete
                     ? "Verify: " + activeChangeName
                     : "Verify (complete all artifacts first)");
@@ -1158,21 +1172,6 @@ public class WorkflowActionPanel extends JPanel {
         });
     }
 
-    // --- Bulk Archive ---
-
-    private void onBulkArchive() {
-        ChangeService changeService = project.getService(ChangeService.class);
-        java.util.List<Change> active = changeService.getActiveChanges();
-        if (active.size() < 2) return;
-
-        com.johnnyblabs.openspec.dialogs.BulkArchiveDialog dialog =
-                new com.johnnyblabs.openspec.dialogs.BulkArchiveDialog(project, active);
-        dialog.show();
-
-        if (onRefreshRequested != null) onRefreshRequested.run();
-        refresh();
-    }
-
     // --- Fast-Forward (inline) ---
 
     private JPanel buildNoChangesCard() {
@@ -1492,32 +1491,16 @@ public class WorkflowActionPanel extends JPanel {
         });
     }
 
-    private void onStartNewChange() {
-        AnAction proposeAction = ActionManager.getInstance().getAction("OpenSpec.Propose");
-        if (proposeAction != null) {
-            com.intellij.openapi.actionSystem.ex.ActionUtil.invokeAction(proposeAction, DataContext.EMPTY_CONTEXT, "OpenSpecWorkflowPanel", null, null);
-        }
-    }
-
     // --- Overflow menu ---
 
     private void showOverflowMenu() {
         JPopupMenu menu = new JPopupMenu();
 
-        // --- Change-scoped actions ---
-        JMenuItem applyItem = new JMenuItem("Apply Tasks");
-        applyItem.setEnabled(allArtifactsComplete && hasTasksRemaining);
-        applyItem.addActionListener(e -> onApplyTasks());
-        menu.add(applyItem);
-
+        // --- Change-scoped actions only ---
         JMenuItem syncItem = new JMenuItem("Sync Specs");
         syncItem.setEnabled(hasDeltaSpecs);
         syncItem.addActionListener(e -> onSyncSpecs());
         menu.add(syncItem);
-
-        JMenuItem complianceItem = new JMenuItem("Compliance Check");
-        complianceItem.addActionListener(e -> onComplianceCheck());
-        menu.add(complianceItem);
 
         if (generateAllInProgress) {
             menu.addSeparator();
@@ -1525,28 +1508,6 @@ public class WorkflowActionPanel extends JPanel {
             cancelItem.addActionListener(e -> onCancelGenerateAll());
             menu.add(cancelItem);
         }
-
-        // --- All-changes actions ---
-        menu.addSeparator();
-
-        JMenuItem bulkItem = new JMenuItem("Archive All Changes...");
-        ChangeService cs = project.getService(ChangeService.class);
-        bulkItem.setEnabled(cs.getActiveChanges().size() >= 2);
-        bulkItem.addActionListener(e -> onBulkArchive());
-        menu.add(bulkItem);
-
-        // --- Creation actions ---
-        menu.addSeparator();
-
-        JMenuItem newItem = new JMenuItem("Start New Change...");
-        newItem.setIcon(AllIcons.General.Add);
-        newItem.addActionListener(e -> onStartNewChange());
-        menu.add(newItem);
-
-        JMenuItem ffItem = new JMenuItem("Fast-Forward...");
-        ffItem.setIcon(AllIcons.Actions.Lightning);
-        ffItem.addActionListener(e -> activateFfInput());
-        menu.add(ffItem);
 
         menu.show(overflowButton, 0, overflowButton.getHeight());
     }

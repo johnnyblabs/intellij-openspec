@@ -38,9 +38,9 @@ class VersionSupportTest {
     }
 
     @Test
-    void v1_2_supportsThreeSchemas() {
+    void v1_2_supportsSpecDrivenOnly() {
         Set<String> schemas = VersionSupport.V1_2.getValidSchemas();
-        assertEquals(Set.of("spec-driven", "tdd", "rapid"), schemas);
+        assertEquals(Set.of("spec-driven"), schemas);
     }
 
     @Test
