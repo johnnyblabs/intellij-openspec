@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.2.5 — Validation & Onboarding
+
+- **Config version validation**: version field presence, recognition, and required-fields-per-version checks
+- **Schema-version cross-check**: warn when a change uses a schema incompatible with the project version
+- **Smart onboarding**: skip setup wizard for already-initialized projects, show tree view directly
+- **Icon bar redesign**: Apply and Compliance promoted to first-class icon bar actions
+- **Overflow menu cleanup**: trimmed to change-scoped actions only (Sync Specs, Cancel Generation)
+
 ## v0.2.4 — Open Source & Workflow Engine
 
 - **Fast-Forward**: one-click change creation + full artifact generation
