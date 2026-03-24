@@ -18,27 +18,35 @@ public class OpenSpecToolWindowFactory implements ToolWindowFactory, DumbAware {
         GettingStartedPanel gettingStarted = new GettingStartedPanel(project, toolWindow);
         GettingStartedPanel.State state = gettingStarted.detectState();
 
-        if (state == GettingStartedPanel.State.READY) {
-            createNormalContent(project, toolWindow);
-        } else {
+        if (state == GettingStartedPanel.State.NOT_INITIALIZED) {
+            // Project has no openspec/ directory — show Getting Started only
             createGettingStartedContent(project, toolWindow, gettingStarted);
+        } else {
+            // Project is initialized — always show the tree view so users can
+            // browse specs even without changes or AI configured
+            createNormalContent(project, toolWindow);
         }
 
         // Auto-launch wizard on first open if setup has never been completed
+        // Skip for any initialized project — the tree view is more valuable
         OpenSpecSettings settings = OpenSpecSettings.getInstance(project);
         if (!settings.isSetupCompleted()) {
-            ApplicationManager.getApplication().invokeLater(() -> {
-                SetupWizardDialog dialog = new SetupWizardDialog(project);
-                dialog.show();
-                // Rebuild tool window after wizard completes
-                toolWindow.getContentManager().removeAllContents(true);
-                GettingStartedPanel refreshed = new GettingStartedPanel(project, toolWindow);
-                if (refreshed.detectState() == GettingStartedPanel.State.READY) {
-                    createNormalContent(project, toolWindow);
-                } else {
-                    createGettingStartedContent(project, toolWindow, refreshed);
-                }
-            });
+            if (state == GettingStartedPanel.State.NOT_INITIALIZED) {
+                ApplicationManager.getApplication().invokeLater(() -> {
+                    SetupWizardDialog dialog = new SetupWizardDialog(project);
+                    dialog.show();
+                    // Rebuild tool window after wizard completes
+                    toolWindow.getContentManager().removeAllContents(true);
+                    GettingStartedPanel refreshed = new GettingStartedPanel(project, toolWindow);
+                    if (refreshed.detectState() == GettingStartedPanel.State.NOT_INITIALIZED) {
+                        createGettingStartedContent(project, toolWindow, refreshed);
+                    } else {
+                        createNormalContent(project, toolWindow);
+                    }
+                });
+            } else {
+                settings.setSetupCompleted(true);
+            }
         }
     }
 

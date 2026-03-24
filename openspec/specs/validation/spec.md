@@ -7,23 +7,39 @@ Built-in validation of OpenSpec project structure, spec format, config integrity
 
 ### Requirement: Config validation
 
-The plugin SHALL validate `openspec/config.yaml` presence, YAML parse-ability, and required fields on project load and on demand.
+The plugin SHALL validate `config.yaml` for structural correctness, required fields, version presence, version recognition, and schema-version compatibility. Validation SHALL use the `VersionSupport` enum to determine which fields and schemas are valid for the declared version.
 
-#### Scenario: Missing config
-- **WHEN** the project has no `openspec/config.yaml` file
-- **THEN** the validator SHALL report an ERROR with code `config-missing`
+#### Scenario: Config parsed successfully
+- **WHEN** `config.yaml` exists and is valid YAML
+- **THEN** the validator SHALL proceed with field-level checks
 
-#### Scenario: Missing schema field
-- **WHEN** `config.yaml` exists but has no `schema` field
-- **THEN** the validator SHALL report an ERROR with code `config-schema-required`
+#### Scenario: Config missing
+- **WHEN** `config.yaml` does not exist or cannot be parsed
+- **THEN** the validator SHALL report an ERROR with rule `config-missing`
 
-#### Scenario: Unrecognized schema value
-- **WHEN** `config.yaml` has a `schema` field with a value not in the recognized set
-- **THEN** the validator SHALL report a WARNING with code `config-schema-invalid`
+#### Scenario: Schema field required
+- **WHEN** `config.yaml` has no `schema` field
+- **THEN** the validator SHALL report an ERROR with rule `config-schema-required`
 
-#### Scenario: Missing profile
-- **WHEN** `config.yaml` has no `profile` section
-- **THEN** the validator SHALL report a WARNING with code `config-profile-recommended`
+#### Scenario: Schema value invalid for version
+- **WHEN** the `schema` value is not in the declared version's valid schemas
+- **THEN** the validator SHALL report a WARNING with rule `config-schema-invalid`
+
+#### Scenario: Version field missing
+- **WHEN** `config.yaml` has no `version` field
+- **THEN** the validator SHALL report a WARNING with rule `config-version-required`
+
+#### Scenario: Version value unrecognized
+- **WHEN** the `version` value does not match any known OpenSpec version
+- **THEN** the validator SHALL report a WARNING with rule `config-version-unknown`
+
+#### Scenario: Required config fields enforced
+- **WHEN** the declared version requires specific config fields (per `VersionSupport.getRequiredConfigFields()`)
+- **THEN** the validator SHALL report an ERROR with rule `config-field-required` for each missing required field
+
+#### Scenario: Profile field recommended
+- **WHEN** `config.yaml` has no `profile` field
+- **THEN** the validator SHALL report a WARNING with rule `config-profile-recommended`
 
 ### Requirement: Spec format validation
 
@@ -51,15 +67,19 @@ The plugin SHALL validate spec files for structural completeness: title heading,
 
 ### Requirement: Change validation
 
-The plugin SHALL validate active changes for required artifacts: proposal, design, specs, and tasks — reporting missing artifacts based on the project's schema configuration.
+The plugin SHALL validate each active change's `.openspec.yaml` for schema compatibility with the project's declared version. The validator SHALL use `VersionSupport.getValidSchemas()` to determine allowed schemas.
 
-#### Scenario: Missing proposal
-- **WHEN** an active change has no `proposal.md` file
-- **THEN** the validator SHALL report an ERROR with code `change-proposal-required`
+#### Scenario: Proposal required
+- **WHEN** a change has no `proposal.md`
+- **THEN** the validator SHALL report an ERROR with rule `change-proposal-required`
 
-#### Scenario: Missing artifacts
-- **WHEN** an active change is missing one or more required artifact files (design.md, specs/, tasks.md)
-- **THEN** the validator SHALL report a finding with code `change-artifact-missing` at the severity appropriate to the schema's strictness
+#### Scenario: Required artifacts for version
+- **WHEN** the declared version requires specific artifacts and a change is missing one
+- **THEN** the validator SHALL report a WARNING (or ERROR in strict mode) with rule `change-artifact-missing`
+
+#### Scenario: Change schema incompatible with project version
+- **WHEN** a change's `.openspec.yaml` declares a schema not in the project version's valid schemas
+- **THEN** the validator SHALL report a WARNING with rule `change-schema-incompatible`
 
 ### Requirement: Delta spec validation
 

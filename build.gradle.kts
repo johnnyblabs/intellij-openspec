@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "com.johnnyblabs.openspec"
-version = "0.2.4"
+version = "0.2.5"
 
 java {
     sourceCompatibility = JavaVersion.VERSION_21
@@ -52,6 +52,14 @@ intellijPlatform {
             url = "https://github.com/johnnyblabs/intellij-openspec"
         }
         changeNotes = """
+            <h3>v0.2.5 — Validation &amp; Onboarding</h3>
+            <ul>
+                <li><b>Config version validation</b>: version field presence, recognition, and required-fields-per-version checks</li>
+                <li><b>Schema-version cross-check</b>: warn when a change uses a schema incompatible with the project version</li>
+                <li><b>Smart onboarding</b>: skip setup wizard for already-initialized projects, show tree view directly</li>
+                <li><b>Icon bar redesign</b>: Apply and Compliance promoted to first-class icon bar actions</li>
+                <li><b>Overflow menu cleanup</b>: trimmed to change-scoped actions only (Sync Specs, Cancel Generation)</li>
+            </ul>
             <h3>v0.2.4 — Open Source &amp; Workflow Engine</h3>
             <ul>
                 <li><b>Fast-Forward</b>: one-click change creation + full artifact generation</li>
