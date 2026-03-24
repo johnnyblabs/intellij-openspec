@@ -175,6 +175,18 @@ public final class BuiltInValidator {
             }
         }
 
+        // Cross-validate change schema against project version
+        if (change.getMetadata() != null && change.getMetadata().getSchema() != null) {
+            String changeSchema = change.getMetadata().getSchema();
+            if (!version.getValidSchemas().contains(changeSchema)) {
+                issues.add(new ValidationIssue(ValidationIssue.Severity.WARNING, changePath, 1,
+                        "Change '" + change.getName() + "' uses schema '" + changeSchema +
+                                "' which is not valid for project version " + version.getVersion() +
+                                ". Valid schemas: " + version.getValidSchemas(),
+                        "change-schema-incompatible"));
+            }
+        }
+
         validateDeltaSpecs(changePath, issues);
         boolean passed = issues.stream().noneMatch(i -> i.severity() == ValidationIssue.Severity.ERROR);
         return new ValidationResult(passed, issues, "built-in");
@@ -239,6 +251,31 @@ public final class BuiltInValidator {
                 issues.add(new ValidationIssue(ValidationIssue.Severity.WARNING, path, 1,
                         "Schema '" + config.getSchema() + "' is not a recognized value. " +
                                 "Valid: " + version.getValidSchemas(), "config-schema-invalid"));
+            }
+        }
+
+        // Version field validation
+        if (config.getVersion() == null || config.getVersion().isEmpty()) {
+            issues.add(new ValidationIssue(ValidationIssue.Severity.WARNING, path, 1,
+                    "config.yaml should have a 'version' field", "config-version-required"));
+        } else if (!VersionSupport.allVersions().contains(config.getVersion())) {
+            issues.add(new ValidationIssue(ValidationIssue.Severity.WARNING, path, 1,
+                    "Version '" + config.getVersion() + "' is not recognized. " +
+                            "Known versions: " + VersionSupport.allVersions(), "config-version-unknown"));
+        }
+
+        // Required config fields for declared version
+        VersionSupport version = getVersionSupport();
+        for (String field : version.getRequiredConfigFields()) {
+            boolean present = switch (field) {
+                case "schema" -> config.getSchema() != null && !config.getSchema().isEmpty();
+                case "version" -> config.getVersion() != null && !config.getVersion().isEmpty();
+                default -> false;
+            };
+            if (!present) {
+                issues.add(new ValidationIssue(ValidationIssue.Severity.ERROR, path, 1,
+                        "config.yaml requires '" + field + "' field for version " + version.getVersion(),
+                        "config-field-required"));
             }
         }
 

@@ -105,7 +105,7 @@ public class OpenSpecSettingsPanel {
         cliSection.setBorder(IdeBorderFactory.createTitledBorder("OpenSpec CLI"));
 
         // --- General Section ---
-        profileCombo = new JComboBox<>(new String[]{"", "spec-driven", "tdd", "rapid"});
+        profileCombo = new JComboBox<>(new String[]{"", "spec-driven"});
         profileCombo.setEditable(true);
 
         cliTimeoutSpinner = new JSpinner(new SpinnerNumberModel(30, 1, 3600, 1));
