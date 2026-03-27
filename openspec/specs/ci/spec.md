@@ -1,7 +1,7 @@
 # CI Pipeline
 
 ## Purpose
-Continuous integration for build, test, plugin verification, and signing — ensuring every change is compilable, tested, and compatible across supported IDE versions.
+Continuous integration for build, test, plugin verification, signing, and release publishing — ensuring every change is compilable, tested, and compatible across supported IDE versions, and that releases are signed and published exclusively through CI.
 
 ## Requirements
 
@@ -72,3 +72,43 @@ The pipeline SHALL run on a `java-21` runner with JDK 21, Gradle 9, and git pre-
 #### Scenario: Gradle daemon disabled
 - **WHEN** the pipeline executes Gradle commands
 - **THEN** the Gradle daemon SHALL be disabled via `-Dorg.gradle.daemon=false`
+
+### Requirement: Release pipeline
+
+The release pipeline SHALL be the exclusive mechanism for signing and publishing the plugin to JetBrains Marketplace. It SHALL trigger automatically when a `v*` tag is pushed, and SHALL build, sign, publish, and create a GitHub Release in a single workflow run.
+
+#### Scenario: Tag triggers release
+- **WHEN** a tag matching `v*` is pushed to the repository
+- **THEN** the release pipeline SHALL start automatically
+
+#### Scenario: Build and test before publish
+- **WHEN** the release pipeline runs
+- **THEN** it SHALL execute `gradle build` (compile and test) before attempting to sign or publish
+
+#### Scenario: Plugin signing
+- **WHEN** the release pipeline runs
+- **THEN** it SHALL sign the plugin using `PLUGIN_SIGNING_KEY`, `PLUGIN_SIGNING_CERTIFICATE`, and `PLUGIN_SIGNING_KEY_PASSWORD` from repository secrets
+
+#### Scenario: Marketplace publishing
+- **WHEN** the plugin is signed successfully
+- **THEN** the pipeline SHALL publish the signed plugin to JetBrains Marketplace using the `JETBRAINS_MARKETPLACE_TOKEN` secret
+
+#### Scenario: GitHub Release creation
+- **WHEN** the plugin is published to the Marketplace
+- **THEN** the pipeline SHALL create a GitHub Release for the tag, attaching the signed plugin zip and including release notes
+
+### Requirement: Local publish prohibition
+
+The `signPlugin` and `publishPlugin` Gradle tasks SHALL only be executed in CI. Running these tasks locally risks uploading unsigned artifacts that block the CI release pipeline, since the Marketplace rejects duplicate version uploads.
+
+#### Scenario: Local build permitted
+- **WHEN** a developer runs `gradle build` or `gradle test` locally
+- **THEN** the build SHALL succeed without requiring signing credentials
+
+#### Scenario: Local signPlugin prohibited
+- **WHEN** a developer attempts to run `gradle signPlugin` locally
+- **THEN** the task SHALL be skipped due to missing signing environment variables, and the developer SHALL NOT work around this by providing local credentials
+
+#### Scenario: Local publishPlugin prohibited
+- **WHEN** a developer or automated tool runs `gradle publishPlugin` locally
+- **THEN** the unsigned artifact SHALL conflict with the CI-signed release, blocking the official publish pipeline
