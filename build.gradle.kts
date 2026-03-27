@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "com.johnnyblabs.openspec"
-version = "0.2.5"
+version = "0.2.6"
 
 java {
     sourceCompatibility = JavaVersion.VERSION_21
@@ -52,6 +52,14 @@ intellijPlatform {
             url = "https://github.com/johnnyblabs/intellij-openspec"
         }
         changeNotes = """
+            <h3>v0.2.6 — Stability &amp; Context</h3>
+            <ul>
+                <li><b>Explore context enrichment</b>: full artifact content (proposal, design, tasks, delta specs) and requirement descriptions now included in assembled context</li>
+                <li><b>Delta spec quick-fix</b>: MODIFIED requirements missing scenarios offer a one-click fix that copies the full requirement block from the main spec</li>
+                <li><b>Lenient config parsing</b>: unknown fields and type mismatches in <code>config.yaml</code> are silently ignored instead of raising parse errors</li>
+                <li><b>YAML field ordering</b>: <code>ConfigService</code> preserves field order via <code>LinkedHashMap</code> for readable YAML output</li>
+                <li><b>PSI stability</b>: all inspections guard against zero-length PSI elements and invalid offsets, preventing editor crashes</li>
+            </ul>
             <h3>v0.2.5 — Validation &amp; Onboarding</h3>
             <ul>
                 <li><b>Config version validation</b>: version field presence, recognition, and required-fields-per-version checks</li>

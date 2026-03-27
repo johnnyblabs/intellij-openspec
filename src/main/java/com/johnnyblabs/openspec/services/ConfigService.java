@@ -9,13 +9,10 @@ import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.johnnyblabs.openspec.model.OpenSpecConfig;
 import com.johnnyblabs.openspec.util.OpenSpecFileUtil;
-import com.johnnyblabs.openspec.util.OpenSpecNotifier;
-import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
-import org.yaml.snakeyaml.constructor.Constructor;
-import org.yaml.snakeyaml.error.MarkedYAMLException;
 
 import java.io.InputStream;
+import java.util.Map;
 
 @Service(Service.Level.PROJECT)
 public final class ConfigService {
@@ -57,40 +54,24 @@ public final class ConfigService {
             return;
         }
         try {
-            OpenSpecConfig loaded;
+            Map<String, Object> raw;
             if (ApplicationManager.getApplication() == null
                     || ApplicationManager.getApplication().isDispatchThread()) {
                 try (InputStream is = configFile.getInputStream()) {
-                    Yaml yaml = new Yaml(new Constructor(OpenSpecConfig.class, new LoaderOptions()));
-                    loaded = yaml.loadAs(is, OpenSpecConfig.class);
+                    raw = new Yaml().load(is);
                 }
             } else {
                 VirtualFile cfgFile = configFile;
-                loaded = ReadAction.computeCancellable(() -> {
+                raw = ReadAction.computeCancellable(() -> {
                     try (InputStream is = cfgFile.getInputStream()) {
-                        Yaml yaml = new Yaml(new Constructor(OpenSpecConfig.class, new LoaderOptions()));
-                        return yaml.loadAs(is, OpenSpecConfig.class);
+                        return new Yaml().load(is);
                     }
                 });
             }
-            config = loaded;
-        } catch (MarkedYAMLException e) {
-            config = null;
-            String location = "";
-            if (e.getProblemMark() != null) {
-                location = "line " + (e.getProblemMark().getLine() + 1)
-                        + ", column " + (e.getProblemMark().getColumn() + 1) + ": ";
-            }
-            String message = configFile.getPath() + ": " + location
-                    + (e.getProblem() != null ? e.getProblem() : "invalid YAML");
-            LOG.warn("Failed to parse config.yaml: " + message, e);
-            OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_SYSTEM, "Configuration",
-                    "config.yaml parse error: " + message, com.intellij.notification.NotificationType.WARNING);
+            config = OpenSpecConfig.fromMap(raw);
         } catch (Exception e) {
-            config = null;
-            LOG.warn("Failed to read config.yaml: " + configFile.getPath(), e);
-            OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_SYSTEM, "Configuration",
-                    "Failed to read config.yaml: " + e.getMessage(), com.intellij.notification.NotificationType.WARNING);
+            config = new OpenSpecConfig();
+            LOG.debug("Failed to parse config.yaml: " + configFile.getPath(), e);
         }
     }
 
