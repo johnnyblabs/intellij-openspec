@@ -26,7 +26,7 @@ public class SpecFormatInspection extends LocalInspectionTool {
         java.util.List<ProblemDescriptor> problems = new java.util.ArrayList<>();
 
         if (!REQUIREMENT_PATTERN.matcher(text).find()) {
-            PsiElement element = file.getFirstChild();
+            PsiElement element = findNonEmptyElement(file, 0);
             if (element != null) {
                 problems.add(manager.createProblemDescriptor(
                         element,
@@ -44,8 +44,9 @@ public class SpecFormatInspection extends LocalInspectionTool {
             String reqBody = nextReq > 0 ? section.substring(0, nextReq) : section;
 
             if (!RFC_2119_PATTERN.matcher(reqBody).find()) {
-                PsiElement element = file.findElementAt(
-                        text.indexOf("### Requirement:" + section.substring(0, Math.min(20, section.length()))));
+                int offset = text.indexOf("### Requirement:" + section.substring(0, Math.min(20, section.length())));
+                if (offset < 0) continue;
+                PsiElement element = findNonEmptyElement(file, offset);
                 if (element != null) {
                     problems.add(manager.createProblemDescriptor(
                             element,
@@ -58,5 +59,14 @@ public class SpecFormatInspection extends LocalInspectionTool {
         }
 
         return problems.toArray(ProblemDescriptor.EMPTY_ARRAY);
+    }
+
+    private static PsiElement findNonEmptyElement(PsiFile file, int offset) {
+        PsiElement element = file.findElementAt(offset);
+        if (element == null) element = file.getFirstChild();
+        while (element != null && element.getTextLength() == 0) {
+            element = element.getParent();
+        }
+        return element;
     }
 }

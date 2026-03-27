@@ -35,27 +35,23 @@ public class ConfigValidationInspection extends LocalInspectionTool {
         try {
             new Yaml(new LoaderOptions()).load(text);
         } catch (MarkedYAMLException e) {
-            PsiElement element = file.getFirstChild();
-            if (element != null) {
-                String problem = e.getProblem() != null ? e.getProblem() : "invalid YAML syntax";
-                String location = "";
-                if (e.getProblemMark() != null) {
-                    location = " (line " + (e.getProblemMark().getLine() + 1)
-                            + ", column " + (e.getProblemMark().getColumn() + 1) + ")";
-                }
+            String problem = e.getProblem() != null ? e.getProblem() : "invalid YAML syntax";
+            String location = "";
+            if (e.getProblemMark() != null) {
+                location = " (line " + (e.getProblemMark().getLine() + 1)
+                        + ", column " + (e.getProblemMark().getColumn() + 1) + ")";
+            }
 
-                // Try to highlight near the error location
-                PsiElement target = element;
-                if (e.getProblemMark() != null) {
-                    int offset = e.getProblemMark().getIndex();
-                    if (offset >= 0 && offset < text.length()) {
-                        PsiElement atOffset = file.findElementAt(offset);
-                        if (atOffset != null) {
-                            target = atOffset;
-                        }
-                    }
+            // Try to highlight near the error location
+            int offset = 0;
+            if (e.getProblemMark() != null) {
+                int markOffset = e.getProblemMark().getIndex();
+                if (markOffset >= 0 && markOffset < text.length()) {
+                    offset = markOffset;
                 }
-
+            }
+            PsiElement target = findNonEmptyElement(file, offset);
+            if (target != null) {
                 problems.add(manager.createProblemDescriptor(
                         target,
                         "YAML syntax error: " + problem + location,
@@ -70,7 +66,7 @@ public class ConfigValidationInspection extends LocalInspectionTool {
         // Field-level validation — only for config.yaml
         if (isConfig) {
             if (!text.contains("schema:")) {
-                PsiElement element = file.getFirstChild();
+                PsiElement element = findNonEmptyElement(file, 0);
                 if (element != null) {
                     problems.add(manager.createProblemDescriptor(
                             element,
@@ -82,7 +78,7 @@ public class ConfigValidationInspection extends LocalInspectionTool {
             }
 
             if (!text.contains("profile:")) {
-                PsiElement element = file.getFirstChild();
+                PsiElement element = findNonEmptyElement(file, 0);
                 if (element != null) {
                     problems.add(manager.createProblemDescriptor(
                             element,
@@ -95,5 +91,14 @@ public class ConfigValidationInspection extends LocalInspectionTool {
         }
 
         return problems.toArray(ProblemDescriptor.EMPTY_ARRAY);
+    }
+
+    private static PsiElement findNonEmptyElement(PsiFile file, int offset) {
+        PsiElement element = file.findElementAt(offset);
+        if (element == null) element = file.getFirstChild();
+        while (element != null && element.getTextLength() == 0) {
+            element = element.getParent();
+        }
+        return element;
     }
 }
