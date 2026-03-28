@@ -10,8 +10,10 @@ import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowManager;
 import com.intellij.ui.content.Content;
 import com.johnnyblabs.openspec.toolwindow.OpenSpecToolWindowPanel;
+import com.johnnyblabs.openspec.services.WorkflowProfileService;
 import com.johnnyblabs.openspec.util.OpenSpecFileUtil;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.awt.*;
 
@@ -42,11 +44,37 @@ public abstract class OpenSpecBaseAction extends AnAction {
         return ActionUpdateThread.BGT;
     }
 
+    /**
+     * Returns the workflow ID this action maps to (e.g., "propose", "ff", "verify"),
+     * or {@code null} if this is a utility action that is always enabled.
+     */
+    @Nullable
+    protected String getWorkflowId() {
+        return null;
+    }
+
     @Override
     public void update(@NotNull AnActionEvent e) {
         Project project = e.getProject();
-        e.getPresentation().setEnabledAndVisible(
-                project != null && OpenSpecFileUtil.isOpenSpecProject(project));
+        if (project == null || !OpenSpecFileUtil.isOpenSpecProject(project)) {
+            e.getPresentation().setEnabledAndVisible(false);
+            return;
+        }
+
+        e.getPresentation().setVisible(true);
+
+        String workflowId = getWorkflowId();
+        if (workflowId != null) {
+            WorkflowProfileService profileService = project.getService(WorkflowProfileService.class);
+            if (profileService != null && !profileService.isWorkflowEnabled(workflowId)) {
+                e.getPresentation().setEnabled(false);
+                e.getPresentation().setDescription(
+                        "Requires expanded profile. Change in Settings \u2192 Tools \u2192 OpenSpec.");
+                return;
+            }
+        }
+
+        e.getPresentation().setEnabled(true);
     }
 
     /**

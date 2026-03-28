@@ -20,6 +20,9 @@ import java.util.List;
 public class OpenSpecArchiveAction extends OpenSpecBaseAction {
 
     @Override
+    protected String getWorkflowId() { return "archive"; }
+
+    @Override
     public void actionPerformed(@NotNull AnActionEvent e) {
         Project project = e.getProject();
         if (project == null) return;

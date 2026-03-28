@@ -79,16 +79,7 @@ When ready to implement, run /opsx:apply
       - Use **AskUserQuestion tool** to clarify
       - Then continue with creation
 
-5. **Validate the change**
-   ```bash
-   openspec validate "<name>" --json
-   ```
-   - Parse the JSON output for errors and warnings
-   - If there are **errors**: fix each violated artifact, then re-run `openspec validate "<name>" --json`
-   - Repeat until validation passes (no errors)
-   - If a fix is unclear after two attempts, ask the user before continuing
-
-6. **Show final status**
+5. **Show final status**
    ```bash
    openspec status --change "<name>"
    ```

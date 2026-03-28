@@ -29,6 +29,9 @@ import java.util.List;
 public class OpenSpecApplyAction extends OpenSpecBaseAction {
 
     @Override
+    protected String getWorkflowId() { return "apply"; }
+
+    @Override
     public void actionPerformed(@NotNull AnActionEvent e) {
         Project project = e.getProject();
         if (project == null) return;

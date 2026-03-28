@@ -439,7 +439,7 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider {
         };
     }
 
-    private void updateCliStatus() {
+    void updateCliStatus() {
         CliDetectionService detection = project.getService(CliDetectionService.class);
         if (detection != null && detection.isAvailable()) {
             String version = detection.getDetectedVersion();

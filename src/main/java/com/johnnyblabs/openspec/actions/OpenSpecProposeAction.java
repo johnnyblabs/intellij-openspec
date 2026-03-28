@@ -28,6 +28,9 @@ import java.awt.*;
 public class OpenSpecProposeAction extends OpenSpecBaseAction {
 
     @Override
+    protected String getWorkflowId() { return "propose"; }
+
+    @Override
     public void actionPerformed(@NotNull AnActionEvent e) {
         Project project = e.getProject();
         if (project == null) return;

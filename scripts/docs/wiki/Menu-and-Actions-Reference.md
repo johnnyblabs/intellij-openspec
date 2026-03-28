@@ -4,34 +4,50 @@ All OpenSpec actions are available from the **OpenSpec** top-level menu and from
 
 ## Action Table
 
-| Action | Menu Label | CLI Command | Built-in Fallback | Context Menu |
+| Action | Menu Label | Workflow ID | Built-in Fallback | Context Menu |
 |--------|-----------|-------------|-------------------|--------------|
-| **Init** | OpenSpec → Init | `openspec init` | ScaffoldingService creates structure | — |
-| **Propose** | OpenSpec → Propose | `openspec propose` | ScaffoldingService + dialog | Toolbar |
-| **Apply** | OpenSpec → Apply | *(none)* | Updates .openspec.yaml status | Change node |
-| **Archive** | OpenSpec → Archive | `openspec archive` | Moves directory to archive/ | Change node |
-| **Validate** | OpenSpec → Validate | `openspec validate` | BuiltInValidator | Toolbar, spec nodes |
-| **List** | OpenSpec → List | `openspec list` | Parses files directly | — |
-| **Refresh Tree** | OpenSpec → Refresh | *(none)* | Rebuilds SpecTreeModel | Toolbar |
-| **Generate Artifact** | OpenSpec → Generate Artifact | `openspec artifact` | Builds prompt from DAG | Artifact nodes |
-| **Generate All** | OpenSpec → Generate All Artifacts | `openspec artifact --all` | Walks DAG via API | Change node |
+| **Init** | OpenSpec → Init | *(none)* | ScaffoldingService creates structure | — |
+| **Propose** | OpenSpec → Propose... | `propose` | ScaffoldingService + dialog | Toolbar |
+| **Fast-Forward** | OpenSpec → Fast-Forward... | `ff` | Delegates to WorkflowActionPanel | — |
+| **Explore** | OpenSpec → Explore... | `explore` | Topic dialog + delivery routing. Explore tab requires Direct API. | — |
+| **Continue** | OpenSpec → Continue | `continue` | DirectApiService artifact generation | — |
+| **Apply** | OpenSpec → Apply | `apply` | Focuses workflow panel for apply | Change node |
+| **Verify** | OpenSpec → Verify | `verify` | VerificationService report dialog | — |
+| **Sync Specs** | OpenSpec → Sync Specs | `sync` | SpecSyncService preview dialog | — |
+| **Archive** | OpenSpec → Archive | `archive` | ComplianceService + move to archive/ | Change node |
+| **Bulk Archive** | OpenSpec → Bulk Archive... | `bulk-archive` | BulkArchiveDialog with conflict detection | — |
+| **Validate** | OpenSpec → Validate | *(none)* | BuiltInValidator + CLI merge | Toolbar, spec nodes |
+| **List** | OpenSpec → List | *(none)* | Parses files directly / CLI fallback | — |
+| **Refresh** | OpenSpec → Refresh | *(none)* | Rebuilds SpecTreeModel | Toolbar |
+| **Update** | OpenSpec → Update OpenSpec | *(none)* | CLI only (`openspec update`) | — |
+| **Manage AI Tools** | OpenSpec → Manage AI Tools... | *(none)* | ManageAiToolsDialog | — |
+| **Setup Wizard** | OpenSpec → Setup Wizard... | *(none)* | SetupWizardDialog | — |
 
 ## Action Class Hierarchy
 
 ```
 AnAction (IntelliJ Platform)
 ├── OpenSpecBaseAction (abstract)
+│   │   getWorkflowId() → null (utility) or workflow string (workflow-bound)
+│   │   update() → profile-aware enablement check
 │   ├── OpenSpecInitAction
-│   ├── OpenSpecProposeAction
-│   ├── OpenSpecApplyAction
+│   ├── OpenSpecProposeAction          → "propose"
+│   ├── ExploreContextAction           → "explore"
+│   ├── OpenSpecApplyAction            → "apply"
+│   ├── OpenSpecArchiveAction          → "archive"
+│   ├── OpenSpecFfAction               → "ff"
+│   ├── OpenSpecContinueAction         → "continue"
+│   ├── OpenSpecVerifyAction           → "verify"
+│   ├── OpenSpecSyncAction             → "sync"
+│   ├── OpenSpecBulkArchiveAction      → "bulk-archive"
 │   ├── OpenSpecValidateAction
-│   ├── GenerateArtifactAction
-│   └── GenerateAllArtifactsAction
-├── OpenSpecCliAction (abstract, extends OpenSpecBaseAction)
-│   ├── OpenSpecArchiveAction
-│   ├── OpenSpecListAction
-│   └── OpenSpecRefreshAction
-└── CreateDeltaSpecAction (direct AnAction)
+│   ├── OpenSpecManageToolsAction
+│   ├── OpenSpecSetupWizardAction
+│   └── OpenSpecCliAction (abstract)
+│       ├── OpenSpecListAction
+│       └── OpenSpecUpdateAction
+├── CreateDeltaSpecAction (direct AnAction)
+└── DeltaSpecDiffAction (direct AnAction)
 ```
 
 ## CLI Fallback Pattern
@@ -48,14 +64,22 @@ Most actions try the CLI first. If the CLI is unavailable, they fall back to bui
 - **Refresh** is purely IDE-side
 - **Generate Artifact/All** uses the CLI for DAG info but generates via DirectApiService or clipboard
 
-## Visibility Rules
+## Visibility & Enablement Rules
 
-| Action | Visible When |
-|--------|-------------|
-| **Init** | Always (even in non-OpenSpec projects) |
-| **All others** | Only when `isOpenSpecProject()` returns true |
-| **Generate Artifact** | A change artifact is selected in tree |
-| **Generate All** | AI provider is configured and API key is stored |
+Actions use a two-tier check in `update()`:
+
+1. **Visibility**: All actions (except Init, ManageTools) are hidden in non-OpenSpec projects
+2. **Enablement**: Actions with a `getWorkflowId()` are disabled if their workflow is not in the active profile
+
+| Action | Visible When | Enabled When |
+|--------|-------------|-------------|
+| **Init** | Always | Always |
+| **ManageTools** | Always | Always |
+| **Workflow actions** (Propose, Explore, Apply, Archive, FF, Continue, Verify, Sync, Bulk Archive) | OpenSpec project | Workflow ID in active profile |
+| **Utility actions** (Validate, List, Refresh, Update, SetupWizard) | OpenSpec project | Always |
+| **Bulk Archive** | OpenSpec project | Workflow in profile AND 2+ active changes |
+
+Disabled workflow actions show tooltip: *"Requires expanded profile. Change in Settings → Tools → OpenSpec."*
 
 ## DataKeys
 

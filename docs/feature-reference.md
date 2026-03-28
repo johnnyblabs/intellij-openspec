@@ -8,14 +8,14 @@ Complete reference for all plugin features, organized by functional area.
 
 ### Tool Window
 
-The OpenSpec tool window (right sidebar, or **View > Tool Windows > OpenSpec**) has four tabs:
+The OpenSpec tool window (right sidebar, or **View > Tool Windows > OpenSpec**) has three permanent tabs, plus a conditional Explore tab:
 
 | Tab | Purpose |
 |-----|---------|
 | **Browse** | Tree view of specs, changes, and archives. Double-click to open files. Right-click for context menu actions. |
 | **Coverage** | Coverage analysis showing which spec requirements are referenced in source code. |
 | **Console** | Output panel for CLI commands (init, validate, update, etc.). |
-| **Explore** | Assembled project context (config summary, active changes, spec domains, detected tools) in Markdown. Auto-refreshes when `openspec/` files change. Copy or open in editor. |
+| **Explore** | *(Only when Direct API is configured)* Thinking-space panel with inline topic input, markdown-rendered AI responses, and Copy/Clear toolbar. Appears automatically when you configure a Direct API provider in Settings. |
 
 ### Browse Tab Tree Structure
 
@@ -74,7 +74,7 @@ The panel includes a **change selector** dropdown for switching between multiple
 | **Propose** | OpenSpec > Propose... | Create a new change with name and description. Scaffolds artifact files. |
 | **Fast-Forward** | OpenSpec > Fast-Forward... | Create a change and generate all artifacts in one step via Direct API. |
 | **Continue** | OpenSpec > Continue | Generate the next ready artifact in the active change. Requires Direct API. |
-| **Explore** | OpenSpec > Explore... | Assemble project context into Markdown. Copy to clipboard or open in editor tab. |
+| **Explore** | OpenSpec > Explore... | Prompt for an optional topic, assemble the explore prompt (skill instructions + project context + topic), and deliver via configured delivery mode. With Direct API configured, the Explore tab appears in the tool window for inline input and rendered responses. Clipboard and Editor Tab modes use the topic dialog. |
 | **Apply** | OpenSpec > Apply | Mark a change as applied. |
 | **Verify** | OpenSpec > Verify | Check artifact completeness, task progress, and requirement coverage. Opens report dialog. |
 | **Archive** | OpenSpec > Archive | Move a completed change to `openspec/changes/archive/`. Optionally syncs delta specs. |
@@ -85,6 +85,19 @@ The panel includes a **change selector** dropdown for switching between multiple
 | **List** | OpenSpec > List | List all specs and changes. |
 | **Refresh Tree** | OpenSpec > Refresh Tree | Manually refresh the tool window tree. |
 | **Setup Wizard** | OpenSpec > Setup Wizard... | Guided onboarding for new projects. |
+
+### Profile-Aware Action Visibility
+
+Workflow actions respect the active OpenSpec profile. Actions whose workflow is not enabled in the current profile (e.g., `core` vs expanded) appear **visible but disabled** with a tooltip: *"Requires expanded profile. Change in Settings → Tools → OpenSpec."*
+
+| Profile | Enabled Actions |
+|---------|----------------|
+| **core** | Propose, Explore, Apply, Archive |
+| **expanded/custom** | All of the above + Fast-Forward, Continue, Verify, Sync Specs, Bulk Archive |
+
+Utility actions (Init, Validate, List, Refresh, Update, Manage AI Tools, Setup Wizard) are always enabled regardless of profile.
+
+The profile is configured globally via `openspec config profile` or in **Settings → Tools → OpenSpec**. After changing the profile, action enablement updates immediately.
 
 ### Scaffolding Detection
 
@@ -233,9 +246,11 @@ The plugin works without the CLI, but some features (schema management, CLI-enha
 2. If installed but not detected: **Settings > Tools > OpenSpec > Detect**, or set the path manually
 3. On macOS, GUI apps don't inherit your terminal's PATH — the plugin tries your login shell, Homebrew paths, and `/usr/local/bin` automatically
 
-### "Fast-Forward" or "Continue" is grayed out
+### "Fast-Forward", "Continue", or other actions are grayed out
 
-These actions require an AI provider and API key configured in **Settings > Tools > OpenSpec > Direct API**. Use the clipboard workflow instead if you prefer not to configure API keys.
+**Profile check:** If the tooltip says *"Requires expanded profile"*, your active profile doesn't include that workflow. Switch to an expanded or custom profile in **Settings → Tools → OpenSpec → Config Profile**.
+
+**API check:** Fast-Forward and Continue also require an AI provider and API key configured in **Settings → Tools → OpenSpec → Direct API**. Use the clipboard workflow instead if you prefer not to configure API keys.
 
 ### API test fails
 

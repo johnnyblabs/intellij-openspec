@@ -12,6 +12,8 @@ import com.intellij.openapi.util.Key;
 import com.johnnyblabs.openspec.settings.OpenSpecSettings;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
@@ -19,6 +21,7 @@ import java.util.Map;
 public final class CliDetectionService {
     private static final Logger LOG = Logger.getInstance(CliDetectionService.class);
     private static final int TIMEOUT_MS = 10_000;
+    private static final Duration DETECTION_STALENESS = Duration.ofSeconds(30);
 
     /**
      * Common install locations for openspec on macOS/Linux.
@@ -34,9 +37,23 @@ public final class CliDetectionService {
     private volatile String detectedPath;
     private volatile String detectedVersion;
     private volatile String loginShellPath;
+    private volatile Instant lastDetectionTime;
 
     public CliDetectionService(Project project) {
         this.project = project;
+    }
+
+    /**
+     * Re-runs detection only if the last detection was more than 30 seconds ago.
+     * Returns true if detection was actually performed.
+     */
+    public boolean detectIfStale() {
+        Instant last = lastDetectionTime;
+        if (last != null && Duration.between(last, Instant.now()).compareTo(DETECTION_STALENESS) < 0) {
+            return false;
+        }
+        detect();
+        return true;
     }
 
     public void detect() {
@@ -44,27 +61,31 @@ public final class CliDetectionService {
         detectedPath = null;
         detectedVersion = null;
 
-        // Resolve login shell PATH first — needed on macOS where GUI apps
-        // don't inherit terminal PATH (so node/openspec can't be found)
-        resolveLoginShellPath();
+        try {
+            // Resolve login shell PATH first — needed on macOS where GUI apps
+            // don't inherit terminal PATH (so node/openspec can't be found)
+            resolveLoginShellPath();
 
-        // 1. Check settings path first
-        OpenSpecSettings settings = OpenSpecSettings.getInstance(project);
-        String settingsPath = settings.getCliPath();
-        if (settingsPath != null && !settingsPath.isEmpty()) {
-            if (tryPath(settingsPath)) return;
-        }
+            // 1. Check settings path first
+            OpenSpecSettings settings = OpenSpecSettings.getInstance(project);
+            String settingsPath = settings.getCliPath();
+            if (settingsPath != null && !settingsPath.isEmpty()) {
+                if (tryPath(settingsPath)) return;
+            }
 
-        // 2. Try bare "openspec" via GeneralCommandLine (uses IntelliJ's env resolution)
-        if (tryPath("openspec")) return;
+            // 2. Try bare "openspec" via GeneralCommandLine (uses IntelliJ's env resolution)
+            if (tryPath("openspec")) return;
 
-        // 3. Try via user's login shell
-        String shellPath = tryLoginShellWhich();
-        if (shellPath != null && tryPath(shellPath)) return;
+            // 3. Try via user's login shell
+            String shellPath = tryLoginShellWhich();
+            if (shellPath != null && tryPath(shellPath)) return;
 
-        // 4. Try common install locations
-        for (String path : COMMON_PATHS) {
-            if (tryPath(path)) return;
+            // 4. Try common install locations
+            for (String path : COMMON_PATHS) {
+                if (tryPath(path)) return;
+            }
+        } finally {
+            lastDetectionTime = Instant.now();
         }
     }
 

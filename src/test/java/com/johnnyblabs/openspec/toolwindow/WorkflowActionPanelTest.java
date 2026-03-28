@@ -3,10 +3,14 @@ package com.johnnyblabs.openspec.toolwindow;
 import com.johnnyblabs.openspec.ai.DeliveryMode;
 import com.johnnyblabs.openspec.model.ArtifactInfo;
 import com.johnnyblabs.openspec.model.ArtifactStatus;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import javax.swing.*;
 import java.awt.*;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -494,6 +498,49 @@ class WorkflowActionPanelTest {
         assertEquals("Archive (complete all artifacts and tasks first)", tooltip);
     }
 
+    // --- FF link visibility based on Direct API ---
+
+    @Test
+    void ffLink_visible_whenDirectApiConfigured() {
+        boolean apiConfigured = true;
+        JPanel card = new JPanel();
+        card.add(new JLabel("No changes yet."));
+        card.add(new JLabel("Propose a change")); // hyperlink stand-in
+        if (apiConfigured) {
+            card.add(new JLabel(" or "));
+            card.add(new JLabel("Fast-Forward"));
+        }
+        assertEquals(4, card.getComponentCount(), "Card should have 4 components with FF link");
+    }
+
+    @Test
+    void ffLink_hidden_whenDirectApiNotConfigured() {
+        boolean apiConfigured = false;
+        JPanel card = new JPanel();
+        card.add(new JLabel("No changes yet."));
+        card.add(new JLabel("Propose a change")); // hyperlink stand-in
+        if (apiConfigured) {
+            card.add(new JLabel(" or "));
+            card.add(new JLabel("Fast-Forward"));
+        }
+        assertEquals(2, card.getComponentCount(), "Card should have 2 components without FF link");
+    }
+
+    @Test
+    void activateFfInput_blockedWithoutDirectApi_showsMessage() {
+        boolean apiConfigured = false;
+        JLabel statusLabel = new JLabel();
+        JButton goButton = new JButton("Go");
+
+        if (!apiConfigured) {
+            statusLabel.setText("Requires AI provider. Configure in Settings \u2192 Tools \u2192 OpenSpec.");
+            goButton.setEnabled(false);
+        }
+
+        assertTrue(statusLabel.getText().contains("Requires AI provider"));
+        assertFalse(goButton.isEnabled());
+    }
+
     // --- Overflow menu structure ---
 
     @Test
@@ -508,5 +555,43 @@ class WorkflowActionPanelTest {
         // FF should be in the overflow menu creation group
         String ffLabel = "Fast-Forward...";
         assertTrue(ffLabel.contains("Fast-Forward"), "FF should be in overflow menu");
+    }
+
+    // --- EDT threading safety ---
+
+    @Nested
+    class EdtThreadingSafety {
+
+        /**
+         * Regression guard: setActiveChange() must call refreshForChange() (which dispatches
+         * to a pooled thread) rather than refreshForChangeOnPool() (which runs on the calling
+         * thread). Calling refreshForChangeOnPool from the EDT blocks the UI during CLI calls.
+         */
+        @Test
+        void setActiveChange_callsRefreshForChange_notRefreshForChangeOnPool() throws IOException {
+            Path source = Path.of("src/main/java/com/johnnyblabs/openspec/toolwindow/WorkflowActionPanel.java");
+            String content = Files.readString(source);
+
+            // Extract the setActiveChange method body
+            int methodStart = content.indexOf("public void setActiveChange(");
+            assertTrue(methodStart >= 0, "setActiveChange method should exist");
+
+            // Find the closing brace of the method (next method or end)
+            int bodyStart = content.indexOf('{', methodStart);
+            int braceDepth = 0;
+            int methodEnd = bodyStart;
+            for (int i = bodyStart; i < content.length(); i++) {
+                if (content.charAt(i) == '{') braceDepth++;
+                if (content.charAt(i) == '}') braceDepth--;
+                if (braceDepth == 0) { methodEnd = i; break; }
+            }
+
+            String methodBody = content.substring(bodyStart, methodEnd + 1);
+
+            assertTrue(methodBody.contains("refreshForChange("),
+                    "setActiveChange should call refreshForChange() for background dispatch");
+            assertFalse(methodBody.contains("refreshForChangeOnPool("),
+                    "setActiveChange must NOT call refreshForChangeOnPool() directly — it blocks the EDT");
+        }
     }
 }

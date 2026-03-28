@@ -19,6 +19,9 @@ import java.util.List;
 public class OpenSpecVerifyAction extends OpenSpecBaseAction {
 
     @Override
+    protected String getWorkflowId() { return "verify"; }
+
+    @Override
     public void actionPerformed(@NotNull AnActionEvent e) {
         Project project = e.getProject();
         if (project == null) return;

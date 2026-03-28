@@ -21,6 +21,9 @@ import java.util.List;
 public class OpenSpecContinueAction extends OpenSpecBaseAction {
 
     @Override
+    protected String getWorkflowId() { return "continue"; }
+
+    @Override
     public void actionPerformed(@NotNull AnActionEvent e) {
         Project project = e.getProject();
         if (project == null) return;

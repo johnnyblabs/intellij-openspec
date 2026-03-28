@@ -9,12 +9,13 @@ This page covers the action system: class hierarchy, the CLI fallback pattern, d
 Abstract base class for all OpenSpec actions.
 
 **Responsibilities:**
-- `update()` — disables action if project is not OpenSpec-enabled (except Init)
-- Provides helper methods to access services from `AnActionEvent`
+- `update()` — hides action if project is not OpenSpec-enabled, then checks `getWorkflowId()` against `WorkflowProfileService` to disable actions not in the active profile (visible but disabled with tooltip)
+- `getWorkflowId()` — returns `null` for utility actions (always enabled) or a workflow string (e.g., `"ff"`, `"verify"`) for workflow-bound actions
+- Provides `refreshToolWindow()` helper for tree refresh after changes
 
 ### OpenSpecCliAction
 
-Extends `OpenSpecBaseAction` for actions backed by CLI commands.
+Extends `OpenSpecBaseAction` for read-only actions backed by CLI commands.
 
 **Template method pattern:**
 ```
@@ -26,24 +27,31 @@ actionPerformed(event)
 **Abstract methods subclasses implement:**
 | Method | Purpose |
 |--------|---------|
-| `getCliCommand()` | Returns the CLI command string (e.g., `"archive"`) |
+| `getCliArgs()` | Returns the CLI argument array |
+| `getCommandLabel()` | Returns a display label for the command |
 | `handleCliMissing(Project)` | Built-in fallback when CLI unavailable |
-| `processOutput(String)` | Optional processing of CLI stdout |
 
 ### Action Details
 
-| Action | Base | CLI Command | Notes |
+| Action | Base | Workflow ID | Notes |
 |--------|------|-------------|-------|
-| `OpenSpecInitAction` | BaseAction | `openspec init` | Available even when not OpenSpec project |
-| `OpenSpecProposeAction` | BaseAction | `openspec propose` | Shows `ProposeChangeDialog` for name/description |
-| `OpenSpecApplyAction` | BaseAction | *(none)* | Always built-in; updates `.openspec.yaml` |
-| `OpenSpecValidateAction` | BaseAction | `openspec validate` | Merges built-in + CLI results |
-| `GenerateArtifactAction` | BaseAction | `openspec artifact` | Prompts for delivery mode |
-| `GenerateAllArtifactsAction` | BaseAction | `openspec artifact --all` | Requires configured AI provider |
-| `OpenSpecArchiveAction` | CliAction | `openspec archive` | Falls back to file move |
-| `OpenSpecListAction` | CliAction | `openspec list` | Falls back to file parsing |
-| `OpenSpecRefreshAction` | CliAction | *(none)* | Rebuilds tree model directly |
-| `CreateDeltaSpecAction` | AnAction | *(none)* | Direct AnAction; creates file in change dir |
+| `OpenSpecInitAction` | BaseAction | *(none)* | Available even when not OpenSpec project |
+| `OpenSpecProposeAction` | BaseAction | `propose` | Shows `ProposeChangeDialog` for name/description |
+| `ExploreContextAction` | BaseAction | `explore` | Topic dialog + delivery routing (Direct API, Editor Tab, Clipboard). Explore tab only appears when Direct API is configured; panel submits always use Direct API. |
+| `OpenSpecApplyAction` | BaseAction | `apply` | Focuses workflow panel for apply prompt delivery |
+| `OpenSpecArchiveAction` | BaseAction | `archive` | ComplianceService pre-flight + move to archive/ |
+| `OpenSpecFfAction` | BaseAction | `ff` | Delegates to WorkflowActionPanel FF input |
+| `OpenSpecContinueAction` | BaseAction | `continue` | DirectApiService artifact generation |
+| `OpenSpecVerifyAction` | BaseAction | `verify` | VerificationService report dialog |
+| `OpenSpecSyncAction` | BaseAction | `sync` | SpecSyncService preview dialog |
+| `OpenSpecBulkArchiveAction` | BaseAction | `bulk-archive` | Multi-select dialog, requires 2+ active changes |
+| `OpenSpecValidateAction` | BaseAction | *(none)* | Merges built-in + CLI validation results |
+| `OpenSpecManageToolsAction` | BaseAction | *(none)* | ManageAiToolsDialog, pre-init OK |
+| `OpenSpecSetupWizardAction` | BaseAction | *(none)* | Guided onboarding dialog |
+| `OpenSpecListAction` | CliAction | *(none)* | Falls back to file parsing |
+| `OpenSpecUpdateAction` | CliAction | *(none)* | CLI only, no built-in fallback |
+| `CreateDeltaSpecAction` | AnAction | *(n/a)* | Dynamic context menu; creates file in change dir |
+| `DeltaSpecDiffAction` | AnAction | *(n/a)* | Dynamic context menu; opens diff viewer |
 
 ## DataKeys
 

@@ -6,6 +6,7 @@ import com.intellij.openapi.project.Project;
 import com.johnnyblabs.openspec.ai.AiCredentialStore;
 import com.johnnyblabs.openspec.ai.AiProvider;
 import com.johnnyblabs.openspec.services.CliDetectionService;
+import com.johnnyblabs.openspec.services.WorkflowProfileService;
 import com.johnnyblabs.openspec.util.CliRunner;
 import com.johnnyblabs.openspec.util.OpenSpecNotifier;
 import org.jetbrains.annotations.Nls;
@@ -101,6 +102,8 @@ public class OpenSpecConfigurable implements Configurable {
                 if (result.isSuccess()) {
                     settings.setProfile(newProfile);
                     panel.refreshConfigProfileSection();
+                    WorkflowProfileService wps = project.getService(WorkflowProfileService.class);
+                    if (wps != null) wps.refresh();
                 } else {
                     // CLI failed — revert and warn
                     panel.setProfile(oldProfile);
@@ -119,6 +122,8 @@ public class OpenSpecConfigurable implements Configurable {
         } else {
             // CLI unavailable — persist locally with informational notification
             settings.setProfile(newProfile);
+            WorkflowProfileService wps = project.getService(WorkflowProfileService.class);
+            if (wps != null) wps.refresh();
             OpenSpecNotifier.info(project, "Profile",
                     "Profile set to '" + newProfile + "' locally. Install OpenSpec CLI to sync globally.");
         }

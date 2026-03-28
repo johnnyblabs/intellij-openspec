@@ -442,7 +442,7 @@ public class WorkflowActionPanel extends JPanel {
         if (changeCombo != null && changeCombo.isVisible()) {
             changeCombo.setSelectedItem(changeName);
         }
-        refreshForChangeOnPool(changeName);
+        refreshForChange(changeName);
     }
 
     // --- Tool selector ---
@@ -1192,14 +1192,17 @@ public class WorkflowActionPanel extends JPanel {
         });
         card.add(proposeLink);
 
-        JBLabel orLabel = new JBLabel(" or ");
-        orLabel.setForeground(JBColor.GRAY);
-        card.add(orLabel);
+        DirectApiService apiService = project.getService(DirectApiService.class);
+        if (apiService != null && apiService.isConfigured()) {
+            JBLabel orLabel = new JBLabel(" or ");
+            orLabel.setForeground(JBColor.GRAY);
+            card.add(orLabel);
 
-        com.intellij.ui.HyperlinkLabel ffLink = new com.intellij.ui.HyperlinkLabel("Fast-Forward");
-        ffLink.setToolTipText("Create a change and generate all artifacts in one step");
-        ffLink.addHyperlinkListener(ev -> activateFfInput());
-        card.add(ffLink);
+            com.intellij.ui.HyperlinkLabel ffLink = new com.intellij.ui.HyperlinkLabel("Fast-Forward");
+            ffLink.setToolTipText("Create a change and generate all artifacts in one step");
+            ffLink.addHyperlinkListener(ev -> activateFfInput());
+            card.add(ffLink);
+        }
 
         return card;
     }
@@ -1270,6 +1273,16 @@ public class WorkflowActionPanel extends JPanel {
      * (e.g., from OpenSpecFfAction) to show the FF form without opening a dialog.
      */
     public void activateFfInput() {
+        DirectApiService apiService = project.getService(DirectApiService.class);
+        if (apiService == null || !apiService.isConfigured()) {
+            ffStatusLabel.setText("Requires AI provider. Configure in Settings \u2192 Tools \u2192 OpenSpec.");
+            ffStatusLabel.setForeground(COLOR_ERROR);
+            contentCardLayout.show(contentCards, CARD_FF_INPUT);
+            ffGoButton.setEnabled(false);
+            ffCancelButton.setEnabled(true);
+            return;
+        }
+
         ffInputActive = true;
         ffDescriptionField.setText("");
         ffNameOverrideField.setText("");

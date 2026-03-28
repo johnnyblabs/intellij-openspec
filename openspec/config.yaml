@@ -19,8 +19,36 @@ context: >
   integration with built-in fallback for CLI-less environments.
 
 rules:
-  services: "All services SHALL be registered as IntelliJ project services"
-  rfc-keywords: "Specs SHALL use RFC 2119 keywords (SHALL, SHOULD, MAY)"
-  scenarios: "Scenarios SHALL follow Given-When-Then structure"
-  compatibility: "Plugin SHALL support IntelliJ IDEA 2024.2 and later"
-  post-archive: "After archiving a change, the tool SHALL commit all changes and push to remote"
+  services:
+    - "All services SHALL be registered as projectService in plugin.xml"
+    - "Services performing CLI or I/O work SHALL NOT be called on the EDT"
+  threading:
+    - "CLI and I/O operations SHALL execute on a background thread (executeOnPooledThread)"
+    - "Action update() methods SHALL be fast — no CLI calls, no blocking I/O"
+    - "UI updates from background threads SHALL use invokeLater()"
+  testing:
+    - "Every change SHALL include tests for all new services, methods, and behavioral changes"
+    - "Tests SHALL verify real behavior — each test SHALL fail if the code it covers is broken"
+  deprecation:
+    - "New and modified code SHALL NOT use deprecated IntelliJ Platform API methods"
+    - "When touching existing code that uses deprecated APIs, replace them with the current recommended alternative"
+  compatibility:
+    - "Plugin SHALL support IntelliJ IDEA 2024.2 and later"
+  rfc-keywords:
+    - "Specs SHALL use RFC 2119 keywords (SHALL, SHOULD, MAY)"
+  scenarios:
+    - "Scenarios SHALL follow WHEN/THEN structure"
+  traceability:
+    - "Features and enhancements SHALL reference a Forgejo issue in the proposal"
+    - "Bug fixes SHOULD reference a Forgejo issue unless trivial (typo, one-line fix)"
+    - "Refactors and internal changes MAY omit an issue reference"
+  documentation:
+    - "Changes that add or modify user-facing behavior SHALL update relevant documentation"
+    - "Internal docs (scripts/docs/wiki/, docs/feature-reference.md) SHALL reflect new actions, services, and workflows"
+    - "README.md SHALL be updated when features are added, removed, or significantly changed"
+    - "When modifying existing behavior, update any markdown that describes the old behavior"
+  publishing:
+    - "Plugin SHALL NOT be published to JetBrains Marketplace locally — signing and publishing are handled exclusively by the GitHub Actions CI pipeline on v* tag push"
+    - "Never run publishPlugin or signPlugin tasks from a local machine"
+  post-archive:
+    - "After archiving a change, commit all changes and push to remote"

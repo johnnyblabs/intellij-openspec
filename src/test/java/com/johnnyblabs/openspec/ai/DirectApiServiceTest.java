@@ -109,6 +109,50 @@ class DirectApiServiceTest {
     }
 
     @Nested
+    class GenerateRaw {
+
+        @Test
+        void throwsAiApiException_whenNoProviderConfigured() {
+            try (MockedStatic<OpenSpecSettings> settingsMock = mockStatic(OpenSpecSettings.class)) {
+                settingsMock.when(() -> OpenSpecSettings.getInstance(project)).thenReturn(settings);
+                when(settings.getAiProvider()).thenReturn("NONE");
+
+                AiApiException ex = assertThrows(AiApiException.class,
+                        () -> service.generateRaw("test prompt"));
+                assertTrue(ex.getMessage().contains("No AI provider configured"));
+            }
+        }
+
+        @Test
+        void throwsAiApiException_whenNoApiKeyStored() {
+            try (MockedStatic<OpenSpecSettings> settingsMock = mockStatic(OpenSpecSettings.class);
+                 MockedStatic<AiCredentialStore> credsMock = mockStatic(AiCredentialStore.class)) {
+                settingsMock.when(() -> OpenSpecSettings.getInstance(project)).thenReturn(settings);
+                when(settings.getAiProvider()).thenReturn("Claude");
+                credsMock.when(() -> AiCredentialStore.getApiKey(AiProvider.CLAUDE)).thenReturn(null);
+
+                AiApiException ex = assertThrows(AiApiException.class,
+                        () -> service.generateRaw("test prompt"));
+                assertTrue(ex.getMessage().contains("No API key configured for Claude"));
+            }
+        }
+
+        @Test
+        void throwsAiApiException_whenApiKeyIsBlank() {
+            try (MockedStatic<OpenSpecSettings> settingsMock = mockStatic(OpenSpecSettings.class);
+                 MockedStatic<AiCredentialStore> credsMock = mockStatic(AiCredentialStore.class)) {
+                settingsMock.when(() -> OpenSpecSettings.getInstance(project)).thenReturn(settings);
+                when(settings.getAiProvider()).thenReturn("OpenAI");
+                credsMock.when(() -> AiCredentialStore.getApiKey(AiProvider.OPENAI)).thenReturn("   ");
+
+                AiApiException ex = assertThrows(AiApiException.class,
+                        () -> service.generateRaw("test prompt"));
+                assertTrue(ex.getMessage().contains("No API key configured for OpenAI"));
+            }
+        }
+    }
+
+    @Nested
     class OpenAiTokenParam {
 
         @Test

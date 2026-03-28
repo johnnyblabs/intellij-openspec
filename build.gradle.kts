@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "com.johnnyblabs.openspec"
-version = "0.2.6"
+version = "0.2.7"
 
 java {
     sourceCompatibility = JavaVersion.VERSION_21
@@ -24,6 +24,7 @@ dependencies {
     }
 
     implementation("com.google.code.gson:gson:2.13.2")
+    implementation("org.commonmark:commonmark:0.24.0")
 
     testImplementation(platform("org.junit:junit-bom:6.0.3"))
     testImplementation("org.junit.jupiter:junit-jupiter")

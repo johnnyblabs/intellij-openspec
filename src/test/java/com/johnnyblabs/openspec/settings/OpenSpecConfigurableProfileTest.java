@@ -2,6 +2,7 @@ package com.johnnyblabs.openspec.settings;
 
 import com.intellij.openapi.project.Project;
 import com.johnnyblabs.openspec.services.CliDetectionService;
+import com.johnnyblabs.openspec.services.WorkflowProfileService;
 import com.johnnyblabs.openspec.util.CliRunner;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -27,6 +28,7 @@ class OpenSpecConfigurableProfileTest {
     @Mock CliDetectionService detection;
     @Mock OpenSpecSettings settings;
     @Mock OpenSpecSettingsPanel panel;
+    @Mock WorkflowProfileService workflowProfileService;
 
     @Nested
     class ProfileSwitchWithCli {
@@ -34,6 +36,7 @@ class OpenSpecConfigurableProfileTest {
         @Test
         void cliSuccess_persistsNewProfile() throws Exception {
             when(project.getService(CliDetectionService.class)).thenReturn(detection);
+            when(project.getService(WorkflowProfileService.class)).thenReturn(workflowProfileService);
             when(detection.isAvailable()).thenReturn(true);
 
             CliRunner.CliResult success = new CliRunner.CliResult(0, "Profile switched", "");
@@ -46,6 +49,7 @@ class OpenSpecConfigurableProfileTest {
 
                 verify(settings).setProfile("tdd");
                 verify(panel).refreshConfigProfileSection();
+                verify(workflowProfileService).refresh();
             }
         }
 
@@ -92,8 +96,9 @@ class OpenSpecConfigurableProfileTest {
     class ProfileSwitchWithoutCli {
 
         @Test
-        void cliUnavailable_persistsLocally() throws Exception {
+        void cliUnavailable_persistsLocallyAndRefreshesWorkflows() throws Exception {
             when(project.getService(CliDetectionService.class)).thenReturn(detection);
+            when(project.getService(WorkflowProfileService.class)).thenReturn(workflowProfileService);
             when(detection.isAvailable()).thenReturn(false);
 
             try (MockedStatic<com.johnnyblabs.openspec.util.OpenSpecNotifier> notifier =
@@ -101,6 +106,7 @@ class OpenSpecConfigurableProfileTest {
                 invokeApplyProfileChange("tdd", "spec-driven");
 
                 verify(settings).setProfile("tdd");
+                verify(workflowProfileService).refresh();
             }
         }
 

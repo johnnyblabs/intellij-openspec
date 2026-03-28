@@ -72,6 +72,31 @@ public final class DirectApiService {
     }
 
     /**
+     * Sends a raw prompt to the configured AI provider and returns the response.
+     * Used for explore and other non-artifact interactions.
+     */
+    public String generateRaw(String prompt) throws AiApiException {
+        AiProvider provider = getProvider();
+        if (provider == AiProvider.NONE) {
+            throw new AiApiException("No AI provider configured");
+        }
+
+        String apiKey = AiCredentialStore.getApiKey(provider);
+        if (apiKey == null || apiKey.isBlank()) {
+            throw new AiApiException("No API key configured for " + provider.getDisplayName());
+        }
+
+        String model = getModel(provider);
+
+        return switch (provider) {
+            case CLAUDE -> callClaude(apiKey, model, prompt);
+            case OPENAI -> callOpenAi(apiKey, model, prompt);
+            case GEMINI -> callGemini(apiKey, model, prompt);
+            case NONE -> throw new AiApiException("No AI provider configured");
+        };
+    }
+
+    /**
      * Tests the API connection with a simple request.
      */
     public String testConnection() throws AiApiException {

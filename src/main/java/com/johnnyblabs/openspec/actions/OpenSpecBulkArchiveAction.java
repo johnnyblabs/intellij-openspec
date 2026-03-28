@@ -13,6 +13,9 @@ import java.util.List;
 public class OpenSpecBulkArchiveAction extends OpenSpecBaseAction {
 
     @Override
+    protected String getWorkflowId() { return "bulk-archive"; }
+
+    @Override
     public void actionPerformed(@NotNull AnActionEvent e) {
         Project project = e.getProject();
         if (project == null) return;

@@ -38,12 +38,15 @@
         <projectService serviceImplementation="com.johnnyblabs.openspec.ai.DirectApiService"/>
         <projectService serviceImplementation="com.johnnyblabs.openspec.services.DeliveryMethodResolver"/>
         <projectService serviceImplementation="com.johnnyblabs.openspec.toolwindow.OpenSpecConsoleService"/>
+        <projectService serviceImplementation="com.johnnyblabs.openspec.toolwindow.ExplorePanelService"/>
         <projectService serviceImplementation="com.johnnyblabs.openspec.services.SpecCoverageService"/>
         <projectService serviceImplementation="com.johnnyblabs.openspec.services.VerificationService"/>
         <projectService serviceImplementation="com.johnnyblabs.openspec.services.SpecSyncService"/>
         <projectService serviceImplementation="com.johnnyblabs.openspec.services.SchemaService"/>
         <projectService serviceImplementation="com.johnnyblabs.openspec.services.ExploreContextService"/>
+        <projectService serviceImplementation="com.johnnyblabs.openspec.services.ExplorePromptService"/>
         <projectService serviceImplementation="com.johnnyblabs.openspec.services.ComplianceService"/>
+        <projectService serviceImplementation="com.johnnyblabs.openspec.services.WorkflowProfileService"/>
 
         <!-- Settings -->
         <projectConfigurable instance="com.johnnyblabs.openspec.settings.OpenSpecConfigurable"

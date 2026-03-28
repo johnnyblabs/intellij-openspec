@@ -1,5 +1,25 @@
 # Changelog
 
+## v0.2.7 — Explore Thinking Space & Multi-Agent
+
+- **Explore thinking space**: topic dialog for focused exploration with structured prompt assembly and markdown rendering
+- **Profile-aware action visibility**: actions show/hide based on active workflow profile capabilities
+- **Multi-agent commands**: skill and command files for Augment, Codex, Gemini, and GitHub Copilot agents
+- **Conditional Explore tab**: tab appears only when profile supports explore features
+- **CLI detection on activation**: detect CLI availability when tool window activates, not just at startup
+- **FF requires Direct API**: fast-forward gated on Direct API profile to ensure generation works
+- **EDT threading fix**: workflow panel updates dispatched to Event Dispatch Thread correctly
+- **Explore action alignment**: ExploreContextAction integrated with new prompt service and panel service
+- **Enriched explore context**: expanded context assembly with project structure and spec summaries
+- **Delta spec quick-fix**: inspection quick-fix for delta spec issues
+- **Config YAML parse warning**: graceful handling of malformed config YAML
+- **Empty PSI inspection crash fix**: guard against null PSI elements in inspections
+
+## v0.2.6 — Stability & Context
+
+- **Release pipeline spec**: CI-only signing and publishing to JetBrains Marketplace via `v*` tag
+- **Local publish prohibition**: `signPlugin` and `publishPlugin` blocked from local execution
+
 ## v0.2.5 — Validation & Onboarding
 
 - **Config version validation**: version field presence, recognition, and required-fields-per-version checks

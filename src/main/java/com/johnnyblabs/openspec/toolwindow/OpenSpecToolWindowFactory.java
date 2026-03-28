@@ -5,11 +5,17 @@ import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowFactory;
+import com.intellij.openapi.wm.ToolWindowManager;
+import com.intellij.openapi.wm.ex.ToolWindowManagerListener;
+import com.johnnyblabs.openspec.ai.DirectApiService;
 import com.johnnyblabs.openspec.dialogs.SetupWizardDialog;
+import com.johnnyblabs.openspec.services.CliDetectionService;
 import com.johnnyblabs.openspec.settings.OpenSpecSettings;
 import com.intellij.ui.content.Content;
 import com.intellij.ui.content.ContentFactory;
 import org.jetbrains.annotations.NotNull;
+
+import java.awt.*;
 
 public class OpenSpecToolWindowFactory implements ToolWindowFactory, DumbAware {
 
@@ -26,6 +32,28 @@ public class OpenSpecToolWindowFactory implements ToolWindowFactory, DumbAware {
             // browse specs even without changes or AI configured
             createNormalContent(project, toolWindow);
         }
+
+        // Re-detect CLI when the tool window is shown (throttled)
+        project.getMessageBus().connect().subscribe(ToolWindowManagerListener.TOPIC, new ToolWindowManagerListener() {
+            @Override
+            public void toolWindowShown(@NotNull ToolWindow tw) {
+                if (!"OpenSpec".equals(tw.getId())) return;
+                ApplicationManager.getApplication().executeOnPooledThread(() -> {
+                    CliDetectionService detection = project.getService(CliDetectionService.class);
+                    if (detection != null && detection.detectIfStale()) {
+                        ApplicationManager.getApplication().invokeLater(() -> {
+                            Content browseContent = tw.getContentManager().findContent("Browse");
+                            if (browseContent != null) {
+                                Component component = browseContent.getComponent();
+                                if (component instanceof OpenSpecToolWindowPanel panel) {
+                                    panel.updateCliStatus();
+                                }
+                            }
+                        });
+                    }
+                });
+            }
+        });
 
         // Auto-launch wizard on first open if setup has never been completed
         // Skip for any initialized project — the tree view is more valuable
@@ -68,13 +96,21 @@ public class OpenSpecToolWindowFactory implements ToolWindowFactory, DumbAware {
         Content consoleContent = contentFactory.createContent(consolePanel, "Console", false);
         toolWindow.getContentManager().addContent(consoleContent);
 
-        // Explore tab (project context)
-        ExplorePanel explorePanel = new ExplorePanel(project);
-        Content exploreContent = contentFactory.createContent(explorePanel, "Explore", false);
-        exploreContent.setDisposer(explorePanel);
-        toolWindow.getContentManager().addContent(exploreContent);
+        // Explore tab — only when Direct API is configured (inline input requires it)
+        DirectApiService apiService = project.getService(DirectApiService.class);
+        if (apiService != null && apiService.isConfigured()) {
+            ExplorePanel explorePanel = new ExplorePanel(project);
+            Content exploreContent = contentFactory.createContent(explorePanel, "Explore", false);
+            exploreContent.setDisposer(explorePanel);
+            toolWindow.getContentManager().addContent(exploreContent);
 
-        // Register with service for shared access
+            ExplorePanelService explorePanelService = project.getService(ExplorePanelService.class);
+            if (explorePanelService != null) {
+                explorePanelService.register(explorePanel);
+            }
+        }
+
+        // Register with services for shared access
         OpenSpecConsoleService consoleService = project.getService(OpenSpecConsoleService.class);
         if (consoleService != null) {
             consoleService.register(consolePanel);
