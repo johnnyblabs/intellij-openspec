@@ -109,8 +109,9 @@ public class WorkflowActionPanel extends JPanel {
     private final JButton applyIconButton;
     private final JButton complianceIconButton;
     private final JButton verifyIconButton;
+    private final JButton syncSpecsIconButton;
     private final JButton archiveIconButton;
-    private final JButton overflowButton;
+    private final JButton cancelGenerationButton;
     private final JPanel iconBar;
     private final JBLabel iconBarChangeLabel;
 
@@ -146,17 +147,17 @@ public class WorkflowActionPanel extends JPanel {
     private final JBLabel ffStatusLabel;
     private boolean ffInputActive = false;
 
-    private String activeChangeName;
-    private String nextArtifactId;
-    private String lastPrompt;
-    private String lastOutputPath;
+    private volatile String activeChangeName;
+    private volatile String nextArtifactId;
+    private volatile String lastPrompt;
+    private volatile String lastOutputPath;
     private Runnable onRefreshRequested;
     private boolean updatingCombo;
     private boolean updatingToolSelector;
     private ArtifactFileWatcher activeWatcher;
     private Component lastClickedChip;
     private JBPopup activeGuidancePopup;
-    private boolean hasDeltaSpecs;
+    private volatile boolean hasDeltaSpecs;
     private boolean allArtifactsComplete;
     private boolean hasTasksRemaining;
 
@@ -209,12 +210,15 @@ public class WorkflowActionPanel extends JPanel {
         applyIconButton = createIconButton(AllIcons.Actions.Execute, "Apply", this::onApplyTasks);
         complianceIconButton = createIconButton(AllIcons.Actions.ProjectWideAnalysisOn, "Compliance", this::onComplianceCheck);
         verifyIconButton = createIconButton(AllIcons.Actions.PreviewDetailsVertically, "Verify", this::onVerify);
+        syncSpecsIconButton = createIconButton(AllIcons.Actions.Download, "Sync Specs", this::onSyncSpecs);
         archiveIconButton = createIconButton(AllIcons.Actions.Checked, "Archive", this::onArchive);
-        overflowButton = createIconButton(AllIcons.Actions.More, "More actions...", this::showOverflowMenu);
+        cancelGenerationButton = createIconButton(AllIcons.Actions.Suspend, "Cancel Generation", this::onCancelGenerateAll);
+        cancelGenerationButton.setVisible(false);
 
         applyIconButton.setEnabled(false);
         complianceIconButton.setEnabled(false);
         verifyIconButton.setEnabled(false);
+        syncSpecsIconButton.setEnabled(false);
         archiveIconButton.setEnabled(false);
 
         JPanel iconButtons = new JPanel(new FlowLayout(FlowLayout.RIGHT, JBUI.scale(2), 0));
@@ -222,8 +226,9 @@ public class WorkflowActionPanel extends JPanel {
         iconButtons.add(applyIconButton);
         iconButtons.add(complianceIconButton);
         iconButtons.add(verifyIconButton);
+        iconButtons.add(syncSpecsIconButton);
         iconButtons.add(archiveIconButton);
-        iconButtons.add(overflowButton);
+        iconButtons.add(cancelGenerationButton);
 
         iconBar.add(iconBarChangeLabel, BorderLayout.WEST);
         iconBar.add(iconButtons, BorderLayout.EAST);
@@ -688,6 +693,7 @@ public class WorkflowActionPanel extends JPanel {
         applyIconButton.setEnabled(allArtifactsComplete);
         complianceIconButton.setEnabled(allArtifactsComplete);
         verifyIconButton.setEnabled(allArtifactsComplete);
+        syncSpecsIconButton.setEnabled(hasDeltaSpecs);
         archiveIconButton.setEnabled(allArtifactsComplete && !hasTasksRemaining);
 
         // Update change-name badge
@@ -704,6 +710,9 @@ public class WorkflowActionPanel extends JPanel {
             verifyIconButton.setToolTipText(allArtifactsComplete
                     ? "Verify: " + activeChangeName
                     : "Verify (complete all artifacts first)");
+            syncSpecsIconButton.setToolTipText(hasDeltaSpecs
+                    ? "Sync Specs: " + activeChangeName
+                    : "Sync Specs (no delta specs)");
             archiveIconButton.setToolTipText(allArtifactsComplete && !hasTasksRemaining
                     ? "Archive: " + activeChangeName
                     : "Archive (complete all artifacts and tasks first)");
@@ -1022,15 +1031,17 @@ public class WorkflowActionPanel extends JPanel {
         String changeName = activeChangeName;
         String changeDir = project.getBasePath() + "/openspec/changes/" + changeName;
 
+        // Capture UI state on EDT before dispatching to background thread
+        DeliveryMode mode = getSelectedDeliveryMode();
+        String toolName = getSelectedToolName();
+
         ApplicationManager.getApplication().executeOnPooledThread(() -> {
             String prompt = ApplyPromptBuilder.build(changeName, changeDir);
-            DeliveryMode mode = getSelectedDeliveryMode();
 
             lastPrompt = prompt;
 
             switch (mode) {
                 case CLIPBOARD -> {
-                    String toolName = getSelectedToolName();
                     String clipboardPrompt = prompt;
                     if (!toolName.isBlank() && AiToolDetectionService.isCliTool(toolName)) {
                         clipboardPrompt = ApplyPromptBuilder.appendSavePathHint(prompt, changeDir);
@@ -1045,7 +1056,7 @@ public class WorkflowActionPanel extends JPanel {
                         String detail = guidance.canAutoSave()
                                 ? guidance.pasteAction() + " \u2014 watching tasks.md for progress..."
                                 : guidance.pasteAction() + ". Save tasks.md when done.";
-                        showGuidancePopover(overflowButton,
+                        showGuidancePopover(archiveIconButton,
                                 "\u2713 Implementation prompt copied", detail,
                                 () -> {
                                     Toolkit.getDefaultToolkit().getSystemClipboard()
@@ -1071,7 +1082,7 @@ public class WorkflowActionPanel extends JPanel {
                         if (scratch != null) {
                             FileEditorManager.getInstance(project).openFile(scratch, true);
                         }
-                        showGuidancePopover(overflowButton,
+                        showGuidancePopover(archiveIconButton,
                                 "\u2713 Opened in editor tab",
                                 "Copy the prompt to your AI tool, then save tasks.md when done.",
                                 null);
@@ -1457,6 +1468,26 @@ public class WorkflowActionPanel extends JPanel {
         if (activeChangeName == null) return;
         String changeName = activeChangeName;
 
+        if (hasDeltaSpecs) {
+            int choice = Messages.showYesNoCancelDialog(
+                    project,
+                    "\"" + changeName + "\" has delta specs that haven't been synced to main specs.\n" +
+                            "Syncing ensures your spec changes are preserved before archiving.",
+                    "Unsynced Delta Specs",
+                    "Sync First",
+                    "Archive Without Syncing",
+                    "Cancel",
+                    Messages.getWarningIcon()
+            );
+            if (choice == Messages.YES) {
+                onSyncSpecs();
+                return;
+            } else if (choice == Messages.CANCEL) {
+                return;
+            }
+            // Messages.NO falls through to archive
+        }
+
         archiveIconButton.setEnabled(false);
 
         ChangeService changeService = project.getService(ChangeService.class);
@@ -1502,27 +1533,6 @@ public class WorkflowActionPanel extends JPanel {
                 }
             }
         });
-    }
-
-    // --- Overflow menu ---
-
-    private void showOverflowMenu() {
-        JPopupMenu menu = new JPopupMenu();
-
-        // --- Change-scoped actions only ---
-        JMenuItem syncItem = new JMenuItem("Sync Specs");
-        syncItem.setEnabled(hasDeltaSpecs);
-        syncItem.addActionListener(e -> onSyncSpecs());
-        menu.add(syncItem);
-
-        if (generateAllInProgress) {
-            menu.addSeparator();
-            JMenuItem cancelItem = new JMenuItem("Cancel Generation");
-            cancelItem.addActionListener(e -> onCancelGenerateAll());
-            menu.add(cancelItem);
-        }
-
-        menu.show(overflowButton, 0, overflowButton.getHeight());
     }
 
     // --- Change-level validation ---
@@ -1801,6 +1811,7 @@ public class WorkflowActionPanel extends JPanel {
         disposeAnimations();
         generatingArtifactId = null;
         generateAllInProgress = true;
+        cancelGenerationButton.setVisible(true);
 
         // Count remaining artifacts
         ArtifactOrchestrationService orch = project.getService(ArtifactOrchestrationService.class);
@@ -1860,6 +1871,7 @@ public class WorkflowActionPanel extends JPanel {
                     disposeAnimations();
                     generatingArtifactId = null;
                     generateAllInProgress = false;
+                    cancelGenerationButton.setVisible(false);
 
                     long elapsedSeconds = (System.nanoTime() - generateAllStartNanos) / 1_000_000_000L;
 
@@ -1893,6 +1905,7 @@ public class WorkflowActionPanel extends JPanel {
                     disposeAnimations();
                     generatingArtifactId = null;
                     generateAllInProgress = false;
+                    cancelGenerationButton.setVisible(false);
 
                     // Show error in status strip
                     String msg = artifactId != null ? artifactId + " failed" : "Generation failed";
@@ -1923,6 +1936,7 @@ public class WorkflowActionPanel extends JPanel {
                     disposeAnimations();
                     generatingArtifactId = null;
                     generateAllInProgress = false;
+                    cancelGenerationButton.setVisible(false);
                     OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_GENERATION, "Generate All",
                             "Generation cancelled", com.intellij.notification.NotificationType.INFORMATION);
                     refresh();

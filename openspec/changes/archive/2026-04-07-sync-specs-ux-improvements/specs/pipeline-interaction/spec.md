@@ -1,60 +1,4 @@
-# Pipeline Interaction
-
-## Purpose
-Interactive pipeline chip behavior: click actions, visual affordances, context menus, icon action bar, status strip, and layout.
-## Requirements
-### Requirement: Chip click triggers generation
-The plugin SHALL trigger artifact generation when the user clicks a pipeline chip in READY state. The generation SHALL use the currently selected delivery method. Chips in DONE, BLOCKED, or GENERATING states SHALL NOT trigger generation on click.
-
-#### Scenario: Click READY chip
-- **WHEN** the user clicks a pipeline chip with READY status
-- **THEN** the plugin SHALL trigger generation for that artifact using the selected delivery method
-
-#### Scenario: Click DONE chip opens file
-- **WHEN** the user clicks a pipeline chip with DONE status
-- **THEN** the plugin SHALL open the artifact file in the editor
-
-#### Scenario: Click BLOCKED chip does nothing
-- **WHEN** the user clicks a pipeline chip with BLOCKED status
-- **THEN** no action SHALL be triggered
-
-#### Scenario: Click GENERATING chip does nothing
-- **WHEN** the user clicks a pipeline chip with GENERATING status
-- **THEN** no action SHALL be triggered
-
-### Requirement: Chip visual affordances
-The plugin SHALL display visual affordances on pipeline chips that communicate interactivity. READY chips SHALL show a hand cursor and a hover effect. DONE chips SHALL show a hand cursor. BLOCKED chips SHALL show the default cursor. All chips SHALL display a tooltip describing their state and available action.
-
-#### Scenario: READY chip hover effect
-- **WHEN** the user hovers over a READY pipeline chip
-- **THEN** the chip SHALL display a hand cursor, a subtle scale or highlight effect, and a tooltip "Click to generate"
-
-#### Scenario: DONE chip hover
-- **WHEN** the user hovers over a DONE pipeline chip
-- **THEN** the chip SHALL display a hand cursor and a tooltip "Click to open · Right-click for options"
-
-#### Scenario: BLOCKED chip tooltip
-- **WHEN** the user hovers over a BLOCKED pipeline chip
-- **THEN** the chip SHALL display the default cursor and a tooltip listing the dependency names it is waiting on (e.g., "Waiting on: proposal")
-
-### Requirement: Chip right-click context menu
-The plugin SHALL display a context menu when the user right-clicks a pipeline chip. The menu items SHALL be appropriate to the chip's current state.
-
-#### Scenario: DONE chip context menu
-- **WHEN** the user right-clicks a DONE pipeline chip
-- **THEN** the context menu SHALL show "Open file", "Regenerate", and "Copy prompt"
-
-#### Scenario: READY chip context menu
-- **WHEN** the user right-clicks a READY pipeline chip
-- **THEN** the context menu SHALL show "Generate" and "Copy prompt"
-
-#### Scenario: READY chip context menu with multiple ready
-- **WHEN** the user right-clicks a READY pipeline chip and two or more artifacts are in READY state with Direct API configured
-- **THEN** the context menu SHALL include "Generate All Remaining" as an additional item
-
-#### Scenario: GENERATING chip context menu
-- **WHEN** the user right-clicks a GENERATING pipeline chip
-- **THEN** the context menu SHALL show "Cancel"
+## MODIFIED Requirements
 
 ### Requirement: Compact icon action bar
 
@@ -87,24 +31,6 @@ The plugin SHALL display a compact row of small icon buttons below the pipeline 
 #### Scenario: Compliance button disabled state
 - **WHEN** artifacts are not all complete
 - **THEN** the Compliance icon SHALL be disabled with tooltip "Compliance (complete all artifacts first)"
-
-### Requirement: Status strip
-The plugin SHALL display a single-line status strip below the icon bar showing compliance status, task progress (if tasks exist), and delivery mode. The status strip SHALL span the full width of the panel. During Generate All, the status strip SHALL show generation progress and elapsed time.
-
-#### Scenario: Steady-state status
-- **WHEN** a change is selected and not generating
-- **THEN** the status strip SHALL display compliance status, task progress (if tasks.md exists), and current delivery mode in one line
-
-#### Scenario: Generation progress
-- **WHEN** Generate All is in progress
-- **THEN** the status strip SHALL display "Generating N/M... Xs" with the current delivery mode
-
-### Requirement: Pipeline card layout fills available width
-The pipeline card's child panels (pipeline chips, icon bar, status strip) SHALL each expand to fill the full available width of the parent container. The pipeline chips panel SHALL NOT have a horizontal separator border above it. There SHALL be no unnecessary vertical whitespace between the pipeline chips and the icon bar. The icon bar and status strip SHALL use `maxWidth = Integer.MAX_VALUE` sizing so BoxLayout allocates full width.
-
-#### Scenario: Child panels fill width
-- **WHEN** the pipeline card is displayed in the tool window
-- **THEN** the pipeline chips, icon bar, and status strip SHALL each expand to fill the full available width of the parent container
 
 ### Requirement: Contextual tooltips on icon bar
 
@@ -174,6 +100,8 @@ The overflow menu SHALL contain only change-scoped actions. Cancel Generation SH
 - **WHEN** the overflow menu is displayed
 - **THEN** Archive All Changes SHALL NOT appear in the menu
 
+## ADDED Requirements
+
 ### Requirement: Sync Specs icon button
 
 The plugin SHALL display a Sync Specs icon button in the icon action bar, positioned between Verify and Archive. The button SHALL use the `AllIcons.Actions.Download` icon. The button SHALL be enabled only when the active change contains delta spec sections (`hasDeltaSpecs` is true). The button SHALL trigger the existing `onSyncSpecs()` action when clicked.
@@ -193,4 +121,3 @@ The plugin SHALL display a Sync Specs icon button in the icon action bar, positi
 #### Scenario: Sync Specs click triggers sync
 - **WHEN** the user clicks the enabled Sync Specs button
 - **THEN** the plugin SHALL invoke the sync specs workflow (diff preview and confirmation)
-
