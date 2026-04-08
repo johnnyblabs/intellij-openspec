@@ -204,17 +204,15 @@ public final class SpecSyncService {
             Path path = Path.of(result.mainSpecPath());
             Files.createDirectories(path.getParent());
 
+            // Write file content on current (background) thread — not inside WriteAction
+            Files.writeString(path, result.projectedContent(), StandardCharsets.UTF_8);
+
+            // VFS refresh must happen inside WriteAction on EDT
             ApplicationManager.getApplication().invokeAndWait(() -> {
-                try {
-                    WriteAction.run(() -> {
-                        Path filePath = Path.of(result.mainSpecPath());
-                        Files.writeString(filePath, result.projectedContent(), StandardCharsets.UTF_8);
-                        VirtualFile vf = LocalFileSystem.getInstance().refreshAndFindFileByPath(filePath.toString());
-                        if (vf != null) vf.refresh(false, false);
-                    });
-                } catch (IOException e) {
-                    LOG.error("Failed to write spec: " + result.mainSpecPath(), e);
-                }
+                WriteAction.run(() -> {
+                    VirtualFile vf = LocalFileSystem.getInstance().refreshAndFindFileByPath(path.toString());
+                    if (vf != null) vf.refresh(false, false);
+                });
             });
 
             // Post-merge validation: compare pre-merge and post-merge issues

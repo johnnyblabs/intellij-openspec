@@ -1,21 +1,19 @@
 package com.johnnyblabs.openspec.services;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
-import com.intellij.execution.process.OSProcessHandler;
-import com.intellij.execution.process.ProcessEvent;
-import com.intellij.execution.process.ProcessListener;
-import com.intellij.execution.process.ProcessOutputTypes;
 import com.intellij.openapi.components.Service;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.util.Key;
 import com.johnnyblabs.openspec.settings.OpenSpecSettings;
 
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 @Service(Service.Level.PROJECT)
 public final class CliDetectionService {
@@ -95,29 +93,10 @@ public final class CliDetectionService {
             cmd.setCharset(StandardCharsets.UTF_8);
             applyLoginShellPath(cmd);
 
-            OSProcessHandler handler = new OSProcessHandler(cmd);
-            StringBuilder stdout = new StringBuilder();
-
-            handler.addProcessListener(new ProcessListener() {
-                @Override
-                public void onTextAvailable(@org.jetbrains.annotations.NotNull ProcessEvent event, @org.jetbrains.annotations.NotNull Key outputType) {
-                    if (ProcessOutputTypes.STDOUT.equals(outputType)) {
-                        stdout.append(event.getText());
-                    }
-                }
-            });
-
-            handler.startNotify();
-            if (!handler.waitFor(TIMEOUT_MS)) {
-                handler.destroyProcess();
-                return false;
-            }
-
-            Integer exitCode = handler.getExitCode();
-            if (exitCode != null && exitCode == 0) {
+            String output = runAndCapture(cmd);
+            if (output != null) {
                 available = true;
                 detectedPath = path;
-                String output = stdout.toString().trim();
                 detectedVersion = output.replaceAll("(?i)openspec\\s*v?", "").trim();
                 if (detectedVersion.isEmpty()) {
                     detectedVersion = output;
@@ -144,31 +123,10 @@ public final class CliDetectionService {
             GeneralCommandLine cmd = new GeneralCommandLine(shell, "-lc", "which openspec");
             cmd.setCharset(StandardCharsets.UTF_8);
 
-            OSProcessHandler handler = new OSProcessHandler(cmd);
-            StringBuilder stdout = new StringBuilder();
-
-            handler.addProcessListener(new ProcessListener() {
-                @Override
-                public void onTextAvailable(@org.jetbrains.annotations.NotNull ProcessEvent event, @org.jetbrains.annotations.NotNull Key outputType) {
-                    if (ProcessOutputTypes.STDOUT.equals(outputType)) {
-                        stdout.append(event.getText());
-                    }
-                }
-            });
-
-            handler.startNotify();
-            if (!handler.waitFor(TIMEOUT_MS)) {
-                handler.destroyProcess();
-                return null;
-            }
-
-            Integer exitCode = handler.getExitCode();
-            if (exitCode != null && exitCode == 0) {
-                String path = stdout.toString().trim();
-                if (!path.isEmpty()) {
-                    LOG.info("Found openspec via login shell: " + path);
-                    return path;
-                }
+            String path = runAndCapture(cmd);
+            if (path != null) {
+                LOG.info("Found openspec via login shell: " + path);
+                return path;
             }
         } catch (Exception e) {
             LOG.debug("Login shell which failed", e);
@@ -192,35 +150,50 @@ public final class CliDetectionService {
             GeneralCommandLine cmd = new GeneralCommandLine(shell, "-lc", "echo $PATH");
             cmd.setCharset(StandardCharsets.UTF_8);
 
-            OSProcessHandler handler = new OSProcessHandler(cmd);
-            StringBuilder stdout = new StringBuilder();
-
-            handler.addProcessListener(new ProcessListener() {
-                @Override
-                public void onTextAvailable(@org.jetbrains.annotations.NotNull ProcessEvent event, @org.jetbrains.annotations.NotNull Key outputType) {
-                    if (ProcessOutputTypes.STDOUT.equals(outputType)) {
-                        stdout.append(event.getText());
-                    }
-                }
-            });
-
-            handler.startNotify();
-            if (!handler.waitFor(TIMEOUT_MS)) {
-                handler.destroyProcess();
-                return;
-            }
-
-            Integer exitCode = handler.getExitCode();
-            if (exitCode != null && exitCode == 0) {
-                String path = stdout.toString().trim();
-                if (!path.isEmpty()) {
-                    loginShellPath = path;
-                    LOG.info("Resolved login shell PATH: " + path);
-                }
+            String path = runAndCapture(cmd);
+            if (path != null) {
+                loginShellPath = path;
+                LOG.info("Resolved login shell PATH: " + path);
             }
         } catch (Exception e) {
             LOG.debug("Failed to resolve login shell PATH", e);
         }
+    }
+
+    /**
+     * Runs a command and returns trimmed stdout if exit code is 0, or null otherwise.
+     * Uses Process directly instead of OSProcessHandler to avoid ReadAction threading checks.
+     * Drains stdout asynchronously so the timeout on waitFor is effective.
+     */
+    private static String runAndCapture(GeneralCommandLine cmd) throws Exception {
+        Process process = cmd.createProcess();
+
+        // Drain both streams async — readAllBytes blocks until EOF, so we must not call it
+        // before waitFor or the timeout becomes dead code when the process hangs.
+        // Stderr must also be drained to prevent the process blocking on a full pipe buffer.
+        CompletableFuture<String> stdoutFuture = drainAsync(process.getInputStream());
+        drainAsync(process.getErrorStream()); // discard stderr but prevent pipe stall
+
+        if (!process.waitFor(TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
+            process.destroyForcibly();
+            return null;
+        }
+
+        if (process.exitValue() == 0) {
+            String output = stdoutFuture.join().trim();
+            return output.isEmpty() ? null : output;
+        }
+        return null;
+    }
+
+    private static CompletableFuture<String> drainAsync(InputStream stream) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return new String(stream.readAllBytes(), StandardCharsets.UTF_8);
+            } catch (Exception e) {
+                return "";
+            }
+        });
     }
 
     /**

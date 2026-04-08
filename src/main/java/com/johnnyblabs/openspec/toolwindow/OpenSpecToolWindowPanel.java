@@ -3,6 +3,7 @@ package com.johnnyblabs.openspec.toolwindow;
 import com.intellij.openapi.actionSystem.*;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.WriteAction;
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
@@ -40,6 +41,7 @@ import java.util.*;
 import java.util.List;
 
 public class OpenSpecToolWindowPanel extends JPanel implements DataProvider {
+    private static final Logger LOG = Logger.getInstance(OpenSpecToolWindowPanel.class);
 
     private final Project project;
     private final Tree tree;
@@ -156,18 +158,29 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider {
             boolean hasFilter = query != null && !query.isBlank();
             Set<String> expandedLabels = hasFilter ? null : saveExpansionState();
             ApplicationManager.getApplication().executeOnPooledThread(() -> {
-                SpecTreeModel treeModel = new SpecTreeModel(project);
-                DefaultTreeModel model = treeModel.buildModel(hasFilter ? query : null);
-                ApplicationManager.getApplication().invokeLater(() -> {
-                    tree.setModel(model);
-                    if (hasFilter) {
-                        expandAllNodes();
-                    } else if (expandedLabels != null) {
-                        restoreExpansionState(expandedLabels);
-                    }
-                    updateCliStatus();
-                    updateAiStatus();
-                });
+                try {
+                    SpecTreeModel treeModel = new SpecTreeModel(project);
+                    DefaultTreeModel model = treeModel.buildModel(hasFilter ? query : null);
+                    ApplicationManager.getApplication().invokeLater(() -> {
+                        tree.setModel(model);
+                        if (hasFilter) {
+                            expandAllNodes();
+                        } else if (expandedLabels != null) {
+                            restoreExpansionState(expandedLabels);
+                        }
+                        updateCliStatus();
+                        updateAiStatus();
+                    });
+                } catch (Exception e) {
+                    LOG.warn("Failed to build tree model", e);
+                    ApplicationManager.getApplication().invokeLater(() -> {
+                        DefaultMutableTreeNode errorRoot = new DefaultMutableTreeNode("OpenSpec");
+                        errorRoot.add(new DefaultMutableTreeNode("Error loading — click Refresh to retry"));
+                        tree.setModel(new DefaultTreeModel(errorRoot));
+                        updateCliStatus();
+                        updateAiStatus();
+                    });
+                }
             });
             workflowPanel.refresh();
         };

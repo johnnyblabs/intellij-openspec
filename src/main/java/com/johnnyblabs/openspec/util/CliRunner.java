@@ -1,16 +1,14 @@
 package com.johnnyblabs.openspec.util;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
-import com.intellij.execution.process.OSProcessHandler;
-import com.intellij.execution.process.ProcessEvent;
-import com.intellij.execution.process.ProcessListener;
-import com.intellij.execution.process.ProcessOutputTypes;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.util.Key;
 import com.johnnyblabs.openspec.services.CliDetectionService;
 import com.johnnyblabs.openspec.settings.OpenSpecSettings;
 
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 public final class CliRunner {
 
@@ -43,34 +41,33 @@ public final class CliRunner {
         }
 
         try {
-            OSProcessHandler handler = new OSProcessHandler(cmd);
-            StringBuilder stdout = new StringBuilder();
-            StringBuilder stderr = new StringBuilder();
+            Process process = cmd.createProcess();
 
-            handler.addProcessListener(new ProcessListener() {
-                @Override
-                public void onTextAvailable(@org.jetbrains.annotations.NotNull ProcessEvent event, @org.jetbrains.annotations.NotNull Key outputType) {
-                    if (ProcessOutputTypes.STDOUT.equals(outputType)) {
-                        stdout.append(event.getText());
-                    } else if (ProcessOutputTypes.STDERR.equals(outputType)) {
-                        stderr.append(event.getText());
-                    }
-                }
-            });
+            // Drain both streams concurrently to avoid deadlock on full buffers
+            CompletableFuture<String> stdoutFuture = drainStreamAsync(process.getInputStream());
+            CompletableFuture<String> stderrFuture = drainStreamAsync(process.getErrorStream());
 
-            handler.startNotify();
-            if (!handler.waitFor(timeoutMs)) {
-                handler.destroyProcess();
+            if (!process.waitFor(timeoutMs, TimeUnit.MILLISECONDS)) {
+                process.destroyForcibly();
                 throw new CliException("OpenSpec CLI command timed out after " + (timeoutMs / 1000) + "s");
             }
 
-            int exitCode = handler.getExitCode() != null ? handler.getExitCode() : -1;
-            return new CliResult(exitCode, stdout.toString(), stderr.toString());
+            return new CliResult(process.exitValue(), stdoutFuture.join(), stderrFuture.join());
         } catch (CliException e) {
             throw e;
         } catch (Exception e) {
             throw new CliException("Failed to run OpenSpec CLI: " + e.getMessage(), e);
         }
+    }
+
+    private static CompletableFuture<String> drainStreamAsync(InputStream stream) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return new String(stream.readAllBytes(), StandardCharsets.UTF_8);
+            } catch (Exception e) {
+                return "";
+            }
+        });
     }
 
     private static String resolveCliPath(Project project) {

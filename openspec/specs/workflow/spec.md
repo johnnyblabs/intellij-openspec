@@ -5,15 +5,19 @@ Artifact generation pipeline: propose, generate, apply, archive actions with del
 ## Requirements
 ### Requirement: Propose action
 
-The plugin SHALL create a new change with all required artifacts (proposal.md, design.md, tasks.md, specs/) via built-in scaffolding matching the OpenSpec 1.2.0 template structure.
+The plugin SHALL create a new change with all required artifacts (proposal.md, design.md, tasks.md, specs/) via built-in scaffolding matching the OpenSpec 1.2.0 template structure. When multiple schemas are available, the propose dialog SHALL include a schema selector and pass the selected schema to the CLI.
 
 #### Scenario: Change creation
 - **WHEN** the user proposes a change
 - **THEN** the plugin SHALL create the change directory with all artifacts and refresh the tool window synchronously
 
+#### Scenario: Schema selection during propose
+- **WHEN** multiple schemas are available and the user proposes a change
+- **THEN** the ProposeChangeDialog SHALL display a schema combo box and pass `--schema "<schema>"` to the `openspec new change` command
+
 ### Requirement: Workflow action panel
 
-The plugin SHALL display the selected change's pipeline status with interactive artifact chips that serve as the primary action surface. Pipeline chips SHALL be clickable (READY → generate, DONE → open file) with right-click context menus. A compact icon action bar SHALL provide secondary actions (Fast-Forward, Verify, Archive, overflow menu). A single-line status strip SHALL show compliance, task progress, and delivery mode. The panel SHALL NOT use a horizontal button row for workflow actions. The Fast-Forward link in the "no changes" card SHALL only be visible when Direct API is configured; when Direct API is not configured, the card SHALL show only the Propose link.
+The plugin SHALL display the selected change's pipeline status with interactive artifact chips that serve as the primary action surface. Pipeline chips SHALL be clickable (READY → generate, DONE → open file) with right-click context menus. A compact icon action bar SHALL provide secondary actions (Fast-Forward, Verify, Archive, overflow menu). A single-line status strip SHALL show compliance, task progress, and delivery mode. The panel SHALL NOT use a horizontal button row for workflow actions. The content area SHALL use CardLayout to manage NO_CHANGES, FF_INPUT, and PIPELINE views. The Fast-Forward link in the "no changes" card SHALL only be visible when Direct API is configured; when Direct API is not configured, the card SHALL show only the Propose link. The Explore tab context SHALL reflect the current change selection.
 
 #### Scenario: Pipeline visualization
 - **WHEN** a change is selected
@@ -42,6 +46,14 @@ The plugin SHALL display the selected change's pipeline status with interactive 
 #### Scenario: FF link hidden without Direct API
 - **WHEN** the "no changes" card renders and Direct API is not configured
 - **THEN** the card SHALL show only the Propose link without the FF option
+
+#### Scenario: FF input activation
+- **WHEN** the user clicks the FF toolbar button or "Fast-Forward" hyperlink
+- **THEN** the panel SHALL switch to the FF_INPUT card while keeping the tool selector visible
+
+#### Scenario: Explore tab reflects change context
+- **WHEN** a change is selected in the workflow panel
+- **THEN** the Explore tab SHALL include that change's details in the assembled context
 
 ### Requirement: FF action requires Direct API
 
@@ -77,7 +89,7 @@ The plugin SHALL assemble a full-context implementation prompt (proposal, specs,
 
 ### Requirement: Archive action
 
-The plugin SHALL move completed changes to `openspec/changes/archive/YYYY-MM-DD-<name>/` with post-archive commit, push, and tracker updates. A Bulk Archive option SHALL be available when multiple active changes exist.
+The plugin SHALL move completed changes to `openspec/changes/archive/YYYY-MM-DD-<name>/` with post-archive commit, push, and tracker updates. A Bulk Archive option SHALL be available when multiple active changes exist. When the change contains unsynced delta specs, the plugin SHALL prompt the user before proceeding with a three-option dialog.
 
 #### Scenario: Archive flow
 - **WHEN** the user archives a change
@@ -86,6 +98,26 @@ The plugin SHALL move completed changes to `openspec/changes/archive/YYYY-MM-DD-
 #### Scenario: Bulk archive entry point
 - **WHEN** multiple active changes exist
 - **THEN** a Bulk Archive action SHALL be available in the menu and toolbar
+
+#### Scenario: Archive guard with unsynced delta specs
+- **WHEN** the user clicks Archive and the change has unsynced delta specs (`hasDeltaSpecs` is true)
+- **THEN** the plugin SHALL display a confirmation dialog with three options: "Sync First", "Archive Without Syncing", and "Cancel"
+
+#### Scenario: Archive guard — Sync First
+- **WHEN** the user selects "Sync First" from the archive guard dialog
+- **THEN** the plugin SHALL trigger the sync specs workflow and SHALL NOT proceed with archiving
+
+#### Scenario: Archive guard — Archive Without Syncing
+- **WHEN** the user selects "Archive Without Syncing" from the archive guard dialog
+- **THEN** the plugin SHALL proceed with archiving the change as-is, including the unsynced delta specs
+
+#### Scenario: Archive guard — Cancel
+- **WHEN** the user selects "Cancel" from the archive guard dialog
+- **THEN** the plugin SHALL abort the archive action and take no further action
+
+#### Scenario: Archive without delta specs
+- **WHEN** the user clicks Archive and the change has no delta specs (`hasDeltaSpecs` is false)
+- **THEN** the plugin SHALL proceed directly with archiving without showing the guard dialog
 
 ### Requirement: Change selector
 
@@ -126,4 +158,20 @@ The plugin SHALL perform artifact status lookups on a background thread when the
 #### Scenario: Pipeline updates asynchronously after selection
 - **WHEN** `setActiveChange()` dispatches the refresh to a background thread
 - **THEN** the pipeline display SHALL update on the EDT via `invokeLater` after the background work completes
+
+### Requirement: FF action registration
+
+The plugin SHALL register a Fast-Forward action in the OpenSpec menu and toolbar, accessible via menu item and keyboard shortcut.
+
+#### Scenario: Menu registration
+- **WHEN** the user opens the OpenSpec menu
+- **THEN** Fast-Forward SHALL appear as a menu item with appropriate icon
+
+### Requirement: Bulk Archive action registration
+
+The plugin SHALL register a Bulk Archive action in the OpenSpec menu for archiving multiple changes at once.
+
+#### Scenario: Menu registration
+- **WHEN** the user opens the OpenSpec menu
+- **THEN** Bulk Archive SHALL appear as a menu item
 

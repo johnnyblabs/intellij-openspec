@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.2.8 — Spec Sync & Threading Compliance
+
+- **Threading compliance**: CliRunner and CliDetectionService use `Process` directly instead of `OSProcessHandler`, eliminating ReadAction threading violations
+- **SpecSyncService fix**: file writes separated from `WriteAction` — content written via `Files.writeString()` on background thread, VFS refresh in `WriteAction` on EDT
+- **Cross-thread field visibility**: volatile fields on WorkflowActionPanel for safe EDT/background thread access
+- **Sync Specs icon button**: dedicated icon in the action bar between Verify and Archive, enabled when delta specs exist
+- **Archive guard for unsynced specs**: three-option dialog (Sync First / Archive Without Syncing / Cancel) when archiving changes with unsynced delta specs
+- **Overflow menu cleanup**: Sync Specs removed from overflow menu (now in icon bar), menu empty when idle
+- **Spec sync audit**: 11 new main specs created from archived delta specs, 4 existing specs updated with missing content
+- **Forgejo issue triage**: 7 completed issues closed with version references, 12 no-milestone issues assigned to v0.3.0
+
 ## v0.2.7 — Explore Thinking Space & Multi-Agent
 
 - **Explore thinking space**: topic dialog for focused exploration with structured prompt assembly and markdown rendering
