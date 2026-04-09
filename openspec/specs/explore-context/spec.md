@@ -127,7 +127,7 @@ The plugin SHALL route the assembled explore prompt through the user's configure
 
 #### Scenario: Editor Tab delivery
 - **WHEN** the resolved delivery mode is Editor Tab
-- **THEN** the plugin SHALL write the explore prompt to a temporary scratch file and open it in an editor tab
+- **THEN** the plugin SHALL write the explore prompt to a temporary file on a pooled thread, perform the VFS `refreshAndFindFileByNioFile` lookup on the same pooled thread, and open the file in an editor tab via `invokeLater` on the EDT
 
 #### Scenario: Clipboard delivery
 - **WHEN** the resolved delivery mode is Clipboard

@@ -82,13 +82,73 @@ Archive a completed change in the experimental workflow.
    mv openspec/changes/<name> openspec/changes/archive/YYYY-MM-DD-<name>
    ```
 
-6. **Display summary**
+6. **Close tracker items (Forgejo issue + Plane work item)**
+
+   After archiving, auto-close tracker items if tracking metadata exists.
+
+   a. **Read tracking metadata** from the archived `.openspec.yaml`:
+      ```bash
+      cat openspec/changes/archive/YYYY-MM-DD-<name>/.openspec.yaml
+      ```
+      Look for a `tracking` section with `forgejo_issue` and `plane_work_item`.
+
+   b. **If no tracking section**, skip this step silently.
+
+   c. **Check for credentials**:
+      ```bash
+      test -f scripts/.env && source scripts/.env
+      ```
+      If missing, log "Tracker closure skipped — credentials not found" and skip.
+
+   d. **Close Forgejo issue**:
+      ```bash
+      source scripts/.env
+      FORGEJO_API="${FORGEJO_URL}/api/v1/repos/johnb/intellij-openspec"
+
+      # Close the issue
+      curl -s -X PATCH \
+        -H "Authorization: token ${FORGEJO_TOKEN}" \
+        -H "Content-Type: application/json" \
+        "${FORGEJO_API}/issues/<ISSUE_NUMBER>" \
+        -d '{"state": "closed"}'
+
+      # Add completion comment
+      curl -s -X POST \
+        -H "Authorization: token ${FORGEJO_TOKEN}" \
+        -H "Content-Type: application/json" \
+        "${FORGEJO_API}/issues/<ISSUE_NUMBER>/comments" \
+        -d "$(python3 -c "import json; print(json.dumps({'body': 'Archived in change `<change-name>`. Version target: <current version from build.gradle.kts>.'}))")"
+      ```
+
+   e. **Move Plane work item to Done**:
+      ```bash
+      PLANE_PROJECT_ID="d358203d-16dd-48c4-ba22-f82be6781dd2"
+      PLANE_WS_API="${PLANE_URL}/api/v1/workspaces/${PLANE_WORKSPACE}/projects/${PLANE_PROJECT_ID}"
+
+      # Get Done state ID
+      DONE_STATE_ID=$(curl -s -H "X-API-Key: ${PLANE_API_KEY}" \
+        "${PLANE_WS_API}/states/" | \
+        python3 -c "import sys,json; r=json.load(sys.stdin); states=r.get('results',r); print(next((s['id'] for s in states if s['name']=='Done'), ''))")
+
+      # Update work item state
+      curl -s -X PATCH \
+        -H "X-API-Key: ${PLANE_API_KEY}" \
+        -H "Content-Type: application/json" \
+        "${PLANE_WS_API}/work-items/<WORK_ITEM_ID>/" \
+        -d "{\"state\": \"${DONE_STATE_ID}\"}"
+      ```
+
+   f. **Report**: "Closed Forgejo #<N>, moved Plane work item to Done."
+      If API calls fail, log the error and continue — archive is already done.
+
+7. **Display summary**
 
    Show archive completion summary including:
    - Change name
    - Schema that was used
    - Archive location
    - Whether specs were synced (if applicable)
+   - Tracker closure status (closed/skipped)
    - Note about any warnings (incomplete artifacts/tasks)
 
 **Output On Success**
@@ -100,6 +160,7 @@ Archive a completed change in the experimental workflow.
 **Schema:** <schema-name>
 **Archived to:** openspec/changes/archive/YYYY-MM-DD-<name>/
 **Specs:** ✓ Synced to main specs (or "No delta specs" or "Sync skipped")
+**Trackers:** ✓ Forgejo #<N> closed, Plane work item Done (or "No tracking metadata" or "Skipped")
 
 All artifacts complete. All tasks complete.
 ```
@@ -112,3 +173,4 @@ All artifacts complete. All tasks complete.
 - Show clear summary of what happened
 - If sync is requested, use openspec-sync-specs approach (agent-driven)
 - If delta specs exist, always run the sync assessment and show the combined summary before prompting
+- Tracker closure is best-effort — never fail the archive if APIs are unreachable

@@ -102,9 +102,106 @@ After completing all artifacts, summarize:
   - Do NOT copy `<context>`, `<rules>`, `<project_context>` blocks into the artifact
   - These guide what you write, but should never appear in the output
 
+6. **Create tracker items (Forgejo issue + Plane work item)**
+
+   After all artifacts are created, auto-create tracker items if credentials are available.
+
+   a. **Check for credentials**:
+      ```bash
+      test -f scripts/.env && source scripts/.env
+      ```
+      If `scripts/.env` doesn't exist or `FORGEJO_TOKEN` / `PLANE_API_KEY` are empty, log "Tracker integration skipped — credentials not found" and skip this step.
+
+   b. **Infer labels and priority** from the change name and proposal:
+      - Bug keywords (fix, bug, deadlock, crash, violation): Forgejo label `bug` (id from API), Plane priority `urgent` or `high`
+      - Infrastructure keywords (ci, pipeline, build, release, changelog): Forgejo label `infrastructure`, Plane priority `high`
+      - Default: Forgejo label `enhancement`, Plane priority `medium`
+
+   c. **Create Forgejo issue**:
+      ```bash
+      source scripts/.env
+      FORGEJO_API="${FORGEJO_URL}/api/v1/repos/johnb/intellij-openspec"
+
+      # Get label ID for the inferred label name
+      LABEL_ID=$(curl -s -H "Authorization: token ${FORGEJO_TOKEN}" \
+        "${FORGEJO_API}/labels?limit=50" | \
+        python3 -c "import sys,json; labels=json.load(sys.stdin); print(next((l['id'] for l in labels if l['name']=='<LABEL>'), ''))")
+
+      # Get milestone ID for catch-all milestone (v0.3.0 or current)
+      MILESTONE_ID=$(curl -s -H "Authorization: token ${FORGEJO_TOKEN}" \
+        "${FORGEJO_API}/milestones?limit=10" | \
+        python3 -c "import sys,json; ms=json.load(sys.stdin); print(next((m['id'] for m in ms if 'v0.3' in m['title']), ''))")
+
+      # Create the issue
+      ISSUE_RESPONSE=$(curl -s -X POST \
+        -H "Authorization: token ${FORGEJO_TOKEN}" \
+        -H "Content-Type: application/json" \
+        "${FORGEJO_API}/issues" \
+        -d "$(python3 -c "import json; print(json.dumps({
+          'title': '<change-name>',
+          'body': '<first 2-3 lines of proposal + link to Plane work item>',
+          'labels': [<LABEL_ID>],
+          'milestone': <MILESTONE_ID>
+        }))")")
+
+      ISSUE_NUMBER=$(echo "$ISSUE_RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin).get('number',''))")
+      ```
+
+   d. **Create Plane work item**:
+      ```bash
+      PLANE_PROJECT_ID="d358203d-16dd-48c4-ba22-f82be6781dd2"
+      PLANE_WS_API="${PLANE_URL}/api/v1/workspaces/${PLANE_WORKSPACE}/projects/${PLANE_PROJECT_ID}"
+
+      # Get label ID for inferred label
+      PLANE_LABEL_ID=$(curl -s -H "X-API-Key: ${PLANE_API_KEY}" \
+        "${PLANE_WS_API}/labels/" | \
+        python3 -c "import sys,json; r=json.load(sys.stdin); labels=r.get('results',r); print(next((l['id'] for l in labels if l['name']=='<LABEL>'), ''))")
+
+      # Get cycle ID for catch-all cycle (v0.3.0)
+      CYCLE_ID=$(curl -s -H "X-API-Key: ${PLANE_API_KEY}" \
+        "${PLANE_WS_API}/cycles/" | \
+        python3 -c "import sys,json; r=json.load(sys.stdin); cycles=r.get('results',r); print(next((c['id'] for c in cycles if 'v0.3' in c['name']), ''))")
+
+      # Create work item
+      WORK_ITEM_RESPONSE=$(curl -s -X POST \
+        -H "X-API-Key: ${PLANE_API_KEY}" \
+        -H "Content-Type: application/json" \
+        "${PLANE_WS_API}/work-items/" \
+        -d "$(python3 -c "import json; print(json.dumps({
+          'name': '<change-name>',
+          'description_html': '<p><summary from proposal>. Forgejo #<ISSUE_NUMBER>.</p>',
+          'labels': ['<PLANE_LABEL_ID>'],
+          'priority': '<PRIORITY>'
+        }))")")
+
+      WORK_ITEM_ID=$(echo "$WORK_ITEM_RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin).get('id',''))")
+
+      # Add to cycle
+      curl -s -X POST \
+        -H "X-API-Key: ${PLANE_API_KEY}" \
+        -H "Content-Type: application/json" \
+        "${PLANE_WS_API}/cycles/${CYCLE_ID}/cycle-issues/" \
+        -d "{\"issues\": [\"${WORK_ITEM_ID}\"]}"
+      ```
+
+   e. **Write tracking metadata to `.openspec.yaml`**:
+      Append to the change's `.openspec.yaml`:
+      ```yaml
+      tracking:
+        forgejo_issue: <ISSUE_NUMBER>
+        plane_work_item: <WORK_ITEM_ID>
+      ```
+
+   f. **Report**: Include in the final output summary:
+      ```
+      Tracked as Forgejo #<N> / Plane <WORK_ITEM_ID>.
+      ```
+      If any API call fails, log the error and continue — tracker creation is best-effort.
+
 **Guardrails**
 - Create ALL artifacts needed for implementation (as defined by schema's `apply.requires`)
 - Always read dependency artifacts before creating a new one
 - If context is critically unclear, ask the user - but prefer making reasonable decisions to keep momentum
 - If a change with that name already exists, ask if user wants to continue it or create a new one
 - Verify each artifact file exists after writing before proceeding to next
+- Tracker creation is best-effort — never fail the change creation if APIs are unreachable

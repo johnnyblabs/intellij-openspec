@@ -31,7 +31,7 @@ The plugin SHALL parse delta spec files from a change's `specs/*/spec.md` direct
 
 ### Requirement: Spec sync application
 
-The plugin SHALL apply delta spec operations to main spec files under `openspec/specs/<capability>/spec.md` in a defined order: REMOVED, RENAMED, MODIFIED, then ADDED. File content SHALL be written via plain filesystem I/O on the calling thread. VFS refresh SHALL be performed within `WriteAction` on the EDT. After applying all operations, the plugin SHALL run `BuiltInValidator.validateSpecFile()` on each affected main spec file and report any validation errors as warnings to the user. In strict mode, validation errors on merged specs SHALL block the sync.
+The plugin SHALL apply delta spec operations to main spec files under `openspec/specs/<capability>/spec.md` in a defined order: REMOVED, RENAMED, MODIFIED, then ADDED. File content SHALL be written via plain filesystem I/O on the calling thread. VFS refresh SHALL be performed within `WriteAction` on the EDT via `invokeLater` with a `CountDownLatch` to synchronize the background thread. The background thread SHALL wait on the latch before proceeding to post-merge validation. After applying all operations, the plugin SHALL run `BuiltInValidator.validateSpecFile()` on each affected main spec file and report any validation errors as warnings to the user. In strict mode, validation errors on merged specs SHALL block the sync.
 
 #### Scenario: Apply ADDED operation
 - **WHEN** an ADDED operation targets a capability
@@ -64,6 +64,10 @@ The plugin SHALL apply delta spec operations to main spec files under `openspec/
 #### Scenario: Post-merge validation reports issues
 - **WHEN** delta operations are applied and the merged main spec has validation errors
 - **THEN** the service SHALL report the validation errors as warnings to the user via notification
+
+#### Scenario: VFS refresh uses invokeLater with latch
+- **WHEN** the service writes a spec file and needs VFS refresh
+- **THEN** the VFS refresh SHALL be dispatched via `invokeLater` wrapping `WriteAction.run`, with a `CountDownLatch` that the background thread awaits before proceeding to validation
 
 ### Requirement: Sync preview
 
