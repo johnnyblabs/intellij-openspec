@@ -23,6 +23,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.concurrent.CountDownLatch;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -207,13 +208,24 @@ public final class SpecSyncService {
             // Write file content on current (background) thread — not inside WriteAction
             Files.writeString(path, result.projectedContent(), StandardCharsets.UTF_8);
 
-            // VFS refresh must happen inside WriteAction on EDT
-            ApplicationManager.getApplication().invokeAndWait(() -> {
-                WriteAction.run(() -> {
-                    VirtualFile vf = LocalFileSystem.getInstance().refreshAndFindFileByPath(path.toString());
-                    if (vf != null) vf.refresh(false, false);
-                });
+            // VFS refresh must happen inside WriteAction on EDT — use invokeLater + latch
+            // to avoid invokeAndWait deadlock while still synchronizing before validation
+            CountDownLatch refreshLatch = new CountDownLatch(1);
+            ApplicationManager.getApplication().invokeLater(() -> {
+                try {
+                    WriteAction.run(() -> {
+                        VirtualFile vf = LocalFileSystem.getInstance().refreshAndFindFileByPath(path.toString());
+                        if (vf != null) vf.refresh(false, false);
+                    });
+                } finally {
+                    refreshLatch.countDown();
+                }
             });
+            try {
+                refreshLatch.await();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
 
             // Post-merge validation: compare pre-merge and post-merge issues
             postMergeWarnings.addAll(validatePostMerge(result));

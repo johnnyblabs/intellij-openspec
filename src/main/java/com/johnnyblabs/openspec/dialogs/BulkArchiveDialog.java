@@ -23,6 +23,7 @@ import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 import javax.swing.table.AbstractTableModel;
+import java.util.concurrent.CountDownLatch;
 import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.*;
 import java.io.IOException;
@@ -210,23 +211,32 @@ public class BulkArchiveDialog extends DialogWrapper {
                     });
 
                     try {
-                        // Spec sync first
+                        // Spec sync first (runs on background thread)
                         List<SpecSyncResult> syncResults = syncService.computeSync(row.change.getName());
                         if (!syncResults.isEmpty()) {
                             syncService.applySync(syncResults);
                         }
 
-                        // Archive
-                        ApplicationManager.getApplication().invokeAndWait(() -> {
+                        // Archive via invokeLater + latch to avoid invokeAndWait deadlock
+                        CountDownLatch archiveLatch = new CountDownLatch(1);
+                        final Exception[] archiveError = {null};
+                        ApplicationManager.getApplication().invokeLater(() -> {
                             try {
                                 changeService.archiveChange(row.change);
-                            } catch (IOException ex) {
-                                throw new RuntimeException(ex);
+                                row.archiveStatus = "Done";
+                            } catch (Exception ex) {
+                                archiveError[0] = ex;
+                                row.archiveStatus = "Failed: " + ex.getMessage();
+                            } finally {
+                                tableModel.fireTableDataChanged();
+                                archiveLatch.countDown();
                             }
                         });
-
+                        archiveLatch.await();
+                    } catch (InterruptedException ex) {
+                        Thread.currentThread().interrupt();
                         ApplicationManager.getApplication().invokeLater(() -> {
-                            row.archiveStatus = "Done";
+                            row.archiveStatus = "Failed: interrupted";
                             tableModel.fireTableDataChanged();
                         });
                     } catch (Exception ex) {

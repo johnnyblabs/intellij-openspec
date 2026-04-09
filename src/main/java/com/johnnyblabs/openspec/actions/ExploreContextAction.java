@@ -143,14 +143,15 @@ public class ExploreContextAction extends OpenSpecBaseAction {
                         "openspec-explore-prompt.md");
                 Files.writeString(tmpFile, prompt, StandardCharsets.UTF_8);
 
-                ApplicationManager.getApplication().invokeLater(() -> {
-                    var vf = com.intellij.openapi.vfs.LocalFileSystem.getInstance()
-                            .refreshAndFindFileByNioFile(tmpFile);
-                    if (vf != null) {
+                // VFS refresh on pooled thread — only editor open needs EDT
+                var vf = com.intellij.openapi.vfs.LocalFileSystem.getInstance()
+                        .refreshAndFindFileByNioFile(tmpFile);
+                if (vf != null) {
+                    ApplicationManager.getApplication().invokeLater(() -> {
                         com.intellij.openapi.fileEditor.FileEditorManager.getInstance(project)
                                 .openFile(vf, true);
-                    }
-                });
+                    });
+                }
             } catch (IOException ex) {
                 OpenSpecNotifier.warn(project, "Explore",
                         "Failed to create explore prompt file: " + ex.getMessage());

@@ -42,12 +42,14 @@ public class OpenSpecProposeAction extends OpenSpecBaseAction {
         String why = dialog.getWhy();
         String whatChanges = dialog.getWhatChanges();
 
-        // Always use built-in scaffolding — it creates the full artifact set
-        // (proposal.md, design.md, tasks.md, specs/) that both the plugin and CLI expect.
-        // The CLI's "new change" only creates .openspec.yaml.
-        createChangeBuiltIn(project, changeName, why, whatChanges);
-        refreshToolWindow(project);
-        autoFocusChange(project, changeName);
+        // Dispatch to pooled thread, then invokeLater for WriteAction-dependent scaffolding
+        ApplicationManager.getApplication().executeOnPooledThread(() -> {
+            ApplicationManager.getApplication().invokeLater(() -> {
+                createChangeBuiltIn(project, changeName, why, whatChanges);
+                refreshToolWindow(project);
+                autoFocusChange(project, changeName);
+            });
+        });
     }
 
     private void createChangeBuiltIn(Project project, String changeName, String why, String whatChanges) {
@@ -70,16 +72,14 @@ public class OpenSpecProposeAction extends OpenSpecBaseAction {
     }
 
     private void autoFocusChange(Project project, String changeName) {
-        ApplicationManager.getApplication().invokeLater(() -> {
-            ToolWindow toolWindow = ToolWindowManager.getInstance(project).getToolWindow("OpenSpec");
-            if (toolWindow == null) return;
-            for (Content content : toolWindow.getContentManager().getContents()) {
-                Component component = content.getComponent();
-                if (component instanceof OpenSpecToolWindowPanel panel) {
-                    panel.selectChange(changeName);
-                    break;
-                }
+        ToolWindow toolWindow = ToolWindowManager.getInstance(project).getToolWindow("OpenSpec");
+        if (toolWindow == null) return;
+        for (Content content : toolWindow.getContentManager().getContents()) {
+            Component component = content.getComponent();
+            if (component instanceof OpenSpecToolWindowPanel panel) {
+                panel.selectChange(changeName);
+                break;
             }
-        });
+        }
     }
 }

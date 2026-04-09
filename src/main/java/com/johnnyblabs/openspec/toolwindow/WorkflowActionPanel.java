@@ -1505,32 +1505,16 @@ public class WorkflowActionPanel extends JPanel {
         }
 
         Change finalTarget = target;
-        ProgressManager.getInstance().run(new Task.Backgroundable(project, "Archiving " + changeName, false) {
-            @Override
-            public void run(@NotNull ProgressIndicator indicator) {
-                try {
-                    ApplicationManager.getApplication().invokeAndWait(() -> {
-                        try {
-                            changeService.archiveChange(finalTarget);
-                        } catch (IOException ex) {
-                            throw new RuntimeException(ex);
-                        }
-                    });
-
-                    SwingUtilities.invokeLater(() -> {
-                        showGuidancePopover(archiveIconButton,
-                                "\u2713 " + changeName + " archived", null, null);
-                        if (onRefreshRequested != null) onRefreshRequested.run();
-                        refresh();
-                    });
-                } catch (com.intellij.openapi.progress.ProcessCanceledException e) {
-                    throw e;
-                } catch (Exception ex) {
-                    SwingUtilities.invokeLater(() -> {
-                        archiveIconButton.setEnabled(true);
-                        OpenSpecNotifier.error(project, "Archive", "Archive failed: " + ex.getMessage());
-                    });
-                }
+        ApplicationManager.getApplication().invokeLater(() -> {
+            try {
+                changeService.archiveChange(finalTarget);
+                showGuidancePopover(archiveIconButton,
+                        "\u2713 " + changeName + " archived", null, null);
+                if (onRefreshRequested != null) onRefreshRequested.run();
+                refresh();
+            } catch (Exception ex) {
+                archiveIconButton.setEnabled(true);
+                OpenSpecNotifier.error(project, "Archive", "Archive failed: " + ex.getMessage());
             }
         });
     }

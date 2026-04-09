@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.2.9 — EDT Threading Compliance
+
+- **Deadlock fix**: Replaced `invokeAndWait` with `invokeLater` in WorkflowActionPanel archive path — eliminates deadlock when EDT is blocked on a modal
+- **Deadlock fix**: Replaced `invokeAndWait` with `invokeLater` + `CountDownLatch` in BulkArchiveDialog archive loop
+- **Deadlock fix**: Replaced `invokeAndWait` with `invokeLater` + `CountDownLatch` in SpecSyncService VFS refresh loop
+- **EDT unblock**: OpenSpecInitAction scaffolding/CLI now runs via `ProgressManager.Backgroundable`
+- **EDT unblock**: OpenSpecProposeAction file creation dispatched to pooled thread
+- **VFS threading**: ExploreContextAction VFS refresh moved to background thread — only editor open on EDT
+
 ## v0.2.8 — Spec Sync & Threading Compliance
 
 - **Threading compliance**: CliRunner and CliDetectionService use `Process` directly instead of `OSProcessHandler`, eliminating ReadAction threading violations
@@ -8,8 +17,6 @@
 - **Sync Specs icon button**: dedicated icon in the action bar between Verify and Archive, enabled when delta specs exist
 - **Archive guard for unsynced specs**: three-option dialog (Sync First / Archive Without Syncing / Cancel) when archiving changes with unsynced delta specs
 - **Overflow menu cleanup**: Sync Specs removed from overflow menu (now in icon bar), menu empty when idle
-- **Spec sync audit**: 11 new main specs created from archived delta specs, 4 existing specs updated with missing content
-- **Forgejo issue triage**: 7 completed issues closed with version references, 12 no-milestone issues assigned to v0.3.0
 
 ## v0.2.7 — Explore Thinking Space & Multi-Agent
 
@@ -55,6 +62,30 @@
 - **CLI update action**: refresh agent instruction files from the IDE
 - **Open source**: Apache 2.0 license, GitHub repo, GitHub Actions CI, community files (CONTRIBUTING, CODE_OF_CONDUCT, SECURITY)
 - **Plugin signing**: signed builds on CI for JetBrains Marketplace trust badge
+
+## v0.2.3 — AI Tool Management
+
+- **Manage AI Tools dialog**: configure detected AI tools from within the IDE
+- **Wizard tool selector fix**: tool selector in setup wizard now works correctly
+- **Dialog crash fix**: hardened null safety in Manage AI Tools dialog
+- **Welcome screen branding**: updated welcome panel with Fission AI attribution
+
+## v0.2.2 — Review Ready
+
+- **Monochrome tool window icon**: matching JetBrains platform conventions
+- **API compliance**: updated Anthropic API to version 2024-06-01, fixed OpenAI o1-series model compatibility
+- **Wording consistency**: corrected CLI install instructions and standardized UI terminology
+- **Vendor info**: updated vendor URL and contact information
+
+## v0.2.1 — Patch Fixes
+
+- **CLI-aligned init**: delegates to `openspec init` when CLI detected, generating skills and commands for all 24 supported AI tools
+- **Branded onboarding**: 32x32 OpenSpec icon and "Spec-Driven Development" tagline in getting started panel and setup wizard
+- **Fix: first-run state detection**: projects with archived changes skip onboarding correctly
+- **Fix: wizard propose button**: "Create Your First Change" now actually persists the change to disk
+- **Fix: VFS refresh timing**: no more false config-missing errors after init
+- **Fix: deprecated API cleanup**: replaced `ActionUtil.performActionDumbAwareWithCallbacks`
+- **HiDPI-safe text widths** and improved dark theme tree colors
 
 ## v0.2.0 — Spec Intelligence
 
