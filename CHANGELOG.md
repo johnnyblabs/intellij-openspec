@@ -4,6 +4,7 @@
 
 - **Windows CLI detection fix**: OpenSpec CLI is now auto-detected on Windows installs (npm, winget). Previously the plugin couldn't find `openspec.cmd` because Java's process launcher doesn't consult Windows' PATHEXT. The Settings panel and Setup Wizard now also surface the `.cmd` extension hint for Windows users. Fixes #11.
 - **OpenSpec 1.3.x tool support**: Added detection for Junie, Lingma, ForgeCode, and Bob Shell — bringing the supported AI tool count from 24 to 28 to match the OpenSpec CLI 1.3.x registry.
+- **Tailored delivery guidance**: ForgeCode, Bob Shell, Junie, and Lingma now show panel-specific instructions ("Open Junie and paste the prompt", "Paste into ForgeCode", etc.) instead of the generic "Paste into your AI tool" fallback.
 
 ## v0.2.9 — EDT Threading Compliance
 

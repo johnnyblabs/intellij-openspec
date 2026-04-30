@@ -1,33 +1,4 @@
-# AI Integration
-
-## Purpose
-AI provider configuration, tool detection, delivery method routing, and credential management.
-
-## Requirements
-
-### Requirement: AI providers
-
-The plugin SHALL support Claude, OpenAI, and Gemini as Direct API providers with secure credential storage via IntelliJ PasswordSafe.
-
-#### Scenario: API generation
-- **WHEN** a user configures a Direct API provider with a valid key
-- **THEN** the plugin SHALL generate artifacts by calling the provider's API directly
-
-#### Scenario: Test connection
-- **WHEN** the user clicks "Test Connection"
-- **THEN** the plugin SHALL send a test prompt and display success or a provider-specific error message
-
-### Requirement: Delivery method routing
-
-The plugin SHALL support three delivery methods (clipboard, editor tab, Direct API) with smart default selection based on detected tools and configured providers. The Direct API configuration state SHALL additionally gate the availability of Fast-Forward, since FF depends on Direct API for its end-to-end artifact generation workflow.
-
-#### Scenario: Resolution chain
-- **WHEN** determining the delivery method
-- **THEN** the plugin SHALL check: user preference → configured API → detected tools → generic clipboard fallback
-
-#### Scenario: Direct API gates FF availability
-- **WHEN** Direct API is not configured (no provider selected or no API key)
-- **THEN** the FF action and FF panel link SHALL be unavailable
+## MODIFIED Requirements
 
 ### Requirement: Tool-specific guidance
 
@@ -56,11 +27,3 @@ The plugin SHALL provide tool-specific delivery guidance (chat panel name, paste
 #### Scenario: Default fallback when no explicit entry exists
 - **WHEN** the user generates for a tool with no `TOOL_GUIDANCE` entry (e.g., any future tool not yet wired up)
 - **THEN** the plugin SHALL return `DEFAULT_GUIDANCE` ("your AI tool" / "Paste into your AI tool") rather than throwing or returning null
-
-### Requirement: Settings panel
-
-The plugin SHALL organize settings into distinct sections: CLI detection, general options, delivery preferences, and Direct API configuration with provider/model selection.
-
-#### Scenario: Settings layout
-- **WHEN** the user opens Settings → Tools → OpenSpec
-- **THEN** they SHALL see organized sections with CLI status, delivery dropdown, and API configuration
