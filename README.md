@@ -38,6 +38,8 @@ cd intellij-openspec
 npm i -g @fission-ai/openspec
 ```
 
+**Windows note:** npm installs the launcher as `openspec.cmd` (not bare `openspec`). The plugin auto-detects it from `%APPDATA%\npm\` and `%LOCALAPPDATA%\npm\`, plus winget shims. If auto-detect misses your install, set the manual path in **Settings → Tools → OpenSpec → CLI Path** to the full `.cmd` location, e.g. `C:\Users\<you>\AppData\Roaming\npm\openspec.cmd`.
+
 ---
 
 ## Contributing

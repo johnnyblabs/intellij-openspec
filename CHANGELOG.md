@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Windows CLI detection fix**: OpenSpec CLI is now auto-detected on Windows installs (npm, winget). Previously the plugin couldn't find `openspec.cmd` because Java's process launcher doesn't consult Windows' PATHEXT. The Settings panel and Setup Wizard now also surface the `.cmd` extension hint for Windows users. Fixes #11.
+
 ## v0.2.9 — EDT Threading Compliance
 
 - **Deadlock fix**: Replaced `invokeAndWait` with `invokeLater` in WorkflowActionPanel archive path — eliminates deadlock when EDT is blocked on a modal
