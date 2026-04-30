@@ -314,4 +314,36 @@ class AiToolDetectionServiceTest {
             }
         }
     }
+
+    @Nested
+    class ToolGuidanceLookups {
+
+        @Test
+        void forgeCode_hasExplicitTerminalGuidance() {
+            var g = AiToolDetectionService.getToolGuidance("ForgeCode");
+            assertEquals("terminal", g.chatPanelName());
+            assertEquals("Paste into ForgeCode", g.pasteAction());
+            assertNull(g.promptPrefix());
+            assertTrue(g.canAutoSave());
+        }
+
+        @Test
+        void bobShell_hasExplicitTerminalGuidance() {
+            var g = AiToolDetectionService.getToolGuidance("Bob Shell");
+            assertEquals("terminal", g.chatPanelName());
+            assertEquals("Paste into Bob Shell", g.pasteAction());
+            assertNull(g.promptPrefix());
+            assertTrue(g.canAutoSave());
+        }
+
+        @Test
+        void junieAndLingma_stillFallThroughToDefault() {
+            // Deferred per the change's "Out of scope" — IDE-resident tools without
+            // confirmed panel names stay on DEFAULT_GUIDANCE.
+            var junie = AiToolDetectionService.getToolGuidance("Junie");
+            var lingma = AiToolDetectionService.getToolGuidance("Lingma");
+            assertEquals("your AI tool", junie.chatPanelName());
+            assertEquals("your AI tool", lingma.chatPanelName());
+        }
+    }
 }
