@@ -32,7 +32,7 @@ cd intellij-openspec
 
 **Requirements:** IntelliJ IDEA 2024.2+ (Community or Ultimate), Java 21 JDK for building from source.
 
-**OpenSpec CLI (optional):** The plugin works without the CLI, but the full experience — schema management, CLI-enhanced validation, and agent instruction updates — requires it:
+**OpenSpec CLI (optional):** The plugin works without the CLI, but the full experience — schema management, CLI-enhanced validation, agent instruction updates, and detection of all 28 supported AI tools — requires OpenSpec 1.3.x or later:
 
 ```bash
 npm i -g @fission-ai/openspec
