@@ -41,6 +41,26 @@ class AiToolDetectionServiceTest {
         }
 
         @Test
+        void forgecode_isCliTool() {
+            assertTrue(AiToolDetectionService.isCliTool("ForgeCode"));
+        }
+
+        @Test
+        void bobShell_isCliTool() {
+            assertTrue(AiToolDetectionService.isCliTool("Bob Shell"));
+        }
+
+        @Test
+        void junie_isIdePanelTool() {
+            assertFalse(AiToolDetectionService.isCliTool("Junie"));
+        }
+
+        @Test
+        void lingma_isIdePanelTool() {
+            assertFalse(AiToolDetectionService.isCliTool("Lingma"));
+        }
+
+        @Test
         void unknownTool_defaultsToIdePanel() {
             assertFalse(AiToolDetectionService.isCliTool("Some New Tool"));
         }
@@ -159,6 +179,17 @@ class AiToolDetectionServiceTest {
             assertEquals("amazon-q", AiToolDetectionService.getCliToolId("Amazon Q"));
             assertEquals("roocode", AiToolDetectionService.getCliToolId("Roo Code"));
             assertEquals("auggie", AiToolDetectionService.getCliToolId("Augment"));
+            assertEquals("junie", AiToolDetectionService.getCliToolId("Junie"));
+            assertEquals("lingma", AiToolDetectionService.getCliToolId("Lingma"));
+            assertEquals("bob", AiToolDetectionService.getCliToolId("Bob Shell"));
+        }
+
+        @Test
+        void getCliToolId_forgeCodeDivergesFromDirectory() {
+            // Upstream value is "forgecode" but the directory is ".forge" — verify the CLI ID
+            // emitted matches upstream regardless of the directory key.
+            assertEquals("forgecode", AiToolDetectionService.getCliToolId("ForgeCode"));
+            assertEquals(".forge", AiToolDetectionService.getToolDirName("ForgeCode"));
         }
 
         @Test
@@ -176,9 +207,9 @@ class AiToolDetectionServiceTest {
     class AllToolNames {
 
         @Test
-        void getAllToolNames_returns24Tools() {
+        void getAllToolNames_returns28Tools() {
             var names = AiToolDetectionService.getAllToolNames();
-            assertEquals(24, names.size());
+            assertEquals(28, names.size());
         }
 
         @Test
@@ -190,6 +221,10 @@ class AiToolDetectionServiceTest {
             assertTrue(names.contains("Amazon Q"));
             assertTrue(names.contains("Kiro"));
             assertTrue(names.contains("Roo Code"));
+            assertTrue(names.contains("Junie"));
+            assertTrue(names.contains("Lingma"));
+            assertTrue(names.contains("ForgeCode"));
+            assertTrue(names.contains("Bob Shell"));
         }
 
         @Test
@@ -265,9 +300,9 @@ class AiToolDetectionServiceTest {
 
         @Test
         void allMapsHaveSameSize() {
-            // TOOL_DIRS, TOOL_TYPES, and CLI_TOOL_IDS should all have 24 entries
+            // TOOL_DIRS, TOOL_TYPES, and CLI_TOOL_IDS should all have 28 entries (OpenSpec 1.3.x)
             var names = AiToolDetectionService.getAllToolNames();
-            assertEquals(24, names.size(), "Should have 24 tools");
+            assertEquals(28, names.size(), "Should have 28 tools");
 
             for (String name : names) {
                 assertNotNull(AiToolDetectionService.getToolType(name),

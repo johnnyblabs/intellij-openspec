@@ -44,6 +44,7 @@ public final class AiToolDetectionService {
     private static final ToolGuidance DEFAULT_GUIDANCE =
             new ToolGuidance("your AI tool", "Paste into your AI tool", null, false);
 
+    // Upstream registry: @fission-ai/openspec/dist/core/config.js — cross-check on CLI bumps.
     private static final Map<String, String> TOOL_DIRS = new LinkedHashMap<>() {{
         put(".claude", "Claude Code");
         put(".github", "GitHub Copilot");
@@ -69,6 +70,10 @@ public final class AiToolDetectionService {
         put(".qwen", "Qwen");
         put(".roo", "Roo Code");
         put(".trae", "Trae");
+        put(".junie", "Junie");
+        put(".lingma", "Lingma");
+        put(".forge", "ForgeCode"); // upstream value is "forgecode" but skillsDir is ".forge"
+        put(".bob", "Bob Shell");
     }};
 
     private static final Map<String, ToolType> TOOL_TYPES = Map.ofEntries(
@@ -95,7 +100,11 @@ public final class AiToolDetectionService {
             Map.entry("Qoder", ToolType.IDE_PANEL),
             Map.entry("Qwen", ToolType.IDE_PANEL),
             Map.entry("Roo Code", ToolType.IDE_PANEL),
-            Map.entry("Trae", ToolType.IDE_PANEL)
+            Map.entry("Trae", ToolType.IDE_PANEL),
+            Map.entry("Junie", ToolType.IDE_PANEL),
+            Map.entry("Lingma", ToolType.IDE_PANEL),
+            Map.entry("ForgeCode", ToolType.CLI),
+            Map.entry("Bob Shell", ToolType.CLI)
     );
 
     private static final Map<String, String> CLI_TOOL_IDS = Map.ofEntries(
@@ -122,7 +131,11 @@ public final class AiToolDetectionService {
             Map.entry("Qoder", "qoder"),
             Map.entry("Qwen", "qwen"),
             Map.entry("Roo Code", "roocode"),
-            Map.entry("Trae", "trae")
+            Map.entry("Trae", "trae"),
+            Map.entry("Junie", "junie"),
+            Map.entry("Lingma", "lingma"),
+            Map.entry("ForgeCode", "forgecode"),
+            Map.entry("Bob Shell", "bob")
     );
 
     private final Project project;
