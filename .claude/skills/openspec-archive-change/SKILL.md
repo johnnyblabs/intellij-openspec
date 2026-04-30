@@ -86,13 +86,16 @@ Archive a completed change in the experimental workflow.
 
    After archiving, auto-close tracker items if tracking metadata exists.
 
-   a. **Read tracking metadata** from the archived `.openspec.yaml`:
+   a. **Parse tracker IDs from the archived `proposal.md`** — extract from the `## References` section. Tracker IDs live in `proposal.md` per OpenSpec community convention; do NOT read `.openspec.yaml`, whose schema doesn't carry tracking data:
       ```bash
-      cat openspec/changes/archive/YYYY-MM-DD-<name>/.openspec.yaml
+      PROPOSAL=openspec/changes/archive/YYYY-MM-DD-<name>/proposal.md
+      FORGEJO_ISSUE=$(grep -oE 'Forgejo:\s*[^#]+#[0-9]+' "$PROPOSAL" | grep -oE '[0-9]+$' | head -1)
+      PLANE_WORK_ITEM=$(grep -oE 'Plane:[^`]*`[a-f0-9-]{36}`' "$PROPOSAL" | grep -oE '[a-f0-9-]{36}' | head -1)
       ```
-      Look for a `tracking` section with `forgejo_issue` and `plane_work_item`.
 
-   b. **If no tracking section**, skip this step silently.
+      For backwards compatibility with pre-References changes, if no `## References` section is present, also check the legacy `.openspec.yaml` for an embedded `tracking:` block — log a one-line note that the change predates the convention.
+
+   b. **If no tracker IDs are found**, skip this step silently.
 
    c. **Check for credentials**:
       ```bash

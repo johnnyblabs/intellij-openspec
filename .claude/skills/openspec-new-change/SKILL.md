@@ -117,12 +117,15 @@ After completing the steps, summarize:
         "${PLANE_WS_API}/cycles/${CYCLE_ID}/cycle-issues/" -d "{\"issues\": [\"${WORK_ITEM_ID}\"]}"
       ```
 
-   e. **Write tracking metadata** — append to `.openspec.yaml`:
-      ```yaml
-      tracking:
-        forgejo_issue: <ISSUE_NUMBER>
-        plane_work_item: <WORK_ITEM_ID>
+   e. **Append References to `proposal.md`** — append a `## References` section at the bottom of the change's scaffolded `proposal.md`. This is the OpenSpec community convention for cross-linking trackers (do NOT touch `.openspec.yaml`; its upstream Zod schema only accepts `schema:` + `created:` and silently strips unknown keys, so embedding tracking data there is fragile).
+      ```markdown
+
+      ## References
+
+      - Forgejo: johnb/intellij-openspec#<ISSUE_NUMBER>
+      - Plane: openspec/issue/<SEQUENCE_ID> (`<WORK_ITEM_ID>`)
       ```
+      If the change is fixing an upstream issue (e.g. GitHub), add a `- GitHub: <repo>#<num>` line above the Forgejo line.
 
    f. **Report**: Include in output: "Tracked as Forgejo #<N> / Plane <ID>."
       If API calls fail, log the error and continue.

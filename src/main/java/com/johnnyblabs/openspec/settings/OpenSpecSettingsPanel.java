@@ -83,6 +83,15 @@ public class OpenSpecSettingsPanel {
                 new TextBrowseFolderListener(
                         FileChooserDescriptorFactory.createSingleFileNoJarsDescriptor(),
                         project));
+        if (com.intellij.openapi.util.SystemInfo.isWindows) {
+            cliPathField.setToolTipText(
+                    "<html>Leave empty to auto-detect, or enter the full path including the <code>.cmd</code> extension.<br>"
+                            + "Typical npm install: <code>%APPDATA%\\npm\\openspec.cmd</code></html>");
+        } else {
+            cliPathField.setToolTipText(
+                    "<html>Leave empty to auto-detect, or enter the full path to the openspec executable.<br>"
+                            + "Typical install: <code>/opt/homebrew/bin/openspec</code> or <code>/usr/local/bin/openspec</code></html>");
+        }
 
         JButton detectButton = new JButton("Detect");
         detectButton.addActionListener(e -> detectCli());

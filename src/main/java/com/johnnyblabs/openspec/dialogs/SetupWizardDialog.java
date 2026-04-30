@@ -158,9 +158,20 @@ public class SetupWizardDialog extends DialogWrapper {
         gbc.gridx = 0;
         gbc.gridy = 3;
         gbc.gridwidth = 2;
-        JBLabel hint = new JBLabel("<html><body style='width:" + JBUI.scale(400) + "px;color:gray'>" +
-                "The CLI is optional. Built-in features work without it. " +
-                "Install with: <code>npm i -g @fission-ai/openspec</code></body></html>");
+        String hintHtml;
+        if (com.intellij.openapi.util.SystemInfo.isWindows) {
+            hintHtml = "<html><body style='width:" + JBUI.scale(400) + "px;color:gray'>" +
+                    "The CLI is optional. Built-in features work without it. " +
+                    "Install with: <code>npm i -g @fission-ai/openspec</code>. " +
+                    "If auto-detect doesn't pick it up, set the manual path to " +
+                    "<code>%APPDATA%\\npm\\openspec.cmd</code> (the <code>.cmd</code> extension is required on Windows)." +
+                    "</body></html>";
+        } else {
+            hintHtml = "<html><body style='width:" + JBUI.scale(400) + "px;color:gray'>" +
+                    "The CLI is optional. Built-in features work without it. " +
+                    "Install with: <code>npm i -g @fission-ai/openspec</code></body></html>";
+        }
+        JBLabel hint = new JBLabel(hintHtml);
         panel.add(hint, gbc);
 
         return panel;
