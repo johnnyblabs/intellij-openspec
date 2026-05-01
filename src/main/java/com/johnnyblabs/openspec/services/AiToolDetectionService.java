@@ -37,6 +37,8 @@ public final class AiToolDetectionService {
             Map.entry("OpenCode", new ToolGuidance("terminal", "Paste into OpenCode", null, true)),
             Map.entry("ForgeCode", new ToolGuidance("terminal", "Paste into ForgeCode", null, true)),
             Map.entry("Bob Shell", new ToolGuidance("terminal", "Paste into Bob Shell", null, true)),
+            Map.entry("Junie", new ToolGuidance("Junie", "Open Junie and paste the prompt", "/opsx-", false)),
+            Map.entry("Lingma", new ToolGuidance("Lingma chat", "Open Lingma chat and paste the prompt", null, false)),
             Map.entry("Kiro", new ToolGuidance("Kiro chat", "Open Kiro chat and paste the prompt", null, false)),
             Map.entry("Roo Code", new ToolGuidance("Roo Code chat", "Open Roo Code chat and paste the prompt", null, false)),
             Map.entry("Continue", new ToolGuidance("Continue chat", "Open Continue chat and paste the prompt", null, false)),

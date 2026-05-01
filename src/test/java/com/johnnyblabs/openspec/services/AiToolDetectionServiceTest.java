@@ -337,13 +337,30 @@ class AiToolDetectionServiceTest {
         }
 
         @Test
-        void junieAndLingma_stillFallThroughToDefault() {
-            // Deferred per the change's "Out of scope" — IDE-resident tools without
-            // confirmed panel names stay on DEFAULT_GUIDANCE.
-            var junie = AiToolDetectionService.getToolGuidance("Junie");
-            var lingma = AiToolDetectionService.getToolGuidance("Lingma");
-            assertEquals("your AI tool", junie.chatPanelName());
-            assertEquals("your AI tool", lingma.chatPanelName());
+        void junie_hasExplicitGuidanceWithOpsxPrefix() {
+            var g = AiToolDetectionService.getToolGuidance("Junie");
+            assertEquals("Junie", g.chatPanelName());
+            assertEquals("Open Junie and paste the prompt", g.pasteAction());
+            assertEquals("/opsx-", g.promptPrefix());
+            assertFalse(g.canAutoSave());
+        }
+
+        @Test
+        void lingma_hasExplicitGuidanceWithoutPrefix() {
+            var g = AiToolDetectionService.getToolGuidance("Lingma");
+            assertEquals("Lingma chat", g.chatPanelName());
+            assertEquals("Open Lingma chat and paste the prompt", g.pasteAction());
+            assertNull(g.promptPrefix());
+            assertFalse(g.canAutoSave());
+        }
+
+        @Test
+        void unknownTool_fallsThroughToDefaultGuidance() {
+            // Preserves the default-fallback regression coverage the prior
+            // junieAndLingma_stillFallThroughToDefault test was providing.
+            var g = AiToolDetectionService.getToolGuidance("Some Future Tool");
+            assertEquals("your AI tool", g.chatPanelName());
+            assertEquals("Paste into your AI tool", g.pasteAction());
         }
     }
 }
