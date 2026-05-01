@@ -229,7 +229,12 @@ public final class DirectApiService {
         }
     }
 
-    private String callGemini(String apiKey, String model, String prompt) throws AiApiException {
+    /**
+     * Builds a Gemini generateContent request. Extracted for testability — the API key
+     * is sent via the x-goog-api-key header (Google's recommended pattern) rather than
+     * embedded in the URL query string, so that keys do not leak into request logs.
+     */
+    static HttpRequest buildGeminiRequest(String model, String apiKey, String prompt) {
         JsonObject body = new JsonObject();
         JsonArray contents = new JsonArray();
         JsonObject part = new JsonObject();
@@ -245,15 +250,19 @@ public final class DirectApiService {
         generationConfig.addProperty("maxOutputTokens", MAX_TOKENS);
         body.add("generationConfig", generationConfig);
 
-        try {
-            String url = GEMINI_API_URL + model + ":generateContent?key=" + apiKey;
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(url))
-                    .header("Content-Type", "application/json")
-                    .timeout(TIMEOUT)
-                    .POST(HttpRequest.BodyPublishers.ofString(new Gson().toJson(body)))
-                    .build();
+        String url = GEMINI_API_URL + model + ":generateContent";
+        return HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .header("Content-Type", "application/json")
+                .header("x-goog-api-key", apiKey)
+                .timeout(TIMEOUT)
+                .POST(HttpRequest.BodyPublishers.ofString(new Gson().toJson(body)))
+                .build();
+    }
 
+    private String callGemini(String apiKey, String model, String prompt) throws AiApiException {
+        try {
+            HttpRequest request = buildGeminiRequest(model, apiKey, prompt);
             HttpResponse<String> response = createHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() != 200) {

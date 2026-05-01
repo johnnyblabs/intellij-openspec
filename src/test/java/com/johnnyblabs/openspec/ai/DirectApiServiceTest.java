@@ -187,6 +187,46 @@ class DirectApiServiceTest {
     }
 
     @Nested
+    class BuildGeminiRequest {
+
+        @Test
+        void setsXGoogApiKeyHeader() {
+            var request = DirectApiService.buildGeminiRequest("gemini-2.5-pro", "test-secret-key", "hello");
+            assertEquals("test-secret-key",
+                    request.headers().firstValue("x-goog-api-key").orElse(null),
+                    "x-goog-api-key header must carry the API key");
+        }
+
+        @Test
+        void doesNotEmbedKeyInUrl() {
+            var request = DirectApiService.buildGeminiRequest("gemini-2.5-pro", "test-secret-key", "hello");
+            String url = request.uri().toString();
+            assertFalse(url.contains("?key="), "URL must not have ?key= query param: " + url);
+            assertFalse(url.contains("test-secret-key"), "URL must not contain the API key value: " + url);
+        }
+
+        @Test
+        void preservesEndpointPath() {
+            var request = DirectApiService.buildGeminiRequest("gemini-2.5-pro", "test-secret-key", "hello");
+            assertTrue(request.uri().toString().endsWith("/gemini-2.5-pro:generateContent"),
+                    "URI must end with /<model>:generateContent: " + request.uri());
+        }
+
+        @Test
+        void setsContentTypeJson() {
+            var request = DirectApiService.buildGeminiRequest("gemini-2.5-pro", "k", "p");
+            assertEquals("application/json",
+                    request.headers().firstValue("Content-Type").orElse(null));
+        }
+
+        @Test
+        void usesPostMethod() {
+            var request = DirectApiService.buildGeminiRequest("gemini-2.5-pro", "k", "p");
+            assertEquals("POST", request.method());
+        }
+    }
+
+    @Nested
     class AiProviderModels {
 
         @Test
