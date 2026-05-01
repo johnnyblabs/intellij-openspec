@@ -1,10 +1,13 @@
 # Changelog
 
-## Unreleased
+## v0.2.10 — Windows Support & OpenSpec 1.3 Tools
 
-- **Windows CLI detection fix**: OpenSpec CLI is now auto-detected on Windows installs (npm, winget). Previously the plugin couldn't find `openspec.cmd` because Java's process launcher doesn't consult Windows' PATHEXT. The Settings panel and Setup Wizard now also surface the `.cmd` extension hint for Windows users. Fixes #11.
-- **OpenSpec 1.3.x tool support**: Added detection for Junie, Lingma, ForgeCode, and Bob Shell — bringing the supported AI tool count from 24 to 28 to match the OpenSpec CLI 1.3.x registry.
-- **Tailored delivery guidance**: ForgeCode, Bob Shell, Junie, and Lingma now show panel-specific instructions ("Open Junie and paste the prompt", "Paste into ForgeCode", etc.) instead of the generic "Paste into your AI tool" fallback.
+### Fixed
+- **OpenSpec CLI is now auto-detected on Windows.** The plugin previously could not find `openspec.cmd` from npm or winget installs because Java's process launcher does not consult Windows `PATHEXT`. Detection now searches `%APPDATA%\npm`, `%LOCALAPPDATA%\npm`, and winget shim locations, and falls back through `.cmd` / `.bat` / `.exe` suffixes for any candidate path. The Settings panel and Setup Wizard surface a Windows-specific hint when a manual path is needed. macOS and Linux detection paths are unchanged. Fixes #11.
+
+### Added
+- **Detection for four AI tools introduced in OpenSpec CLI 1.3.0** — Junie (JetBrains), Lingma (Alibaba), ForgeCode, and Bob Shell. Supported tool count expands from 24 to 28.
+- **Tailored delivery guidance** for each of the four new tools. ForgeCode and Bob Shell show terminal-style copy ("Paste into ForgeCode", "Paste into Bob Shell") alongside Claude Code, Gemini, Codex, and OpenCode. Junie and Lingma show panel-style copy ("Open Junie and paste the prompt", "Open Lingma chat and paste the prompt") alongside GitHub Copilot, Cursor, Cline, and Kiro. The generic "Paste into your AI tool" fallback no longer appears for these tools.
 
 ## v0.2.9 — EDT Threading Compliance
 
