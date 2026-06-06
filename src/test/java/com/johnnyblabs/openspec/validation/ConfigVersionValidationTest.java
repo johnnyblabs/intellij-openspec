@@ -112,6 +112,34 @@ class ConfigVersionValidationTest {
                 "1.2.0 project with spec-driven should pass");
     }
 
+    @Test
+    void v1_2_workspacePlanning_passes() {
+        // workspace-planning was added in OpenSpec CLI 1.4.x and SHALL be valid under V1_2.
+        List<ValidationIssue> issues = validateChangeSchema("workspace-planning", VersionSupport.V1_2);
+        assertTrue(issues.stream().noneMatch(i ->
+                i.rule().equals("change-schema-incompatible")),
+                "V1_2 project with workspace-planning schema should pass under CLI 1.4.x");
+    }
+
+    @Test
+    void v1_0_workspacePlanning_warns() {
+        // workspace-planning is a 1.4.x addition and SHALL NOT be retroactively valid for older baselines.
+        List<ValidationIssue> issues = validateChangeSchema("workspace-planning", VersionSupport.V1_0);
+        assertTrue(issues.stream().anyMatch(i ->
+                i.severity() == ValidationIssue.Severity.WARNING
+                        && i.rule().equals("change-schema-incompatible")),
+                "V1_0 project with workspace-planning schema should warn");
+    }
+
+    @Test
+    void v1_1_workspacePlanning_warns() {
+        List<ValidationIssue> issues = validateChangeSchema("workspace-planning", VersionSupport.V1_1);
+        assertTrue(issues.stream().anyMatch(i ->
+                i.severity() == ValidationIssue.Severity.WARNING
+                        && i.rule().equals("change-schema-incompatible")),
+                "V1_1 project with workspace-planning schema should warn");
+    }
+
     // --- Helpers mirroring BuiltInValidator logic ---
 
     private List<ValidationIssue> validateConfig(String schema, String version) {

@@ -38,9 +38,17 @@ class VersionSupportTest {
     }
 
     @Test
-    void v1_2_supportsSpecDrivenOnly() {
+    void v1_2_supportsSpecDrivenAndWorkspacePlanning() {
         Set<String> schemas = VersionSupport.V1_2.getValidSchemas();
-        assertEquals(Set.of("spec-driven"), schemas);
+        assertEquals(Set.of("spec-driven", "workspace-planning"), schemas);
+    }
+
+    @Test
+    void v1_0_and_v1_1_doNotAcceptWorkspacePlanning() {
+        assertFalse(VersionSupport.V1_0.getValidSchemas().contains("workspace-planning"),
+                "workspace-planning was introduced in CLI 1.4.x and must not be retroactively valid for V1_0");
+        assertFalse(VersionSupport.V1_1.getValidSchemas().contains("workspace-planning"),
+                "workspace-planning was introduced in CLI 1.4.x and must not be retroactively valid for V1_1");
     }
 
     @Test

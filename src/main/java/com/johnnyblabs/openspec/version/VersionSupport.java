@@ -16,7 +16,7 @@ public enum VersionSupport {
     V1_2("1.2.0",
             Set.of("schema", "version"),
             Set.of("proposal", "design", "specs", "tasks"),
-            Set.of("spec-driven"));
+            Set.of("spec-driven", "workspace-planning"));
 
     private final String version;
     private final Set<String> requiredConfigFields;

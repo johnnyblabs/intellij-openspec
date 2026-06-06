@@ -42,7 +42,9 @@ public final class AiToolDetectionService {
             Map.entry("Kiro", new ToolGuidance("Kiro chat", "Open Kiro chat and paste the prompt", null, false)),
             Map.entry("Roo Code", new ToolGuidance("Roo Code chat", "Open Roo Code chat and paste the prompt", null, false)),
             Map.entry("Continue", new ToolGuidance("Continue chat", "Open Continue chat and paste the prompt", null, false)),
-            Map.entry("Amazon Q", new ToolGuidance("Amazon Q chat", "Open Amazon Q chat and paste the prompt", null, false))
+            Map.entry("Amazon Q", new ToolGuidance("Amazon Q chat", "Open Amazon Q chat and paste the prompt", null, false)),
+            Map.entry("Kimi CLI", new ToolGuidance("terminal", "Paste into Kimi CLI", null, true)),
+            Map.entry("Mistral Vibe", new ToolGuidance("terminal", "Paste into Mistral Vibe", null, true))
     );
 
     private static final ToolGuidance DEFAULT_GUIDANCE =
@@ -78,6 +80,8 @@ public final class AiToolDetectionService {
         put(".lingma", "Lingma");
         put(".forge", "ForgeCode"); // upstream value is "forgecode" but skillsDir is ".forge"
         put(".bob", "Bob Shell");
+        put(".kimi", "Kimi CLI");
+        put(".vibe", "Mistral Vibe");
     }};
 
     private static final Map<String, ToolType> TOOL_TYPES = Map.ofEntries(
@@ -108,7 +112,9 @@ public final class AiToolDetectionService {
             Map.entry("Junie", ToolType.IDE_PANEL),
             Map.entry("Lingma", ToolType.IDE_PANEL),
             Map.entry("ForgeCode", ToolType.CLI),
-            Map.entry("Bob Shell", ToolType.CLI)
+            Map.entry("Bob Shell", ToolType.CLI),
+            Map.entry("Kimi CLI", ToolType.CLI),
+            Map.entry("Mistral Vibe", ToolType.CLI)
     );
 
     private static final Map<String, String> CLI_TOOL_IDS = Map.ofEntries(
@@ -139,7 +145,9 @@ public final class AiToolDetectionService {
             Map.entry("Junie", "junie"),
             Map.entry("Lingma", "lingma"),
             Map.entry("ForgeCode", "forgecode"),
-            Map.entry("Bob Shell", "bob")
+            Map.entry("Bob Shell", "bob"),
+            Map.entry("Kimi CLI", "kimi"),
+            Map.entry("Mistral Vibe", "vibe")
     );
 
     private final Project project;

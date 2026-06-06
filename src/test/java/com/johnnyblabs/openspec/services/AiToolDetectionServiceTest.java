@@ -61,6 +61,16 @@ class AiToolDetectionServiceTest {
         }
 
         @Test
+        void kimiCli_isCliTool() {
+            assertTrue(AiToolDetectionService.isCliTool("Kimi CLI"));
+        }
+
+        @Test
+        void mistralVibe_isCliTool() {
+            assertTrue(AiToolDetectionService.isCliTool("Mistral Vibe"));
+        }
+
+        @Test
         void unknownTool_defaultsToIdePanel() {
             assertFalse(AiToolDetectionService.isCliTool("Some New Tool"));
         }
@@ -182,6 +192,16 @@ class AiToolDetectionServiceTest {
             assertEquals("junie", AiToolDetectionService.getCliToolId("Junie"));
             assertEquals("lingma", AiToolDetectionService.getCliToolId("Lingma"));
             assertEquals("bob", AiToolDetectionService.getCliToolId("Bob Shell"));
+            assertEquals("kimi", AiToolDetectionService.getCliToolId("Kimi CLI"));
+            assertEquals("vibe", AiToolDetectionService.getCliToolId("Mistral Vibe"));
+        }
+
+        @Test
+        void getCliToolId_kimiAndVibe_mapToUpstreamValues() {
+            assertEquals("kimi", AiToolDetectionService.getCliToolId("Kimi CLI"));
+            assertEquals(".kimi", AiToolDetectionService.getToolDirName("Kimi CLI"));
+            assertEquals("vibe", AiToolDetectionService.getCliToolId("Mistral Vibe"));
+            assertEquals(".vibe", AiToolDetectionService.getToolDirName("Mistral Vibe"));
         }
 
         @Test
@@ -207,9 +227,9 @@ class AiToolDetectionServiceTest {
     class AllToolNames {
 
         @Test
-        void getAllToolNames_returns28Tools() {
+        void getAllToolNames_returns30Tools() {
             var names = AiToolDetectionService.getAllToolNames();
-            assertEquals(28, names.size());
+            assertEquals(30, names.size());
         }
 
         @Test
@@ -225,6 +245,8 @@ class AiToolDetectionServiceTest {
             assertTrue(names.contains("Lingma"));
             assertTrue(names.contains("ForgeCode"));
             assertTrue(names.contains("Bob Shell"));
+            assertTrue(names.contains("Kimi CLI"));
+            assertTrue(names.contains("Mistral Vibe"));
         }
 
         @Test
@@ -300,9 +322,9 @@ class AiToolDetectionServiceTest {
 
         @Test
         void allMapsHaveSameSize() {
-            // TOOL_DIRS, TOOL_TYPES, and CLI_TOOL_IDS should all have 28 entries (OpenSpec 1.3.x)
+            // TOOL_DIRS, TOOL_TYPES, and CLI_TOOL_IDS should all have 30 entries (OpenSpec 1.4.x)
             var names = AiToolDetectionService.getAllToolNames();
-            assertEquals(28, names.size(), "Should have 28 tools");
+            assertEquals(30, names.size(), "Should have 30 tools");
 
             for (String name : names) {
                 assertNotNull(AiToolDetectionService.getToolType(name),
@@ -352,6 +374,37 @@ class AiToolDetectionServiceTest {
             assertEquals("Open Lingma chat and paste the prompt", g.pasteAction());
             assertNull(g.promptPrefix());
             assertFalse(g.canAutoSave());
+        }
+
+        @Test
+        void kimiCli_hasExplicitTerminalGuidance() {
+            var g = AiToolDetectionService.getToolGuidance("Kimi CLI");
+            assertEquals("terminal", g.chatPanelName());
+            assertEquals("Paste into Kimi CLI", g.pasteAction());
+            assertNull(g.promptPrefix());
+            assertTrue(g.canAutoSave(),
+                    "Kimi CLI must report canAutoSave=true so the IDE watches tasks.md instead of prompting for manual save");
+        }
+
+        @Test
+        void mistralVibe_hasExplicitTerminalGuidance() {
+            var g = AiToolDetectionService.getToolGuidance("Mistral Vibe");
+            assertEquals("terminal", g.chatPanelName());
+            assertEquals("Paste into Mistral Vibe", g.pasteAction());
+            assertNull(g.promptPrefix());
+            assertTrue(g.canAutoSave(),
+                    "Mistral Vibe must report canAutoSave=true so the IDE watches tasks.md instead of prompting for manual save");
+        }
+
+        @Test
+        void kimiAndVibe_doNotFallThroughToDefault() {
+            // Regression coverage: a missing TOOL_GUIDANCE entry would route to DEFAULT_GUIDANCE
+            // ("Paste into your AI tool" with canAutoSave=false), reintroducing the bug
+            // v0.2.10 fixed for the four prior new tools.
+            var kimi = AiToolDetectionService.getToolGuidance("Kimi CLI");
+            var vibe = AiToolDetectionService.getToolGuidance("Mistral Vibe");
+            assertNotEquals("your AI tool", kimi.chatPanelName());
+            assertNotEquals("your AI tool", vibe.chatPanelName());
         }
 
         @Test

@@ -61,5 +61,8 @@ plugin-signing-*
 ### Claude Code local settings ###
 .claude/settings.local.json
 
+### MCP server registration (machine-specific absolute paths) ###
+.mcp.json
+
 ### Quarkus CLI cache ###
 .quarkus/

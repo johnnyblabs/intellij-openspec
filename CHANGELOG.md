@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.3.0 — OpenSpec 1.4 Baseline
+
+### Added
+- **Detection for two AI tools introduced in OpenSpec CLI 1.4.0** — Kimi CLI (Moonshot AI) and Mistral Vibe. Supported tool count expands from 28 to 30.
+- **Tailored delivery guidance** for both new tools. Kimi CLI and Mistral Vibe show terminal-style copy ("Paste into Kimi CLI", "Paste into Mistral Vibe") alongside Claude Code, Gemini, Codex, OpenCode, ForgeCode, and Bob Shell, and the IDE watches `tasks.md` for completion instead of prompting for manual save. The generic "Paste into your AI tool" fallback does not appear for these tools.
+- **`workspace-planning` workflow schema is accepted as valid** under the V1_2 config baseline, matching its introduction upstream in OpenSpec CLI 1.4.0. Projects on V1_0 / V1_1 continue to accept only `spec-driven`.
+
 ## v0.2.10 — Windows Support & OpenSpec 1.3 Tools
 
 ### Fixed

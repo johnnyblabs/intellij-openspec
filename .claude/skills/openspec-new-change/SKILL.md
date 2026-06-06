@@ -108,10 +108,13 @@ After completing the steps, summarize:
       CYCLE_ID=$(curl -s -H "X-API-Key: ${PLANE_API_KEY}" \
         "${PLANE_WS_API}/cycles/" | \
         python3 -c "import sys,json; r=json.load(sys.stdin); cycles=r.get('results',r); print(next((c['id'] for c in cycles if 'v0.3' in c['name']), ''))")
+      # John's Plane user id — required in `assignees` so the item appears in "Assigned to me" / "My Issues" views.
+      # Hardcoded after first lookup. To re-resolve: GET /workspaces/${PLANE_WORKSPACE}/members/ and pick email=johnboyce@comcast.net.
+      JOHN_PLANE_ID="70595e44-f801-45a2-b6da-cd3afc3b93ab"
       WORK_ITEM_RESPONSE=$(curl -s -X POST \
         -H "X-API-Key: ${PLANE_API_KEY}" -H "Content-Type: application/json" \
         "${PLANE_WS_API}/work-items/" \
-        -d "$(python3 -c "import json; print(json.dumps({'name': '<change-name>', 'description_html': '<p>OpenSpec change. Forgejo #<ISSUE_NUMBER>.</p>', 'labels': ['<PLANE_LABEL_ID>'], 'priority': '<PRIORITY>'}))")")
+        -d "$(python3 -c "import json; print(json.dumps({'name': '<change-name>', 'description_html': '<p>OpenSpec change. Forgejo #<ISSUE_NUMBER>.</p>', 'labels': ['<PLANE_LABEL_ID>'], 'priority': '<PRIORITY>', 'assignees': ['${JOHN_PLANE_ID}']}))")")
       WORK_ITEM_ID=$(echo "$WORK_ITEM_RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin).get('id',''))")
       curl -s -X POST -H "X-API-Key: ${PLANE_API_KEY}" -H "Content-Type: application/json" \
         "${PLANE_WS_API}/cycles/${CYCLE_ID}/cycle-issues/" -d "{\"issues\": [\"${WORK_ITEM_ID}\"]}"

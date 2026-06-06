@@ -162,7 +162,15 @@ After completing all artifacts, summarize:
         "${PLANE_WS_API}/cycles/" | \
         python3 -c "import sys,json; r=json.load(sys.stdin); cycles=r.get('results',r); print(next((c['id'] for c in cycles if 'v0.3' in c['name']), ''))")
 
-      # Create work item
+      # Resolve John's Plane user id so the work item shows up in his "Assigned to me" / "My Issues" views.
+      # Hardcoded after first lookup — it doesn't change. As of 2026-06: 70595e44-f801-45a2-b6da-cd3afc3b93ab.
+      # To re-resolve if ever needed:
+      #   curl -s -H "X-API-Key: ${PLANE_API_KEY}" "${PLANE_URL}/api/v1/workspaces/${PLANE_WORKSPACE}/members/" \
+      #     | python3 -c "import sys,json; r=json.load(sys.stdin); print(next(m['id'] for m in r.get('results',r) if m.get('email','').lower()=='johnboyce@comcast.net'))"
+      JOHN_PLANE_ID="70595e44-f801-45a2-b6da-cd3afc3b93ab"
+
+      # Create work item. ALWAYS set `assignees: [JOHN_PLANE_ID]` — without it, items don't appear in Plane's
+      # "Assigned to me" / "My Issues" views (this caused a backfill of 87 items in 2026-06; do not regress).
       WORK_ITEM_RESPONSE=$(curl -s -X POST \
         -H "X-API-Key: ${PLANE_API_KEY}" \
         -H "Content-Type: application/json" \
@@ -171,7 +179,8 @@ After completing all artifacts, summarize:
           'name': '<change-name>',
           'description_html': '<p><summary from proposal>. Forgejo #<ISSUE_NUMBER>.</p>',
           'labels': ['<PLANE_LABEL_ID>'],
-          'priority': '<PRIORITY>'
+          'priority': '<PRIORITY>',
+          'assignees': ['${JOHN_PLANE_ID}']
         }))")")
 
       WORK_ITEM_ID=$(echo "$WORK_ITEM_RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin).get('id',''))")
