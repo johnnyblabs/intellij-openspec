@@ -14,6 +14,7 @@ OpenSpec brings structured, spec-driven development directly into your IDE with 
 | [[Getting-Started]] | Five-step workflow walkthrough with examples |
 | [[Tool-Window-Guide]] | Browse and Console tabs, tree navigation, status bar |
 | [[Menu-and-Actions-Reference]] | All 9+ actions: descriptions, shortcuts, fallback behavior |
+| [[Workflow-Profiles]] | Core vs custom, two-step profile change, how the plugin's profile-aware UI works |
 | [[AI-Configuration]] | Provider setup (Claude/OpenAI), API key storage, delivery modes |
 | [[Validation]] | Built-in rules, CLI validation, inspections, strict mode |
 | [[Workflow-Patterns]] | Clipboard, Direct API, and Mixed workflow patterns |

@@ -1,3 +1,5 @@
+# Tracker Integration
+
 ## Purpose
 
 The tracker integration capability automatically creates, links, and closes Forgejo issues and Plane work items in sync with the OpenSpec change lifecycle (creation, archival, and release).

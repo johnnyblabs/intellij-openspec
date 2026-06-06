@@ -45,10 +45,29 @@ public final class OpenSpecSettings implements PersistentStateComponent<OpenSpec
         state.cliPath = path;
     }
 
+    /**
+     * Returns the active <b>workflow profile</b> (per-user; switched via
+     * {@code openspec config profile <preset>}). One of {@code "core"}, {@code "custom"},
+     * or empty string ({@code ""}) for "use the CLI's active profile."
+     *
+     * <p>Distinct from:
+     * <ul>
+     *   <li>{@link #getDefaultSchema()} — the OpenSpec schema concept (e.g. {@code spec-driven});
+     *       per-project, used by {@code WorkflowActionPanel} and {@code ProposeChangeDialog}.</li>
+     *   <li>{@code OpenSpecConfig.profile} (a {@link java.util.Map}) — the per-project metadata
+     *       block from {@code openspec/config.yaml}'s {@code profile:} section
+     *       (name, description, language, framework); displayed in the spec tree.</li>
+     * </ul>
+     *
+     * <p>The field name {@code profile} predates the OpenSpec 1.2.0+ "workflow profile" /
+     * "schema" / "project profile" three-way split. The semantic intent of this field has
+     * always been the workflow profile.
+     */
     public String getProfile() {
         return state.profile;
     }
 
+    /** @see #getProfile() */
     public void setProfile(String profile) {
         state.profile = profile;
     }
@@ -150,6 +169,7 @@ public final class OpenSpecSettings implements PersistentStateComponent<OpenSpec
     public static class State {
         public String versionOverride = "";
         public String cliPath = "";
+        /** Workflow profile preset: {@code "core"}, {@code "custom"}, or {@code ""} (CLI default). See {@link OpenSpecSettings#getProfile()}. */
         public String profile = "";
         public boolean autoRefresh = true;
         public boolean strictValidation = false;

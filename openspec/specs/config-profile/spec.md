@@ -1,7 +1,7 @@
 # Config Profile
 
 ## Purpose
-Display and management of OpenSpec config profiles (core, expanded, custom) from the Settings panel, with CLI delegation for profile switching.
+Display and management of OpenSpec workflow profiles (`core`, `custom`) from the Settings panel, with CLI delegation for profile switching and a post-switch prompt to run `openspec update` (the OpenSpec two-step profile change process).
 
 ## Requirements
 
@@ -18,7 +18,7 @@ The plugin SHALL display the active OpenSpec config profile in a dedicated "Conf
 - **THEN** the Config Profile section SHALL display the locally-stored profile name with a label indicating "CLI required for profile details"
 
 #### Scenario: Profile section updates on selection change
-- **WHEN** the user selects a different profile in the schema profile combo box
+- **WHEN** the user selects a different profile in the workflow profile combo
 - **THEN** the Config Profile section SHALL refresh to show the selected profile's details
 
 ### Requirement: Profile switch via CLI delegation

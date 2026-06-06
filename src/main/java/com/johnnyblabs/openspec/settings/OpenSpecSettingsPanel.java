@@ -8,6 +8,7 @@ import com.intellij.openapi.ui.TextBrowseFolderListener;
 import com.intellij.openapi.ui.TextFieldWithBrowseButton;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.ui.ContextHelpLabel;
 import com.intellij.ui.IdeBorderFactory;
 import com.intellij.ui.components.JBCheckBox;
 import com.intellij.ui.components.JBLabel;
@@ -43,10 +44,22 @@ public class OpenSpecSettingsPanel {
     private final JComboBox<String> versionCombo;
 
     // General section
+    /**
+     * Workflow profile combo. Replaces the pre-1.x "Schema profile:" combo that was
+     * populated with {@code ["", "spec-driven"]} (schema-flavored values fed into the
+     * workflow profile CLI API). Now populated with {@code ["", "core", "custom"]} —
+     * the OpenSpec workflow profile presets. Persisted via
+     * {@link OpenSpecSettings#getProfile()}.
+     */
     private final JComboBox<String> profileCombo;
+    private final JBLabel profileCliUnavailableLabel;
     private final JSpinner cliTimeoutSpinner;
     private final JBCheckBox autoRefreshCheckbox;
     private final JBCheckBox strictValidationCheckbox;
+
+    /** OpenSpec 1.2.0+ workflow profile presets. Empty string means "use CLI's active profile." */
+    static final java.util.List<String> WORKFLOW_PROFILE_PRESETS =
+            java.util.List.of("", "core", "custom");
 
     // Direct API section
     private JComboBox<String> aiProviderCombo;
@@ -114,8 +127,30 @@ public class OpenSpecSettingsPanel {
         cliSection.setBorder(IdeBorderFactory.createTitledBorder("OpenSpec CLI"));
 
         // --- General Section ---
-        profileCombo = new JComboBox<>(new String[]{"", "spec-driven"});
-        profileCombo.setEditable(true);
+        profileCombo = new JComboBox<>(new DefaultComboBoxModel<>(
+                WORKFLOW_PROFILE_PRESETS.toArray(new String[0])));
+        profileCombo.setEditable(false);
+        profileCombo.setRenderer(new WorkflowProfileRenderer());
+
+        // Label combining "Workflow profile:" + ContextHelpLabel "?" icon
+        JPanel profileLabelPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, JBUI.scale(4), 0));
+        profileLabelPanel.add(new JBLabel("Workflow profile:"));
+        profileLabelPanel.add(ContextHelpLabel.createWithLink(
+                "Workflow profile",
+                "Workflow profiles control which OpenSpec commands are installed for AI tools. " +
+                        "Core ships only the 5 essentials (propose, explore, apply, sync, archive) " +
+                        "to keep AI context windows lean. Custom lets you opt in to expanded " +
+                        "workflows (verify, ff, continue, bulk-archive, onboard, new). " +
+                        "Switching is a two-step process: the plugin will prompt to run " +
+                        "openspec update afterward to install the corresponding skills.",
+                "Read the full guide",
+                () -> com.intellij.ide.BrowserUtil.browse(
+                        com.johnnyblabs.openspec.statusbar.OpenSpecProfileStatusBarWidget.DOCS_URL)));
+
+        // Inline message shown when the CLI is unavailable
+        profileCliUnavailableLabel = new JBLabel("Install OpenSpec CLI to switch profiles.");
+        profileCliUnavailableLabel.setForeground(JBUI.CurrentTheme.ContextHelp.FOREGROUND);
+        profileCliUnavailableLabel.setVisible(false);
 
         cliTimeoutSpinner = new JSpinner(new SpinnerNumberModel(30, 1, 3600, 1));
 
@@ -123,7 +158,8 @@ public class OpenSpecSettingsPanel {
         strictValidationCheckbox = new JBCheckBox("Strict validation (warnings become errors)");
 
         JPanel generalSection = FormBuilder.createFormBuilder()
-                .addLabeledComponent(new JBLabel("Schema profile:"), profileCombo)
+                .addLabeledComponent(profileLabelPanel, profileCombo)
+                .addComponentToRightColumn(profileCliUnavailableLabel)
                 .addLabeledComponent(new JBLabel("CLI Timeout (seconds):"), cliTimeoutSpinner)
                 .addComponent(autoRefreshCheckbox)
                 .addComponent(strictValidationCheckbox)
@@ -524,7 +560,8 @@ public class OpenSpecSettingsPanel {
 
     private void updateCliStatus() {
         CliDetectionService detection = project.getService(CliDetectionService.class);
-        if (detection != null && detection.isAvailable()) {
+        boolean available = detection != null && detection.isAvailable();
+        if (available) {
             String version = detection.getDetectedVersion();
             cliStatusLabel.setText("OpenSpec CLI " + (version != null ? "v" + version : "available"));
             cliStatusLabel.setForeground(new JBColor(new Color(0, 128, 0), new Color(100, 210, 100)));
@@ -532,6 +569,9 @@ public class OpenSpecSettingsPanel {
             cliStatusLabel.setText("OpenSpec CLI not found");
             cliStatusLabel.setForeground(new JBColor(new Color(180, 80, 0), new Color(230, 160, 80)));
         }
+        // Workflow profile combo follows CLI availability.
+        profileCombo.setEnabled(available);
+        profileCliUnavailableLabel.setVisible(!available);
     }
 
     // --- Provider change handler ---
@@ -635,8 +675,28 @@ public class OpenSpecSettingsPanel {
         return selected != null ? selected.toString() : "";
     }
 
+    /**
+     * Sets the workflow profile. If {@code profile} is not one of the known presets
+     * ({@code "", "core", "custom"}), it is added to the combo as an orphan entry
+     * (rendered with a "(not found in CLI)" suffix in red) so the user can see it
+     * and explicitly revert.
+     */
     public void setProfile(String profile) {
-        profileCombo.setSelectedItem(profile != null ? profile : "");
+        String value = profile != null ? profile : "";
+        DefaultComboBoxModel<String> model = (DefaultComboBoxModel<String>) profileCombo.getModel();
+
+        // Remove any pre-existing orphan entry from a previous setProfile() call.
+        for (int i = model.getSize() - 1; i >= 0; i--) {
+            String item = model.getElementAt(i);
+            if (!WORKFLOW_PROFILE_PRESETS.contains(item)) {
+                model.removeElementAt(i);
+            }
+        }
+
+        if (!WORKFLOW_PROFILE_PRESETS.contains(value)) {
+            model.insertElementAt(value, 0);
+        }
+        profileCombo.setSelectedItem(value);
     }
 
     public int getCliTimeout() {
@@ -705,4 +765,37 @@ public class OpenSpecSettingsPanel {
         defaultSchemaCombo.setSelectedItem(schema != null ? schema : "");
     }
 
+    /**
+     * Builds the display text for a workflow profile combo entry. Pure function —
+     * testable without instantiating the panel.
+     */
+    static String renderWorkflowProfileItem(String preset, boolean isOrphan) {
+        if (isOrphan) {
+            return preset + " (not found in CLI)";
+        }
+        if (preset == null || preset.isEmpty()) {
+            return "(default — uses CLI's active profile)";
+        }
+        return switch (preset) {
+            case "core" -> "core — propose, explore, apply, sync, archive (5 essentials)";
+            case "custom" -> "custom — your selected workflows";
+            default -> preset;
+        };
+    }
+
+    /** Renderer for {@link #profileCombo}. Highlights orphan entries in red. */
+    private static final class WorkflowProfileRenderer extends javax.swing.DefaultListCellRenderer {
+        @Override
+        public Component getListCellRendererComponent(JList<?> list, Object value, int index,
+                                                      boolean isSelected, boolean cellHasFocus) {
+            super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+            String raw = value == null ? "" : value.toString();
+            boolean isOrphan = !WORKFLOW_PROFILE_PRESETS.contains(raw);
+            setText(renderWorkflowProfileItem(raw, isOrphan));
+            if (isOrphan && !isSelected) {
+                setForeground(JBColor.RED);
+            }
+            return this;
+        }
+    }
 }

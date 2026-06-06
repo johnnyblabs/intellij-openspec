@@ -5,10 +5,7 @@ import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.project.Project;
 import com.johnnyblabs.openspec.ai.AiCredentialStore;
 import com.johnnyblabs.openspec.ai.AiProvider;
-import com.johnnyblabs.openspec.services.CliDetectionService;
-import com.johnnyblabs.openspec.services.WorkflowProfileService;
-import com.johnnyblabs.openspec.util.CliRunner;
-import com.johnnyblabs.openspec.util.OpenSpecNotifier;
+import com.johnnyblabs.openspec.services.WorkflowProfileSwitchService;
 import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.Nullable;
 
@@ -89,43 +86,26 @@ public class OpenSpecConfigurable implements Configurable {
     }
 
     /**
-     * Delegates profile switch to the CLI when available. On CLI failure, reverts the
-     * panel to the previous value. When CLI is unavailable, persists locally with a
-     * notification that the change is local-only.
+     * Delegates profile switch to {@link WorkflowProfileSwitchService}. On CLI failure
+     * reverts the panel to the previous value; on success refreshes the Config Profile
+     * section and prompts the user to run {@code openspec update} (the OpenSpec
+     * two-step profile change process).
      */
     private void applyProfileChange(OpenSpecSettings settings, String newProfile, String oldProfile) {
-        CliDetectionService detection = project.getService(CliDetectionService.class);
-        if (detection != null && detection.isAvailable()) {
-            try {
-                CliRunner.CliResult result = CliRunner.run(project,
-                        "config", "profile", newProfile);
-                if (result.isSuccess()) {
-                    settings.setProfile(newProfile);
-                    panel.refreshConfigProfileSection();
-                    WorkflowProfileService wps = project.getService(WorkflowProfileService.class);
-                    if (wps != null) wps.refresh();
-                } else {
-                    // CLI failed — revert and warn
-                    panel.setProfile(oldProfile);
-                    String errorMsg = result.stderr().isEmpty()
-                            ? "exit code " + result.exitCode()
-                            : result.stderr().trim();
-                    OpenSpecNotifier.warn(project, "Profile Switch",
-                            "Failed to switch profile via CLI: " + errorMsg);
-                }
-            } catch (CliRunner.CliException e) {
-                LOG.warn("CLI profile switch failed", e);
-                panel.setProfile(oldProfile);
-                OpenSpecNotifier.warn(project, "Profile Switch",
-                        "Failed to switch profile: " + e.getMessage());
-            }
-        } else {
-            // CLI unavailable — persist locally with informational notification
+        WorkflowProfileSwitchService switchService = project.getService(WorkflowProfileSwitchService.class);
+        if (switchService == null) {
+            LOG.warn("WorkflowProfileSwitchService unavailable; falling back to local persist");
             settings.setProfile(newProfile);
-            WorkflowProfileService wps = project.getService(WorkflowProfileService.class);
-            if (wps != null) wps.refresh();
-            OpenSpecNotifier.info(project, "Profile",
-                    "Profile set to '" + newProfile + "' locally. Install OpenSpec CLI to sync globally.");
+            return;
+        }
+        WorkflowProfileSwitchService.SwitchResult result = switchService.switchProfile(newProfile);
+        switch (result.outcome()) {
+            case SWITCHED -> {
+                panel.refreshConfigProfileSection();
+                switchService.promptAndRunUpdateIfConfirmed(newProfile);
+            }
+            case CLI_UNAVAILABLE -> panel.refreshConfigProfileSection();
+            case CLI_FAILURE -> panel.setProfile(oldProfile);
         }
     }
 

@@ -47,6 +47,12 @@
         <projectService serviceImplementation="com.johnnyblabs.openspec.services.ExplorePromptService"/>
         <projectService serviceImplementation="com.johnnyblabs.openspec.services.ComplianceService"/>
         <projectService serviceImplementation="com.johnnyblabs.openspec.services.WorkflowProfileService"/>
+        <projectService serviceImplementation="com.johnnyblabs.openspec.services.WorkflowProfileSwitchService"/>
+
+        <!-- Status Bar Widgets -->
+        <statusBarWidgetFactory id="OpenSpec.ProfileWidget"
+                                implementation="com.johnnyblabs.openspec.statusbar.OpenSpecProfileStatusBarWidgetFactory"
+                                order="after vcs"/>
 
         <!-- Settings -->
         <projectConfigurable instance="com.johnnyblabs.openspec.settings.OpenSpecConfigurable"

@@ -1,125 +1,82 @@
 package com.johnnyblabs.openspec.settings;
 
 import com.intellij.openapi.project.Project;
-import com.johnnyblabs.openspec.services.CliDetectionService;
-import com.johnnyblabs.openspec.services.WorkflowProfileService;
-import com.johnnyblabs.openspec.util.CliRunner;
+import com.johnnyblabs.openspec.services.WorkflowProfileSwitchService;
+import com.johnnyblabs.openspec.services.WorkflowProfileSwitchService.Outcome;
+import com.johnnyblabs.openspec.services.WorkflowProfileSwitchService.SwitchResult;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.lang.reflect.Method;
 
-import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 /**
- * Tests for the profile switch CLI delegation logic in OpenSpecConfigurable.
- * Uses reflection to test the private applyProfileChange method directly,
- * since testing through apply() would require full UI initialization.
+ * Tests for OpenSpecConfigurable.applyProfileChange — verifies it delegates to
+ * {@link WorkflowProfileSwitchService} and reacts to the outcome correctly.
+ * The service's own CLI delegation logic is tested in
+ * {@link com.johnnyblabs.openspec.services.WorkflowProfileSwitchServiceTest}.
  */
 @ExtendWith(MockitoExtension.class)
 class OpenSpecConfigurableProfileTest {
 
     @Mock Project project;
-    @Mock CliDetectionService detection;
     @Mock OpenSpecSettings settings;
     @Mock OpenSpecSettingsPanel panel;
-    @Mock WorkflowProfileService workflowProfileService;
+    @Mock WorkflowProfileSwitchService switchService;
 
     @Nested
-    class ProfileSwitchWithCli {
+    class ProfileSwitchDelegation {
 
         @Test
-        void cliSuccess_persistsNewProfile() throws Exception {
-            when(project.getService(CliDetectionService.class)).thenReturn(detection);
-            when(project.getService(WorkflowProfileService.class)).thenReturn(workflowProfileService);
-            when(detection.isAvailable()).thenReturn(true);
+        void switchedOutcome_refreshesConfigProfileSectionAndPrompts() throws Exception {
+            when(project.getService(WorkflowProfileSwitchService.class)).thenReturn(switchService);
+            when(switchService.switchProfile("custom")).thenReturn(new SwitchResult(Outcome.SWITCHED, null));
 
-            CliRunner.CliResult success = new CliRunner.CliResult(0, "Profile switched", "");
+            invokeApplyProfileChange("custom", "core");
 
-            try (MockedStatic<CliRunner> cliStatic = mockStatic(CliRunner.class)) {
-                cliStatic.when(() -> CliRunner.run(project, "config", "profile", "tdd"))
-                        .thenReturn(success);
-
-                invokeApplyProfileChange("tdd", "spec-driven");
-
-                verify(settings).setProfile("tdd");
-                verify(panel).refreshConfigProfileSection();
-                verify(workflowProfileService).refresh();
-            }
+            verify(switchService).switchProfile("custom");
+            verify(panel).refreshConfigProfileSection();
+            verify(switchService).promptAndRunUpdateIfConfirmed("custom");
+            verify(panel, never()).setProfile(anyString());
         }
 
         @Test
-        void cliFailure_revertsToOldProfile() throws Exception {
-            when(project.getService(CliDetectionService.class)).thenReturn(detection);
-            when(detection.isAvailable()).thenReturn(true);
+        void cliFailureOutcome_revertsPanelToOldProfile() throws Exception {
+            when(project.getService(WorkflowProfileSwitchService.class)).thenReturn(switchService);
+            when(switchService.switchProfile("custom"))
+                    .thenReturn(new SwitchResult(Outcome.CLI_FAILURE, "Unknown profile"));
 
-            CliRunner.CliResult failure = new CliRunner.CliResult(1, "", "Unknown profile: invalid");
+            invokeApplyProfileChange("custom", "core");
 
-            try (MockedStatic<CliRunner> cliStatic = mockStatic(CliRunner.class);
-                 MockedStatic<com.johnnyblabs.openspec.util.OpenSpecNotifier> notifier =
-                         mockStatic(com.johnnyblabs.openspec.util.OpenSpecNotifier.class)) {
-                cliStatic.when(() -> CliRunner.run(project, "config", "profile", "invalid"))
-                        .thenReturn(failure);
-
-                invokeApplyProfileChange("invalid", "spec-driven");
-
-                verify(settings, never()).setProfile(anyString());
-                verify(panel).setProfile("spec-driven");
-            }
+            verify(panel).setProfile("core");
+            verify(panel, never()).refreshConfigProfileSection();
+            verify(switchService, never()).promptAndRunUpdateIfConfirmed(anyString());
         }
 
         @Test
-        void cliException_revertsToOldProfile() throws Exception {
-            when(project.getService(CliDetectionService.class)).thenReturn(detection);
-            when(detection.isAvailable()).thenReturn(true);
+        void cliUnavailableOutcome_refreshesConfigProfileSectionWithoutPrompt() throws Exception {
+            when(project.getService(WorkflowProfileSwitchService.class)).thenReturn(switchService);
+            when(switchService.switchProfile("custom"))
+                    .thenReturn(new SwitchResult(Outcome.CLI_UNAVAILABLE, null));
 
-            try (MockedStatic<CliRunner> cliStatic = mockStatic(CliRunner.class);
-                 MockedStatic<com.johnnyblabs.openspec.util.OpenSpecNotifier> notifier =
-                         mockStatic(com.johnnyblabs.openspec.util.OpenSpecNotifier.class)) {
-                cliStatic.when(() -> CliRunner.run(project, "config", "profile", "bad"))
-                        .thenThrow(new CliRunner.CliException("CLI crashed"));
+            invokeApplyProfileChange("custom", "core");
 
-                invokeApplyProfileChange("bad", "spec-driven");
-
-                verify(settings, never()).setProfile(anyString());
-                verify(panel).setProfile("spec-driven");
-            }
-        }
-    }
-
-    @Nested
-    class ProfileSwitchWithoutCli {
-
-        @Test
-        void cliUnavailable_persistsLocallyAndRefreshesWorkflows() throws Exception {
-            when(project.getService(CliDetectionService.class)).thenReturn(detection);
-            when(project.getService(WorkflowProfileService.class)).thenReturn(workflowProfileService);
-            when(detection.isAvailable()).thenReturn(false);
-
-            try (MockedStatic<com.johnnyblabs.openspec.util.OpenSpecNotifier> notifier =
-                         mockStatic(com.johnnyblabs.openspec.util.OpenSpecNotifier.class)) {
-                invokeApplyProfileChange("tdd", "spec-driven");
-
-                verify(settings).setProfile("tdd");
-                verify(workflowProfileService).refresh();
-            }
+            verify(panel).refreshConfigProfileSection();
+            verify(switchService, never()).promptAndRunUpdateIfConfirmed(anyString());
+            verify(panel, never()).setProfile(anyString());
         }
 
         @Test
-        void cliDetectionServiceNull_persistsLocally() throws Exception {
-            when(project.getService(CliDetectionService.class)).thenReturn(null);
+        void switchServiceUnavailable_persistsLocallyAsFallback() throws Exception {
+            when(project.getService(WorkflowProfileSwitchService.class)).thenReturn(null);
 
-            try (MockedStatic<com.johnnyblabs.openspec.util.OpenSpecNotifier> notifier =
-                         mockStatic(com.johnnyblabs.openspec.util.OpenSpecNotifier.class)) {
-                invokeApplyProfileChange("tdd", "spec-driven");
+            invokeApplyProfileChange("custom", "core");
 
-                verify(settings).setProfile("tdd");
-            }
+            verify(settings).setProfile("custom");
         }
     }
 

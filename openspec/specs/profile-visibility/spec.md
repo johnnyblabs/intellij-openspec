@@ -1,7 +1,7 @@
 # Profile Visibility
 
 ## Purpose
-Profile-aware action enablement — disabling expanded workflow actions when the active profile doesn't include them, with tooltip guidance.
+Profile-aware action enablement — disabling actions whose workflow is not in the active workflow profile (`core` or `custom`), with tooltip guidance.
 
 ## Requirements
 

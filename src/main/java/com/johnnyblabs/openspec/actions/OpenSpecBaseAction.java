@@ -53,11 +53,21 @@ public abstract class OpenSpecBaseAction extends AnAction {
         return null;
     }
 
+    /**
+     * Suffix appended to action text when the action is disabled because its workflow
+     * is not in the active profile. Mirrors JetBrains' "(Ultimate)" convention for
+     * IDE-edition-gated features. Telegraphs the gating reason without requiring a
+     * tooltip hover.
+     */
+    static final String CUSTOM_PROFILE_SUFFIX = " (custom)";
+
     @Override
     public void update(@NotNull AnActionEvent e) {
         Project project = e.getProject();
         if (project == null || !OpenSpecFileUtil.isOpenSpecProject(project)) {
             e.getPresentation().setEnabledAndVisible(false);
+            // Strip the suffix so it does not linger if the project changes.
+            e.getPresentation().setText(stripCustomProfileSuffix(e.getPresentation().getText()));
             return;
         }
 
@@ -68,13 +78,33 @@ public abstract class OpenSpecBaseAction extends AnAction {
             WorkflowProfileService profileService = project.getService(WorkflowProfileService.class);
             if (profileService != null && !profileService.isWorkflowEnabled(workflowId)) {
                 e.getPresentation().setEnabled(false);
+                e.getPresentation().setText(applyCustomProfileSuffix(e.getPresentation().getText(), true));
                 e.getPresentation().setDescription(
-                        "Requires expanded profile. Change in Settings \u2192 Tools \u2192 OpenSpec.");
+                        "Requires custom profile. Change in Settings \u2192 Tools \u2192 OpenSpec.");
                 return;
             }
         }
 
+        e.getPresentation().setText(applyCustomProfileSuffix(e.getPresentation().getText(), false));
         e.getPresentation().setEnabled(true);
+    }
+
+    /**
+     * Returns {@code text} with the {@code (custom)} suffix appended when
+     * {@code profileGatedDisabled} is true, or stripped when false. Idempotent \u2014
+     * safe to call repeatedly across {@link #update(AnActionEvent)} invocations.
+     */
+    static String applyCustomProfileSuffix(String text, boolean profileGatedDisabled) {
+        if (text == null) return null;
+        String stripped = stripCustomProfileSuffix(text);
+        return profileGatedDisabled ? stripped + CUSTOM_PROFILE_SUFFIX : stripped;
+    }
+
+    static String stripCustomProfileSuffix(String text) {
+        if (text == null) return null;
+        return text.endsWith(CUSTOM_PROFILE_SUFFIX)
+                ? text.substring(0, text.length() - CUSTOM_PROFILE_SUFFIX.length())
+                : text;
     }
 
     /**
