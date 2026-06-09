@@ -134,10 +134,11 @@ public final class ScaffoldingService {
         return WriteAction.compute(() -> {
             VirtualFile openspecDir = baseDir.createChildDirectory(this, "openspec");
 
-            // config.yaml
+            // config.yaml — honor user's Default schema setting; fall back to "spec-driven".
             VersionSupport version = getVersionSupport();
+            String schema = OpenSpecSettings.getInstance(project).getEffectiveSchema(project);
             writeFile(openspecDir, "config.yaml",
-                    TemplateProvider.configYamlTemplate("spec-driven", version.getVersion()));
+                    TemplateProvider.configYamlTemplate(schema, version.getVersion()));
 
             // specs/
             openspecDir.createChildDirectory(this, "specs");

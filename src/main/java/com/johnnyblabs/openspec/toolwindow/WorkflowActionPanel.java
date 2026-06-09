@@ -297,6 +297,7 @@ public class WorkflowActionPanel extends JPanel {
                 for (com.johnnyblabs.openspec.model.SchemaInfo info : schemas) {
                     ffSchemaCombo.addItem(info.name());
                 }
+                // getDefaultSchema (raw), NOT getEffectiveSchema — see OpenSpecSettings.getDefaultSchema Javadoc.
                 String defaultSchema = OpenSpecSettings.getInstance(project).getDefaultSchema();
                 if (defaultSchema != null && !defaultSchema.isEmpty()) {
                     ffSchemaCombo.setSelectedItem(defaultSchema);

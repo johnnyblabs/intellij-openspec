@@ -158,12 +158,58 @@ public final class OpenSpecSettings implements PersistentStateComponent<OpenSpec
         state.cliTimeoutSeconds = timeout;
     }
 
+    /**
+     * Returns the raw Default schema setting — may be empty (user hasn't chosen one).
+     *
+     * <p><b>When to use this vs {@link #getEffectiveSchema(Project)}:</b>
+     * <ul>
+     *   <li><b>Combo / dropdown population</b> (e.g., {@code ProposeChangeDialog},
+     *       {@code WorkflowActionPanel}): call this. An empty result lets the combo
+     *       keep its first option highlighted; forcing the {@code "spec-driven"} fallback
+     *       would silently overwrite the user's "no preference yet" state.</li>
+     *   <li><b>Write paths</b> (e.g., {@code ScaffoldingService.initBuiltIn} writing
+     *       {@code openspec/config.yaml}): call {@code getEffectiveSchema(project)}. Init
+     *       MUST write a schema string — there is no blank option — so the fallback is
+     *       required.</li>
+     * </ul>
+     *
+     * @return the raw setting value (possibly empty string, never null in practice
+     *         since {@link State#defaultSchema} initializes to empty)
+     */
     public String getDefaultSchema() {
         return state.defaultSchema;
     }
 
     public void setDefaultSchema(String schema) {
         state.defaultSchema = schema;
+    }
+
+    /**
+     * Returns the effective default schema for write paths (e.g. built-in init).
+     *
+     * <p>When the user has chosen a Default schema in Settings → Tools → OpenSpec, returns
+     * that value. Otherwise falls back to the literal {@code "spec-driven"}, which is the
+     * historical default and matches the upstream CLI's {@code DEFAULT_SCHEMA} constant
+     * ({@code @fission-ai/openspec/dist/core/init.js}). The fallback is intentionally a
+     * literal — not computed from {@link com.johnnyblabs.openspec.version.VersionSupport}'s
+     * valid-schemas set — so the default stays stable across upstream schema additions.
+     *
+     * <p>Sibling to {@link #getEffectiveVersion(Project)} — callers writing config.yaml
+     * should resolve both fields through these helpers so the setting-vs-fallback contract
+     * is encapsulated near the field, not duplicated at every call site.
+     *
+     * @param project the current project (currently unused; reserved for a future config.yaml
+     *                fallback if the helper expands beyond init-time use, mirroring
+     *                {@code getEffectiveVersion}'s reach into {@code ConfigService}).
+     *                TODO(post-v0.4.0): if no caller reaches into ConfigService through this
+     *                helper by then, drop the parameter and the @NotNull contract.
+     * @return non-null, non-empty schema name
+     */
+    public String getEffectiveSchema(@NotNull Project project) {
+        if (state.defaultSchema != null && !state.defaultSchema.isEmpty()) {
+            return state.defaultSchema;
+        }
+        return "spec-driven";
     }
 
     public static class State {

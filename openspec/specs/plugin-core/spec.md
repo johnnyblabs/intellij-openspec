@@ -7,7 +7,7 @@ Core infrastructure: project detection, configuration, file operations, API comp
 
 ### Requirement: Project detection and initialization
 
-The plugin SHALL detect OpenSpec projects by checking for `openspec/` and provide initialization via CLI delegation with built-in fallback.
+The plugin SHALL detect OpenSpec projects by checking for `openspec/` and provide initialization via CLI delegation with built-in fallback. The built-in fallback SHALL honor the user's configured Default schema preference when writing `openspec/config.yaml`, falling back to `spec-driven` only when no preference is set.
 
 #### Scenario: Project detection
 - **WHEN** a project is opened in the IDE
@@ -20,6 +20,14 @@ The plugin SHALL detect OpenSpec projects by checking for `openspec/` and provid
 #### Scenario: Init falls back to built-in
 - **WHEN** the CLI is unavailable or fails
 - **THEN** the service SHALL create `openspec/config.yaml`, `specs/`, `changes/`, and `changes/archive/` via VFS
+
+#### Scenario: Default schema honored on built-in init
+- **WHEN** the user has set Default schema to a value other than empty (e.g., `workspace-planning`) in Settings → Tools → OpenSpec, and the built-in init path runs
+- **THEN** the generated `openspec/config.yaml` SHALL contain `schema:` matching the user's chosen value, not the hardcoded literal `spec-driven`
+
+#### Scenario: Default schema fallback when unset
+- **WHEN** the user has not set Default schema (the setting is empty), and the built-in init path runs
+- **THEN** the generated `openspec/config.yaml` SHALL contain `schema: spec-driven` (preserving the prior default behavior)
 
 ### Requirement: Configuration parsing
 

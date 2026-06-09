@@ -55,6 +55,7 @@ public class ProposeChangeDialog extends DialogWrapper {
                 for (SchemaInfo info : schemas) {
                     schemaCombo.addItem(info.name());
                 }
+                // getDefaultSchema (raw), NOT getEffectiveSchema — see OpenSpecSettings.getDefaultSchema Javadoc.
                 String defaultSchema = OpenSpecSettings.getInstance(project).getDefaultSchema();
                 if (defaultSchema != null && !defaultSchema.isEmpty()) {
                     schemaCombo.setSelectedItem(defaultSchema);

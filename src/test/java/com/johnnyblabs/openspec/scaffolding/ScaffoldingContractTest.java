@@ -1,8 +1,13 @@
 package com.johnnyblabs.openspec.scaffolding;
 
+import com.intellij.openapi.project.Project;
 import com.johnnyblabs.openspec.model.OpenSpecConfig;
+import com.johnnyblabs.openspec.settings.OpenSpecSettings;
 import com.johnnyblabs.openspec.version.VersionSupport;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.Constructor;
@@ -20,7 +25,10 @@ import static org.junit.jupiter.api.Assertions.*;
  * <p>These tests verify the <b>contract</b> between scaffolding output and
  * the validator/CLI expectations — not the IntelliJ file system operations.</p>
  */
+@ExtendWith(MockitoExtension.class)
 class ScaffoldingContractTest {
+
+    @Mock Project project;
 
     // --- Config template must be parseable by ConfigService ---
 
@@ -44,6 +52,65 @@ class ScaffoldingContractTest {
         VersionSupport version = VersionSupport.fromString(config.getVersion());
         assertTrue(version.getValidSchemas().contains(config.getSchema()),
                 "Template schema '" + config.getSchema() + "' must be in valid schemas: " + version.getValidSchemas());
+    }
+
+    // --- Default schema setting flows through to rendered config.yaml (fix-init-default-schema) ---
+    //
+    // These tests use `new OpenSpecSettings()` directly rather than going through IntelliJ's
+    // service infrastructure. This works because (a) the State field self-initializes with
+    // defaults, and (b) the getEffectiveSchema helper currently does not reach into any
+    // project services — the Project parameter is reserved for future use (see OpenSpecSettings
+    // getEffectiveSchema Javadoc TODO(post-v0.4.0)). When that helper starts using the Project
+    // parameter, replace the direct instantiation with a Mockito stub for
+    // project.getService(ConfigService.class) or move these tests to a LightPlatformTestCase
+    // subclass with real service infrastructure.
+
+    @Test
+    void initBuiltIn_honorsDefaultSchemaSetting() {
+        // Bug being fixed: ScaffoldingService.initBuiltIn previously hardcoded "spec-driven"
+        // regardless of the user's Default schema preference. With the fix, the helper at
+        // OpenSpecSettings.getEffectiveSchema(project) returns the configured value, which
+        // ScaffoldingService now passes to TemplateProvider.configYamlTemplate.
+        OpenSpecSettings settings = new OpenSpecSettings();
+        settings.setDefaultSchema("workspace-planning");
+
+        String schema = settings.getEffectiveSchema(project);
+        String template = TemplateProvider.configYamlTemplate(schema, "1.2.0");
+
+        Yaml yaml = new Yaml(new Constructor(OpenSpecConfig.class, new LoaderOptions()));
+        OpenSpecConfig config = yaml.loadAs(template, OpenSpecConfig.class);
+        assertEquals("workspace-planning", config.getSchema(),
+                "Generated config.yaml must reflect the user's chosen Default schema, not the hardcoded literal");
+    }
+
+    @Test
+    void initBuiltIn_fallsBackToSpecDrivenWhenDefaultSchemaUnset() {
+        // Empty / unset Default schema preserves the prior default behaviour. The fallback
+        // literal "spec-driven" matches upstream's DEFAULT_SCHEMA constant in
+        // @fission-ai/openspec/dist/core/init.js — deliberately not computed from
+        // VersionSupport so it stays stable across upstream additions.
+        OpenSpecSettings settings = new OpenSpecSettings();
+        settings.setDefaultSchema("");
+
+        String schema = settings.getEffectiveSchema(project);
+        String template = TemplateProvider.configYamlTemplate(schema, "1.2.0");
+
+        Yaml yaml = new Yaml(new Constructor(OpenSpecConfig.class, new LoaderOptions()));
+        OpenSpecConfig config = yaml.loadAs(template, OpenSpecConfig.class);
+        assertEquals("spec-driven", config.getSchema(),
+                "Unset Default schema must fall back to the historical literal 'spec-driven'");
+    }
+
+    @Test
+    void initBuiltIn_fallsBackToSpecDrivenWhenDefaultSchemaIsNull() {
+        // Defensive coverage: getEffectiveSchema handles a null state.defaultSchema even though
+        // the State class initializes it to empty string. Guards against a future regression in
+        // OpenSpecSettings.State or migration paths that could leave the field null.
+        OpenSpecSettings settings = new OpenSpecSettings();
+        settings.setDefaultSchema(null);
+
+        assertEquals("spec-driven", settings.getEffectiveSchema(project),
+                "Null Default schema must fall back to 'spec-driven' (not NPE)");
     }
 
     @Test
