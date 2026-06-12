@@ -60,6 +60,20 @@ public final class OpenSpecNotifier {
                 openSettingsAction());
     }
 
+    /**
+     * Fired by {@code OpenSpecProjectService.StartupDetection} when the CLI is present but
+     * below the v0.3.0 floor of 1.3.0. Once per project open; the user can dismiss
+     * permanently via the standard "Don't show again" affordance on the {@code OpenSpec.System}
+     * notification group.
+     */
+    public static void cliBelowFloor(@NotNull Project project, @NotNull String detectedVersion) {
+        notify(project, GROUP_SYSTEM, "OpenSpec CLI is older than 1.3.0",
+                "Detected version: " + detectedVersion
+                        + ". Plugin features that require the CLI may not work as expected."
+                        + " Upgrade: npm i -g @fission-ai/openspec@latest",
+                NotificationType.WARNING);
+    }
+
     public static void generateAllSummary(@NotNull Project project, int count, long elapsedSeconds) {
         String time = elapsedSeconds >= 60
                 ? (elapsedSeconds / 60) + "m " + (elapsedSeconds % 60) + "s"

@@ -4,6 +4,7 @@ import com.intellij.openapi.components.Service;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.startup.ProjectActivity;
 import com.johnnyblabs.openspec.settings.OpenSpecSettings;
+import com.johnnyblabs.openspec.util.CliVersion;
 import com.johnnyblabs.openspec.util.OpenSpecFileUtil;
 import com.johnnyblabs.openspec.util.OpenSpecNotifier;
 import kotlin.Unit;
@@ -68,6 +69,15 @@ public final class OpenSpecProjectService {
                 detection.detect();
                 if (!detection.isAvailable()) {
                     OpenSpecNotifier.cliMissing(project);
+                } else {
+                    // Floor check: CLI is present but might be below the v0.3.0 floor of 1.3.0.
+                    // Fires once per project open via this StartupDetection hook (not per
+                    // tool-window activation). User can dismiss permanently via the standard
+                    // "Don't show again" affordance on the OpenSpec.System notification group.
+                    String version = detection.getDetectedVersion();
+                    if (!CliVersion.atLeast(version, "1.3.0")) {
+                        OpenSpecNotifier.cliBelowFloor(project, version != null ? version : "unknown");
+                    }
                 }
             }
 

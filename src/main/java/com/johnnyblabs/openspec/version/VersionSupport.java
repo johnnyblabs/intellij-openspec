@@ -5,14 +5,11 @@ import java.util.List;
 import java.util.Set;
 
 public enum VersionSupport {
-    V1_0("1.0.0",
-            Set.of("schema"),
-            Set.of("proposal"),
-            Set.of("spec-driven")),
-    V1_1("1.1.0",
-            Set.of("schema", "version"),
-            Set.of("proposal", "design"),
-            Set.of("spec-driven")),
+    // V1_0 and V1_1 were removed in v0.3.0 when the plugin's minimum supported OpenSpec CLI
+    // floor was raised to 1.3.0. Legacy `version: 1.0.0` or `1.1.0` config files continue to
+    // function — they're routed to V1_2 via the fallback in fromString. The config-format
+    // version baseline (V1_2 → openspec/config.yaml version 1.2.0) is independent of the
+    // CLI-version axis and unchanged across CLI 1.2.x, 1.3.x, and 1.4.x.
     V1_2("1.2.0",
             Set.of("schema", "version"),
             Set.of("proposal", "design", "specs", "tasks"),

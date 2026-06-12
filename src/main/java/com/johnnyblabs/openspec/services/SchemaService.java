@@ -9,6 +9,7 @@ import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.johnnyblabs.openspec.model.SchemaInfo;
 import com.johnnyblabs.openspec.util.CliRunner;
+import com.johnnyblabs.openspec.util.CliVersion;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -18,7 +19,7 @@ import java.util.List;
 public final class SchemaService {
 
     private static final Logger LOG = Logger.getInstance(SchemaService.class);
-    private static final String MIN_CLI_VERSION = "1.2.0";
+    private static final String MIN_CLI_VERSION = "1.3.0";
 
     private final Project project;
     private List<SchemaInfo> cachedSchemas;
@@ -103,11 +104,7 @@ public final class SchemaService {
         if (detection == null || !detection.isAvailable()) {
             return false;
         }
-        String version = detection.getDetectedVersion();
-        if (version == null || version.isEmpty()) {
-            return false;
-        }
-        return compareVersions(version, MIN_CLI_VERSION) >= 0;
+        return CliVersion.atLeast(detection.getDetectedVersion(), MIN_CLI_VERSION);
     }
 
     /**
@@ -143,32 +140,4 @@ public final class SchemaService {
         return schemas;
     }
 
-    /**
-     * Compares two semantic version strings (e.g., "1.2.0" vs "1.1.0").
-     *
-     * @return negative if a < b, 0 if equal, positive if a > b
-     */
-    static int compareVersions(String a, String b) {
-        String[] aParts = a.split("\\.");
-        String[] bParts = b.split("\\.");
-        int maxLen = Math.max(aParts.length, bParts.length);
-        for (int i = 0; i < maxLen; i++) {
-            int aNum = i < aParts.length ? parseVersionPart(aParts[i]) : 0;
-            int bNum = i < bParts.length ? parseVersionPart(bParts[i]) : 0;
-            if (aNum != bNum) {
-                return Integer.compare(aNum, bNum);
-            }
-        }
-        return 0;
-    }
-
-    private static int parseVersionPart(String part) {
-        try {
-            // Strip non-numeric suffixes like "0-beta"
-            String numeric = part.replaceAll("[^0-9].*", "");
-            return numeric.isEmpty() ? 0 : Integer.parseInt(numeric);
-        } catch (NumberFormatException e) {
-            return 0;
-        }
-    }
 }

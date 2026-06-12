@@ -83,7 +83,7 @@ class SchemaServiceTest {
         void callsCliAndParsesResult() {
             when(project.getService(CliDetectionService.class)).thenReturn(cliDetection);
             when(cliDetection.isAvailable()).thenReturn(true);
-            when(cliDetection.getDetectedVersion()).thenReturn("1.2.0");
+            when(cliDetection.getDetectedVersion()).thenReturn("1.3.0");
 
             CliRunner.CliResult cliResult = new CliRunner.CliResult(0,
                     "[{\"name\":\"spec-driven\",\"description\":\"Default\",\"isBuiltIn\":true,\"artifactIds\":[\"proposal\"]}]",
@@ -187,7 +187,7 @@ class SchemaServiceTest {
         void cachedListReusedOnSecondCall() {
             when(project.getService(CliDetectionService.class)).thenReturn(cliDetection);
             when(cliDetection.isAvailable()).thenReturn(true);
-            when(cliDetection.getDetectedVersion()).thenReturn("1.2.0");
+            when(cliDetection.getDetectedVersion()).thenReturn("1.3.0");
 
             CliRunner.CliResult cliResult = new CliRunner.CliResult(0,
                     "[{\"name\":\"spec-driven\",\"description\":\"Default\",\"isBuiltIn\":true,\"artifactIds\":[]}]",
@@ -211,7 +211,7 @@ class SchemaServiceTest {
         void cacheInvalidatedOnFork() {
             when(project.getService(CliDetectionService.class)).thenReturn(cliDetection);
             when(cliDetection.isAvailable()).thenReturn(true);
-            when(cliDetection.getDetectedVersion()).thenReturn("1.2.0");
+            when(cliDetection.getDetectedVersion()).thenReturn("1.3.0");
 
             CliRunner.CliResult listResult = new CliRunner.CliResult(0,
                     "[{\"name\":\"spec-driven\",\"description\":\"\",\"isBuiltIn\":true,\"artifactIds\":[]}]",
@@ -238,7 +238,7 @@ class SchemaServiceTest {
         void cacheInvalidatedOnInit() {
             when(project.getService(CliDetectionService.class)).thenReturn(cliDetection);
             when(cliDetection.isAvailable()).thenReturn(true);
-            when(cliDetection.getDetectedVersion()).thenReturn("1.2.0");
+            when(cliDetection.getDetectedVersion()).thenReturn("1.3.0");
 
             CliRunner.CliResult listResult = new CliRunner.CliResult(0,
                     "[{\"name\":\"spec-driven\",\"description\":\"\",\"isBuiltIn\":true,\"artifactIds\":[]}]",
@@ -265,7 +265,7 @@ class SchemaServiceTest {
         void clearCache_forcesRefresh() {
             when(project.getService(CliDetectionService.class)).thenReturn(cliDetection);
             when(cliDetection.isAvailable()).thenReturn(true);
-            when(cliDetection.getDetectedVersion()).thenReturn("1.2.0");
+            when(cliDetection.getDetectedVersion()).thenReturn("1.3.0");
 
             CliRunner.CliResult listResult = new CliRunner.CliResult(0, "[]", "");
 
@@ -289,7 +289,7 @@ class SchemaServiceTest {
         void supported_whenVersionIsMinimum() {
             when(project.getService(CliDetectionService.class)).thenReturn(cliDetection);
             when(cliDetection.isAvailable()).thenReturn(true);
-            when(cliDetection.getDetectedVersion()).thenReturn("1.2.0");
+            when(cliDetection.getDetectedVersion()).thenReturn("1.3.0");
 
             assertTrue(service.isSchemaSupported());
         }
@@ -308,6 +308,27 @@ class SchemaServiceTest {
             when(project.getService(CliDetectionService.class)).thenReturn(cliDetection);
             when(cliDetection.isAvailable()).thenReturn(true);
             when(cliDetection.getDetectedVersion()).thenReturn("1.1.0");
+
+            assertFalse(service.isSchemaSupported());
+        }
+
+        @Test
+        void unsupported_whenVersionIs_1_2_0_belowNewFloor() {
+            // After v0.3.0 floor bump, schema management requires CLI 1.3.0. The previous
+            // floor was 1.2.0, so this test pins the boundary: 1.2.0 is now below floor.
+            when(project.getService(CliDetectionService.class)).thenReturn(cliDetection);
+            when(cliDetection.isAvailable()).thenReturn(true);
+            when(cliDetection.getDetectedVersion()).thenReturn("1.2.0");
+
+            assertFalse(service.isSchemaSupported(),
+                    "CLI 1.2.0 must be below floor after v0.3.0 raises it to 1.3.0");
+        }
+
+        @Test
+        void unsupported_whenVersionIs_1_2_99_belowNewFloor() {
+            when(project.getService(CliDetectionService.class)).thenReturn(cliDetection);
+            when(cliDetection.isAvailable()).thenReturn(true);
+            when(cliDetection.getDetectedVersion()).thenReturn("1.2.99");
 
             assertFalse(service.isSchemaSupported());
         }
@@ -336,29 +357,8 @@ class SchemaServiceTest {
             assertFalse(service.isSchemaSupported());
         }
 
-        @Test
-        void compareVersions_equal() {
-            assertEquals(0, SchemaService.compareVersions("1.2.0", "1.2.0"));
-        }
-
-        @Test
-        void compareVersions_lessThan() {
-            assertTrue(SchemaService.compareVersions("1.1.0", "1.2.0") < 0);
-        }
-
-        @Test
-        void compareVersions_greaterThan() {
-            assertTrue(SchemaService.compareVersions("2.0.0", "1.2.0") > 0);
-        }
-
-        @Test
-        void compareVersions_patchLevel() {
-            assertTrue(SchemaService.compareVersions("1.2.1", "1.2.0") > 0);
-        }
-
-        @Test
-        void compareVersions_differentLengths() {
-            assertTrue(SchemaService.compareVersions("1.2.0.1", "1.2.0") > 0);
-        }
+        // Version-comparison tests moved to CliVersionAtLeastTest after the comparison logic
+        // was extracted to com.johnnyblabs.openspec.util.CliVersion as part of v0.3.0's
+        // bump-cli-floor-to-1-3 change.
     }
 }

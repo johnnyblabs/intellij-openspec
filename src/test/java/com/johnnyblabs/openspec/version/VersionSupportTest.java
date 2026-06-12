@@ -2,7 +2,6 @@ package com.johnnyblabs.openspec.version;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -11,9 +10,14 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * Tests for {@link VersionSupport}. As of v0.3.0 ({@code bump-cli-floor-to-1-3}), V1_0 and V1_1
+ * were removed; V1_2 is the only baseline. Legacy {@code version: 1.0.0} and {@code 1.1.0}
+ * config files continue to function — they route to V1_2 via the fallback in {@code fromString}.
+ */
 class VersionSupportTest {
 
-    // --- v1.2.0 is the current spec; verify its contract thoroughly ---
+    // --- v1.2.0 contract — the only baseline ---
 
     @Test
     void v1_2_requiresSchemaAndVersion() {
@@ -44,76 +48,66 @@ class VersionSupportTest {
     }
 
     @Test
-    void v1_0_and_v1_1_doNotAcceptWorkspacePlanning() {
-        assertFalse(VersionSupport.V1_0.getValidSchemas().contains("workspace-planning"),
-                "workspace-planning was introduced in CLI 1.4.x and must not be retroactively valid for V1_0");
-        assertFalse(VersionSupport.V1_1.getValidSchemas().contains("workspace-planning"),
-                "workspace-planning was introduced in CLI 1.4.x and must not be retroactively valid for V1_1");
-    }
-
-    @Test
     void v1_2_versionString() {
         assertEquals("1.2.0", VersionSupport.V1_2.getVersion());
     }
 
-    // --- Version progression: each version adds capabilities ---
+    // --- Legacy baselines (V1_0, V1_1) deleted; their version strings route to V1_2 ---
 
     @Test
-    void v1_0_hasMinimalArtifacts() {
-        assertEquals(Set.of("proposal"), VersionSupport.V1_0.getRequiredArtifacts());
-        assertEquals(Set.of("schema"), VersionSupport.V1_0.getRequiredConfigFields());
-        assertEquals(Set.of("spec-driven"), VersionSupport.V1_0.getValidSchemas());
+    void legacyVersion_1_0_0_routesToV1_2() {
+        assertEquals(VersionSupport.V1_2, VersionSupport.fromString("1.0.0"),
+                "Legacy version 1.0.0 must route to V1_2 baseline after v0.3.0 floor bump");
     }
 
     @Test
-    void v1_1_addsDesignArtifact() {
-        Set<String> artifacts = VersionSupport.V1_1.getRequiredArtifacts();
-        assertTrue(artifacts.contains("proposal"));
-        assertTrue(artifacts.contains("design"));
-        assertFalse(artifacts.contains("tasks"), "v1.1 should not require tasks");
-        assertFalse(artifacts.contains("specs"), "v1.1 should not require specs");
+    void legacyVersion_1_1_0_routesToV1_2() {
+        assertEquals(VersionSupport.V1_2, VersionSupport.fromString("1.1.0"),
+                "Legacy version 1.1.0 must route to V1_2 baseline after v0.3.0 floor bump");
     }
 
     @Test
-    void eachVersionAddsCapabilities() {
-        assertTrue(VersionSupport.V1_1.getRequiredArtifacts().size()
-                > VersionSupport.V1_0.getRequiredArtifacts().size());
-        assertTrue(VersionSupport.V1_2.getRequiredArtifacts().size()
-                > VersionSupport.V1_1.getRequiredArtifacts().size());
+    void legacyVersion_1_0_x_routesToV1_2() {
+        assertEquals(VersionSupport.V1_2, VersionSupport.fromString("1.0.5"));
     }
 
-    // --- fromString resolution ---
+    @Test
+    void legacyVersion_1_1_x_routesToV1_2() {
+        assertEquals(VersionSupport.V1_2, VersionSupport.fromString("1.1.99"));
+    }
+
+    // --- fromString resolution for current and forward-compatible versions ---
 
     @Test
-    void fromString_exactMatch() {
-        assertEquals(VersionSupport.V1_0, VersionSupport.fromString("1.0.0"));
-        assertEquals(VersionSupport.V1_1, VersionSupport.fromString("1.1.0"));
+    void fromString_exactMatch_v1_2() {
         assertEquals(VersionSupport.V1_2, VersionSupport.fromString("1.2.0"));
     }
 
     @Test
-    void fromString_prefixMatch() {
+    void fromString_prefixMatch_v1_2() {
         assertEquals(VersionSupport.V1_2, VersionSupport.fromString("1.2.1"));
         assertEquals(VersionSupport.V1_2, VersionSupport.fromString("1.2.99"));
-        assertEquals(VersionSupport.V1_0, VersionSupport.fromString("1.0.5"));
     }
 
     @ParameterizedTest
     @NullAndEmptySource
-    @ValueSource(strings = {"2.0.0", "0.9.0", "xyz", "  "})
-    void fromString_unknownDefaultsToLatest(String version) {
+    @ValueSource(strings = {"2.0.0", "0.9.0", "xyz", "  ", "1.3.0", "1.4.0", "1.4.1"})
+    void fromString_unknownOrFutureDefaultsToLatest(String version) {
+        // The config-format version baseline is still V1_2 (1.2.0) as of CLI 1.4.x.
+        // Any newer config-format version (1.3.x, 1.4.x) will also route to V1_2 until
+        // upstream introduces a new config-format that requires a new V1_X enum entry.
         assertEquals(VersionSupport.V1_2, VersionSupport.fromString(version),
-                "Unknown version '" + version + "' should default to V1_2 (latest)");
+                "Unknown or future version '" + version + "' should default to V1_2 (latest known)");
     }
 
-    // --- allVersions ---
+    // --- allVersions reflects the V1_2-only baseline ---
 
     @Test
-    void allVersions_returnsAllInOrder() {
+    void allVersions_returnsOnlyV1_2() {
         List<String> versions = VersionSupport.allVersions();
-        assertEquals(3, versions.size());
-        assertTrue(versions.contains("1.0.0"));
-        assertTrue(versions.contains("1.1.0"));
+        assertEquals(1, versions.size(), "After v0.3.0 floor bump, V1_2 is the only baseline");
         assertTrue(versions.contains("1.2.0"));
+        assertFalse(versions.contains("1.0.0"), "1.0.0 baseline was removed");
+        assertFalse(versions.contains("1.1.0"), "1.1.0 baseline was removed");
     }
 }

@@ -58,11 +58,15 @@ class ConfigVersionValidationTest {
     }
 
     // --- Change schema cross-validation ---
+    //
+    // V1_0 and V1_1 were removed in v0.3.0 (bump-cli-floor-to-1-3). Legacy version strings
+    // route to V1_2 via VersionSupport.fromString. Tests below cover V1_2 only and assert
+    // the legacy-routing behavior at the boundary.
 
     @Test
     void changeWithIncompatibleSchema_producesWarning() {
-        // 1.0.0 only supports "spec-driven", not "tdd"
-        List<ValidationIssue> issues = validateChangeSchema("tdd", VersionSupport.V1_0);
+        // tdd is not in V1_2's valid schemas
+        List<ValidationIssue> issues = validateChangeSchema("tdd", VersionSupport.V1_2);
         assertTrue(issues.stream().anyMatch(i ->
                 i.severity() == ValidationIssue.Severity.WARNING
                         && i.rule().equals("change-schema-incompatible")),
@@ -70,29 +74,29 @@ class ConfigVersionValidationTest {
     }
 
     @Test
-    void v1_0_specDriven_passes() {
-        List<ValidationIssue> issues = validateChangeSchema("spec-driven", VersionSupport.V1_0);
+    void legacyVersion_1_0_0_routesToV1_2_andAcceptsSpecDriven() {
+        // Confirms the legacy-routing contract: a project declaring `version: 1.0.0` resolves
+        // to V1_2 (since V1_0 was deleted) and applies V1_2's valid-schema set.
+        VersionSupport resolved = VersionSupport.fromString("1.0.0");
+        assertEquals(VersionSupport.V1_2, resolved);
+        List<ValidationIssue> issues = validateChangeSchema("spec-driven", resolved);
         assertTrue(issues.stream().noneMatch(i ->
                 i.rule().equals("change-schema-incompatible")),
-                "1.0.0 project with spec-driven schema should pass");
+                "Legacy 1.0.0 routes to V1_2; spec-driven is in V1_2's valid schemas");
     }
 
     @Test
-    void v1_0_tdd_warns() {
-        List<ValidationIssue> issues = validateChangeSchema("tdd", VersionSupport.V1_0);
-        assertTrue(issues.stream().anyMatch(i ->
-                i.severity() == ValidationIssue.Severity.WARNING
-                        && i.rule().equals("change-schema-incompatible")),
-                "1.0.0 project with tdd schema should warn");
-    }
-
-    @Test
-    void v1_1_tdd_warns() {
-        List<ValidationIssue> issues = validateChangeSchema("tdd", VersionSupport.V1_1);
-        assertTrue(issues.stream().anyMatch(i ->
-                i.severity() == ValidationIssue.Severity.WARNING
-                        && i.rule().equals("change-schema-incompatible")),
-                "tdd schema is not supported by CLI — should warn");
+    void legacyVersion_1_1_0_routesToV1_2_andAcceptsWorkspacePlanning() {
+        // workspace-planning is in V1_2's valid schemas (since openspec-1-4-baseline).
+        // A legacy 1.1.0 config that declares schema: workspace-planning is now accepted
+        // — by routing to V1_2 — rather than warning, which is a deliberate consequence
+        // of the floor bump. The user has either upgraded their schema or they're on a
+        // working CLI 1.3+ where it makes sense.
+        VersionSupport resolved = VersionSupport.fromString("1.1.0");
+        assertEquals(VersionSupport.V1_2, resolved);
+        List<ValidationIssue> issues = validateChangeSchema("workspace-planning", resolved);
+        assertTrue(issues.stream().noneMatch(i ->
+                i.rule().equals("change-schema-incompatible")));
     }
 
     @Test
@@ -119,25 +123,6 @@ class ConfigVersionValidationTest {
         assertTrue(issues.stream().noneMatch(i ->
                 i.rule().equals("change-schema-incompatible")),
                 "V1_2 project with workspace-planning schema should pass under CLI 1.4.x");
-    }
-
-    @Test
-    void v1_0_workspacePlanning_warns() {
-        // workspace-planning is a 1.4.x addition and SHALL NOT be retroactively valid for older baselines.
-        List<ValidationIssue> issues = validateChangeSchema("workspace-planning", VersionSupport.V1_0);
-        assertTrue(issues.stream().anyMatch(i ->
-                i.severity() == ValidationIssue.Severity.WARNING
-                        && i.rule().equals("change-schema-incompatible")),
-                "V1_0 project with workspace-planning schema should warn");
-    }
-
-    @Test
-    void v1_1_workspacePlanning_warns() {
-        List<ValidationIssue> issues = validateChangeSchema("workspace-planning", VersionSupport.V1_1);
-        assertTrue(issues.stream().anyMatch(i ->
-                i.severity() == ValidationIssue.Severity.WARNING
-                        && i.rule().equals("change-schema-incompatible")),
-                "V1_1 project with workspace-planning schema should warn");
     }
 
     // --- Helpers mirroring BuiltInValidator logic ---
