@@ -4,6 +4,14 @@ on:
   push:
     tags: ['v*']
 
+# Serialize release runs (workflow-scoped, NOT ref-scoped). Two rapid tag pushes
+# should queue, never cancel — concurrent `publishPlugin` invocations against the
+# JetBrains Marketplace API are unsafe. If a release fails partway through, cancel
+# the failed run manually before pushing a hotfix tag so the queue clears.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
 env:
   GRADLE_OPTS: -Dorg.gradle.daemon=false
 

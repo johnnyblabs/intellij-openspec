@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: [main]
 
+# Cancel any in-flight build for the same workflow + ref when a new push lands.
+# Matches the GitHub Actions concurrency contract — Forgejo Actions supports GitHub-compatible syntax.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   PATH: /opt/gradle-9.0.0/bin:/opt/apache-maven-3.9.9/bin:/opt/java/openjdk/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
   GRADLE_OPTS: -Dorg.gradle.daemon=false
@@ -17,7 +23,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Cache Gradle dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.gradle/caches
@@ -32,7 +38,7 @@ jobs:
         run: gradle build
 
       - name: Upload test results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: test-results
@@ -57,7 +63,7 @@ jobs:
 
       - name: Upload plugin artifact
         if: github.ref == 'refs/heads/main' || github.base_ref == 'main'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: intellij-openspec
           path: build/distributions/*-signed.zip
@@ -68,7 +74,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Cache Gradle dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.gradle/caches
