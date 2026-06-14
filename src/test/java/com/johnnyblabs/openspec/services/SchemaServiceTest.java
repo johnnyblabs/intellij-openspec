@@ -361,4 +361,106 @@ class SchemaServiceTest {
         // was extracted to com.johnnyblabs.openspec.util.CliVersion as part of v0.3.0's
         // bump-cli-floor-to-1-3 change.
     }
+
+    @Nested
+    class KnownSchemaNames {
+
+        @Test
+        void cliUnavailable_returnsOnlyBuiltIns() {
+            when(project.getService(CliDetectionService.class)).thenReturn(cliDetection);
+            when(cliDetection.isAvailable()).thenReturn(false);
+
+            java.util.Set<String> known = service.getKnownSchemaNames();
+
+            assertEquals(com.johnnyblabs.openspec.version.VersionSupport.V1_2.getValidSchemas(), known,
+                    "CLI unavailable: known-set must equal the built-in fallback");
+        }
+
+        @Test
+        void cliBelowFloor_returnsOnlyBuiltIns() {
+            when(project.getService(CliDetectionService.class)).thenReturn(cliDetection);
+            when(cliDetection.isAvailable()).thenReturn(true);
+            when(cliDetection.getDetectedVersion()).thenReturn("1.2.0");
+
+            java.util.Set<String> known = service.getKnownSchemaNames();
+
+            assertEquals(com.johnnyblabs.openspec.version.VersionSupport.V1_2.getValidSchemas(), known,
+                    "CLI below 1.3.0 floor: known-set must equal the built-in fallback");
+        }
+
+        @Test
+        void cliAvailableWithBuiltInsOnly_returnsBuiltIns() {
+            when(project.getService(CliDetectionService.class)).thenReturn(cliDetection);
+            when(cliDetection.isAvailable()).thenReturn(true);
+            when(cliDetection.getDetectedVersion()).thenReturn("1.4.0");
+
+            String json = "[" +
+                    "{\"name\":\"spec-driven\",\"description\":\"\",\"isBuiltIn\":true,\"artifactIds\":[]}," +
+                    "{\"name\":\"workspace-planning\",\"description\":\"\",\"isBuiltIn\":true,\"artifactIds\":[]}" +
+                    "]";
+            try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
+                cli.when(() -> CliRunner.run(eq(project), eq("schemas"), eq("--json")))
+                        .thenReturn(new CliRunner.CliResult(0, json, ""));
+
+                java.util.Set<String> known = service.getKnownSchemaNames();
+
+                assertTrue(known.contains("spec-driven"));
+                assertTrue(known.contains("workspace-planning"));
+                assertEquals(2, known.size(), "Union of built-ins and identical CLI list should be the built-in set");
+            }
+        }
+
+        @Test
+        void cliAvailableWithFork_returnsBuiltInsPlusFork() {
+            when(project.getService(CliDetectionService.class)).thenReturn(cliDetection);
+            when(cliDetection.isAvailable()).thenReturn(true);
+            when(cliDetection.getDetectedVersion()).thenReturn("1.4.0");
+
+            String json = "[" +
+                    "{\"name\":\"spec-driven\",\"description\":\"\",\"isBuiltIn\":true,\"artifactIds\":[]}," +
+                    "{\"name\":\"workspace-planning\",\"description\":\"\",\"isBuiltIn\":true,\"artifactIds\":[]}," +
+                    "{\"name\":\"my-team-flow\",\"description\":\"Forked\",\"isBuiltIn\":false,\"artifactIds\":[]}" +
+                    "]";
+            try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
+                cli.when(() -> CliRunner.run(eq(project), eq("schemas"), eq("--json")))
+                        .thenReturn(new CliRunner.CliResult(0, json, ""));
+
+                java.util.Set<String> known = service.getKnownSchemaNames();
+
+                assertTrue(known.contains("spec-driven"), "Built-in spec-driven must remain");
+                assertTrue(known.contains("workspace-planning"), "Built-in workspace-planning must remain");
+                assertTrue(known.contains("my-team-flow"), "Custom forked schema must appear in known-set");
+                assertEquals(3, known.size());
+            }
+        }
+
+        @Test
+        void cliListEmpty_stillReturnsBuiltIns() {
+            // Even if `openspec schemas --json` returns [], the built-in fallback must remain.
+            when(project.getService(CliDetectionService.class)).thenReturn(cliDetection);
+            when(cliDetection.isAvailable()).thenReturn(true);
+            when(cliDetection.getDetectedVersion()).thenReturn("1.4.0");
+
+            try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
+                cli.when(() -> CliRunner.run(eq(project), eq("schemas"), eq("--json")))
+                        .thenReturn(new CliRunner.CliResult(0, "[]", ""));
+
+                java.util.Set<String> known = service.getKnownSchemaNames();
+
+                assertEquals(com.johnnyblabs.openspec.version.VersionSupport.V1_2.getValidSchemas(), known,
+                        "Empty CLI list collapses the union back to the built-in fallback");
+            }
+        }
+
+        @Test
+        void returnedSetIsImmutable() {
+            when(project.getService(CliDetectionService.class)).thenReturn(cliDetection);
+            when(cliDetection.isAvailable()).thenReturn(false);
+
+            java.util.Set<String> known = service.getKnownSchemaNames();
+
+            assertThrows(UnsupportedOperationException.class, () -> known.add("untrusted-input"),
+                    "Returned set must be unmodifiable so callers can't corrupt the internal state");
+        }
+    }
 }

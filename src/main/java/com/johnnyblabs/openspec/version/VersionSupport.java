@@ -40,6 +40,32 @@ public enum VersionSupport {
         return requiredArtifacts;
     }
 
+    /**
+     * Returns the built-in fallback set of schema names recognized by this baseline.
+     *
+     * <p><b>Role shift (v0.3.0):</b> this is the <b>built-in fallback</b> portion of the
+     * canonical "is this schema recognized" check, NOT the canonical valid-set itself.
+     * The validator joins this set with the CLI-runtime list from
+     * {@code SchemaService.listSchemas()} via {@code SchemaService.getKnownSchemaNames()}
+     * — see that method for the canonical check.
+     *
+     * <p>This method continues to exist (with its hardcoded value) for two reasons:
+     * <ol>
+     *   <li>Callers without project context (scaffolding templates, sync-time defaults)
+     *       can't invoke {@code SchemaService} — they need a synchronous, project-free
+     *       way to ask "what schemas does the plugin natively know about?"</li>
+     *   <li>It documents which schemas the plugin natively supports (currently
+     *       {@code spec-driven} and {@code workspace-planning}); upstream additions
+     *       continue to land here via the existing enum-update pattern (cf. the
+     *       {@code openspec-1-4-baseline} change that added {@code workspace-planning}).</li>
+     * </ol>
+     *
+     * <p>Callers needing the broader "all currently-known schema names" set (including
+     * the user's custom forks) should call {@code SchemaService.getKnownSchemaNames()}
+     * instead.
+     *
+     * @return the built-in schema name set; immutable
+     */
     public Set<String> getValidSchemas() {
         return validSchemas;
     }

@@ -8,7 +8,9 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.johnnyblabs.openspec.model.Change;
 import com.johnnyblabs.openspec.model.OpenSpecConfig;
 import com.johnnyblabs.openspec.services.ChangeService;
+import com.johnnyblabs.openspec.services.CliDetectionService;
 import com.johnnyblabs.openspec.services.ConfigService;
+import com.johnnyblabs.openspec.services.SchemaService;
 import com.johnnyblabs.openspec.settings.OpenSpecSettings;
 import com.johnnyblabs.openspec.util.OpenSpecFileUtil;
 import com.johnnyblabs.openspec.version.VersionSupport;
@@ -175,14 +177,19 @@ public final class BuiltInValidator {
             }
         }
 
-        // Cross-validate change schema against project version
+        // Cross-validate change schema against the known-set (built-ins UNION CLI runtime).
+        // See SchemaService.getKnownSchemaNames for semantics; built-ins are always the floor,
+        // and custom-forked schemas (`openspec schema fork`) ride along when the CLI is available.
         if (change.getMetadata() != null && change.getMetadata().getSchema() != null) {
             String changeSchema = change.getMetadata().getSchema();
-            if (!version.getValidSchemas().contains(changeSchema)) {
+            java.util.Set<String> known = getKnownSchemaNames();
+            if (!known.contains(changeSchema)) {
                 issues.add(new ValidationIssue(ValidationIssue.Severity.WARNING, changePath, 1,
                         "Change '" + change.getName() + "' uses schema '" + changeSchema +
-                                "' which is not valid for project version " + version.getVersion() +
-                                ". Valid schemas: " + version.getValidSchemas(),
+                                "' which is not recognized. Known schemas: " + known +
+                                ". " + describeSchemaSourceStatus() +
+                                " If you forked this schema via `openspec schema fork`, restart the project or " +
+                                "refresh schemas in Settings → Tools → OpenSpec.",
                         "change-schema-incompatible"));
             }
         }
@@ -246,11 +253,15 @@ public final class BuiltInValidator {
             issues.add(new ValidationIssue(ValidationIssue.Severity.ERROR, path, 1,
                     "config.yaml must have a 'schema' field", "config-schema-required"));
         } else {
-            VersionSupport version = getVersionSupport();
-            if (!version.getValidSchemas().contains(config.getSchema())) {
+            // Schema-name recognition is CLI-runtime-driven; see SchemaService.getKnownSchemaNames.
+            java.util.Set<String> known = getKnownSchemaNames();
+            if (!known.contains(config.getSchema())) {
                 issues.add(new ValidationIssue(ValidationIssue.Severity.WARNING, path, 1,
-                        "Schema '" + config.getSchema() + "' is not a recognized value. " +
-                                "Valid: " + version.getValidSchemas(), "config-schema-invalid"));
+                        "Schema '" + config.getSchema() + "' is not recognized. Known schemas: " + known +
+                                ". " + describeSchemaSourceStatus() +
+                                " If you forked this schema via `openspec schema fork`, restart the project or " +
+                                "refresh schemas in Settings → Tools → OpenSpec.",
+                        "config-schema-invalid"));
             }
         }
 
@@ -291,6 +302,37 @@ public final class BuiltInValidator {
     private VersionSupport getVersionSupport() {
         String version = OpenSpecSettings.getInstance(project).getEffectiveVersion(project);
         return VersionSupport.fromString(version);
+    }
+
+    /**
+     * Returns the set of schema names the validator should treat as recognized — the
+     * union of the built-in fallback and the CLI-runtime list. Falls back to the
+     * built-ins alone if {@link SchemaService} is unavailable (defensive null guard).
+     * See {@link SchemaService#getKnownSchemaNames()} for full semantics.
+     */
+    private java.util.Set<String> getKnownSchemaNames() {
+        SchemaService schemaService = project.getService(SchemaService.class);
+        if (schemaService == null) {
+            return VersionSupport.V1_2.getValidSchemas();
+        }
+        return schemaService.getKnownSchemaNames();
+    }
+
+    /**
+     * Returns a short human-readable phrase describing where the known-set came from,
+     * for inclusion in validator warning text. Helps the user understand why a custom
+     * fork they expect to see isn't being recognized.
+     */
+    private String describeSchemaSourceStatus() {
+        CliDetectionService detection = project.getService(CliDetectionService.class);
+        if (detection == null || !detection.isAvailable()) {
+            return "CLI status: unavailable (only built-in schemas can be recognized — install OpenSpec CLI 1.3+ to enable custom schema detection).";
+        }
+        SchemaService schemaService = project.getService(SchemaService.class);
+        if (schemaService != null && !schemaService.isSchemaSupported()) {
+            return "CLI status: below 1.3.0 floor (only built-in schemas can be recognized — upgrade with `npm i -g @fission-ai/openspec@latest`).";
+        }
+        return "CLI status: available — known-set includes both built-ins and any schemas listed by `openspec schemas --json`.";
     }
 
     private String readFile(VirtualFile file) {

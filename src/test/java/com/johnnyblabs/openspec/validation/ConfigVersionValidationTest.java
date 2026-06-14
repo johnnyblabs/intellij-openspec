@@ -125,6 +125,54 @@ class ConfigVersionValidationTest {
                 "V1_2 project with workspace-planning schema should pass under CLI 1.4.x");
     }
 
+    // --- v0.3.0 schema-validation-cli-runtime-driven: known-set semantics ---
+
+    @Test
+    void customForkedSchema_inKnownSet_passes() {
+        // When the user has run `openspec schema fork spec-driven my-team-flow`,
+        // SchemaService.getKnownSchemaNames() returns built-ins + the fork.
+        // The validator should not warn on the custom name.
+        java.util.Set<String> known = java.util.Set.of("spec-driven", "workspace-planning", "my-team-flow");
+        List<ValidationIssue> issues = validateChangeSchema("my-team-flow", VersionSupport.V1_2, known);
+        assertTrue(issues.stream().noneMatch(i ->
+                i.rule().equals("change-schema-incompatible")),
+                "Custom-forked schema present in known-set must not trigger change-schema-incompatible");
+    }
+
+    @Test
+    void typoSchema_notInKnownSet_warns() {
+        // Regression test: a typo like "spec-drivenn" must still warn under the new
+        // known-set semantics — the broader recognition does not mask typos.
+        java.util.Set<String> known = java.util.Set.of("spec-driven", "workspace-planning");
+        List<ValidationIssue> issues = validateChangeSchema("spec-drivenn", VersionSupport.V1_2, known);
+        assertTrue(issues.stream().anyMatch(i ->
+                i.severity() == ValidationIssue.Severity.WARNING
+                        && i.rule().equals("change-schema-incompatible")),
+                "Typo schema name not in known-set must still produce change-schema-incompatible warning");
+    }
+
+    @Test
+    void cliUnavailable_customSchemaNotKnown_warns() {
+        // When the CLI is unavailable, the known-set is just the built-ins.
+        // A custom-forked schema name the user expects to work won't be recognized
+        // (because the plugin can't see the fork without the CLI).
+        java.util.Set<String> known = java.util.Set.of("spec-driven", "workspace-planning"); // built-ins only
+        List<ValidationIssue> issues = validateChangeSchema("my-team-flow", VersionSupport.V1_2, known);
+        assertTrue(issues.stream().anyMatch(i ->
+                i.rule().equals("change-schema-incompatible")),
+                "Without CLI, custom-fork name not in built-ins must warn");
+    }
+
+    @Test
+    void builtInSchema_inKnownSet_passes() {
+        // Sanity: built-in schemas always pass regardless of how the known-set was assembled.
+        java.util.Set<String> known = java.util.Set.of("spec-driven", "workspace-planning");
+        assertTrue(validateChangeSchema("spec-driven", VersionSupport.V1_2, known).stream()
+                .noneMatch(i -> i.rule().equals("change-schema-incompatible")));
+        assertTrue(validateChangeSchema("workspace-planning", VersionSupport.V1_2, known).stream()
+                .noneMatch(i -> i.rule().equals("change-schema-incompatible")));
+    }
+
     // --- Helpers mirroring BuiltInValidator logic ---
 
     private List<ValidationIssue> validateConfig(String schema, String version) {
@@ -167,14 +215,30 @@ class ConfigVersionValidationTest {
         return issues;
     }
 
+    /**
+     * Backward-compatible helper — defaults the known-set to the built-in
+     * {@code VersionSupport.getValidSchemas()}, matching the validator's
+     * behavior before the v0.3.0 schema-validation-cli-runtime-driven change.
+     */
     private List<ValidationIssue> validateChangeSchema(String changeSchema, VersionSupport version) {
+        return validateChangeSchema(changeSchema, version, version.getValidSchemas());
+    }
+
+    /**
+     * New helper mirroring the post-v0.3.0 validator behavior: the known-set is
+     * supplied by the caller (built-ins ∪ CLI runtime list, per
+     * {@code SchemaService.getKnownSchemaNames()}). The schema is "valid" when it
+     * appears in that union.
+     */
+    private List<ValidationIssue> validateChangeSchema(String changeSchema, VersionSupport version,
+                                                       java.util.Set<String> knownSet) {
         List<ValidationIssue> issues = new ArrayList<>();
         String path = "test-change";
 
-        if (!version.getValidSchemas().contains(changeSchema)) {
+        if (!knownSet.contains(changeSchema)) {
             issues.add(new ValidationIssue(ValidationIssue.Severity.WARNING, path, 1,
-                    "Change uses schema '" + changeSchema + "' which is not valid for project version " +
-                            version.getVersion() + ". Valid schemas: " + version.getValidSchemas(),
+                    "Change uses schema '" + changeSchema + "' which is not recognized. Known schemas: " +
+                            knownSet,
                     "change-schema-incompatible"));
         }
         return issues;

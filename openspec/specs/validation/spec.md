@@ -7,7 +7,7 @@ Built-in validation of OpenSpec project structure, spec format, config integrity
 
 ### Requirement: Config validation
 
-The plugin SHALL validate `config.yaml` for structural correctness, required fields, version presence, version recognition, and schema-version compatibility. Validation SHALL use the `VersionSupport` enum to determine which fields and schemas are valid for the declared version. The supported `VersionSupport` baseline is V1_2 (config-format version 1.2.0) and later; legacy config-format versions 1.0.0 and 1.1.0 SHALL be routed to V1_2 baseline for validation purposes. Config parsing SHALL be lenient — unrecognized fields and type mismatches SHALL be silently ignored rather than raising parse errors. The config validation inspection SHALL guard against zero-length PSI elements before creating problem descriptors.
+The plugin SHALL validate `config.yaml` for structural correctness, required fields, version presence, version recognition, and schema-version compatibility. Validation SHALL use the `VersionSupport` enum to determine which fields are valid for the declared version. The supported `VersionSupport` baseline is V1_2 (config-format version 1.2.0) and later; legacy config-format versions 1.0.0 and 1.1.0 SHALL be routed to V1_2 baseline for validation purposes. Schema-name recognition SHALL be CLI-runtime-driven: the validator SHALL consider a schema name "recognized" when it appears in the union of (a) the built-in fallback set (`VersionSupport.V1_2.getValidSchemas()`) and (b) the CLI-runtime set from `SchemaService.listSchemas()` when CLI is available and supports schema management. Config parsing SHALL be lenient — unrecognized fields and type mismatches SHALL be silently ignored rather than raising parse errors. The config validation inspection SHALL guard against zero-length PSI elements before creating problem descriptors.
 
 #### Scenario: Config parsed successfully
 - **WHEN** `config.yaml` exists and is valid YAML
@@ -34,8 +34,24 @@ The plugin SHALL validate `config.yaml` for structural correctness, required fie
 - **THEN** the validator SHALL report an ERROR with rule `config-schema-required`
 
 #### Scenario: Schema value invalid for version
-- **WHEN** the `schema` value is not in the declared version's valid schemas
-- **THEN** the validator SHALL report a WARNING with rule `config-schema-invalid`
+- **WHEN** the `config.yaml` `schema` value is neither in the built-in fallback set (`VersionSupport.V1_2.getValidSchemas()`) nor in the CLI-runtime set from `SchemaService.listSchemas()`
+- **THEN** the validator SHALL report a WARNING with rule `config-schema-invalid`. The warning text SHALL list the known-set and indicate CLI status (available / unavailable / below floor) so the user understands why a custom-forked schema might not be visible.
+
+#### Scenario: Built-in schema accepted regardless of CLI state
+- **WHEN** the `config.yaml` `schema` value is one of the built-in fallback set (currently `"spec-driven"` or `"workspace-planning"`)
+- **THEN** the validator SHALL NOT report `config-schema-invalid` regardless of whether the CLI is available
+
+#### Scenario: Custom-forked schema accepted when CLI lists it
+- **WHEN** the CLI is available and supports schema management, AND the user has run `openspec schema fork spec-driven my-team-flow` so `SchemaService.listSchemas()` returns a `SchemaInfo` with name `"my-team-flow"`, AND a `config.yaml` declares `schema: my-team-flow`
+- **THEN** the validator SHALL NOT report `config-schema-invalid`
+
+#### Scenario: Custom-forked schema with no CLI falls back to built-ins
+- **WHEN** the CLI is unavailable (or below the 1.3.0 floor) AND a `config.yaml` declares a non-built-in schema like `my-team-flow`
+- **THEN** the validator SHALL report `config-schema-invalid` with text indicating the CLI is unavailable so custom schemas can't be verified
+
+#### Scenario: Typo schema name continues to warn
+- **WHEN** the `config.yaml` `schema` value is a typo of a built-in (e.g., `"spec-drivenn"`) — not in built-ins AND not in the CLI-runtime list
+- **THEN** the validator SHALL report `config-schema-invalid` — the broadened recognition does not mask typos
 
 #### Scenario: Version field missing
 - **WHEN** `config.yaml` has no `version` field
@@ -99,7 +115,7 @@ The plugin SHALL validate spec files for structural completeness: title heading,
 
 ### Requirement: Change validation
 
-The plugin SHALL validate each active change's `.openspec.yaml` for schema compatibility with the project's declared version. The validator SHALL use `VersionSupport.getValidSchemas()` to determine allowed schemas.
+The plugin SHALL validate each active change's `.openspec.yaml` for schema compatibility with the project's declared version. Schema-name recognition SHALL be CLI-runtime-driven on the same principle as `Config validation`: a change schema is "recognized" when it appears in the union of the built-in fallback set (`VersionSupport.V1_2.getValidSchemas()`) and the CLI-runtime set from `SchemaService.listSchemas()`. The validator SHALL use `VersionSupport.getValidSchemas()` only as the built-in fallback portion of that union, not as the canonical valid-set.
 
 #### Scenario: Proposal required
 - **WHEN** a change has no `proposal.md`
@@ -110,8 +126,12 @@ The plugin SHALL validate each active change's `.openspec.yaml` for schema compa
 - **THEN** the validator SHALL report a WARNING (or ERROR in strict mode) with rule `change-artifact-missing`
 
 #### Scenario: Change schema incompatible with project version
-- **WHEN** a change's `.openspec.yaml` declares a schema not in the project version's valid schemas
-- **THEN** the validator SHALL report a WARNING with rule `change-schema-incompatible`
+- **WHEN** a change's `.openspec.yaml` declares a schema that is neither in the built-in fallback set nor in `SchemaService.listSchemas()`
+- **THEN** the validator SHALL report a WARNING with rule `change-schema-incompatible`. The warning text SHALL list the known-set and indicate CLI status so the user understands why a custom-forked schema might not be visible.
+
+#### Scenario: Custom-forked schema accepted for change when CLI lists it
+- **WHEN** the user has forked a custom schema via `openspec schema fork` AND a change's `.openspec.yaml` declares that custom schema
+- **THEN** the validator SHALL NOT report `change-schema-incompatible`
 
 ### Requirement: workspace-planning schema acceptance
 

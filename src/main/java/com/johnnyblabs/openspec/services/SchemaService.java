@@ -10,10 +10,13 @@ import com.intellij.openapi.project.Project;
 import com.johnnyblabs.openspec.model.SchemaInfo;
 import com.johnnyblabs.openspec.util.CliRunner;
 import com.johnnyblabs.openspec.util.CliVersion;
+import com.johnnyblabs.openspec.version.VersionSupport;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service(Service.Level.PROJECT)
 public final class SchemaService {
@@ -105,6 +108,40 @@ public final class SchemaService {
             return false;
         }
         return CliVersion.atLeast(detection.getDetectedVersion(), MIN_CLI_VERSION);
+    }
+
+    /**
+     * Returns the union of (a) the built-in schema names from {@link VersionSupport#V1_2}
+     * (the synchronous, always-available fallback) and (b) the CLI-runtime list from
+     * {@link #listSchemas()} when the CLI is available and supports schema management.
+     *
+     * <p>This is the canonical "is this schema name recognized" check for validators.
+     * Built-ins are always included so the plugin still validates sensibly when the CLI
+     * is unavailable or below the {@value #MIN_CLI_VERSION} floor; when the CLI is
+     * available, custom-forked schemas (e.g., the user ran {@code openspec schema fork
+     * spec-driven my-team-flow}) ride along automatically.
+     *
+     * <p>Cache invalidation: this method calls {@link #listSchemas()}, which caches via
+     * the existing {@code cachedSchemas} field. {@link #clearCache()} (already invoked
+     * from {@link #forkSchema} and {@link #initSchema}) is the invalidation point. The
+     * union is recomputed on each call from the (possibly cached) list — cheap enough
+     * to not warrant its own cache.
+     *
+     * @return an unmodifiable {@link Set} of schema names recognized by either the
+     *         built-in fallback or the live CLI; never null, always contains at least
+     *         the built-in set
+     */
+    public Set<String> getKnownSchemaNames() {
+        Set<String> names = new HashSet<>(VersionSupport.V1_2.getValidSchemas());
+        if (isSchemaSupported()) {
+            for (SchemaInfo info : listSchemas()) {
+                String name = info.name();
+                if (name != null && !name.isEmpty()) {
+                    names.add(name);
+                }
+            }
+        }
+        return Collections.unmodifiableSet(names);
     }
 
     /**
