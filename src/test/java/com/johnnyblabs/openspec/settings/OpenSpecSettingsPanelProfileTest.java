@@ -60,14 +60,18 @@ class OpenSpecSettingsPanelProfileTest {
         }
 
         @Test
-        void corePreset_rendersWithFiveEssentials() {
+        void corePreset_rendersWithGenericHint() {
+            // D7: the renderer no longer enumerates workflow names — that's
+            // plugin-side hardcoded knowledge that rots against CLI version changes.
+            // The hint stays category-level only ("essentials only"); specific
+            // workflow names live in the docs (Workflow-Profiles.md).
             String result = OpenSpecSettingsPanel.renderWorkflowProfileItem("core", false);
-            assertTrue(result.startsWith("core — "), "expected to start with 'core — ': " + result);
-            assertTrue(result.contains("propose"));
-            assertTrue(result.contains("explore"));
-            assertTrue(result.contains("apply"));
-            assertTrue(result.contains("sync"));
-            assertTrue(result.contains("archive"));
+            assertEquals("core — essentials only", result);
+            assertFalse(result.contains("propose"));
+            assertFalse(result.contains("explore"));
+            assertFalse(result.contains("apply"));
+            assertFalse(result.contains("sync"));
+            assertFalse(result.contains("archive"));
         }
 
         @Test

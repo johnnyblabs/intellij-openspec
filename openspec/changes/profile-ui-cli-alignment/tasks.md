@@ -5,7 +5,7 @@
 ## 2. D2 — Combo lists only CLI-accepted presets
 - [x] 2.1 Update `OpenSpecSettingsPanel.WORKFLOW_PROFILE_PRESETS` to `["", "core"]` (drop `"custom"`)
 - [x] 2.2 Refactor `OpenSpecSettingsPanelProfileTest.customPreset_rendersWithSelectedWorkflowsHint` into orphan-rendering coverage
-- [ ] 2.3 ~~Update `corePreset_rendersWithFiveEssentials` assertion — core has 4 essentials on CLI 1.3.1 (no `sync`)~~ → folded into D7 scope. The "(5 essentials)" enumeration in the renderer's `core` case is the same kind of plugin-side hardcoded workflow knowledge D7 is removing from the ContextHelpLabel; both should land together with the generic copy rewrite + docs link.
+- [x] 2.3 ~~Update `corePreset_rendersWithFiveEssentials` assertion~~ → folded into D7 (landed together): renderer no longer enumerates workflow names; test renamed `corePreset_rendersWithGenericHint` and now asserts the absence of `propose/explore/apply/sync/archive` to lock in the principle.
 
 ## 3. D3 — "Customize workflows…" button + IntelliJ Terminal launcher
 - [ ] 3.1 Add "Customize workflows…" button to `OpenSpecSettingsPanel` (secondary/link style)
@@ -30,9 +30,9 @@
 - [x] 6.3 Update `OpenSpecConfigurable.isModified` / `apply` to honor the orphan gate
 
 ## 7. D7 — ContextHelpLabel copy rewrite (no workflow enumeration)
-- [ ] 7.1 Update `OpenSpecSettingsPanel` profile-help copy to drop workflow names
-- [ ] 7.2 Add docs link affordance in the ContextHelpLabel
-- [ ] 7.3 Update any test assertion referencing the old enumerated copy
+- [x] 7.1 Update `OpenSpecSettingsPanel` profile-help copy to drop workflow names (rewritten to general framing + CLI-direct guidance; references to a "Customize workflows…" button deferred until D3 ships)
+- [x] 7.2 Add docs link affordance in the ContextHelpLabel (already present via `ContextHelpLabel.createWithLink` → `OpenSpecProfileStatusBarWidget.DOCS_URL` — page lives on GitHub `main`)
+- [x] 7.3 Update test assertion referencing the old enumerated copy (handled under 2.3 — same renderer text covered both)
 
 ## 8. Spec sync
 - [ ] 8.1 Update `openspec/changes/profile-ui-cli-alignment/specs/` delta specs to reflect implemented decisions

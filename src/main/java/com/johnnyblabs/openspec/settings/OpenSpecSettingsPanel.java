@@ -146,12 +146,12 @@ public class OpenSpecSettingsPanel {
         profileLabelPanel.add(new JBLabel("Workflow profile:"));
         profileLabelPanel.add(ContextHelpLabel.createWithLink(
                 "Workflow profile",
-                "Workflow profiles control which OpenSpec commands are installed for AI tools. " +
-                        "Core ships only the 5 essentials (propose, explore, apply, sync, archive) " +
-                        "to keep AI context windows lean. Custom lets you opt in to expanded " +
-                        "workflows (verify, ff, continue, bulk-archive, onboard, new). " +
-                        "Switching is a two-step process: the plugin will prompt to run " +
-                        "openspec update afterward to install the corresponding skills.",
+                "Workflow profiles control which OpenSpec commands are installed for your AI tools. " +
+                        "Core ships a small essential set to keep AI context windows lean. " +
+                        "To use additional workflows, run `openspec config profile` in a terminal — " +
+                        "the OpenSpec CLI will show you what's available. " +
+                        "Switching profiles is a two-step process: change profile, then run " +
+                        "`openspec update` to install the corresponding skills.",
                 "Read the full guide",
                 () -> com.intellij.ide.BrowserUtil.browse(
                         com.johnnyblabs.openspec.statusbar.OpenSpecProfileStatusBarWidget.DOCS_URL)));
@@ -828,7 +828,7 @@ public class OpenSpecSettingsPanel {
             return "(default — uses CLI's active profile)";
         }
         return switch (preset) {
-            case "core" -> "core — propose, explore, apply, sync, archive (5 essentials)";
+            case "core" -> "core — essentials only";
             default -> preset;
         };
     }
