@@ -141,7 +141,24 @@ public final class OpenSpecProfileStatusBarWidget implements StatusBarWidget, St
 
     @Override
     public @Nullable ListPopup getPopup() {
+        // D3 fallback refresh trigger: opening the popup is a strong "user is looking
+        // at profile state" signal — refresh in the background so any drift from a
+        // manual CLI switch shows up on next interaction. The current popup is built
+        // from cached state to avoid blocking the EDT on a CLI call.
+        scheduleBackgroundRefresh();
         return JBPopupFactory.getInstance().createListPopup(buildPopupStep());
+    }
+
+    private void scheduleBackgroundRefresh() {
+        WorkflowProfileService service = project.getService(WorkflowProfileService.class);
+        if (service == null) return;
+        ApplicationManager.getApplication().executeOnPooledThread(() -> {
+            try {
+                service.refresh();
+            } catch (Throwable ignored) {
+                // Best-effort fallback trigger; silent failure is acceptable.
+            }
+        });
     }
 
     private @NotNull PopupItemStep buildPopupStep() {

@@ -23,7 +23,14 @@ import com.johnnyblabs.openspec.model.ConfigProfileDetail;
 import com.johnnyblabs.openspec.model.SchemaInfo;
 import com.johnnyblabs.openspec.services.CliDetectionService;
 import com.johnnyblabs.openspec.services.SchemaService;
+import com.johnnyblabs.openspec.services.WorkflowProfileService;
+import com.johnnyblabs.openspec.services.WorkflowProfileSwitchService;
 import com.johnnyblabs.openspec.util.CliRunner;
+import com.johnnyblabs.openspec.util.OpenSpecNotifier;
+import com.johnnyblabs.openspec.util.OpenSpecTerminalLauncher;
+import com.intellij.notification.NotificationAction;
+import com.intellij.notification.NotificationType;
+import com.intellij.openapi.application.ApplicationManager;
 
 import com.intellij.ui.JBColor;
 
@@ -54,6 +61,10 @@ public class OpenSpecSettingsPanel {
     private final JComboBox<String> profileCombo;
     private final JBLabel profileCliUnavailableLabel;
     private final JBLabel profileOrphanHelpLabel;
+    private JButton customizeWorkflowsButton;
+    private JPanel customizeBanner;
+    private JButton customizeDoneButton;
+    private TerminalLauncher terminalLauncher = OpenSpecTerminalLauncher::launchCommand;
     private final JSpinner cliTimeoutSpinner;
     private final JBCheckBox autoRefreshCheckbox;
     private final JBCheckBox strictValidationCheckbox;
@@ -148,7 +159,7 @@ public class OpenSpecSettingsPanel {
                 "Workflow profile",
                 "Workflow profiles control which OpenSpec commands are installed for your AI tools. " +
                         "Core ships a small essential set to keep AI context windows lean. " +
-                        "To use additional workflows, run `openspec config profile` in a terminal — " +
+                        "To use additional workflows, click \"Customize workflows…\" — " +
                         "the OpenSpec CLI will show you what's available. " +
                         "Switching profiles is a two-step process: change profile, then run " +
                         "`openspec update` to install the corresponding skills.",
@@ -170,15 +181,29 @@ public class OpenSpecSettingsPanel {
         profileOrphanHelpLabel.setForeground(JBUI.CurrentTheme.ContextHelp.FOREGROUND);
         profileOrphanHelpLabel.setVisible(false);
 
+        // Combo + Customize workflows… button on a single row. The button launches the
+        // CLI's interactive picker in IntelliJ's Terminal tool window — see
+        // onCustomizeWorkflowsClicked().
+        customizeWorkflowsButton = new JButton("Customize workflows…");
+        customizeWorkflowsButton.addActionListener(e -> onCustomizeWorkflowsClicked());
+        JPanel profileComboRow = new JPanel();
+        profileComboRow.setLayout(new BoxLayout(profileComboRow, BoxLayout.X_AXIS));
+        profileComboRow.add(profileCombo);
+        profileComboRow.add(Box.createHorizontalStrut(JBUI.scale(4)));
+        profileComboRow.add(customizeWorkflowsButton);
+
+        customizeBanner = buildCustomizeBanner();
+
         cliTimeoutSpinner = new JSpinner(new SpinnerNumberModel(30, 1, 3600, 1));
 
         autoRefreshCheckbox = new JBCheckBox("Auto-refresh tool window on file changes");
         strictValidationCheckbox = new JBCheckBox("Strict validation (warnings become errors)");
 
         JPanel generalSection = FormBuilder.createFormBuilder()
-                .addLabeledComponent(profileLabelPanel, profileCombo)
+                .addLabeledComponent(profileLabelPanel, profileComboRow)
                 .addComponentToRightColumn(profileCliUnavailableLabel)
                 .addComponentToRightColumn(profileOrphanHelpLabel)
+                .addComponentToRightColumn(customizeBanner)
                 .addLabeledComponent(new JBLabel("CLI Timeout (seconds):"), cliTimeoutSpinner)
                 .addComponent(autoRefreshCheckbox)
                 .addComponent(strictValidationCheckbox)
@@ -831,6 +856,128 @@ public class OpenSpecSettingsPanel {
             case "core" -> "core — essentials only";
             default -> preset;
         };
+    }
+
+    /**
+     * Indirection over the static {@link OpenSpecTerminalLauncher#launchCommand} so tests
+     * can stub the terminal launch outcome without standing up the Terminal tool window.
+     */
+    @FunctionalInterface
+    interface TerminalLauncher {
+        boolean launch(Project project, String command, String tabName);
+    }
+
+    /** Test-only injection point. */
+    void setTerminalLauncher(TerminalLauncher launcher) {
+        this.terminalLauncher = launcher;
+    }
+
+    /** Visible for tests. */
+    boolean isCustomizeBannerVisible() {
+        return customizeBanner != null && customizeBanner.isVisible();
+    }
+
+    /** Visible for tests. */
+    void clickCustomizeWorkflowsForTest() {
+        onCustomizeWorkflowsClicked();
+    }
+
+    /** Visible for tests. */
+    void clickImDoneForTest() {
+        onImDoneClicked();
+    }
+
+    private JPanel buildCustomizeBanner() {
+        JPanel banner = new JPanel(new FlowLayout(FlowLayout.LEFT, JBUI.scale(4), 0));
+        JBLabel msg = new JBLabel("Waiting for the workflow picker — click \"I'm done\" when finished.");
+        msg.setForeground(JBUI.CurrentTheme.ContextHelp.FOREGROUND);
+        customizeDoneButton = new JButton("I'm done");
+        customizeDoneButton.addActionListener(e -> onImDoneClicked());
+        JButton cancelButton = new JButton("Cancel");
+        cancelButton.addActionListener(e -> resetCustomizeBanner());
+        banner.add(msg);
+        banner.add(customizeDoneButton);
+        banner.add(cancelButton);
+        banner.setVisible(false);
+        return banner;
+    }
+
+    private void onCustomizeWorkflowsClicked() {
+        String command = "openspec config profile";
+        boolean launched = terminalLauncher.launch(project, command, "OpenSpec");
+        if (launched) {
+            resetCustomizeBanner();
+            customizeBanner.setVisible(true);
+        } else {
+            java.awt.datatransfer.StringSelection sel = new java.awt.datatransfer.StringSelection(command);
+            java.awt.Toolkit.getDefaultToolkit().getSystemClipboard().setContents(sel, sel);
+            OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_SYSTEM,
+                    "Customize workflows",
+                    OpenSpecTerminalLauncher.fallbackMessage(command),
+                    NotificationType.WARNING,
+                    aboutProfilesAction());
+        }
+    }
+
+    /**
+     * Handles the "I'm done" click: refreshes {@link WorkflowProfileService} on a pooled
+     * thread (so the EDT isn't blocked on the CLI call), then on EDT updates the Config
+     * Profile section, hides the banner, surfaces a confirmation toast, and triggers the
+     * existing two-step {@code openspec update} prompt — but only when the workflow set
+     * actually changed (per {@link WorkflowProfileService#hasChangedSinceLastRefresh}).
+     */
+    private void onImDoneClicked() {
+        if (customizeDoneButton != null) {
+            customizeDoneButton.setEnabled(false);
+            customizeDoneButton.setText("Refreshing…");
+        }
+        WorkflowProfileService service = project.getService(WorkflowProfileService.class);
+        if (service == null) {
+            resetCustomizeBanner();
+            customizeBanner.setVisible(false);
+            return;
+        }
+        // Prime the cache so hasChangedSinceLastRefresh() is meaningful on the next call —
+        // first refresh() with no prior state always returns false.
+        service.getActiveWorkflows();
+
+        ApplicationManager.getApplication().executeOnPooledThread(() -> {
+            try {
+                service.refresh();
+            } catch (Throwable t) {
+                LOG.warn("WorkflowProfileService.refresh() failed", t);
+            }
+            ApplicationManager.getApplication().invokeLater(() -> {
+                String newProfile = service.getActiveProfileName();
+                java.util.Set<String> newWorkflows = service.getActiveWorkflows();
+                boolean changed = service.hasChangedSinceLastRefresh();
+                resetCustomizeBanner();
+                customizeBanner.setVisible(false);
+                refreshConfigProfileSection();
+                if (changed) {
+                    String label = newProfile == null || newProfile.isEmpty() ? "(default)" : newProfile;
+                    OpenSpecNotifier.info(project, "Profile",
+                            "Now on " + label + " · " + newWorkflows.size() + " workflows");
+                    WorkflowProfileSwitchService switchService = project.getService(WorkflowProfileSwitchService.class);
+                    if (switchService != null && newProfile != null) {
+                        switchService.promptAndRunUpdateIfConfirmed(newProfile);
+                    }
+                }
+            });
+        });
+    }
+
+    private void resetCustomizeBanner() {
+        if (customizeDoneButton != null) {
+            customizeDoneButton.setEnabled(true);
+            customizeDoneButton.setText("I'm done");
+        }
+    }
+
+    private NotificationAction aboutProfilesAction() {
+        return NotificationAction.createSimpleExpiring("About profiles…",
+                () -> com.intellij.ide.BrowserUtil.browse(
+                        com.johnnyblabs.openspec.statusbar.OpenSpecProfileStatusBarWidget.DOCS_URL));
     }
 
     /** Renderer for {@link #profileCombo}. Highlights orphan entries in red. */

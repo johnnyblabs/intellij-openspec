@@ -10,6 +10,7 @@ import com.intellij.openapi.wm.ex.ToolWindowManagerListener;
 import com.johnnyblabs.openspec.ai.DirectApiService;
 import com.johnnyblabs.openspec.dialogs.SetupWizardDialog;
 import com.johnnyblabs.openspec.services.CliDetectionService;
+import com.johnnyblabs.openspec.services.WorkflowProfileService;
 import com.johnnyblabs.openspec.settings.OpenSpecSettings;
 import com.intellij.ui.content.Content;
 import com.intellij.ui.content.ContentFactory;
@@ -33,7 +34,9 @@ public class OpenSpecToolWindowFactory implements ToolWindowFactory, DumbAware {
             createNormalContent(project, toolWindow);
         }
 
-        // Re-detect CLI when the tool window is shown (throttled)
+        // Re-detect CLI when the tool window is shown (throttled). Also runs a D3 fallback
+        // profile refresh so any drift from a manual CLI switch or terminal customize
+        // handshake the user dismissed without confirming is picked up on next focus.
         project.getMessageBus().connect().subscribe(ToolWindowManagerListener.TOPIC, new ToolWindowManagerListener() {
             @Override
             public void toolWindowShown(@NotNull ToolWindow tw) {
@@ -50,6 +53,14 @@ public class OpenSpecToolWindowFactory implements ToolWindowFactory, DumbAware {
                                 }
                             }
                         });
+                    }
+                    WorkflowProfileService profileService = project.getService(WorkflowProfileService.class);
+                    if (profileService != null) {
+                        try {
+                            profileService.refresh();
+                        } catch (Throwable ignored) {
+                            // Best-effort; silent failure is acceptable for fallback triggers.
+                        }
                     }
                 });
             }

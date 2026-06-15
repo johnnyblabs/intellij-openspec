@@ -86,6 +86,19 @@ public final class OpenSpecProjectService {
                 aiDetection.detect();
             }
 
+            // D3 fallback refresh trigger: a fresh project open is the most reliable
+            // signal that cached workflow profile state may have drifted from CLI truth
+            // (user customized via terminal between sessions, switched profiles in
+            // another window, etc.).
+            WorkflowProfileService profileService = project.getService(WorkflowProfileService.class);
+            if (profileService != null) {
+                try {
+                    profileService.refresh();
+                } catch (Throwable ignored) {
+                    // Best-effort; silent failure is acceptable for fallback triggers.
+                }
+            }
+
             return Unit.INSTANCE;
         }
     }

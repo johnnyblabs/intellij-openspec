@@ -1,10 +1,12 @@
 package com.johnnyblabs.openspec.settings;
 
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.project.Project;
 import com.johnnyblabs.openspec.ai.AiCredentialStore;
 import com.johnnyblabs.openspec.ai.AiProvider;
+import com.johnnyblabs.openspec.services.WorkflowProfileService;
 import com.johnnyblabs.openspec.services.WorkflowProfileSwitchService;
 import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.Nullable;
@@ -88,6 +90,11 @@ public class OpenSpecConfigurable implements Configurable {
         if (apiKey != null && !apiKey.isBlank() && !apiKey.equals("\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022")) {
             AiCredentialStore.storeApiKey(provider, apiKey);
         }
+
+        // D3 fallback refresh: a Settings apply is a likely moment for the user's CLI
+        // state to have drifted from cached state (manual CLI switch in another terminal,
+        // or a customize handshake the user closed before clicking "I'm done").
+        scheduleProfileRefresh();
     }
 
     /**
@@ -128,6 +135,31 @@ public class OpenSpecConfigurable implements Configurable {
         panel.setAiModel(settings.getAiModel());
         panel.setDefaultSchema(settings.getDefaultSchema());
 
+        // D3 fallback refresh: catches the case where the user customized via the CLI
+        // (or terminal handshake), closed Settings without confirming, and reopens.
+        scheduleProfileRefresh();
+    }
+
+    /**
+     * D3 fallback refresh trigger. Runs {@code WorkflowProfileService.refresh()} on a
+     * pooled thread so the EDT isn't blocked, then re-renders the Config Profile section
+     * on EDT once the CLI call returns.
+     */
+    private void scheduleProfileRefresh() {
+        WorkflowProfileService service = project.getService(WorkflowProfileService.class);
+        if (service == null) return;
+        ApplicationManager.getApplication().executeOnPooledThread(() -> {
+            try {
+                service.refresh();
+            } catch (Throwable t) {
+                LOG.info("Profile refresh failed", t);
+            }
+            ApplicationManager.getApplication().invokeLater(() -> {
+                if (panel != null) {
+                    panel.refreshConfigProfileSection();
+                }
+            });
+        });
     }
 
     @Override

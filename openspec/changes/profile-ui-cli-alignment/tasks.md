@@ -8,12 +8,12 @@
 - [x] 2.3 ~~Update `corePreset_rendersWithFiveEssentials` assertion~~ → folded into D7 (landed together): renderer no longer enumerates workflow names; test renamed `corePreset_rendersWithGenericHint` and now asserts the absence of `propose/explore/apply/sync/archive` to lock in the principle.
 
 ## 3. D3 — "Customize workflows…" button + IntelliJ Terminal launcher
-- [ ] 3.1 Add "Customize workflows…" button to `OpenSpecSettingsPanel` (secondary/link style)
-- [ ] 3.2 Wire button to open IntelliJ Terminal tool window + run `openspec config profile`
-- [ ] 3.3 Render non-modal "I'm done" banner; on click → synchronous `WorkflowProfileService.refresh()`
-- [ ] 3.4 Add fallback refresh triggers: project open, Settings reset/apply, status bar popup, tool window focus
-- [ ] 3.5 Implement terminal-unavailable fallback (clipboard copy + notification with docs link)
-- [ ] 3.6 Trigger existing two-step prompt for `openspec update` after refresh
+- [x] 3.1 Add "Customize workflows…" button to `OpenSpecSettingsPanel` (right of combo on the same row; default `JButton` — link-styling deferred since IDE-conventional placement next to the affordance reads as clearly secondary).
+- [x] 3.2 New `OpenSpecTerminalLauncher` helper wraps `TerminalToolWindowManager.createShellWidget(...)` (post-deprecation API) with try/catch on `Throwable` so a stripped IDE missing the terminal plugin falls back gracefully. `bundledPlugin("org.jetbrains.plugins.terminal")` added to `build.gradle.kts` for compile-time access. Panel uses an injectable `TerminalLauncher` functional interface so tests can stub the outcome.
+- [x] 3.3 Non-modal banner in the right column below the combo with "I'm done" + "Cancel" buttons. "I'm done" runs `WorkflowProfileService.refresh()` on a pooled thread (not synchronous on EDT — design's "synchronous" was a UX statement, not threading; blocking EDT on a CLI call would be wrong), then on EDT hides the banner, calls `panel.refreshConfigProfileSection()`, surfaces a "Now on `X · N workflows`" toast.
+- [x] 3.4 Fallback refresh triggers landed across four surfaces: `OpenSpecProjectService$StartupDetection.execute` (project open), `OpenSpecConfigurable.scheduleProfileRefresh` called from `reset()` + `apply()`, `OpenSpecProfileStatusBarWidget.getPopup` (popup open), `OpenSpecToolWindowFactory` listener (tool window shown). All run refresh on `executeOnPooledThread` with silent `Throwable` swallow.
+- [x] 3.5 Terminal-unavailable fallback: clipboard copy via `Toolkit.getSystemClipboard()` + warning notification on `OpenSpec.System` group with an "About profiles…" action linking to `DOCS_URL`. Notification body comes from `OpenSpecTerminalLauncher.fallbackMessage(command)`.
+- [x] 3.6 After refresh, gated on `service.hasChangedSinceLastRefresh()`: calls `WorkflowProfileSwitchService.promptAndRunUpdateIfConfirmed(activeProfileName)`. Cache is primed via `service.getActiveWorkflows()` before `refresh()` so the diff flag is meaningful — first-call always-false semantics would otherwise swallow real changes.
 
 ## 4. D4 — Static discovery cue, no `EXPANDED_WORKFLOWS`
 - [x] 4.1 Remove `EXPANDED_WORKFLOWS` constant and `AVAILABLE_IN_CUSTOM_HEADER` from `OpenSpecProfileStatusBarWidget`
@@ -30,7 +30,7 @@
 - [x] 6.3 Update `OpenSpecConfigurable.isModified` / `apply` to honor the orphan gate
 
 ## 7. D7 — ContextHelpLabel copy rewrite (no workflow enumeration)
-- [x] 7.1 Update `OpenSpecSettingsPanel` profile-help copy to drop workflow names (rewritten to general framing + CLI-direct guidance; references to a "Customize workflows…" button deferred until D3 ships)
+- [x] 7.1 Update `OpenSpecSettingsPanel` profile-help copy to drop workflow names (rewritten to general framing + CLI-direct guidance; D3 follow-up applied: copy now reads "click \"Customize workflows…\"" instead of the "run `openspec config profile` in a terminal" stopgap, matching the affordance the button delivers)
 - [x] 7.2 Add docs link affordance in the ContextHelpLabel (already present via `ContextHelpLabel.createWithLink` → `OpenSpecProfileStatusBarWidget.DOCS_URL` — page lives on GitHub `main`)
 - [x] 7.3 Update test assertion referencing the old enumerated copy (handled under 2.3 — same renderer text covered both)
 
