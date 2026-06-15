@@ -136,7 +136,7 @@ public class OpenSpecSettingsPanel {
         cliPathRow.add(detectButton);
 
         cliStatusLabel = new JBLabel("Checking...");
-        versionCombo = new JComboBox<>(new String[]{"", "1.0.0", "1.1.0", "1.2.0"});
+        versionCombo = new JComboBox<>(new String[]{"", "1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.4.0"});
         versionCombo.setEditable(true);
 
         JPanel cliSection = FormBuilder.createFormBuilder()

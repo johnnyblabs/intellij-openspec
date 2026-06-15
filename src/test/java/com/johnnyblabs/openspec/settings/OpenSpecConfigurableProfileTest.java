@@ -4,9 +4,11 @@ import com.intellij.openapi.project.Project;
 import com.johnnyblabs.openspec.services.WorkflowProfileSwitchService;
 import com.johnnyblabs.openspec.services.WorkflowProfileSwitchService.Outcome;
 import com.johnnyblabs.openspec.services.WorkflowProfileSwitchService.SwitchResult;
+import com.johnnyblabs.openspec.util.OpenSpecNotifier;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.MockedStatic;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -45,16 +47,20 @@ class OpenSpecConfigurableProfileTest {
         }
 
         @Test
-        void cliFailureOutcome_revertsPanelToOldProfile() throws Exception {
+        void cliFailureOutcome_revertsPanelToOldProfileAndWarns() throws Exception {
             when(project.getService(WorkflowProfileSwitchService.class)).thenReturn(switchService);
             when(switchService.switchProfile("custom"))
                     .thenReturn(new SwitchResult(Outcome.CLI_FAILURE, "Unknown profile"));
 
-            invokeApplyProfileChange("custom", "core");
+            try (MockedStatic<OpenSpecNotifier> notifier = mockStatic(OpenSpecNotifier.class)) {
+                invokeApplyProfileChange("custom", "core");
 
-            verify(panel).setProfile("core");
-            verify(panel, never()).refreshConfigProfileSection();
-            verify(switchService, never()).promptAndRunUpdateIfConfirmed(anyString());
+                verify(panel).setProfile("core");
+                verify(panel, never()).refreshConfigProfileSection();
+                verify(switchService, never()).promptAndRunUpdateIfConfirmed(anyString());
+                notifier.verify(() -> OpenSpecNotifier.warn(eq(project), eq("Profile Switch"),
+                        contains("Unknown profile")));
+            }
         }
 
         @Test

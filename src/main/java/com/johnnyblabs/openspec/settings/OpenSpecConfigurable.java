@@ -117,7 +117,13 @@ public class OpenSpecConfigurable implements Configurable {
                 switchService.promptAndRunUpdateIfConfirmed(newProfile);
             }
             case CLI_UNAVAILABLE -> panel.refreshConfigProfileSection();
-            case CLI_FAILURE -> panel.setProfile(oldProfile);
+            case CLI_FAILURE -> {
+                panel.setProfile(oldProfile);
+                if (result.error() != null) {
+                    com.johnnyblabs.openspec.util.OpenSpecNotifier.warn(project, "Profile Switch",
+                            "Failed to apply profile: " + result.error());
+                }
+            }
         }
     }
 
