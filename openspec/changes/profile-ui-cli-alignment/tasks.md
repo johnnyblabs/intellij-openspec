@@ -35,8 +35,8 @@
 - [x] 7.3 Update test assertion referencing the old enumerated copy (handled under 2.3 — same renderer text covered both)
 
 ## 8. Spec sync
-- [ ] 8.1 Update `openspec/changes/profile-ui-cli-alignment/specs/` delta specs to reflect implemented decisions
-- [ ] 8.2 Run `openspec validate --change profile-ui-cli-alignment`
+- [x] 8.1 Update `openspec/changes/profile-ui-cli-alignment/specs/` delta specs to reflect implemented decisions: Customize button styling reframed (placement-conveys-secondary, link-style not required); "synchronous refresh" scenario renamed to "inline refresh" with EDT-off allowance; new scenario codifying the `hasChangedSinceLastRefresh()` gate on the two-step prompt (D3.6); implicit-refresh scenario expanded to enumerate all four fallback surfaces (D3.4); orphan recovery copy updated to match the shipped JBLabel string.
+- [x] 8.2 Run `openspec validate profile-ui-cli-alignment --strict` — passes (`Change 'profile-ui-cli-alignment' is valid`). Note: CLI 1.4.1 uses positional argument, not `--change` flag.
 
 ## 9. Verification
 - [ ] 9.1 `./gradlew test` — all tests pass

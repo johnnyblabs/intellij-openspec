@@ -22,7 +22,7 @@ When OpenSpecSettings holds a `profile` value not in the CLI-accepted preset lis
 
 #### Scenario: Orphan entry shows recovery guidance
 - **WHEN** the workflow profile combo's selected entry is an orphan (e.g., a legacy `"custom"` value)
-- **THEN** the Settings panel SHALL display inline help text near the combo reading "This entry is from a previous plugin version. Pick `core` to revert, or click Customize workflows… to define a workflow set."
+- **THEN** the Settings panel SHALL display inline help text near the combo guiding the user to a recovery action (the implemented copy: *"This entry is from a previous plugin version. Pick \"core\" to switch to the supported preset."*)
 
 #### Scenario: Apply disabled while orphan selected
 - **WHEN** the workflow profile combo's selected entry is an orphan
@@ -30,21 +30,25 @@ When OpenSpecSettings holds a `profile` value not in the CLI-accepted preset lis
 
 ### Requirement: Customize workflows affordance
 
-The Settings panel SHALL provide a "Customize workflows…" control adjacent to the workflow profile combo, styled as a secondary/link-style button (distinct from primary action buttons like Apply). Activating it SHALL launch the OpenSpec CLI's interactive workflow picker (`openspec config profile` with no arguments) in the IntelliJ Terminal tool window. The plugin SHALL NOT mirror the universe of available workflows in plugin-side code — workflow management is delegated wholly to the CLI's interactive picker.
+The Settings panel SHALL provide a "Customize workflows…" control adjacent to the workflow profile combo on the same row. Its placement next to the affordance is what conveys secondary status — explicit link styling is not required so long as the button is not visually competing with the dialog's primary action (Apply). Activating it SHALL launch the OpenSpec CLI's interactive workflow picker (`openspec config profile` with no arguments) in the IntelliJ Terminal tool window. The plugin SHALL NOT mirror the universe of available workflows in plugin-side code — workflow management is delegated wholly to the CLI's interactive picker.
 
-After launching the picker, the Settings panel SHALL display a non-modal completion banner with an "I'm done" action that triggers `WorkflowProfileService.refresh()` and updates the combo and Config Profile section inline. A confirmation toast SHALL surface the new active profile and workflow count after refresh.
+After launching the picker, the Settings panel SHALL display a non-modal completion banner with an "I'm done" action. Activating "I'm done" SHALL trigger `WorkflowProfileService.refresh()` and update the combo and Config Profile section inline. The refresh MAY run off the EDT (a CLI call must not block the UI); "inline" describes the UX (no separate dialog, no full panel reload), not the threading. A confirmation toast SHALL surface the new active profile and workflow count after refresh.
 
 #### Scenario: Customize button launches CLI picker
 - **WHEN** the user clicks "Customize workflows…" in OpenSpec Settings and the IntelliJ Terminal tool window is available
 - **THEN** the Terminal tool window SHALL open or focus, `openspec config profile` SHALL be issued in a terminal session, and the Settings panel SHALL remain open with a non-modal banner reading "Waiting for picker — click I'm done when finished."
 
-#### Scenario: I'm done triggers synchronous refresh
+#### Scenario: I'm done triggers inline refresh
 - **WHEN** the user clicks "I'm done" in the post-launch banner
-- **THEN** the plugin SHALL call `WorkflowProfileService.refresh()`, update the combo and Config Profile section inline, and surface a confirmation toast such as "Now on `custom · 7 workflows`."
+- **THEN** the plugin SHALL call `WorkflowProfileService.refresh()` (off the EDT), update the combo and Config Profile section inline once the call returns, and surface a confirmation toast such as "Now on `custom · 7 workflows`."
+
+#### Scenario: Two-step update prompt fires only when the set actually changed
+- **WHEN** the post-"I'm done" refresh completes and `WorkflowProfileService.hasChangedSinceLastRefresh()` reports the active workflow set differs from the previously cached set
+- **THEN** the plugin SHALL invoke `WorkflowProfileSwitchService.promptAndRunUpdateIfConfirmed(activeProfileName)` so the existing two-step prompt offers `openspec update`; if the set is unchanged, no prompt SHALL fire
 
 #### Scenario: Implicit refresh on Settings interaction
-- **WHEN** the user reopens OpenSpec Settings or clicks the status bar profile widget after using the customize picker without clicking "I'm done"
-- **THEN** the plugin SHALL refresh `WorkflowProfileService` so the displayed profile name and active workflow list reflect the user's latest CLI-side selection (fallback path when the user dismisses the banner)
+- **WHEN** the user reopens OpenSpec Settings, opens the status bar profile widget popup, brings up the OpenSpec tool window, applies Settings, or reopens the project after using the CLI picker without clicking "I'm done"
+- **THEN** the plugin SHALL refresh `WorkflowProfileService` (best-effort, off the EDT) so the displayed profile name and active workflow list reflect the user's latest CLI-side selection — these surfaces are the fallback path when the user dismisses the inline banner
 
 #### Scenario: Terminal tool window unavailable
 - **WHEN** the user clicks "Customize workflows…" but the IntelliJ Terminal tool window is unavailable (plugin disabled or unsupported IDE variant)
