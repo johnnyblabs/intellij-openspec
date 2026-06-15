@@ -16,9 +16,9 @@
 - [ ] 3.6 Trigger existing two-step prompt for `openspec update` after refresh
 
 ## 4. D4 — Static discovery cue, no `EXPANDED_WORKFLOWS`
-- [ ] 4.1 Remove `EXPANDED_WORKFLOWS` constant and `AVAILABLE_IN_CUSTOM_HEADER` from `OpenSpecProfileStatusBarWidget`
-- [ ] 4.2 Replace popup reveal with the static "Run Customize workflows… to see what's available" line
-- [ ] 4.3 Relabel active item: `● custom (your workflow set) · N workflows (active)`
+- [x] 4.1 Remove `EXPANDED_WORKFLOWS` constant and `AVAILABLE_IN_CUSTOM_HEADER` from `OpenSpecProfileStatusBarWidget`
+- [x] 4.2 Replace popup reveal with a static cue (using "Run `openspec config profile` in a terminal" until D3 ships the button-based wording the design specifies)
+- [x] 4.3 Relabel active item: `● custom (your workflow set) · N workflows (active)`
 
 ## 5. D5 — Commit `Workflow-Profiles.md` to `main`
 - [ ] 5.1 Update `scripts/docs/wiki/Workflow-Profiles.md` content to reflect D2 (no `custom` combo entry, Customize affordance noted)

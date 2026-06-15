@@ -45,6 +45,59 @@ class OpenSpecProfileStatusBarWidgetTest {
     }
 
     @Nested
+    class FormatActiveItem {
+
+        @Test
+        void corePreset_omitsCount_andYourWorkflowSetQualifier() {
+            // Core is a fixed preset — no per-user variation to qualify.
+            assertEquals("● core  (active)",
+                    OpenSpecProfileStatusBarWidget.formatActiveItem("core", 5));
+        }
+
+        @Test
+        void customProfile_addsYourWorkflowSetQualifier() {
+            // D4: "custom" gets the "(your workflow set)" qualifier to defuse the
+            // asymmetry against the Settings combo, which no longer offers "custom"
+            // as a switchable entry. The user sees "custom" as the active label
+            // because the CLI reports it when workflows diverge from any named
+            // preset — not because they picked it.
+            assertEquals("● custom (your workflow set) · 8 workflows  (active)",
+                    OpenSpecProfileStatusBarWidget.formatActiveItem("custom", 8));
+        }
+    }
+
+    @Nested
+    class StaticDiscoveryCue {
+
+        @Test
+        void cue_doesNotEnumerateWorkflowNames() {
+            // D4 / D7 principle: no plugin-side enumeration of specific workflows.
+            // The cue stays category-level only; workflow names live in the docs.
+            String cue = OpenSpecProfileStatusBarWidget.STATIC_DISCOVERY_CUE;
+            assertFalse(cue.contains("propose"));
+            assertFalse(cue.contains("explore"));
+            assertFalse(cue.contains("apply"));
+            assertFalse(cue.contains("sync"));
+            assertFalse(cue.contains("archive"));
+            assertFalse(cue.contains("verify"));
+            assertFalse(cue.contains("ff"));
+            assertFalse(cue.contains("continue"));
+            assertFalse(cue.contains("bulk-archive"));
+            assertFalse(cue.contains("onboard"));
+            assertFalse(cue.contains("new"));
+        }
+
+        @Test
+        void cue_pointsAtCliPicker() {
+            // The cue's job is to direct the user to the CLI's interactive picker.
+            // Until D3 ships a "Customize workflows…" button, the cue uses the
+            // terminal-direct command.
+            String cue = OpenSpecProfileStatusBarWidget.STATIC_DISCOVERY_CUE;
+            assertTrue(cue.contains("openspec config profile"));
+        }
+    }
+
+    @Nested
     class FactoryAvailability {
 
         @Mock

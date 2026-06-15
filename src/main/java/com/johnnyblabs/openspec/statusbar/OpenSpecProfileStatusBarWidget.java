@@ -18,7 +18,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -28,28 +27,33 @@ import java.util.Set;
  *
  * <p>Label format:
  * <ul>
- *   <li>{@code OpenSpec: core} — fixed core profile (5 workflows)</li>
- *   <li>{@code OpenSpec: custom · N workflows} — variable custom profile</li>
+ *   <li>{@code OpenSpec: core} — fixed preset</li>
+ *   <li>{@code OpenSpec: custom · N workflows} — variable workflow set</li>
  *   <li>{@code OpenSpec: core (fallback)} — CLI unavailable</li>
  * </ul>
  *
  * <p>Click opens a list popup with: the active profile (selected), the other preset,
- * a "Available in custom" reveal listing workflows the user would gain by switching,
- * an "Edit in Settings…" link, and an "About profiles" docs link.
+ * a static discovery cue pointing at the CLI's workflow picker, an "Edit in Settings…"
+ * link, and an "About profiles" docs link.
  */
 public final class OpenSpecProfileStatusBarWidget implements StatusBarWidget, StatusBarWidget.MultipleTextValuesPresentation {
 
     public static final String ID = "OpenSpec.ProfileWidget";
 
-    /** Workflows that the custom profile may add beyond core. Source: OpenSpec 1.2.0+ docs. */
-    static final Set<String> EXPANDED_WORKFLOWS =
-            Set.of("new", "continue", "ff", "verify", "bulk-archive", "onboard");
-
     public static final String DOCS_URL =
             "https://github.com/johnnyblabs/intellij-openspec/blob/main/scripts/docs/wiki/Workflow-Profiles.md";
     private static final String EDIT_IN_SETTINGS = "Edit in Settings…";
     private static final String ABOUT_PROFILES = "About profiles…";
-    private static final String AVAILABLE_IN_CUSTOM_HEADER = "Available in custom:";
+
+    /**
+     * Static discovery cue that replaces the older hardcoded {@code "Available in custom: …"}
+     * workflow enumeration. The plugin does not — and cannot reliably — enumerate the
+     * full workflow universe; the CLI's interactive picker is the only authoritative
+     * source. Specific workflow names live exclusively in the docs page linked via
+     * {@link #DOCS_URL}.
+     */
+    static final String STATIC_DISCOVERY_CUE =
+            "Run `openspec config profile` in a terminal to see what's available";
 
     private final Project project;
     private StatusBar statusBar;
@@ -149,14 +153,7 @@ public final class OpenSpecProfileStatusBarWidget implements StatusBarWidget, St
         items.add(formatActiveItem(activeProfile, activeWorkflows.size()));
         String otherPreset = "core".equals(activeProfile) ? "custom" : "core";
         items.add(formatInactiveItem(otherPreset));
-
-        if ("core".equals(activeProfile)) {
-            Set<String> diff = new LinkedHashSet<>(EXPANDED_WORKFLOWS);
-            diff.removeAll(activeWorkflows);
-            if (!diff.isEmpty()) {
-                items.add(AVAILABLE_IN_CUSTOM_HEADER + " " + String.join(", ", diff));
-            }
-        }
+        items.add(STATIC_DISCOVERY_CUE);
 
         items.add(EDIT_IN_SETTINGS);
         items.add(ABOUT_PROFILES);
@@ -164,11 +161,21 @@ public final class OpenSpecProfileStatusBarWidget implements StatusBarWidget, St
         return new PopupItemStep(items, activeProfile);
     }
 
-    private static String formatActiveItem(String name, int workflowCount) {
+    /**
+     * Active-item label. For {@code core}, the name alone is sufficient — it's a
+     * fixed preset with no per-user variation. For {@code custom}, the
+     * {@code "(your workflow set)"} qualifier defuses the asymmetry against the
+     * Settings combo (which no longer offers {@code custom} as a switchable entry):
+     * the popup shows {@code custom} as the active label because the CLI's
+     * {@code profile:} field reports it when workflows diverge from any named
+     * preset, not because the user can pick it from a list. Package-private for
+     * unit testing.
+     */
+    static String formatActiveItem(String name, int workflowCount) {
         if ("core".equals(name)) {
             return "● " + name + "  (active)";
         }
-        return "● " + name + " · " + workflowCount + " workflows  (active)";
+        return "● " + name + " (your workflow set) · " + workflowCount + " workflows  (active)";
     }
 
     private static String formatInactiveItem(String name) {
@@ -196,7 +203,7 @@ public final class OpenSpecProfileStatusBarWidget implements StatusBarWidget, St
 
         @Override
         public @Nullable ListSeparator getSeparatorAbove(String value) {
-            if (value.startsWith(AVAILABLE_IN_CUSTOM_HEADER) || EDIT_IN_SETTINGS.equals(value)) {
+            if (STATIC_DISCOVERY_CUE.equals(value) || EDIT_IN_SETTINGS.equals(value)) {
                 return new ListSeparator();
             }
             return null;
@@ -204,8 +211,8 @@ public final class OpenSpecProfileStatusBarWidget implements StatusBarWidget, St
 
         @Override
         public boolean isSelectable(String value) {
-            // The "Available in custom: …" reveal is informational, not selectable.
-            return !value.startsWith(AVAILABLE_IN_CUSTOM_HEADER);
+            // The static discovery cue is informational, not selectable.
+            return !STATIC_DISCOVERY_CUE.equals(value);
         }
 
         @Override
