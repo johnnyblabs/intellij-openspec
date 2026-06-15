@@ -39,7 +39,7 @@
 - [x] 8.2 Run `openspec validate profile-ui-cli-alignment --strict` — passes (`Change 'profile-ui-cli-alignment' is valid`). Note: CLI 1.4.1 uses positional argument, not `--change` flag.
 
 ## 9. Verification
-- [ ] 9.1 `./gradlew test` — all tests pass
+- [x] 9.1 `./gradlew test` — 847 tests across 152 suites pass, no failures/errors/skips.
 - [ ] 9.2 Sandbox: Sync Specs action enabled in core profile (D1 regression closed)
 - [ ] 9.3 Sandbox: workflow profile combo lists only "(default)" and "core"; orphan shows recovery help; Apply disabled while orphan selected
 - [ ] 9.4 Sandbox: "Customize workflows…" opens IntelliJ Terminal with `openspec config profile`; "I'm done" refreshes inline
