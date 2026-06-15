@@ -20,8 +20,8 @@ import java.util.List;
 
 public class OpenSpecSyncAction extends OpenSpecBaseAction {
 
-    @Override
-    protected String getWorkflowId() { return "sync"; }
+    // No getWorkflowId() override — sync is a view/diff utility (like Validate, List, Refresh)
+    // and not appropriate to gate by workflow profile. See profile-ui-cli-alignment design D1.
 
     @Override
     public void actionPerformed(@NotNull AnActionEvent e) {
