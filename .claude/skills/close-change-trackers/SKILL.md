@@ -23,16 +23,30 @@ Close the Forgejo issue and move the Plane work item to Done for an archived cha
 
    If the proposal doesn't exist, report and stop — there's nothing to close.
 
-2. **Parse tracker IDs from `## References`**
+2. **Parse tracker IDs**
+
+   Primary source — the gitignored `.tracking.yaml` sidecar written by `mirror-change-trackers`:
 
    ```bash
-   FORGEJO_ISSUE=$(grep -oE 'Forgejo:\s*johnb/intellij-openspec#[0-9]+' "$PROPOSAL" | grep -oE '[0-9]+$' | head -1)
-   PLANE_WORK_ITEM=$(grep -oE 'Plane:[^`]*`[a-f0-9-]{36}`' "$PROPOSAL" | grep -oE '[a-f0-9-]{36}' | head -1)
+   TRACKING=openspec/changes/archive/<archive-dir>/.tracking.yaml
+
+   if [[ -f "$TRACKING" ]]; then
+       FORGEJO_ISSUE=$(grep -E '^\s*issue:' "$TRACKING" | grep -oE '[0-9]+' | head -1)
+       PLANE_WORK_ITEM=$(grep -E '^\s*id:\s*[a-f0-9-]{36}' "$TRACKING" | grep -oE '[a-f0-9-]{36}' | head -1)
+   fi
    ```
 
-   **Backwards compat:** if no `## References` section exists, check the legacy `.openspec.yaml` for an embedded `tracking:` block — log one line that the change predates the convention.
+   **Fallback for historical archives** (pre-2026-06-14, before the sidecar convention) — parse `## References` in `proposal.md`:
 
-   **If no IDs found:** skip silently. The change may pre-date tracker mirroring entirely.
+   ```bash
+   if [[ -z "$FORGEJO_ISSUE" && -z "$PLANE_WORK_ITEM" ]]; then
+       PROPOSAL=openspec/changes/archive/<archive-dir>/proposal.md
+       FORGEJO_ISSUE=$(grep -oE 'Forgejo:\s*johnb/intellij-openspec#[0-9]+' "$PROPOSAL" | grep -oE '[0-9]+$' | head -1)
+       PLANE_WORK_ITEM=$(grep -oE 'Plane:[^`]*`[a-f0-9-]{36}`' "$PROPOSAL" | grep -oE '[a-f0-9-]{36}' | head -1)
+   fi
+   ```
+
+   **If no IDs found in either source:** skip silently. The change may pre-date tracker mirroring entirely.
 
 3. **Check for credentials**
 

@@ -19,11 +19,12 @@ Mirror an OpenSpec change to its tracker shadow on Forgejo + Plane in a single M
 
    ```bash
    PROPOSAL=openspec/changes/<name>/proposal.md
+   TRACKING=openspec/changes/<name>/.tracking.yaml
    ```
 
    Pull the first 1–3 lines of the **## Why** or **## What** section for the Forgejo issue body. Just enough that someone glancing at the Forgejo issue knows what the change is about; the proposal itself is the source of truth.
 
-   **If `## References` already exists** with a `Forgejo:` line: the change is already mirrored. Report the existing IDs and stop — do not double-mirror.
+   **If `.tracking.yaml` already exists** in the change directory: the change is already mirrored. Report the existing IDs and stop — do not double-mirror.
 
 3. **Detect upstream GitHub reference (optional)**
 
@@ -68,20 +69,28 @@ Mirror an OpenSpec change to its tracker shadow on Forgejo + Plane in a single M
    - If `forgejo` returns `{"error": ...}`: report the error, stop. No Plane card was created.
    - If `forgejo` succeeded but `plane` returns `{"error": ...}`: report partial success, surface `forgejo_url_for_manual_link` so the user can manually create the Plane card. Still proceed to step 6 with just the Forgejo ID.
 
-6. **Append References to proposal.md**
+6. **Write `.tracking.yaml` sidecar**
 
-   Append (do not overwrite) at the bottom of `proposal.md`:
+   Write the tracker IDs to `openspec/changes/<name>/.tracking.yaml`. The file is gitignored — it stays local-only and never enters version control:
 
-   ```markdown
-
-   ## References
-
-   - GitHub: <org>/<repo>#<num>     ← only if detected in step 3
-   - Forgejo: johnb/intellij-openspec#<ISSUE_NUMBER>
-   - Plane: openspec/issue/<PLANE_IDENTIFIER> (`<PLANE_UUID>`)
+   ```yaml
+   forgejo:
+     repo: johnb/intellij-openspec
+     issue: <ISSUE_NUMBER>
+   plane:
+     project: OSPEC
+     identifier: <PLANE_IDENTIFIER>
+     id: <PLANE_UUID>
+   # optional — only if detected in step 3:
+   github:
+     ref: <org>/<repo>#<num>
    ```
 
-   This is the OpenSpec community convention. Tracker IDs live in `proposal.md`, never in `.openspec.yaml` (its Zod schema only accepts `schema:` + `created:` and silently strips unknown keys).
+   The sidecar travels with the change directory: when `openspec-archive-change` moves `openspec/changes/<name>/` to `openspec/changes/archive/YYYY-MM-DD-<name>/`, `.tracking.yaml` rides along. `close-change-trackers` reads it from the archived location.
+
+   **Why a gitignored sidecar instead of `proposal.md` `## References`:** the repo pushes to a public GitHub mirror. Forgejo issue numbers and Plane UUIDs in `proposal.md` leak into every commit. The sidecar keeps the integration but isolates the leak. See CLAUDE.md "Tracker IDs go in a gitignored `.tracking.yaml` sidecar."
+
+   **Why not `.openspec.yaml`:** its upstream Zod schema only accepts `schema:` + `created:` and silently strips unknown keys.
 
 7. **Report**
 
@@ -91,7 +100,8 @@ Mirror an OpenSpec change to its tracker shadow on Forgejo + Plane in a single M
 
 **Guardrails**
 
-- Never double-mirror — if `## References` already has a `Forgejo:` line, stop with a report of the existing IDs.
+- Never double-mirror — if `.tracking.yaml` already exists, stop with a report of the existing IDs.
 - Never modify `.openspec.yaml` — its schema strips unknown keys silently.
-- The MCP call replaces the entire inline curl plumbing that used to be in the openspec-* skills. If the MCP server is unreachable (no homelab on the network, server crashed), report "Tracker mirror skipped — homelab MCP unreachable" and exit cleanly. The change itself is still valid; the mirror is a sidecar.
+- Never write tracker IDs into `proposal.md` — that file is published to the public GitHub mirror. Tracker IDs go in the gitignored sidecar only.
+- The MCP call replaces the entire inline curl plumbing that used to be in the openspec-* skills. If the MCP server is unreachable, report "Tracker mirror skipped — homelab MCP unreachable" and exit cleanly. The change itself is still valid; the mirror is a sidecar.
 - This skill is project-level and custom-named. `openspec update` will NOT touch it. That's the point.
