@@ -136,7 +136,7 @@ public class OpenSpecSettingsPanel {
         cliPathRow.add(detectButton);
 
         cliStatusLabel = new JBLabel("Checking...");
-        versionCombo = new JComboBox<>(new String[]{"", "1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.4.0"});
+        versionCombo = new JComboBox<>(new String[]{"", "1.3.0", "1.4.0"});
         versionCombo.setEditable(true);
 
         JPanel cliSection = FormBuilder.createFormBuilder()
@@ -403,7 +403,7 @@ public class OpenSpecSettingsPanel {
         buttonRow.add(newSchemaButton);
         buttonRow.add(refreshSchemasButton);
 
-        schemaUnsupportedLabel = new JBLabel("Schema management requires OpenSpec CLI v1.2.0+");
+        schemaUnsupportedLabel = new JBLabel("Schema management requires OpenSpec CLI v1.3.0+");
         schemaUnsupportedLabel.setForeground(new JBColor(new Color(180, 80, 0), new Color(230, 160, 80)));
 
         schemasContentPanel = new JPanel();
