@@ -53,13 +53,22 @@ public class OpenSpecSettingsPanel {
      */
     private final JComboBox<String> profileCombo;
     private final JBLabel profileCliUnavailableLabel;
+    private final JBLabel profileOrphanHelpLabel;
     private final JSpinner cliTimeoutSpinner;
     private final JBCheckBox autoRefreshCheckbox;
     private final JBCheckBox strictValidationCheckbox;
 
-    /** OpenSpec 1.2.0+ workflow profile presets. Empty string means "use CLI's active profile." */
+    /**
+     * Workflow profile presets the combo offers as switch targets. Empty string means
+     * "use CLI's active profile." Only CLI-accepted presets are listed — selecting an
+     * entry triggers {@code openspec config profile <preset>}, and unaccepted values
+     * would fail on apply. {@code "custom"} is intentionally absent: the CLI rejects
+     * {@code openspec config profile custom} ("Unknown profile preset 'custom'. Available
+     * presets: core"). A persisted legacy {@code "custom"} value renders as an orphan
+     * (see {@link #setProfile} + {@link WorkflowProfileRenderer}).
+     */
     static final java.util.List<String> WORKFLOW_PROFILE_PRESETS =
-            java.util.List.of("", "core", "custom");
+            java.util.List.of("", "core");
 
     // Direct API section
     private JComboBox<String> aiProviderCombo;
@@ -152,6 +161,15 @@ public class OpenSpecSettingsPanel {
         profileCliUnavailableLabel.setForeground(JBUI.CurrentTheme.ContextHelp.FOREGROUND);
         profileCliUnavailableLabel.setVisible(false);
 
+        // Inline recovery help shown when an orphan (legacy persisted preset no longer
+        // accepted by the CLI, e.g. "custom" from plugin v0.2.10) is the selected combo
+        // value. Paired with Apply being disabled while the orphan is selected — see
+        // OpenSpecConfigurable.isModified().
+        profileOrphanHelpLabel = new JBLabel(
+                "This entry is from a previous plugin version. Pick \"core\" to switch to the supported preset.");
+        profileOrphanHelpLabel.setForeground(JBUI.CurrentTheme.ContextHelp.FOREGROUND);
+        profileOrphanHelpLabel.setVisible(false);
+
         cliTimeoutSpinner = new JSpinner(new SpinnerNumberModel(30, 1, 3600, 1));
 
         autoRefreshCheckbox = new JBCheckBox("Auto-refresh tool window on file changes");
@@ -160,6 +178,7 @@ public class OpenSpecSettingsPanel {
         JPanel generalSection = FormBuilder.createFormBuilder()
                 .addLabeledComponent(profileLabelPanel, profileCombo)
                 .addComponentToRightColumn(profileCliUnavailableLabel)
+                .addComponentToRightColumn(profileOrphanHelpLabel)
                 .addLabeledComponent(new JBLabel("CLI Timeout (seconds):"), cliTimeoutSpinner)
                 .addComponent(autoRefreshCheckbox)
                 .addComponent(strictValidationCheckbox)
@@ -169,8 +188,11 @@ public class OpenSpecSettingsPanel {
         // --- Config Profile Section ---
         JPanel configProfileSection = buildConfigProfileSection();
 
-        // Wire profile combo to refresh the Config Profile section on selection change
-        profileCombo.addActionListener(e -> refreshConfigProfileSection());
+        // Wire profile combo to refresh dependent UI on selection change.
+        profileCombo.addActionListener(e -> {
+            refreshConfigProfileSection();
+            updateOrphanHelpVisibility();
+        });
 
         // --- Direct API Section ---
         JPanel directApiSection = buildDirectApiSection();
@@ -697,6 +719,35 @@ public class OpenSpecSettingsPanel {
             model.insertElementAt(value, 0);
         }
         profileCombo.setSelectedItem(value);
+        updateOrphanHelpVisibility();
+    }
+
+    /**
+     * @return {@code true} when the combo's currently selected value is an orphan —
+     * a non-empty preset that is not in {@link #WORKFLOW_PROFILE_PRESETS}. Used by
+     * {@link OpenSpecConfigurable} to gate Apply (D6 recovery UX), and internally to
+     * toggle the orphan recovery help label.
+     */
+    public boolean isWorkflowProfileOrphanSelected() {
+        return isOrphanValue(profileCombo.getSelectedItem());
+    }
+
+    /**
+     * Pure orphan classifier — testable without instantiating the panel. {@code null}
+     * and the empty string are NOT orphan (the empty string is the "use CLI's active
+     * profile" sentinel). Any other value not in {@link #WORKFLOW_PROFILE_PRESETS}
+     * is orphan.
+     */
+    static boolean isOrphanValue(Object selected) {
+        if (selected == null) return false;
+        String value = selected.toString();
+        if (value.isEmpty()) return false;
+        return !WORKFLOW_PROFILE_PRESETS.contains(value);
+    }
+
+    private void updateOrphanHelpVisibility() {
+        if (profileOrphanHelpLabel == null) return;
+        profileOrphanHelpLabel.setVisible(isWorkflowProfileOrphanSelected());
     }
 
     public int getCliTimeout() {
@@ -778,7 +829,6 @@ public class OpenSpecSettingsPanel {
         }
         return switch (preset) {
             case "core" -> "core — propose, explore, apply, sync, archive (5 essentials)";
-            case "custom" -> "custom — your selected workflows";
             default -> preset;
         };
     }

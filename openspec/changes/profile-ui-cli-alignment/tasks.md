@@ -3,9 +3,9 @@
 - [x] 1.2 Add `OpenSpecSyncActionTest` verifying enablement regardless of profile
 
 ## 2. D2 — Combo lists only CLI-accepted presets
-- [ ] 2.1 Update `OpenSpecSettingsPanel.WORKFLOW_PROFILE_PRESETS` to `["", "core"]` (drop `"custom"`)
-- [ ] 2.2 Refactor `OpenSpecSettingsPanelProfileTest.customPreset_rendersWithSelectedWorkflowsHint` into orphan-rendering coverage
-- [ ] 2.3 Update `corePreset_rendersWithFiveEssentials` assertion — core has 4 essentials on CLI 1.3.1 (no `sync`)
+- [x] 2.1 Update `OpenSpecSettingsPanel.WORKFLOW_PROFILE_PRESETS` to `["", "core"]` (drop `"custom"`)
+- [x] 2.2 Refactor `OpenSpecSettingsPanelProfileTest.customPreset_rendersWithSelectedWorkflowsHint` into orphan-rendering coverage
+- [ ] 2.3 ~~Update `corePreset_rendersWithFiveEssentials` assertion — core has 4 essentials on CLI 1.3.1 (no `sync`)~~ → folded into D7 scope. The "(5 essentials)" enumeration in the renderer's `core` case is the same kind of plugin-side hardcoded workflow knowledge D7 is removing from the ContextHelpLabel; both should land together with the generic copy rewrite + docs link.
 
 ## 3. D3 — "Customize workflows…" button + IntelliJ Terminal launcher
 - [ ] 3.1 Add "Customize workflows…" button to `OpenSpecSettingsPanel` (secondary/link style)
@@ -25,9 +25,9 @@
 - [ ] 5.2 `git add` + commit the wiki page to `main`
 
 ## 6. D6 — Orphan profile recovery UX
-- [ ] 6.1 Render inline help text near combo when selected value is orphan
-- [ ] 6.2 Disable Apply button while orphan is selected
-- [ ] 6.3 Update `OpenSpecConfigurable.isModified` / `apply` to honor the orphan gate
+- [x] 6.1 Render inline help text near combo when selected value is orphan
+- [x] 6.2 Disable Apply button while orphan is selected
+- [x] 6.3 Update `OpenSpecConfigurable.isModified` / `apply` to honor the orphan gate
 
 ## 7. D7 — ContextHelpLabel copy rewrite (no workflow enumeration)
 - [ ] 7.1 Update `OpenSpecSettingsPanel` profile-help copy to drop workflow names

@@ -17,10 +17,21 @@ class OpenSpecSettingsPanelProfileTest {
     class WorkflowProfilePresets {
 
         @Test
-        void presetListContainsExpectedValues() {
+        void presetListContainsOnlyCliAcceptedPresets() {
+            // Combo only offers presets the CLI accepts as switch targets. As of
+            // CLI 1.3.1, that's "" (default) and "core". "custom" is rejected by
+            // `openspec config profile custom` and must not appear here.
             assertEquals(
-                    java.util.List.of("", "core", "custom"),
+                    java.util.List.of("", "core"),
                     OpenSpecSettingsPanel.WORKFLOW_PROFILE_PRESETS);
+        }
+
+        @Test
+        void presetListDoesNotContainCustom() {
+            // D2: "custom" is no longer a switchable preset — the CLI rejects
+            // `openspec config profile custom`. Persisted legacy "custom" values
+            // surface as orphan entries via the renderer, never via this list.
+            assertFalse(OpenSpecSettingsPanel.WORKFLOW_PROFILE_PRESETS.contains("custom"));
         }
 
         @Test
@@ -60,10 +71,12 @@ class OpenSpecSettingsPanelProfileTest {
         }
 
         @Test
-        void customPreset_rendersWithSelectedWorkflowsHint() {
+        void customPreset_isOrphanInCurrentVersion_rendersWithNotFoundSuffix() {
+            // After D2, "custom" is not in WORKFLOW_PROFILE_PRESETS — any persisted
+            // legacy "custom" value reaches the renderer with isOrphan=true.
             assertEquals(
-                    "custom — your selected workflows",
-                    OpenSpecSettingsPanel.renderWorkflowProfileItem("custom", false));
+                    "custom (not found in CLI)",
+                    OpenSpecSettingsPanel.renderWorkflowProfileItem("custom", true));
         }
 
         @Test
@@ -80,6 +93,38 @@ class OpenSpecSettingsPanelProfileTest {
             assertEquals(
                     "core (not found in CLI)",
                     OpenSpecSettingsPanel.renderWorkflowProfileItem("core", true));
+        }
+    }
+
+    @Nested
+    class IsOrphanValue {
+
+        @Test
+        void nullValue_returnsFalse() {
+            assertFalse(OpenSpecSettingsPanel.isOrphanValue(null));
+        }
+
+        @Test
+        void emptyValue_returnsFalse() {
+            // Empty string is the "use CLI's active profile" sentinel, not an orphan.
+            assertFalse(OpenSpecSettingsPanel.isOrphanValue(""));
+        }
+
+        @Test
+        void knownPreset_returnsFalse() {
+            assertFalse(OpenSpecSettingsPanel.isOrphanValue("core"));
+        }
+
+        @Test
+        void legacyCustom_returnsTrue() {
+            // Persisted "custom" from plugin v0.2.10 is now orphan per D2.
+            assertTrue(OpenSpecSettingsPanel.isOrphanValue("custom"));
+        }
+
+        @Test
+        void arbitraryUnknownValue_returnsTrue() {
+            assertTrue(OpenSpecSettingsPanel.isOrphanValue("spec-driven"));
+            assertTrue(OpenSpecSettingsPanel.isOrphanValue("whatever-future-preset"));
         }
     }
 }

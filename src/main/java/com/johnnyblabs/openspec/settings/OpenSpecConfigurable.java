@@ -38,6 +38,11 @@ public class OpenSpecConfigurable implements Configurable {
     @Override
     public boolean isModified() {
         if (panel == null) return false;
+        // D6 Apply gate: while an orphan preset is selected, Apply stays disabled
+        // regardless of other field changes. The user is forced to pick a non-orphan
+        // value first — eliminates the silent no-op trap where clicking Apply with
+        // orphan selected used to do nothing visible.
+        if (panel.isWorkflowProfileOrphanSelected()) return false;
         OpenSpecSettings settings = OpenSpecSettings.getInstance(project);
         return !panel.getVersionOverride().equals(safe(settings.getVersionOverride()))
                 || !panel.getCliPath().equals(safe(settings.getCliPath()))
