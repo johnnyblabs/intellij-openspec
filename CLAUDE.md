@@ -22,6 +22,8 @@ Inside each change directory (`openspec/changes/<name>/`, and the archived form)
 **Do not put tracker IDs in `proposal.md`** — that file is published.
 **Do not put them in `.openspec.yaml`** — its upstream Zod schema only accepts `schema:` and `created:` and silently strips unknown keys.
 
+> **Provenance note:** the storage convention here (sidecar over proposal.md) is project-local. The upstream OpenSpec CLI doesn't mandate a tracker convention — its proposal template defines `Why → What Changes → Capabilities → Impact` and is silent on tracker IDs entirely. 10 archived proposals from 2026-04-29 onward still carry inline `## References` lines as a vestige of the prior local convention; new proposals use the sidecar.
+
 ## If `openspec update` clobbers customizations
 
 ```bash
