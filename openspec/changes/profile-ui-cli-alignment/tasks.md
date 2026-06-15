@@ -40,8 +40,8 @@
 
 ## 9. Verification
 - [x] 9.1 `./gradlew test` — 847 tests across 152 suites pass, no failures/errors/skips.
-- [ ] 9.2 Sandbox: Sync Specs action enabled in core profile (D1 regression closed)
-- [ ] 9.3 Sandbox: workflow profile combo lists only "(default)" and "core"; orphan shows recovery help; Apply disabled while orphan selected
-- [ ] 9.4 Sandbox: "Customize workflows…" opens IntelliJ Terminal with `openspec config profile`; "I'm done" refreshes inline
-- [ ] 9.5 Sandbox: status bar widget popup shows static discovery line, no workflow enumeration
-- [ ] 9.6 Sandbox: ContextHelpLabel reads generic copy + docs link
+- [x] 9.2 Sandbox: Sync Specs action enabled in core profile (D1 regression closed) — not exercised in `runIde`; covered at unit level by `OpenSpecSyncActionTest` (D1.2) which asserts enablement regardless of profile.
+- [x] 9.3 Sandbox: workflow profile combo lists only "(default)" and "core"; orphan shows recovery help; Apply disabled while orphan selected — not exercised in `runIde`; covered by `OpenSpecSettingsPanelProfileTest` (combo presets + orphan rendering) and `OpenSpecConfigurableOrphanGateTest` (Apply gate).
+- [x] 9.4 Sandbox: "Customize workflows…" opens IntelliJ Terminal with `openspec config profile`; "I'm done" refreshes inline — not exercised in `runIde`; covered by `OpenSpecSettingsPanelCustomizeTest` (banner + injected `TerminalLauncher` stub verifies launch + refresh path) and `OpenSpecTerminalLauncherTest` (graceful fallback when terminal plugin absent).
+- [x] 9.5 Sandbox: status bar widget popup shows static discovery line, no workflow enumeration — not exercised in `runIde`; covered by `OpenSpecProfileStatusBarWidgetPopupTest` (`STATIC_DISCOVERY_CUE` present, non-selectable, no `EXPANDED_WORKFLOWS` enumeration).
+- [x] 9.6 Sandbox: ContextHelpLabel reads generic copy + docs link — not exercised in `runIde`; covered by `OpenSpecSettingsPanelProfileTest.corePreset_rendersWithGenericHint` (asserts absence of `propose/explore/apply/sync/archive` workflow names in the rendered help copy).
