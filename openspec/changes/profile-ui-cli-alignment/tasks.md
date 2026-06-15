@@ -21,8 +21,8 @@
 - [x] 4.3 Relabel active item: `● custom (your workflow set) · N workflows (active)`
 
 ## 5. D5 — Commit `Workflow-Profiles.md` to `main`
-- [ ] 5.1 Update `scripts/docs/wiki/Workflow-Profiles.md` content to reflect D2 (no `custom` combo entry, Customize affordance noted)
-- [ ] 5.2 `git add` + commit the wiki page to `main`
+- [x] 5.1 Update `scripts/docs/wiki/Workflow-Profiles.md` content to reflect D2/D3/D4/D6: combo lists only `(default)` and `core` (D2); status bar popup describes static discovery cue + `custom (your workflow set)` active label, no enumerated reveal (D4); "Customize workflows…" button + "I'm done" handshake + terminal-unavailable fallback documented (D3); orphan recovery hint + Apply-disabled gate described (D6).
+- [x] 5.2 `git add` + commit the wiki page to `main` (covered by this commit).
 
 ## 6. D6 — Orphan profile recovery UX
 - [x] 6.1 Render inline help text near combo when selected value is orphan
