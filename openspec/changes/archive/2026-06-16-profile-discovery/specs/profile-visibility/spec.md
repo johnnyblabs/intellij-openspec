@@ -32,7 +32,7 @@ The plugin SHALL provide a status bar widget that displays the name of the curre
 
 #### Scenario: Widget click opens profile picker
 - **WHEN** the user clicks the status bar widget
-- **THEN** a list popup SHALL appear listing the active profile (selected), the other available preset, a reveal of workflows the user would gain by switching to custom, an "Edit in Settings" link, and an "About profiles" docs link
+- **THEN** a list popup SHALL appear listing the active profile (selected), the other available preset, a non-selectable static discovery cue pointing at the CLI's `openspec config profile` interactive picker, an "Edit in Settings" link, and an "About profiles" docs link
 
 #### Scenario: CLI unavailable
 - **WHEN** the OpenSpec CLI is not available
@@ -68,7 +68,7 @@ When `OpenSpecBaseAction.update()` disables an action because its workflow is no
 
 ### Requirement: Active workflows publicly readable from service
 
-`WorkflowProfileService` SHALL expose the active workflows set publicly so UI surfaces can compute the diff between the active set and the full preset set (used by the status bar widget popup's "Available in custom" reveal).
+`WorkflowProfileService` SHALL expose the active workflows set publicly so UI surfaces (status bar widget label and tooltip, Settings panel Config Profile section) can read the cached set without re-querying the CLI.
 
 #### Scenario: Service exposes active workflows
 - **WHEN** any consumer calls `getActiveWorkflows()` on `WorkflowProfileService`
