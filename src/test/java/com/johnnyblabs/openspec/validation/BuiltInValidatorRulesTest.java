@@ -20,7 +20,9 @@ class BuiltInValidatorRulesTest {
     private static final Pattern REQUIREMENT_PATTERN = Pattern.compile("^### Requirement:\\s*.+", Pattern.MULTILINE);
     private static final Pattern RFC_KEYWORD_PATTERN = Pattern.compile("\\b(SHALL NOT|SHOULD NOT|SHALL|SHOULD|MAY|MUST)\\b");
     private static final Pattern SCENARIO_PATTERN = Pattern.compile("^#{4} Scenario:.+", Pattern.MULTILINE);
-    private static final Pattern DELTA_SECTION_PATTERN = Pattern.compile("^## (ADDED|MODIFIED|REMOVED) Requirements", Pattern.MULTILINE);
+    private static final Pattern DELTA_SECTION_PATTERN = Pattern.compile("^## (ADDED|MODIFIED|REMOVED|RENAMED) Requirements", Pattern.MULTILINE);
+    private static final Pattern RENAMED_ENTRY_PATTERN = Pattern.compile(
+            "(?m)^\\s*(?:-\\s*)?FROM:\\s*(.+)$\\s*^\\s*(?:-\\s*)?TO:\\s*(.+)$");
 
     // --- 1.7: RFC 2119 keywords are ERROR ---
 
@@ -323,6 +325,79 @@ class BuiltInValidatorRulesTest {
                 "Valid delta spec should have no structural errors");
     }
 
+    // --- RENAMED delta section (OSP-226 / Forgejo #216) ---
+
+    @Test
+    void deltaRenamed_validFromTo_passes() {
+        String content = """
+                ## RENAMED Requirements
+
+                - FROM: Old requirement name
+                - TO: New requirement name
+                """;
+        List<ValidationIssue> issues = validateDeltaStructure(content);
+        assertTrue(issues.stream().noneMatch(i -> i.rule().equals("delta-renamed-fields")),
+                "RENAMED with valid FROM/TO should not produce delta-renamed-fields error");
+    }
+
+    @Test
+    void deltaRenamed_validFromToWithoutBullets_passes() {
+        String content = """
+                ## RENAMED Requirements
+
+                FROM: Old requirement name
+                TO: New requirement name
+                """;
+        List<ValidationIssue> issues = validateDeltaStructure(content);
+        assertTrue(issues.stream().noneMatch(i -> i.rule().equals("delta-renamed-fields")),
+                "RENAMED with valid FROM/TO (non-bullet) should not produce delta-renamed-fields error");
+    }
+
+    @Test
+    void deltaRenamed_missingFromTo_isError() {
+        String content = """
+                ## RENAMED Requirements
+
+                (no FROM/TO entries yet)
+                """;
+        List<ValidationIssue> issues = validateDeltaStructure(content);
+        assertTrue(issues.stream().anyMatch(i ->
+                i.severity() == ValidationIssue.Severity.ERROR
+                        && i.rule().equals("delta-renamed-fields")),
+                "RENAMED section without FROM/TO should be ERROR");
+    }
+
+    @Test
+    void validDeltaSpec_withRenamed_passes() {
+        String content = """
+                ## ADDED Requirements
+
+                ### Requirement: New feature
+                The system SHALL add a feature.
+
+                #### Scenario: Feature works
+                - **WHEN** triggered
+                - **THEN** feature activates
+
+                ## RENAMED Requirements
+
+                - FROM: Old name
+                - TO: New name
+
+                ## REMOVED Requirements
+
+                ### Requirement: Legacy feature
+                **Reason**: Replaced
+                **Migration**: Use new feature
+                """;
+        List<ValidationIssue> issues = validateDeltaStructure(content);
+        assertTrue(issues.stream().noneMatch(i ->
+                i.rule().equals("delta-requirement-scenario")
+                        || i.rule().equals("delta-removed-fields")
+                        || i.rule().equals("delta-renamed-fields")),
+                "Mixed delta with RENAMED + ADDED + REMOVED should have no structural errors");
+    }
+
     // --- Helpers: extract validation logic matching BuiltInValidator ---
 
     private List<ValidationIssue> validateSpec(String content) {
@@ -374,6 +449,7 @@ class BuiltInValidatorRulesTest {
         Matcher sectionMatcher = DELTA_SECTION_PATTERN.matcher(content);
         while (sectionMatcher.find()) {
             String sectionType = sectionMatcher.group(1);
+            int sectionHeaderLine = lineNumberAt(content, sectionMatcher.start());
             int sectionStart = sectionMatcher.end();
             Pattern nextH2 = Pattern.compile("^## ", Pattern.MULTILINE);
             Matcher nextH2Matcher = nextH2.matcher(content);
@@ -382,6 +458,15 @@ class BuiltInValidatorRulesTest {
                 sectionEnd = nextH2Matcher.start();
             }
             String sectionContent = content.substring(sectionStart, sectionEnd);
+
+            if ("RENAMED".equals(sectionType)) {
+                if (!RENAMED_ENTRY_PATTERN.matcher(sectionContent).find()) {
+                    issues.add(new ValidationIssue(ValidationIssue.Severity.ERROR, path, sectionHeaderLine,
+                            "RENAMED section must contain at least one FROM:/TO: pair",
+                            "delta-renamed-fields"));
+                }
+                continue;
+            }
 
             Matcher reqMatcher = REQUIREMENT_PATTERN.matcher(sectionContent);
             while (reqMatcher.find()) {

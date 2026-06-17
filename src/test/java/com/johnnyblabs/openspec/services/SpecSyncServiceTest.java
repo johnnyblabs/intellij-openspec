@@ -359,8 +359,9 @@ class SpecSyncServiceTest {
 
             List<DeltaSpecOperation> sorted = service.sortOperations(ops);
 
-            assertEquals(OperationType.REMOVED, sorted.get(0).type());
-            assertEquals(OperationType.RENAMED, sorted.get(1).type());
+            // Upstream specs-apply.js order: RENAMED → REMOVED → MODIFIED → ADDED
+            assertEquals(OperationType.RENAMED, sorted.get(0).type());
+            assertEquals(OperationType.REMOVED, sorted.get(1).type());
             assertEquals(OperationType.MODIFIED, sorted.get(2).type());
             assertEquals(OperationType.ADDED, sorted.get(3).type());
         }

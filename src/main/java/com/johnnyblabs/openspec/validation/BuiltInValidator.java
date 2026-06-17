@@ -31,8 +31,10 @@ public final class BuiltInValidator {
     private static final Pattern RFC_KEYWORD_PATTERN = Pattern.compile("\\b(SHALL NOT|SHOULD NOT|SHALL|SHOULD|MAY)\\b");
     private static final Pattern SCENARIO_PATTERN = Pattern.compile("^#{4} Scenario:.+", Pattern.MULTILINE);
     private static final Pattern CLAUSE_PATTERN = Pattern.compile("^-\\s+\\*{0,2}(GIVEN|WHEN|THEN|AND)\\*{0,2}\\b", Pattern.MULTILINE);
-    private static final Pattern DELTA_SECTION_PATTERN = Pattern.compile("^## (ADDED|MODIFIED|REMOVED)", Pattern.MULTILINE);
+    private static final Pattern DELTA_SECTION_PATTERN = Pattern.compile("^## (ADDED|MODIFIED|REMOVED|RENAMED)", Pattern.MULTILINE);
     private static final Pattern FULL_SPEC_PATTERN = Pattern.compile("^## (Requirements|Purpose)", Pattern.MULTILINE);
+    private static final Pattern RENAMED_ENTRY_PATTERN = Pattern.compile(
+            "(?m)^\\s*(?:-\\s*)?FROM:\\s*(.+)$\\s*^\\s*(?:-\\s*)?TO:\\s*(.+)$");
 
     private final Project project;
 
@@ -212,10 +214,10 @@ public final class BuiltInValidator {
             String content = readFile(specFile);
             if (content == null) continue;
 
-            // Skip full specs (## Requirements / ## Purpose) — only delta specs need ADDED/MODIFIED/REMOVED
+            // Skip full specs (## Requirements / ## Purpose) — only delta specs need ADDED/MODIFIED/REMOVED/RENAMED
             if (!DELTA_SECTION_PATTERN.matcher(content).find() && !FULL_SPEC_PATTERN.matcher(content).find()) {
                 issues.add(new ValidationIssue(ValidationIssue.Severity.WARNING, specFile.getPath(), 1,
-                        "Delta spec should have ADDED, MODIFIED, or REMOVED sections", "delta-spec-sections"));
+                        "Delta spec should have ADDED, MODIFIED, REMOVED, or RENAMED sections", "delta-spec-sections"));
             }
 
             // Structural validation of delta spec requirement blocks
@@ -382,11 +384,12 @@ public final class BuiltInValidator {
 
     private void validateDeltaSpecStructure(String content, String path, List<ValidationIssue> issues) {
         // Find each delta section and validate requirement blocks within
-        Pattern deltaSectionStart = Pattern.compile("^## (ADDED|MODIFIED|REMOVED) Requirements", Pattern.MULTILINE);
+        Pattern deltaSectionStart = Pattern.compile("^## (ADDED|MODIFIED|REMOVED|RENAMED) Requirements", Pattern.MULTILINE);
         Matcher sectionMatcher = deltaSectionStart.matcher(content);
 
         while (sectionMatcher.find()) {
             String sectionType = sectionMatcher.group(1);
+            int sectionHeaderLine = lineNumberAt(content, sectionMatcher.start());
             int sectionStart = sectionMatcher.end();
             // Find end of this section (next ## heading or end of content)
             Pattern nextH2 = Pattern.compile("^## ", Pattern.MULTILINE);
@@ -396,6 +399,17 @@ public final class BuiltInValidator {
                 sectionEnd = nextH2Matcher.start();
             }
             String sectionContent = content.substring(sectionStart, sectionEnd);
+
+            if ("RENAMED".equals(sectionType)) {
+                // RENAMED sections carry FROM:/TO: pairs (bullet or plain form), not requirement blocks.
+                // Require at least one well-formed pair; mirrors SpecSyncService.RENAMED_ENTRY.
+                if (!RENAMED_ENTRY_PATTERN.matcher(sectionContent).find()) {
+                    issues.add(new ValidationIssue(ValidationIssue.Severity.ERROR, path, sectionHeaderLine,
+                            "RENAMED section must contain at least one FROM:/TO: pair",
+                            "delta-renamed-fields"));
+                }
+                continue;
+            }
 
             // Find each requirement block in this section
             Matcher reqMatcher = REQUIREMENT_PATTERN.matcher(sectionContent);

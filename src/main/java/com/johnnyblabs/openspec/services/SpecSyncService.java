@@ -180,7 +180,7 @@ public final class SpecSyncService {
             String originalContent = readMainSpec(capability);
             List<String> warnings = new ArrayList<>();
 
-            // Sort ops: REMOVED → RENAMED → MODIFIED → ADDED
+            // Sort ops: RENAMED → REMOVED → MODIFIED → ADDED (mirrors upstream specs-apply.js)
             List<DeltaSpecOperation> sorted = sortOperations(ops);
 
             String projected = applyOperations(originalContent, sorted, warnings);
@@ -303,10 +303,12 @@ public final class SpecSyncService {
     // --- Internal helpers ---
 
     List<DeltaSpecOperation> sortOperations(List<DeltaSpecOperation> ops) {
+        // Apply order mirrors upstream OpenSpec CLI (specs-apply.js): RENAMED first so a rename
+        // happens before a subsequent REMOVED targets the new name, then MODIFIED, then ADDED.
         List<DeltaSpecOperation> sorted = new ArrayList<>(ops);
         sorted.sort(Comparator.comparingInt(op -> switch (op.type()) {
-            case REMOVED -> 0;
-            case RENAMED -> 1;
+            case RENAMED -> 0;
+            case REMOVED -> 1;
             case MODIFIED -> 2;
             case ADDED -> 3;
         }));

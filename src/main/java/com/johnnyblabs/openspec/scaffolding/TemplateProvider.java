@@ -90,6 +90,10 @@ public final class TemplateProvider {
                 ## REMOVED
 
                 <!-- Removed requirements -->
+
+                ## RENAMED Requirements
+
+                <!-- Renamed requirements as FROM:/TO: pairs. Each entry needs two lines: one starting "- FROM:" with the old requirement name, then one starting "- TO:" with the new name. Delete this comment when adding entries. -->
                 """.formatted(domain);
     }
 

@@ -18,13 +18,15 @@ import java.util.regex.Pattern;
 public class DeltaSpecInspection extends LocalInspectionTool {
 
     private static final Pattern DELTA_SECTION_PATTERN = Pattern.compile(
-            "^## (ADDED|MODIFIED|REMOVED) Requirements", Pattern.MULTILINE);
+            "^## (ADDED|MODIFIED|REMOVED|RENAMED) Requirements", Pattern.MULTILINE);
     private static final Pattern FULL_SPEC_PATTERN = Pattern.compile(
             "^## (Requirements|Purpose)", Pattern.MULTILINE);
     private static final Pattern REQUIREMENT_PATTERN = Pattern.compile(
             "^### Requirement:\\s*.+", Pattern.MULTILINE);
     private static final Pattern SCENARIO_PATTERN = Pattern.compile(
             "^#{4} Scenario:.+", Pattern.MULTILINE);
+    private static final Pattern RENAMED_ENTRY_PATTERN = Pattern.compile(
+            "(?m)^\\s*(?:-\\s*)?FROM:\\s*(.+)$\\s*^\\s*(?:-\\s*)?TO:\\s*(.+)$");
 
     @Override
     public ProblemDescriptor @NotNull [] checkFile(@NotNull PsiFile file,
@@ -37,13 +39,13 @@ public class DeltaSpecInspection extends LocalInspectionTool {
         String text = file.getText();
         List<ProblemDescriptor> problems = new ArrayList<>();
 
-        // Skip full specs (## Requirements / ## Purpose) — only delta specs need ADDED/MODIFIED/REMOVED
+        // Skip full specs (## Requirements / ## Purpose) — only delta specs need ADDED/MODIFIED/REMOVED/RENAMED
         if (!DELTA_SECTION_PATTERN.matcher(text).find() && !FULL_SPEC_PATTERN.matcher(text).find()) {
             PsiElement element = findNonEmptyElement(file, 0);
             if (element != null) {
                 problems.add(manager.createProblemDescriptor(
                         element,
-                        "Delta spec should contain ADDED, MODIFIED, or REMOVED sections",
+                        "Delta spec should contain ADDED, MODIFIED, REMOVED, or RENAMED sections",
                         (LocalQuickFix) null,
                         ProblemHighlightType.WARNING,
                         isOnTheFly));
@@ -54,6 +56,7 @@ public class DeltaSpecInspection extends LocalInspectionTool {
         Matcher sectionMatcher = DELTA_SECTION_PATTERN.matcher(text);
         while (sectionMatcher.find()) {
             String sectionType = sectionMatcher.group(1);
+            int sectionHeaderOffset = sectionMatcher.start();
             int sectionStart = sectionMatcher.end();
 
             // Find end of section (next ## heading or end)
@@ -64,6 +67,23 @@ public class DeltaSpecInspection extends LocalInspectionTool {
                 sectionEnd = nextH2Matcher.start();
             }
             String sectionContent = text.substring(sectionStart, sectionEnd);
+
+            if ("RENAMED".equals(sectionType)) {
+                // RENAMED sections carry FROM:/TO: pairs, not requirement blocks. Require at least one
+                // well-formed pair; mirrors SpecSyncService.RENAMED_ENTRY and BuiltInValidator.
+                if (!RENAMED_ENTRY_PATTERN.matcher(sectionContent).find()) {
+                    PsiElement element = findNonEmptyElement(file, sectionHeaderOffset);
+                    if (element != null) {
+                        problems.add(manager.createProblemDescriptor(
+                                element,
+                                "RENAMED section must contain at least one FROM:/TO: pair",
+                                (LocalQuickFix) null,
+                                ProblemHighlightType.ERROR,
+                                isOnTheFly));
+                    }
+                }
+                continue;
+            }
 
             Matcher reqMatcher = REQUIREMENT_PATTERN.matcher(sectionContent);
             while (reqMatcher.find()) {

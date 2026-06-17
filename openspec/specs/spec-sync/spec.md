@@ -31,7 +31,7 @@ The plugin SHALL parse delta spec files from a change's `specs/*/spec.md` direct
 
 ### Requirement: Spec sync application
 
-The plugin SHALL apply delta spec operations to main spec files under `openspec/specs/<capability>/spec.md` in a defined order: REMOVED, RENAMED, MODIFIED, then ADDED. File content SHALL be written via plain filesystem I/O on the calling thread. VFS refresh SHALL be performed within `WriteAction` on the EDT via `invokeLater` with a `CountDownLatch` to synchronize the background thread. The background thread SHALL wait on the latch before proceeding to post-merge validation. After applying all operations, the plugin SHALL run `BuiltInValidator.validateSpecFile()` on each affected main spec file and report any validation errors as warnings to the user. In strict mode, validation errors on merged specs SHALL block the sync.
+The plugin SHALL apply delta spec operations to main spec files under `openspec/specs/<capability>/spec.md` in a defined order matching upstream OpenSpec CLI: RENAMED, REMOVED, MODIFIED, then ADDED. File content SHALL be written via plain filesystem I/O on the calling thread. VFS refresh SHALL be performed within `WriteAction` on the EDT via `invokeLater` with a `CountDownLatch` to synchronize the background thread. The background thread SHALL wait on the latch before proceeding to post-merge validation. After applying all operations, the plugin SHALL run `BuiltInValidator.validateSpecFile()` on each affected main spec file and report any validation errors as warnings to the user. In strict mode, validation errors on merged specs SHALL block the sync.
 
 #### Scenario: Apply ADDED operation
 - **WHEN** an ADDED operation targets a capability
@@ -68,6 +68,10 @@ The plugin SHALL apply delta spec operations to main spec files under `openspec/
 #### Scenario: VFS refresh uses invokeLater with latch
 - **WHEN** the service writes a spec file and needs VFS refresh
 - **THEN** the VFS refresh SHALL be dispatched via `invokeLater` wrapping `WriteAction.run`, with a `CountDownLatch` that the background thread awaits before proceeding to validation
+
+#### Scenario: Apply order matches upstream
+- **WHEN** a delta contains a mix of RENAMED, REMOVED, MODIFIED, and ADDED operations targeting the same capability
+- **THEN** the service SHALL apply them in the order RENAMED → REMOVED → MODIFIED → ADDED (mirroring `@fission-ai/openspec`'s `specs-apply.js` precedence), so that a RENAMED FROM-name collision with a REMOVED block is resolved by the rename happening first
 
 ### Requirement: Sync preview
 

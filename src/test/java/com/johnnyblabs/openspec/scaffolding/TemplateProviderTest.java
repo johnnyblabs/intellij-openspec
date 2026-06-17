@@ -103,7 +103,7 @@ class TemplateProviderTest {
     }
 
     @Test
-    void deltaSpecTemplate_hasAddedModifiedRemoved() {
+    void deltaSpecTemplate_hasAllFourSections() {
         String result = TemplateProvider.deltaSpecTemplate("auth");
         assertTrue(result.contains("## ADDED"),
                 "Delta spec must have ## ADDED section");
@@ -111,6 +111,9 @@ class TemplateProviderTest {
                 "Delta spec must have ## MODIFIED section");
         assertTrue(result.contains("## REMOVED"),
                 "Delta spec must have ## REMOVED section");
+        assertTrue(result.contains("## RENAMED Requirements"),
+                "Delta spec must emit ## RENAMED Requirements with the full suffix — the validator's "
+                        + "structural regex (^## ... Requirements) only engages when the suffix is present");
     }
 
     // --- .openspec.yaml template ---
