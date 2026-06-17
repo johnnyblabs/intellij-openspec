@@ -1,4 +1,10 @@
 schema: spec-driven
+# version: plugin-internal field — drives OpenSpecConfig.getVersion → VersionSupport for the plugin's
+# built-in validator and effective-version resolution. Upstream OpenSpec's Zod schema (project-config.ts)
+# silently strips this key, but the plugin itself REQUIRES it (BuiltInValidator.validateConfig emits
+# config-version-required + config-field-required when missing). Do NOT remove without first refactoring
+# the plugin's version resolution to not depend on this field. See CLAUDE.md "Plugin-internal config fields".
+version: "1.2.0"
 
 profile:
   name: intellij-openspec
