@@ -19,8 +19,11 @@ OpenSpec changes are mirrored to project trackers via two project-level custom s
 
 Inside each change directory (`openspec/changes/<name>/`, and the archived form), tracker IDs live in a `.tracking.yaml` file. The file is gitignored so it never enters version control. `mirror-change-trackers` writes it; `close-change-trackers` reads it.
 
-**Do not put tracker IDs in `proposal.md`** — that file is published.
+**Do not put tracker IDs in `proposal.md`, `design.md`, or `tasks.md`** — those files are published when the change archives.
 **Do not put them in `.openspec.yaml`** — its upstream Zod schema only accepts `schema:` and `created:` and silently strips unknown keys.
+**Do not put them in commit messages** — `git log` is public on GitHub.
+
+The broader rule: nothing local-homelab-specific ever lands in artifacts that will reach GitHub. That includes Forgejo URLs (`forgejo.geek`, `johnb/intellij-openspec#N`), Plane identifiers (`OSP-N`, `OSPEC-N`), `*.geek` hostnames, homelab MCP server names (`mcp__homelab__*`), and the `johnb` username. Use vendor-neutral wording — "tracker entry", "the linked issue" — in any published surface (proposal/design/tasks/CHANGELOG/README/docs/code comments/commit messages). Before any commit, grep the staged files: `grep -nrE "forgejo|plane|geek|OSPEC|OSP-|johnb/" <staged>`.
 
 > **Provenance note:** the storage convention here (sidecar over proposal.md) is project-local. The upstream OpenSpec CLI doesn't mandate a tracker convention — its proposal template defines `Why → What Changes → Capabilities → Impact` and is silent on tracker IDs entirely. 10 archived proposals from 2026-04-29 onward still carry inline `## References` lines as a vestige of the prior local convention; new proposals use the sidecar.
 
