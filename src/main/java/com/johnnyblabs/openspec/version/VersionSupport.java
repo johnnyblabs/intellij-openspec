@@ -11,7 +11,10 @@ public enum VersionSupport {
     // version baseline (V1_2 → openspec/config.yaml version 1.2.0) is independent of the
     // CLI-version axis and unchanged across CLI 1.2.x, 1.3.x, and 1.4.x.
     V1_2("1.2.0",
-            Set.of("schema", "version"),
+            // `schema` is the only field upstream's Zod schema requires (z.string().min(1)).
+            // `version` is plugin-internal — upstream strips it; absence is not an error.
+            // See align-config-contract-with-cli archive for the contract-alignment rationale.
+            Set.of("schema"),
             Set.of("proposal", "design", "specs", "tasks"),
             Set.of("spec-driven", "workspace-planning"));
 

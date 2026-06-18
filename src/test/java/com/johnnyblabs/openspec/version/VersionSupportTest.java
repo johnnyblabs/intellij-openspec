@@ -20,10 +20,12 @@ class VersionSupportTest {
     // --- v1.2.0 contract — the only baseline ---
 
     @Test
-    void v1_2_requiresSchemaAndVersion() {
+    void v1_2_requiresOnlySchema() {
+        // Schema is the only field upstream's Zod schema requires (z.string().min(1)).
+        // `version` was previously listed here but is plugin-internal — upstream strips it.
+        // See align-config-contract-with-cli archive.
         Set<String> fields = VersionSupport.V1_2.getRequiredConfigFields();
-        assertTrue(fields.contains("schema"), "v1.2 must require 'schema'");
-        assertTrue(fields.contains("version"), "v1.2 must require 'version'");
+        assertEquals(Set.of("schema"), fields, "v1.2 must require ONLY 'schema'");
     }
 
     @Test

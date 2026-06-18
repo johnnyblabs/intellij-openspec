@@ -246,9 +246,12 @@ public final class BuiltInValidator {
         String path = configFile != null ? configFile.getPath() : "config.yaml";
 
         if (config == null) {
-            issues.add(new ValidationIssue(ValidationIssue.Severity.ERROR, path, 1,
-                    "config.yaml not found or could not be parsed", "config-missing"));
-            return new ValidationResult(false, issues, "built-in");
+            // Upstream OpenSpec treats openspec/config.yaml as optional — its readProjectConfig
+            // returns null with the comment "No config is OK" and every caller falls back to
+            // defaults (schema → "spec-driven", no context, no rules). The plugin matches that
+            // contract: absence of the file is not a validation issue. See the "Config validation"
+            // requirement in openspec/specs/validation/spec.md.
+            return new ValidationResult(true, issues, "built-in");
         }
 
         if (config.getSchema() == null || config.getSchema().isEmpty()) {
@@ -267,11 +270,11 @@ public final class BuiltInValidator {
             }
         }
 
-        // Version field validation
-        if (config.getVersion() == null || config.getVersion().isEmpty()) {
-            issues.add(new ValidationIssue(ValidationIssue.Severity.WARNING, path, 1,
-                    "config.yaml should have a 'version' field", "config-version-required"));
-        } else if (!VersionSupport.allVersions().contains(config.getVersion())) {
+        // Version field validation: the `version:` field is plugin-internal — upstream's Zod
+        // schema strips it. Absence is not an issue. If a value IS set, check it's recognized
+        // so typos in this field surface as a hint.
+        if (config.getVersion() != null && !config.getVersion().isEmpty()
+                && !VersionSupport.allVersions().contains(config.getVersion())) {
             issues.add(new ValidationIssue(ValidationIssue.Severity.WARNING, path, 1,
                     "Version '" + config.getVersion() + "' is not recognized. " +
                             "Known versions: " + VersionSupport.allVersions(), "config-version-unknown"));
@@ -292,10 +295,8 @@ public final class BuiltInValidator {
             }
         }
 
-        if (config.getProfile().isEmpty()) {
-            issues.add(new ValidationIssue(ValidationIssue.Severity.WARNING, path, 1,
-                    "config.yaml should have a 'profile' field", "config-profile-recommended"));
-        }
+        // `profile:` is not in upstream's Zod schema; the plugin reads it only for tree-view
+        // display and AI-prompt context (both null-safe). No required-field issue when absent.
 
         boolean passed = issues.stream().noneMatch(i -> i.severity() == ValidationIssue.Severity.ERROR);
         return new ValidationResult(passed, issues, "built-in");

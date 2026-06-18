@@ -125,26 +125,45 @@ public class BuiltInValidatorTest extends OpenSpecIntegrationTestBase {
                         i.severity() == ValidationIssue.Severity.WARNING));
     }
 
-    public void testMissingProfileTriggersWarning() throws Exception {
+    public void testMissingProfileIsClean() throws Exception {
+        // Upstream OpenSpec's Zod schema doesn't define profile; it's a plugin-internal
+        // display field. Absence is no longer a validation issue. (Was config-profile-recommended.)
         overwriteFile("openspec/config.yaml",
                 "schema: spec-driven\nversion: \"1.2.0\"\n");
 
         ValidationResult result = validator.validateConfig();
-        assertTrue("Should have config-profile-recommended issue",
-                result.issues().stream().anyMatch(i ->
-                        "config-profile-recommended".equals(i.rule()) &&
-                        i.severity() == ValidationIssue.Severity.WARNING));
+        assertTrue("profile absence should produce no issue",
+                result.issues().stream().noneMatch(i ->
+                        "config-profile-recommended".equals(i.rule())));
     }
 
-    public void testMissingVersionTriggersWarning() throws Exception {
+    public void testMissingVersionIsClean() throws Exception {
+        // The version: field is plugin-internal — upstream's Zod schema strips it.
+        // Absence is no longer required-field or recommended-field. (Was config-version-required
+        // WARNING + config-field-required ERROR.)
         overwriteFile("openspec/config.yaml",
                 "schema: spec-driven\n\nprofile:\n  name: Test\n");
 
         ValidationResult result = validator.validateConfig();
-        assertTrue("Should have config-version-required issue",
-                result.issues().stream().anyMatch(i ->
-                        "config-version-required".equals(i.rule()) &&
-                        i.severity() == ValidationIssue.Severity.WARNING));
+        assertTrue("version absence should produce no version-required or field-required issue",
+                result.issues().stream().noneMatch(i ->
+                        "config-version-required".equals(i.rule())
+                                || "config-field-required".equals(i.rule())));
+        assertTrue("version absence should not be an ERROR (only schema is required)",
+                result.passed());
+    }
+
+    public void testMissingConfigYamlIsClean() throws Exception {
+        // Upstream OpenSpec treats openspec/config.yaml as optional — its readProjectConfig
+        // returns null with the comment "No config is OK". The plugin matches that contract.
+        // (Was config-missing ERROR + short-circuit.)
+        deleteFile("openspec/config.yaml");
+
+        ValidationResult result = validator.validateConfig();
+        assertTrue("config absence should produce no config-missing issue",
+                result.issues().stream().noneMatch(i ->
+                        "config-missing".equals(i.rule())));
+        assertTrue("config absence should not fail validation", result.passed());
     }
 
     public void testUnknownVersionTriggersWarning() throws Exception {
@@ -257,6 +276,13 @@ public class BuiltInValidatorTest extends OpenSpecIntegrationTestBase {
         assertNotNull("File should exist: " + relativePath, file);
         WriteAction.run(() ->
                 file.setBinaryContent(content.getBytes(StandardCharsets.UTF_8)));
+        refreshVfs();
+    }
+
+    private void deleteFile(String relativePath) throws Exception {
+        VirtualFile file = myFixture.findFileInTempDir(relativePath);
+        assertNotNull("File should exist before delete: " + relativePath, file);
+        WriteAction.run(() -> file.delete(this));
         refreshVfs();
     }
 }
