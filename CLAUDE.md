@@ -13,7 +13,11 @@ OpenSpec changes are mirrored to project trackers via two project-level custom s
 
 **Why these skills are custom-named, not inside `openspec-*`:** the `openspec` CLI manages `.claude/skills/openspec-*/SKILL.md` and rewrites them on every `openspec update`. Custom-named skills (`mirror-change-trackers`, `close-change-trackers`, `release-prep`) live outside that managed surface and survive updates.
 
+**These three skills are gitignored** (`.gitignore` entries `.claude/skills/{mirror,close}-change-trackers/` and `.claude/skills/release-prep/`). They intrinsically reference `forgejo.geek`, the Plane project UUID, `mcp__homelab__*` server-tool names, and `johnb/intellij-openspec` — things that violate the anti-leak rule below if they reach the public GitHub mirror. The skill files exist on disk and work in any local session; they just don't ride to git history. Edits to these skills are local-only.
+
 **Do not put tracker plumbing back into the `openspec-*` skills.** If you find yourself tempted, you're at the wrong layer.
+
+**Do not commit these skills back into tracked state.** If you need a tracked skill that does similar work, write a vendor-neutral one that takes config from environment / a separate file rather than hardcoding the homelab references.
 
 ## Tracker IDs go in a gitignored `.tracking.yaml` sidecar
 

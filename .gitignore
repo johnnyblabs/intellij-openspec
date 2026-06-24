@@ -75,3 +75,9 @@ plugin-signing-*
 
 ### OpenSpec change tracker IDs (gitignored sidecar — see CLAUDE.md) ###
 openspec/changes/**/.tracking.yaml
+
+### Local-environment-specific tooling skills (reference internal infra names that
+### must not reach the public mirror — see CLAUDE.md anti-leak rule). ###
+.claude/skills/mirror-change-trackers/
+.claude/skills/close-change-trackers/
+.claude/skills/release-prep/
