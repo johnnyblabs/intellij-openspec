@@ -23,6 +23,8 @@ class BuiltInValidatorRulesTest {
     private static final Pattern DELTA_SECTION_PATTERN = Pattern.compile("^## (ADDED|MODIFIED|REMOVED|RENAMED) Requirements", Pattern.MULTILINE);
     private static final Pattern RENAMED_ENTRY_PATTERN = Pattern.compile(
             "(?m)^\\s*(?:-\\s*)?FROM:\\s*(.+)$\\s*^\\s*(?:-\\s*)?TO:\\s*(.+)$");
+    private static final Pattern REMOVED_REASON_PATTERN = Pattern.compile("\\*\\*\\s*Reason\\s*:?\\s*\\*\\*", Pattern.CASE_INSENSITIVE);
+    private static final Pattern REMOVED_MIGRATION_PATTERN = Pattern.compile("\\*\\*\\s*Migration\\s*:?\\s*\\*\\*", Pattern.CASE_INSENSITIVE);
 
     // --- 1.7: RFC 2119 keywords are ERROR ---
 
@@ -245,7 +247,9 @@ class BuiltInValidatorRulesTest {
     }
 
     @Test
-    void deltaRemoved_missingReason_isError() {
+    void deltaRemoved_missingReason_isWarning() {
+        // Reason/Migration is an OpenSpec authoring convention, not an upstream rule (the
+        // @fission-ai/openspec client validates REMOVED by name only), so it is advisory, not blocking.
         String content = """
                 ## REMOVED Requirements
 
@@ -254,14 +258,17 @@ class BuiltInValidatorRulesTest {
                 """;
         List<ValidationIssue> issues = validateDeltaStructure(content);
         assertTrue(issues.stream().anyMatch(i ->
-                i.severity() == ValidationIssue.Severity.ERROR
+                i.severity() == ValidationIssue.Severity.WARNING
                         && i.rule().equals("delta-removed-fields")
                         && i.message().contains("**Reason**")),
-                "REMOVED requirement without Reason should be ERROR");
+                "REMOVED requirement without Reason should be WARNING");
+        assertTrue(issues.stream().noneMatch(i ->
+                i.severity() == ValidationIssue.Severity.ERROR && i.rule().equals("delta-removed-fields")),
+                "delta-removed-fields must not be an ERROR — the client does not require these fields");
     }
 
     @Test
-    void deltaRemoved_missingMigration_isError() {
+    void deltaRemoved_missingMigration_isWarning() {
         String content = """
                 ## REMOVED Requirements
 
@@ -270,14 +277,14 @@ class BuiltInValidatorRulesTest {
                 """;
         List<ValidationIssue> issues = validateDeltaStructure(content);
         assertTrue(issues.stream().anyMatch(i ->
-                i.severity() == ValidationIssue.Severity.ERROR
+                i.severity() == ValidationIssue.Severity.WARNING
                         && i.rule().equals("delta-removed-fields")
                         && i.message().contains("**Migration**")),
-                "REMOVED requirement without Migration should be ERROR");
+                "REMOVED requirement without Migration should be WARNING");
     }
 
     @Test
-    void deltaRemoved_missingBoth_isError() {
+    void deltaRemoved_missingBoth_isWarning() {
         String content = """
                 ## REMOVED Requirements
 
@@ -286,10 +293,26 @@ class BuiltInValidatorRulesTest {
                 """;
         List<ValidationIssue> issues = validateDeltaStructure(content);
         assertTrue(issues.stream().anyMatch(i ->
-                i.severity() == ValidationIssue.Severity.ERROR
+                i.severity() == ValidationIssue.Severity.WARNING
                         && i.rule().equals("delta-removed-fields")
                         && i.message().contains("**Reason** and **Migration**")),
                 "REMOVED requirement without both fields should report both missing");
+    }
+
+    @Test
+    void deltaRemoved_colonInsideBold_isAccepted() {
+        // **Reason:** / **Migration:** (colon inside the bold) is the form upstream proposals use —
+        // it must be recognized just like the **Reason**: form, with no warning.
+        String content = """
+                ## REMOVED Requirements
+
+                ### Requirement: Old feature
+                **Reason:** No longer needed
+                **Migration:** Use the new endpoint
+                """;
+        List<ValidationIssue> issues = validateDeltaStructure(content);
+        assertTrue(issues.stream().noneMatch(i -> i.rule().equals("delta-removed-fields")),
+                "REMOVED block using **Reason:**/**Migration:** (colon inside) should produce no finding");
     }
 
     @Test
@@ -476,13 +499,13 @@ class BuiltInValidatorRulesTest {
                 String reqContent = sectionContent.substring(reqMatcher.end(), nextReq);
 
                 if ("REMOVED".equals(sectionType)) {
-                    boolean hasReason = reqContent.contains("**Reason**");
-                    boolean hasMigration = reqContent.contains("**Migration**");
+                    boolean hasReason = REMOVED_REASON_PATTERN.matcher(reqContent).find();
+                    boolean hasMigration = REMOVED_MIGRATION_PATTERN.matcher(reqContent).find();
                     if (!hasReason || !hasMigration) {
                         String missing = !hasReason && !hasMigration ? "**Reason** and **Migration**"
                                 : !hasReason ? "**Reason**" : "**Migration**";
-                        issues.add(new ValidationIssue(ValidationIssue.Severity.ERROR, path, reqLine,
-                                "REMOVED requirement '" + reqHeader + "' must contain " + missing + " fields",
+                        issues.add(new ValidationIssue(ValidationIssue.Severity.WARNING, path, reqLine,
+                                "REMOVED requirement '" + reqHeader + "' should contain " + missing + " fields",
                                 "delta-removed-fields"));
                     }
                 } else {

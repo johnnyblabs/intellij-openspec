@@ -162,8 +162,9 @@ The plugin SHALL validate delta spec files for structural correctness, including
 - **THEN** the validator SHALL report a WARNING with code `delta-spec-sections`
 
 #### Scenario: Removed requirement missing metadata
-- **WHEN** a REMOVED requirement block is missing a **Reason** field or a **Migration** field
-- **THEN** the validator SHALL report an ERROR with code `delta-removed-fields`
+- **WHEN** a REMOVED requirement block is missing a **Reason** field or a **Migration** field (recognizing both the `**Reason:**` colon-inside and `**Reason**:` colon-outside bold forms)
+- **THEN** the validator SHALL report a WARNING with code `delta-removed-fields`
+- **AND** the validator SHALL NOT report this as an ERROR, because Reason/Migration are an OpenSpec authoring convention only — the upstream `@fission-ai/openspec` client validates REMOVED blocks by name and does not require these fields, so the plugin must not be stricter than the client it wraps
 
 #### Scenario: Added requirement missing scenario
 - **WHEN** an ADDED requirement block has no `#### Scenario:` section
@@ -189,9 +190,11 @@ The plugin SHALL provide a real-time IDE inspection for delta spec files, highli
 - **WHEN** a file is located under `openspec/changes/<change>/specs/` and is named `spec.md`
 - **THEN** the plugin SHALL apply delta spec inspections to that file
 
-#### Scenario: Inspection highlights errors inline
-- **WHEN** a delta spec file has a REMOVED requirement missing metadata or an ADDED requirement missing a scenario
-- **THEN** the IDE SHALL display inline error highlights at the relevant locations
+#### Scenario: Inspection highlights problems inline
+- **WHEN** a delta spec file has an ADDED requirement missing a scenario
+- **THEN** the IDE SHALL display an inline error highlight at the relevant location
+- **WHEN** a delta spec file has a REMOVED requirement missing **Reason**/**Migration** metadata
+- **THEN** the IDE SHALL display an inline warning highlight (advisory, not an error — see the `delta-removed-fields` rule above)
 
 #### Scenario: Quick-fix for MODIFIED requirement missing scenarios
 - **WHEN** a MODIFIED requirement has no `#### Scenario:` section and the requirement exists in the main spec
