@@ -325,7 +325,7 @@ class BuiltInValidatorRulesTest {
                 "Valid delta spec should have no structural errors");
     }
 
-    // --- RENAMED delta section (OSP-226 / Forgejo #216) ---
+    // --- RENAMED delta section ---
 
     @Test
     void deltaRenamed_validFromTo_passes() {

@@ -39,6 +39,9 @@ bin/
 ### VS Code ###
 .vscode/
 
+### JetBrains Junie (local IDE agent memory/plans — machine-local tooling state) ###
+.junie/
+
 ### Mac OS ###
 .DS_Store
 
