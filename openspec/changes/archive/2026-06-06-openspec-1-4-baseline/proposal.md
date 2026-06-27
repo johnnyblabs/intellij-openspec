@@ -33,5 +33,5 @@ OpenSpec CLI 1.4.0 expanded the upstream AI tool registry from 28 to 30 (adding 
 
 ## References
 
-- Forgejo: johnb/intellij-openspec#206
-- Plane: openspec/issue/OS-217 (`4b144f6d-d515-4bf8-89d9-610e3a45285a`)
+- Tracker: the linked issue
+- Tracker: the linked issue

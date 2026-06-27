@@ -47,6 +47,6 @@ None.
 
 ## References
 
-- Forgejo: johnb/intellij-openspec#195
+- Tracker: the linked issue
 - Plane: openspec/issue/213 (`fd16aba3-f41f-443e-8771-6d9f463834e4`)
 - Related change: `archive/2026-04-30-add-openspec-1-3-tool-support`

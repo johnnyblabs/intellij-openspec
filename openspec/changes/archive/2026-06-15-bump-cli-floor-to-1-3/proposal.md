@@ -26,7 +26,7 @@ The plugin's minimum-supported OpenSpec CLI floor was raised from 1.2.0 to 1.3.0
 - **Specs**: One delta spec under `schema-management`. No changes to `plugin-core` or `validation` — already at 1.3.0.
 - **Tests**: `SchemaServiceTest`'s `unsupported_whenVersionIs_1_2_0_belowNewFloor` already pins the boundary at 1.3.0 (added in `5e83163`'s test suite). Verify it still passes after the spec text update; no new tests needed.
 - **Compatibility**: Plugin continues to support IntelliJ IDEA 2024.2+. No platform-side impact.
-- **Trackers**: Will be mirrored via `/mirror-change-trackers bump-cli-floor-to-1-3` after this proposal lands. The earlier `bump-cli-floor-to-1-4` proposal (Forgejo #219 / Plane OSPEC-229) was closed as deferred — it returns when enough of the install base has moved past 1.3.x to make the next bump worthwhile, paired with the V1_X axis discussion that was extracted from it.
+- **Trackers**: Will be mirrored via `/mirror-change-trackers bump-cli-floor-to-1-3` after this proposal lands. The earlier `bump-cli-floor-to-1-4` proposal (a tracker entry) was closed as deferred — it returns when enough of the install base has moved past 1.3.x to make the next bump worthwhile, paired with the V1_X axis discussion that was extracted from it.
 - **Tangentially-related work already on main**:
   - Commit `f2303ba` — added 1.3.0/1.4.0 to the version-override combo presets + CLI-failure notification on profile switch. This change builds on `f2303ba` by trimming the *pre-floor* entries.
   - Commit `c34c7b2` — removed dead `version:` key from this project's `openspec/config.yaml`. Unaffected.

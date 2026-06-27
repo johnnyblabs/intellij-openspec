@@ -42,4 +42,4 @@
 
 ## 6. Out of scope — capture as follow-up
 
-- [x] 6.1 Open a follow-up OpenSpec change (or tracker note) for the deferred IDE surfaces: `workspace` / `context-store` / `initiative` commands, and the `init --profile` flag. Capture only as a tracker item or skeleton change — do NOT design or implement here. — Forgejo #207, Plane OS-218 (`aa6f7a28-dfaf-4494-ac25-7bcc26498be1`)
+- [x] 6.1 Open a follow-up OpenSpec change (or tracker note) for the deferred IDE surfaces: `workspace` / `context-store` / `initiative` commands, and the `init --profile` flag. Capture only as a tracker item or skeleton change — do NOT design or implement here. — a tracker entry

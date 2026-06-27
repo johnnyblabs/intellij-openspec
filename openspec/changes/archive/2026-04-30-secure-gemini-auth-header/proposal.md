@@ -41,6 +41,6 @@ None.
 
 ## References
 
-- Forgejo: johnb/intellij-openspec#199
+- Tracker: the linked issue
 - Plane: openspec/issue/215 (`8a0c8bf3-dfb9-4a37-9971-2e4c8a814a5a`)
 - Audit context: `update-direct-api-providers` (superseded; never archived) — the broader scope this change was narrowed from after engineering review.

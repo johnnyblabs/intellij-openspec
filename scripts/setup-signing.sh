@@ -21,7 +21,9 @@ KEY_FILE="${KEY_DIR}/plugin-signing-key.pem"
 CERT_FILE="${KEY_DIR}/plugin-signing-cert.pem"
 CSR_FILE="${KEY_DIR}/plugin-signing-csr.pem"
 
-REPO="johnb/intellij-openspec"
+# Forgejo repo path (owner/repo) — read from env so no homelab-specific value is
+# committed. Set FORGEJO_REPO in scripts/.env alongside FORGEJO_URL/FORGEJO_TOKEN.
+REPO="${FORGEJO_REPO:-}"
 
 echo ""
 echo "========================================"
@@ -125,7 +127,7 @@ echo ""
 log_info "Step 3: Setting CI secrets..."
 
 # --- Forgejo ---
-if [[ -n "${FORGEJO_TOKEN:-}" && -n "${FORGEJO_URL:-}" ]]; then
+if [[ -n "${FORGEJO_TOKEN:-}" && -n "${FORGEJO_URL:-}" && -n "${REPO:-}" ]]; then
   log_info "Setting Forgejo repository secrets..."
   API_AUTH_HEADER="Authorization: token ${FORGEJO_TOKEN}"
 

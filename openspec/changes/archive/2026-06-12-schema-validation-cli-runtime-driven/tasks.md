@@ -37,5 +37,5 @@
 
 ## 7. Archive-time tracker closure
 
-- [ ] 7.1 Close Forgejo #215 with archival comment.
-- [ ] 7.2 Move Plane OS-225 to Done.
+- [ ] 7.1 Close the linked tracker issue with archival comment.
+- [ ] 7.2 Move the linked tracker item to Done.

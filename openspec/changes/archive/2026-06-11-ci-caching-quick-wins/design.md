@@ -15,7 +15,7 @@ A parallel detail: the Forgejo workflow lags the GitHub workflow on action versi
 **Non-Goals:**
 - Configuration cache enablement (`org.gradle.configuration-cache=true`). Separate optimization; requires auditing the Kotlin DSL build script for compat.
 - `setup-gradle@v3` migration. Larger refactor of the cache-action-vs-dedicated-setup-action question; deferred per `project_ci_caching_optimization` memory.
-- Runner-host changes (job-duration limits, memory). That's the territory of `#212/OS-223` (Forgejo runner verifyPlugin fix).
+- Runner-host changes (job-duration limits, memory). That's the territory of the runner-fix tracker (Forgejo runner verifyPlugin fix).
 - Changing the actual cache key derivation, restore-keys, or which paths are cached. Out of scope — this change is hygiene, not redesign.
 
 ## Decisions

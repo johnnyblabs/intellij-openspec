@@ -29,8 +29,8 @@ No new public API surface for plugin consumers; behavioral change is "the settin
 
 ## References
 
-- Forgejo: johnb/intellij-openspec#208 (the original bug report — has full repro steps and fix sketch)
-- Plane: openspec/issue/OS-219 (`0371378e-232c-401e-969b-4b2e2282d8cb`)
+- Tracker: the linked issue (the original bug report — has full repro steps and fix sketch)
+- Tracker: the linked issue
 - Surfaced by: `openspec-1-4-baseline` (committed as `109a6be`, archived 2026-06-06) which made `workspace-planning` user-selectable
 
-No new Forgejo/Plane trackers created for this change — the existing bug report has the canonical body. When this change archives, the archive flow closes #208 and moves OS-219 to Done.
+No new Forgejo/Plane trackers created for this change — the existing bug report has the canonical body. When this change archives, the archive flow closes the linked tracker issue.

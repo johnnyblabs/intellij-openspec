@@ -44,6 +44,6 @@ None.
 
 ## References
 
-- Forgejo: johnb/intellij-openspec#193
+- Tracker: the linked issue
 - Plane: openspec/issue/212 (`26c80801-6f9a-4cad-9828-9fb218f311e3`)
 - Upstream releases: [v1.3.0](https://github.com/Fission-AI/OpenSpec/releases/tag/v1.3.0), [v1.3.1](https://github.com/Fission-AI/OpenSpec/releases/tag/v1.3.1)

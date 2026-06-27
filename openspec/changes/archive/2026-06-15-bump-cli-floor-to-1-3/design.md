@@ -19,7 +19,7 @@ The Settings version-override combo was expanded to `["", "1.0.0", "1.1.0", "1.2
 - Trim version-override combo presets to floor-relevant values (`["", "1.3.0", "1.4.0"]`).
 
 **Non-Goals:**
-- Bumping the floor to 1.4.0. Deferred to a future change once enough of the install base has moved past 1.3.x. The earlier `bump-cli-floor-to-1-4` proposal (Forgejo #219 / Plane OSPEC-229) was closed pending that condition.
+- Bumping the floor to 1.4.0. Deferred to a future change once enough of the install base has moved past 1.3.x. The earlier `bump-cli-floor-to-1-4` proposal (a tracker entry) was closed pending that condition.
 - Resolving the `VersionSupport.V1_X` axis ambiguity (config-format axis vs CLI-era axis). That discussion belongs with the future 1.4 work — surfacing it here would inflate this change beyond a retro-docs scope.
 - Adding a `V1_4` placeholder enum entry. Same reason — comes with the V1_X axis decision.
 - Removing `MIN_CLI_VERSION` literal in favor of `VersionSupport.allVersions()[0]` or similar. Worth doing eventually so future floor bumps are a one-line constant change; out of scope here.

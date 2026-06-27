@@ -68,9 +68,9 @@ The action version bumps are an internal implementation detail of the existing "
 
 ## References
 
-- Forgejo: johnb/intellij-openspec#211 (the original tracker — has the same three-point fix sketch)
-- Plane: openspec/issue/OS-222 (`8bbfb375-251d-4a59-91ba-dec116e0bbda`)
+- Tracker: the linked issue (the original tracker — has the same three-point fix sketch)
+- Tracker: the linked issue
 - Source memory: `project_ci_caching_optimization` (stale on point 3 — fixed at archive time)
 - Prior gradle.properties caching commit: `eef8fa2` (2026-03-18 "Add Gradle dependency caching to CI workflow")
 
-No new Forgejo/Plane trackers created for this change — the existing tracker has the canonical body. When this change archives, the archive flow closes #211 and moves OS-222 to Done.
+No new Forgejo/Plane trackers created for this change — the existing tracker has the canonical body. When this change archives, the archive flow closes the linked tracker issue.

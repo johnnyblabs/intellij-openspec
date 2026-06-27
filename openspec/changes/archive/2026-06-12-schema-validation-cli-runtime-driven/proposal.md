@@ -13,7 +13,7 @@ Both warnings appear even though the CLI is perfectly happy with the schema. The
 
 ### Important framing — combo population is already runtime-driven
 
-Investigation surfaced that `OpenSpecSettingsPanel.loadSchemaList` (`OpenSpecSettingsPanel.java:405-426`) already populates the Default schema combo from `SchemaService.listSchemas()` at runtime. **That part of the original tracker (#215 / OS-225) is already correct.** This change targets the validator only.
+Investigation surfaced that `OpenSpecSettingsPanel.loadSchemaList` (`OpenSpecSettingsPanel.java:405-426`) already populates the Default schema combo from `SchemaService.listSchemas()` at runtime. **That part of the original tracker is already correct.** This change targets the validator only.
 
 ### Validator changes
 
@@ -57,9 +57,9 @@ Keep the method and the V1_2 enum entry's `validSchemas` field unchanged. They a
 
 ## References
 
-- Forgejo: johnb/intellij-openspec#215 (the canonical tracker — has the original fix sketch)
-- Plane: openspec/issue/OS-225 (`b89b7ec5-544b-49c8-b73f-7e84bbd1b38f`)
+- Tracker: the linked issue (the canonical tracker — has the original fix sketch)
+- Tracker: the linked issue
 - Architectural sibling: `profile-ui-cli-alignment` (in-flight, on `main`) — same "don't be more restrictive than upstream" lesson, applied to profiles
 - Upstream source confirming `z.string().min(1)`: `@fission-ai/openspec/dist/core/project-config.js` Zod schema for the `schema` field
 
-No new Forgejo/Plane trackers created. When this change archives, the archive flow closes #215 and moves OS-225 to Done.
+No new Forgejo/Plane trackers created. When this change archives, the archive flow closes the linked tracker issue.

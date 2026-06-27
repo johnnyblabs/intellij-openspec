@@ -26,5 +26,5 @@
 ## 5. Spec sync at archive time
 
 - [ ] 5.1 During `/opsx:archive`, sync the delta spec (the new two scenarios in `Project detection and initialization`) into `openspec/specs/plugin-core/spec.md`.
-- [ ] 5.2 Close Forgejo #208 (the original bug report) with an archival comment pointing at this change's commit.
-- [ ] 5.3 Move Plane OS-219 to Done.
+- [ ] 5.2 Close the linked tracker issue (the original bug report) with an archival comment pointing at this change's commit.
+- [ ] 5.3 Move the linked tracker item to Done.

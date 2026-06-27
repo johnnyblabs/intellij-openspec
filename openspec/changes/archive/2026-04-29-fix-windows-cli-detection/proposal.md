@@ -31,5 +31,5 @@ None.
 ## References
 
 - GitHub: johnnyblabs/intellij-openspec#11
-- Forgejo: johnb/intellij-openspec#191
+- Tracker: the linked issue
 - Plane: openspec/issue/211 (`abebfb96-137e-4b14-bff9-89fa79b5a5b5`)

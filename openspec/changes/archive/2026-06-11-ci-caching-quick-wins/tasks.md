@@ -31,5 +31,5 @@
 ## 7. Spec sync at archive time
 
 - [ ] 7.1 During `/opsx:archive`, sync the delta spec (new "Concurrency cancellation for in-flight runs" requirement with 5 scenarios) into `openspec/specs/ci/spec.md`.
-- [ ] 7.2 Close Forgejo #211 (the original tracker) with an archival comment.
-- [ ] 7.3 Move Plane OS-222 to Done.
+- [ ] 7.2 Close the linked tracker issue (the original tracker) with an archival comment.
+- [ ] 7.3 Move the linked tracker item to Done.

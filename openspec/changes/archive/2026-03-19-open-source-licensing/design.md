@@ -1,6 +1,6 @@
 ## Context
 
-The plugin is currently hosted on a private Forgejo instance (`ssh://git@geek:222/johnb/OpenSpecPlugin.git`) with no public source code and no license file. JetBrains Marketplace approval requires either a proprietary EULA or an open-source license with a link to source. The "OpenSpec" trademark (USPTO 97326504) is dead/abandoned as of July 2024, so the name is clear.
+The plugin is currently hosted on a private Forgejo instance with no public source code and no license file. JetBrains Marketplace approval requires either a proprietary EULA or an open-source license with a link to source. The "OpenSpec" trademark (USPTO 97326504) is dead/abandoned as of July 2024, so the name is clear.
 
 ## Goals / Non-Goals
 
@@ -32,5 +32,5 @@ Before the first public push, do a one-time audit of `.gitignore`, git history, 
 ## Risks / Trade-offs
 
 - **Risk: Secrets in git history** → Audit git log for any committed `.env`, credentials, or tokens before first public push. If found, rewrite history or start fresh.
-- **Risk: Forgejo-specific URLs in docs/code** → Internal URLs (`forgejo.geek`, `plane.geek`) are in scripts and memory files. These are harmless to expose (not reachable externally) but look unprofessional. Review and document as "internal development" where they appear.
+- **Risk: Forgejo-specific URLs in docs/code** → Internal hostnames are in scripts and memory files. These are harmless to expose (not reachable externally) but look unprofessional. Review and document as "internal development" where they appear.
 - **Risk: Maintenance burden of two remotes** → Mitigated by only pushing to GitHub on releases or significant milestones, not every commit.

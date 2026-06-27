@@ -2,7 +2,7 @@
 
 The plugin currently supports OpenSpec CLI versions 1.0.0 onward (per `VersionSupport.V1_0` and `V1_1` enum entries). CLI 1.2.0 launched in May 2025, 1.3.x in early 2026, and 1.4.x soon after. Anyone still on pre-1.3 has effectively abandoned the toolchain — `npm i -g @fission-ai/openspec@latest` is one command away. The plugin is the new user surface; designing it around 4-year-old baselines is engineering tax for a near-zero user population.
 
-Dropping pre-1.3 support is a precondition for OS-218 (1.4.x feature surfaces): the BC matrix collapses from 5 columns (no CLI / 1.0 / 1.1 / 1.2 / 1.3 / 1.4+) to 3 (no CLI / 1.3.x / 1.4+). Less conditional code, less test parameterization, less branching in the validator.
+Dropping pre-1.3 support is a precondition for the 1.4.x feature surfaces: the BC matrix collapses from 5 columns (no CLI / 1.0 / 1.1 / 1.2 / 1.3 / 1.4+) to 3 (no CLI / 1.3.x / 1.4+). Less conditional code, less test parameterization, less branching in the validator.
 
 ## What Changes
 
@@ -54,9 +54,9 @@ Dropping pre-1.3 support is a precondition for OS-218 (1.4.x feature surfaces): 
 
 ## References
 
-- Forgejo: johnb/intellij-openspec#214 (the canonical tracker)
-- Plane: openspec/issue/OS-224 (`31c1f5a3-6e7f-4f85-8910-415effa8781d`)
-- Precondition for: #207 / OS-218 (1.4.x feature surfaces) — simpler BC matrix once floor is at 1.3
+- Tracker: the linked issue (the canonical tracker)
+- Tracker: the linked issue
+- Precondition for: the 1.4.x feature surfaces — simpler BC matrix once floor is at 1.3
 - Same propose-flow pattern as `fix-init-default-schema` (#208) and `ci-caching-quick-wins` (#211): existing tracker is canonical; no new tracker created.
 
-No new Forgejo/Plane trackers created. When this change archives, the archive flow closes #214 and moves OS-224 to Done.
+No new Forgejo/Plane trackers created. When this change archives, the archive flow closes the linked tracker issue.

@@ -49,7 +49,7 @@ None.
 
 ## References
 
-- Forgejo: johnb/intellij-openspec#197
+- Tracker: the linked issue
 - Plane: openspec/issue/214 (`3583a34a-6496-4b76-a105-8954f8fa51ea`)
 - Related changes: `archive/2026-04-30-add-openspec-1-3-tool-support`, `archive/2026-04-30-add-forgecode-bob-shell-guidance`
 - [Junie slash commands docs](https://junie.jetbrains.com/docs/custom-slash-commands.html)

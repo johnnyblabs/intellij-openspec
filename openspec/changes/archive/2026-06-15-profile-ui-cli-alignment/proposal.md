@@ -52,6 +52,6 @@ None. The "Customize workflows…" affordance is folded into `config-profile` ra
 
 ## References
 
-- Forgejo: johnb/intellij-openspec#203
+- Tracker: the linked issue
 - Plane: openspec/issue/216 (`0ecc4b76-ab0e-41b8-bb91-95dba315f854`)
 - Predecessor change: `profile-discovery` (released v0.2.10)
