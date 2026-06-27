@@ -16,11 +16,14 @@ env:
   PATH: /opt/gradle-9.0.0/bin:/opt/apache-maven-3.9.9/bin:/opt/java/openjdk/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
   GRADLE_OPTS: -Dorg.gradle.daemon=false
 
-# History: actions/cache + actions/upload-artifact @v4 silently broke the `build` job for
-# ~16 days (commit 1065438, 2026-06-11) because the Forgejo act_runner didn't yet support the
-# v4 artifact protocol; we pinned back to @v3 to recover. The runner has since been upgraded
-# to support v4, so these are back on @v4, matching the GitHub mirror. If `build` starts
-# failing in the always()-gated "Upload test results" step again, the runner is the suspect.
+# Artifacts: use Forgejo's patched upload-artifact fork
+# (https://code.forgejo.org/forgejo/upload-artifact@v4), NOT the GitHub
+# `actions/upload-artifact@v4`. The GitHub action bundles @actions/artifact v2,
+# which guards on GHES and aborts with GHESNotSupportedError *before* contacting
+# the server — so it fails on Forgejo regardless of runner version. The Forgejo
+# fork strips that guard and speaks the v4 protocol our runner+server support.
+# (History: @v4 was reverted to @v3 on 2026-06-11 when the runner predated v4;
+#  runner since upgraded to v12.12.0 — but the real fix is the patched fork, not the runner.)
 jobs:
   build:
     runs-on: java-21
@@ -43,7 +46,7 @@ jobs:
         run: gradle build
 
       - name: Upload test results
-        uses: actions/upload-artifact@v4
+        uses: https://code.forgejo.org/forgejo/upload-artifact@v4
         if: always()
         with:
           name: test-results
@@ -68,7 +71,7 @@ jobs:
 
       - name: Upload plugin artifact
         if: github.ref == 'refs/heads/main' || github.base_ref == 'main'
-        uses: actions/upload-artifact@v4
+        uses: https://code.forgejo.org/forgejo/upload-artifact@v4
         with:
           name: intellij-openspec
           path: build/distributions/*-signed.zip
