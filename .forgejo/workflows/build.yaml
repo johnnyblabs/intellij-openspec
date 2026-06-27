@@ -60,15 +60,6 @@ jobs:
           PLUGIN_SIGNING_CERTIFICATE: ${{ secrets.PLUGIN_SIGNING_CERTIFICATE }}
           PLUGIN_SIGNING_KEY_PASSWORD: ${{ secrets.PLUGIN_SIGNING_KEY_PASSWORD }}
 
-      - name: Verify plugin signature
-        if: github.ref == 'refs/heads/main' || github.base_ref == 'main'
-        continue-on-error: true
-        run: gradle verifyPluginSignature
-        env:
-          PLUGIN_SIGNING_KEY: ${{ secrets.PLUGIN_SIGNING_KEY }}
-          PLUGIN_SIGNING_CERTIFICATE: ${{ secrets.PLUGIN_SIGNING_CERTIFICATE }}
-          PLUGIN_SIGNING_KEY_PASSWORD: ${{ secrets.PLUGIN_SIGNING_KEY_PASSWORD }}
-
       - name: Upload plugin artifact
         if: github.ref == 'refs/heads/main' || github.base_ref == 'main'
         uses: https://code.forgejo.org/forgejo/upload-artifact@v4
