@@ -1,6 +1,6 @@
 # Getting Started: Spec Browser
 
-*For reviewers, team leads, and PMs who want to browse specs and track coverage — no AI setup required.*
+*For reviewers, team leads, and PMs who want to browse specs — no AI setup required.*
 
 ---
 
@@ -54,15 +54,7 @@ Changes
 
 This gives you visibility into where each change stands without asking the developer.
 
-## Step 4: Check Coverage
-
-Switch to the **Coverage** tab in the tool window. This shows which spec requirements are referenced in source code and highlights gaps — requirements that exist in specs but have no corresponding code references.
-
-## Step 5: Navigate via Gutter Markers
-
-When reviewing Java source files, look for gutter icons next to `@spec` annotations. Click them to jump directly to the referenced spec file. This lets you trace from implementation back to the requirement it satisfies.
-
-## Step 6: Review with Inspections
+## Step 4: Review with Inspections
 
 The plugin provides real-time [editor inspections](feature-reference.md#inspections) as you read spec files:
 

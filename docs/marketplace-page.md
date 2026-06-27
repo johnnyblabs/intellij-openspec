@@ -33,8 +33,7 @@ Paste this HTML into the "Description" field on the plugin edit page:
   <tr>
     <td><strong>Spec Browser</strong></td>
     <td>Just want to read specs? Zero AI setup required. Browse the tree,
-      track coverage, navigate via gutter markers, and review with
-      real-time inspections.</td>
+      navigate specs, and review with real-time inspections.</td>
   </tr>
   <tr>
     <td><strong>IDE-First Developer</strong></td>
@@ -45,7 +44,7 @@ Paste this HTML into the "Description" field on the plugin edit page:
   <tr>
     <td><strong>CLI Companion</strong></td>
     <td>Use Claude Code, Gemini CLI, or another terminal AI? The plugin
-      is your spec dashboard &mdash; browse specs, track coverage, copy
+      is your spec dashboard &mdash; browse specs, copy
       prompts with save-path hints for your CLI tool.</td>
   </tr>
   <tr>
@@ -60,8 +59,7 @@ Paste this HTML into the "Description" field on the plugin edit page:
 
 <ul>
   <li><strong>Spec viewer &amp; navigator</strong> &mdash; Tree view of specs, changes, and
-    archives with search, filtering, gutter markers in Java source, and a
-    coverage panel that tracks which requirements are referenced in code.</li>
+    archives with search and filtering.</li>
   <li><strong>Workflow orchestrator</strong> &mdash; Walk through Init, Propose, Generate,
     Apply, and Archive from menus and toolbar buttons. A visual artifact
     pipeline shows what&rsquo;s done, what&rsquo;s ready, and what&rsquo;s blocked.
@@ -87,15 +85,13 @@ Paste this HTML into the "Description" field on the plugin edit page:
   <li>Direct API support for Claude, OpenAI, and Gemini with secure credential storage</li>
   <li>Detects AI tool configuration in your project and provides tool-specific delivery guidance</li>
   <li>Real-time editor inspections for spec format, RFC 2119 keywords, and delta spec structure</li>
-  <li>Gutter markers linking <code>@spec</code> annotations in code back to spec files</li>
-  <li>Coverage panel showing which requirements are referenced in source</li>
   <li>Delta spec sync: merge ADDED / MODIFIED / REMOVED sections into main specs with preview</li>
   <li>Bulk archive with conflict detection for multi-change projects</li>
   <li>Setup wizard for first-run onboarding</li>
   <li>Explore panel: assembled project context for AI conversations</li>
   <li>Custom schema management: fork, create, and switch workflow schemas</li>
   <li>Config profile display and workflow management</li>
-  <li>Verify action: check artifact completeness and requirement coverage</li>
+  <li>Verify action: check artifact completeness and task progress</li>
   <li>Continue action: incremental one-artifact-at-a-time generation</li>
   <li>CLI update action: refresh agent instruction files from the IDE</li>
 </ul>
@@ -174,7 +170,7 @@ Paste this HTML into the "Getting Started" field:
 Comma-separated tags for the "Plugin Features" field:
 
 ```
-Spec-Driven Development, OpenSpec, AI Integration, Code Generation, Requirements Management, Specifications, Workflow Automation, Claude API, OpenAI API, Gemini API, GitHub Copilot, Coverage Analysis
+Spec-Driven Development, OpenSpec, AI Integration, Code Generation, Requirements Management, Specifications, Workflow Automation, Claude API, OpenAI API, Gemini API, GitHub Copilot
 ```
 
 ---
@@ -185,10 +181,8 @@ Capture 3-5 screenshots for the listing:
 
 1. **Browse tab** — Tree view showing specs, changes, and archive nodes with an expanded change
 2. **Workflow Action Panel** — Pipeline chips (proposal > design > specs > tasks) showing progress on an active change
-3. **Coverage panel** — Coverage tab showing which requirements are referenced in code
-4. **Explore tab** — Assembled project context panel with copy/editor buttons
-5. **Settings panel** — Settings > Tools > OpenSpec configuration with the delivery dropdown visible
-6. **Gutter markers** — A Java file with `@spec` annotations showing clickable gutter icons
+3. **Explore tab** — Assembled project context panel with copy/editor buttons
+4. **Settings panel** — Settings > Tools > OpenSpec configuration with the delivery dropdown visible
 
 **Tips:**
 - Use the default IntelliJ light theme (most recognizable on the marketplace)

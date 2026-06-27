@@ -11,8 +11,6 @@
             <li><b>Workflow automation</b> — Init, Propose, Apply, and Archive actions from the IDE</li>
             <li><b>AI-assisted generation</b> — Generate proposals, designs, and specs via Claude, OpenAI, or Gemini</li>
             <li><b>Validation &amp; inspections</b> — Real-time spec format checks and delta spec validation</li>
-            <li><b>Coverage panel</b> — See which requirements are referenced in your code at a glance</li>
-            <li><b>Gutter markers</b> — <code>@spec</code> annotations in Java link back to their specs</li>
             <li><b>Setup wizard</b> — Guided onboarding for new and existing projects</li>
         </ul>
 
@@ -39,7 +37,6 @@
         <projectService serviceImplementation="com.johnnyblabs.openspec.services.DeliveryMethodResolver"/>
         <projectService serviceImplementation="com.johnnyblabs.openspec.toolwindow.OpenSpecConsoleService"/>
         <projectService serviceImplementation="com.johnnyblabs.openspec.toolwindow.ExplorePanelService"/>
-        <projectService serviceImplementation="com.johnnyblabs.openspec.services.SpecCoverageService"/>
         <projectService serviceImplementation="com.johnnyblabs.openspec.services.VerificationService"/>
         <projectService serviceImplementation="com.johnnyblabs.openspec.services.SpecSyncService"/>
         <projectService serviceImplementation="com.johnnyblabs.openspec.services.SchemaService"/>
@@ -115,8 +112,6 @@
         <!-- Line Markers -->
         <codeInsight.lineMarkerProvider language=""
                                          implementationClass="com.johnnyblabs.openspec.editor.OpenSpecLineMarkerProvider"/>
-        <codeInsight.lineMarkerProvider language="JAVA"
-                                         implementationClass="com.johnnyblabs.openspec.editor.SpecRefLineMarkerProvider"/>
     </extensions>
 
     <actions>
