@@ -60,7 +60,7 @@ Paste this HTML into the "Description" field on the plugin edit page:
 
 <ul>
   <li><strong>Spec viewer &amp; navigator</strong> &mdash; Tree view of specs, changes, and
-    archives with search, filtering, gutter markers in Java source, and a
+    archives with search, filtering, gutter markers in your source code, and a
     coverage panel that tracks which requirements are referenced in code.</li>
   <li><strong>Workflow orchestrator</strong> &mdash; Walk through Init, Propose, Generate,
     Apply, and Archive from menus and toolbar buttons. A visual artifact
@@ -188,7 +188,7 @@ Capture 3-5 screenshots for the listing:
 3. **Coverage panel** — Coverage tab showing which requirements are referenced in code
 4. **Explore tab** — Assembled project context panel with copy/editor buttons
 5. **Settings panel** — Settings > Tools > OpenSpec configuration with the delivery dropdown visible
-6. **Gutter markers** — A Java file with `@spec` annotations showing clickable gutter icons
+6. **Gutter markers** — A source file with `@spec` annotations showing clickable gutter icons
 
 **Tips:**
 - Use the default IntelliJ light theme (most recognizable on the marketplace)

@@ -38,7 +38,7 @@ OpenSpec
 
 ### Gutter Markers
 
-`@spec` annotations in Java source show clickable gutter icons that navigate to the referenced spec file. This lets you jump from implementation code directly to the requirement it satisfies.
+`@spec` annotations in your source code (any language) show clickable gutter icons that navigate to the referenced spec file. This lets you jump from implementation code directly to the requirement it satisfies.
 
 ### Coverage Panel
 
@@ -163,7 +163,7 @@ Three editor inspections run in real-time as you edit:
 ### Line Markers
 
 - **Generic line markers** — On spec definitions in spec files
-- **Java-specific line markers** — On `@spec` annotations in Java source, linking back to spec files
+- **Line markers (any language)** — On `@spec` annotations in your source, linking back to spec files
 
 ---
 
