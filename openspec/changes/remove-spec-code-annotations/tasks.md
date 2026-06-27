@@ -28,4 +28,4 @@
 ## 6. Supersede the in-flight fix & close the loop
 - [x] 6.1 Do this removal on a fresh branch off `main` — DONE (`change/remove-spec-code-annotations`). The abandoned `change/fix-coverage-language-detection` branch has been deleted (local + origin + github mirror).
 - [x] 6.2 Post the vendor-neutral GitHub #18 reply — DONE. Posted on the public tracker: confirmed the 0% was a real Java-only gating bug, explained the decision to retire `@spec`/Coverage as off-model, and pointed at OpenSpec's `verify-change` workflow / `openspec status` for language-agnostic completeness. The superseded PR was closed with the same rationale. The issue is left open until v0.3.0 ships the removal.
-- [ ] 6.3 Mirror to internal trackers via `/mirror-change-trackers remove-spec-code-annotations`.
+- [x] 6.3 Mirror to internal trackers via `/mirror-change-trackers remove-spec-code-annotations` — DONE (IDs recorded in the gitignored `.tracking.yaml` sidecar).
