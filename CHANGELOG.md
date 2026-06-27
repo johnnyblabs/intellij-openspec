@@ -9,6 +9,16 @@
 - **Detection for two AI tools introduced in OpenSpec CLI 1.4.0** — Kimi CLI (Moonshot AI) and Mistral Vibe. Supported tool count expands from 28 to 30.
 - **Tailored delivery guidance** for both new tools. Kimi CLI and Mistral Vibe show terminal-style copy ("Paste into Kimi CLI", "Paste into Mistral Vibe") alongside Claude Code, Gemini, Codex, OpenCode, ForgeCode, and Bob Shell, and the IDE watches `tasks.md` for completion instead of prompting for manual save. The generic "Paste into your AI tool" fallback does not appear for these tools.
 - **`workspace-planning` workflow schema is accepted as valid** under the V1_2 config baseline, matching its introduction upstream in OpenSpec CLI 1.4.0.
+- **`RENAMED` delta sections are now fully supported** across validation, the inline delta-spec inspection, and the scaffolded delta template. `## RENAMED Requirements` blocks with `FROM:` / `TO:` pairs are recognized and validated, completing the four-section delta contract (ADDED, MODIFIED, REMOVED, RENAMED) and matching upstream OpenSpec. Spec sync applies operations in upstream order (RENAMED → REMOVED → MODIFIED → ADDED).
+
+### Changed
+- **Workflow-profile picker aligned with the CLI.** The profile combo in Settings now lists only CLI-accepted presets (the unsupported "custom" target was removed), surfaces the underlying cause when a CLI profile switch fails, and shows recovery guidance when a profile value carried over from an older plugin version is selected — with Apply disabled until you pick a supported preset.
+- **Schema-name validation is driven off the CLI runtime.** Valid schema names are now the union of the plugin's built-in set and the live list from your installed CLI, and warnings report CLI status (available / unavailable / below floor) plus the recovery action.
+
+### Fixed
+- **Built-in project init now honors your Default schema setting.** Initializing a project without the CLI previously always wrote `schema: spec-driven` into `openspec/config.yaml`, ignoring the Default schema chosen in Settings (e.g. `workspace-planning`). The setting now flows through, falling back to `spec-driven` when unset.
+- **Custom (forked) schemas no longer trigger a false validation warning.** A legitimate `openspec schema fork` name is now recognized instead of being flagged as unknown.
+- **Config validation no longer flags a freshly initialized project.** The plugin previously emitted plugin-only errors and warnings (`config-missing`, `config-version-required`, `config-field-required`, `config-profile-recommended`) on an untouched `openspec/config.yaml` that upstream OpenSpec considers perfectly valid. Those rules were dropped; genuine upstream-aligned checks (schema required, schema/version recognized) remain.
 
 ## v0.2.10 — Windows Support & OpenSpec 1.3 Tools
 
