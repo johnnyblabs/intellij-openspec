@@ -50,6 +50,16 @@ The general rule:
 - If a field is genuinely plugin-internal-only, leave an inline comment on the field explaining why upstream doesn't see it.
 - If you find an internal/upstream divergence that's load-bearing on both sides, surface it before changing — it's a candidate for either a plugin-side refactor (decouple from the upstream field) or upstream issue, not a quiet config edit.
 
+## Branching & pull requests — develop on `origin`, mirror to GitHub
+
+Default workflow (adopted 2026-06-27): non-trivial work goes through a **pull request on the Forgejo `origin` remote**, not a direct push to `main`.
+
+- Branch from `main` → push the branch to `origin` → open a PR on `origin` → let CI run → self-merge → then mirror with `git push github main`.
+- **GitHub is a read-only mirror** of `main`. Review/PRs live on `origin`. GitHub's classic branch protection no longer requires PRs (removed 2026-06-27 — you can't PR a mirror) but still blocks force-push and deletion of public `main`.
+- The `pre-push` leak guard (`.githooks/pre-push`, activated via `git config core.hooksPath .githooks`) vets every push to the GitHub mirror. Never weaken its pattern back to `\b` — git grep ignores it.
+- **Trivial changes** (doc/tracker/comment tweaks) may still go direct to `main` on `origin` — use judgement.
+- After a PR merges, delete the branch locally (`git branch -d`) and on `origin` (`git push origin --delete <name>`), per the standing workflow preference.
+
 ## Release & publishing
 
 - Never run `publishPlugin` locally. CI handles signing and JetBrains Marketplace publishing on `v*` tag push.
