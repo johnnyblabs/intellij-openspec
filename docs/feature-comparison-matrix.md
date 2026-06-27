@@ -164,7 +164,7 @@ A comprehensive comparison of the OpenSpec IntelliJ plugin against all known VS 
 - Explore panel: assembled project context for AI conversations
 - Custom schema management: fork, create, and switch workflow schemas
 - Config profile display and workflow management
-- Verify action: completeness and coverage checking with report dialog
+- Verify action: completeness and task-progress checking with report dialog
 
 ### Codder13 (VS Code)
 - CodeLens integration on `tasks.md` — click a task to open Copilot Chat with full project context injected
@@ -220,7 +220,7 @@ AvantMedia:      Narrow and simple (monitoring only)
 
 | Feature | Who Has It | Priority | Planned |
 |---|---|---|---|
-| CodeLens on tasks (click to start AI chat) | Codder13 | High | Partial — gutter markers on `@spec` annotations exist |
+| CodeLens on tasks (click to start AI chat) | Codder13 | High | No — no equivalent on task lines |
 | Chat Participant API (write into Copilot Chat) | Codder13, atman-dev | Medium | No IntelliJ equivalent API |
 | Auto-inject project context into AI chat | Codder13 | Medium | Investigate |
 | GitHub issue creation from changes | atman-dev | Low | — |

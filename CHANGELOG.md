@@ -20,6 +20,9 @@
 - **Custom (forked) schemas no longer trigger a false validation warning.** A legitimate `openspec schema fork` name is now recognized instead of being flagged as unknown.
 - **Config validation no longer flags a freshly initialized project.** The plugin previously emitted plugin-only errors and warnings (`config-missing`, `config-version-required`, `config-field-required`, `config-profile-recommended`) on an untouched `openspec/config.yaml` that upstream OpenSpec considers perfectly valid. Those rules were dropped; genuine upstream-aligned checks (schema required, schema/version recognized) remain.
 
+### Removed
+- **The Coverage tab and `@spec` gutter markers have been removed.** These surfaces relied on a plugin-specific `@spec <domain>:<requirement>` code annotation that is not part of OpenSpec — OpenSpec has no concept of annotating source code or scoring spec "coverage." Spec browsing and navigation remain in the Browse tab; for a per-change completeness check, use OpenSpec's own `verify-change` workflow, which requires no annotations and works in any language.
+
 ## v0.2.10 — Windows Support & OpenSpec 1.3 Tools
 
 ### Fixed

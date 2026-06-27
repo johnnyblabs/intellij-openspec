@@ -66,7 +66,7 @@ Write concise commit messages that explain *why*, not just *what*:
 ```
 Fix tree refresh after archive — VFS listener was missing recursive flag
 
-Add Kotlin file type support for @spec gutter markers
+Honor Default schema setting in built-in init — was hardcoding spec-driven
 ```
 
 ## Pull Requests

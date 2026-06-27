@@ -76,7 +76,7 @@ The specs define *what* to build. The design defines *how*. The tasks break it i
 
 Once implementation is complete:
 
-1. **OpenSpec > Verify** — checks artifact completeness, task progress, and coverage
+1. **OpenSpec > Verify** — checks artifact completeness and task progress
 2. Click **Archive** in the Workflow Action Panel
 3. Optionally [sync delta specs](feature-reference.md#workflow-actions) into your main specs
 
@@ -98,6 +98,6 @@ This is the same as Fast-Forward but one artifact at a time. See [Workflow Actio
 
 ## You Might Also Want to Explore
 
-- **[Spec Browser Guide](getting-started-browser.md)** — The browsing and coverage features work the same way regardless of delivery mode
+- **[Spec Browser Guide](getting-started-browser.md)** — The browsing features work the same way regardless of delivery mode
 - **[IDE-First Developer Guide](getting-started-copilot.md)** — If you also use Copilot or Cursor and want to mix clipboard and API workflows
 - **[Feature Reference](feature-reference.md)** — Complete reference for all plugin features

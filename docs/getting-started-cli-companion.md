@@ -19,7 +19,7 @@ No API key or plugin-side AI configuration is needed — you'll use your existin
 
 ## How It Works
 
-In this workflow, the plugin is your **spec dashboard** while your terminal AI does the generation work. You use IntelliJ for browsing specs, tracking coverage, and copying prompts. You use the terminal for running AI commands that generate artifacts.
+In this workflow, the plugin is your **spec dashboard** while your terminal AI does the generation work. You use IntelliJ for browsing specs and copying prompts. You use the terminal for running AI commands that generate artifacts.
 
 ---
 
@@ -61,7 +61,6 @@ The plugin's [auto-refresh](feature-reference.md#general) detects the new file a
 While your terminal AI works, use the plugin to:
 
 - **Browse tab** — See the tree of specs, changes, and archives
-- **Coverage tab** — Track which requirements have code references
 - **Explore tab** — View assembled project context (config, changes, specs, tools) in Markdown. Use the **Copy** button to feed this context into your CLI tool
 
 See the [Tool Window reference](feature-reference.md#tool-window) for details on each tab.
@@ -70,7 +69,7 @@ See the [Tool Window reference](feature-reference.md#tool-window) for details on
 
 Once all artifacts are generated and implementation is complete:
 
-1. **OpenSpec > Verify** — checks artifact completeness, task progress, and coverage
+1. **OpenSpec > Verify** — checks artifact completeness and task progress
 2. Click **Archive** in the Workflow Action Panel
 3. Optionally sync delta specs into your main specs
 

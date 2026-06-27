@@ -8,12 +8,11 @@ Complete reference for all plugin features, organized by functional area.
 
 ### Tool Window
 
-The OpenSpec tool window (right sidebar, or **View > Tool Windows > OpenSpec**) has three permanent tabs, plus a conditional Explore tab:
+The OpenSpec tool window (right sidebar, or **View > Tool Windows > OpenSpec**) has two permanent tabs, plus a conditional Explore tab:
 
 | Tab | Purpose |
 |-----|---------|
 | **Browse** | Tree view of specs, changes, and archives. Double-click to open files. Right-click for context menu actions. |
-| **Coverage** | Coverage analysis showing which spec requirements are referenced in source code. |
 | **Console** | Output panel for CLI commands (init, validate, update, etc.). |
 | **Explore** | *(Only when Direct API is configured)* Thinking-space panel with inline topic input, markdown-rendered AI responses, and Copy/Clear toolbar. Appears automatically when you configure a Direct API provider in Settings. |
 
@@ -35,14 +34,6 @@ OpenSpec
 └── Archive
     └── 2026-03-01-initial-setup
 ```
-
-### Gutter Markers
-
-`@spec` annotations in Java source show clickable gutter icons that navigate to the referenced spec file. This lets you jump from implementation code directly to the requirement it satisfies.
-
-### Coverage Panel
-
-The Coverage tab tracks which requirements in your specs are referenced in source code. It shows gaps where requirements exist but no code references them yet.
 
 ---
 
@@ -76,7 +67,7 @@ The panel includes a **change selector** dropdown for switching between multiple
 | **Continue** | OpenSpec > Continue | Generate the next ready artifact in the active change. Requires Direct API. |
 | **Explore** | OpenSpec > Explore... | Prompt for an optional topic, assemble the explore prompt (skill instructions + project context + topic), and deliver via configured delivery mode. With Direct API configured, the Explore tab appears in the tool window for inline input and rendered responses. Clipboard and Editor Tab modes use the topic dialog. |
 | **Apply** | OpenSpec > Apply | Mark a change as applied. |
-| **Verify** | OpenSpec > Verify | Check artifact completeness, task progress, and requirement coverage. Opens report dialog. |
+| **Verify** | OpenSpec > Verify | Check artifact completeness and task progress. Opens report dialog. |
 | **Archive** | OpenSpec > Archive | Move a completed change to `openspec/changes/archive/`. Optionally syncs delta specs. |
 | **Bulk Archive** | OpenSpec > Bulk Archive... | Archive multiple completed changes at once with conflict detection. |
 | **Sync Specs** | OpenSpec > Sync Specs | Merge delta specs from a completed change into main specs at `openspec/specs/`. Shows preview dialog. |
@@ -163,7 +154,6 @@ Three editor inspections run in real-time as you edit:
 ### Line Markers
 
 - **Generic line markers** — On spec definitions in spec files
-- **Java-specific line markers** — On `@spec` annotations in Java source, linking back to spec files
 
 ---
 

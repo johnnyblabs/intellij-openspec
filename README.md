@@ -12,7 +12,7 @@ An IDE-native client for the [OpenSpec](https://github.com/fission-ai/openspec) 
 
 | Persona | You are... | AI setup? | Get started |
 |---------|-----------|-----------|-------------|
-| **Spec Browser** | A reviewer, lead, or PM who wants to browse specs and track coverage | None | [Getting Started](docs/getting-started-browser.md) |
+| **Spec Browser** | A reviewer, lead, or PM who wants to browse specs | None | [Getting Started](docs/getting-started-browser.md) |
 | **IDE-First Developer** | A dev using Copilot, Cursor, Windsurf, or Cline inside IntelliJ | None (uses your existing tool) | [Getting Started](docs/getting-started-copilot.md) |
 | **CLI Companion** | A dev using Claude Code, Gemini CLI, or another terminal AI | None (uses your existing tool) | [Getting Started](docs/getting-started-cli-companion.md) |
 | **Standalone API User** | A dev with an API key who wants a fully self-contained workflow | API key only | [Getting Started](docs/getting-started-api.md) |
