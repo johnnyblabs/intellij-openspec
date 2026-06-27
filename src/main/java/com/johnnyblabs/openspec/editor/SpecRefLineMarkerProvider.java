@@ -39,7 +39,9 @@ public final class SpecRefLineMarkerProvider implements LineMarkerProvider {
         }
 
         Project project = element.getProject();
-        if (!OpenSpecFileUtil.isOpenSpecProject(project)) {
+        // Fast, non-refreshing check: this runs for every comment of every language on each
+        // highlighting pass, so it must not trigger a synchronous VFS refresh.
+        if (!OpenSpecFileUtil.isOpenSpecProjectFast(project)) {
             return null;
         }
 

@@ -21,23 +21,40 @@ public final class OpenSpecFileUtil {
     }
 
     public static VirtualFile getOpenSpecRoot(Project project) {
-        VirtualFile baseDir = getBaseDir(project);
-        if (baseDir != null) {
-            VirtualFile root = baseDir.findChild("openspec");
-            if (root != null && root.isDirectory()) return root;
-        }
-        // Fallback: check content roots (handles multi-module and test environments)
-        for (VirtualFile contentRoot : ProjectRootManager.getInstance(project).getContentRoots()) {
-            VirtualFile root = contentRoot.findChild("openspec");
-            if (root != null && root.isDirectory()) return root;
-        }
-        // Fallback: VFS may not have indexed yet, try direct path
+        VirtualFile fast = getOpenSpecRootFast(project);
+        if (fast != null) return fast;
+        // Fallback: VFS may not have indexed yet, try a direct (refreshing) path lookup.
         if (project.getBasePath() != null) {
             VirtualFile root = LocalFileSystem.getInstance()
                     .refreshAndFindFileByPath(project.getBasePath() + "/openspec");
             if (root != null && root.isDirectory()) return root;
         }
         return null;
+    }
+
+    /**
+     * Cheap, non-refreshing resolution of the {@code openspec/} root for hot paths — notably the
+     * {@code @spec} line-marker provider, which (registered for all languages) runs for every
+     * comment of every language on each highlighting pass. Unlike {@link #getOpenSpecRoot} this
+     * never triggers a synchronous {@code refreshAndFindFileByPath}, so it is safe to call per
+     * element during highlighting, when the VFS is already indexed.
+     */
+    public static VirtualFile getOpenSpecRootFast(Project project) {
+        VirtualFile baseDir = getBaseDir(project);
+        if (baseDir != null) {
+            VirtualFile root = baseDir.findChild("openspec");
+            if (root != null && root.isDirectory()) return root;
+        }
+        // Handles multi-module and test environments.
+        for (VirtualFile contentRoot : ProjectRootManager.getInstance(project).getContentRoots()) {
+            VirtualFile root = contentRoot.findChild("openspec");
+            if (root != null && root.isDirectory()) return root;
+        }
+        return null;
+    }
+
+    public static boolean isOpenSpecProjectFast(Project project) {
+        return getOpenSpecRootFast(project) != null;
     }
 
     public static VirtualFile getConfigFile(Project project) {

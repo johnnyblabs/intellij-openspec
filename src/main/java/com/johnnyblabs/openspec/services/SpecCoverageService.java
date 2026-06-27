@@ -1,9 +1,13 @@
 package com.johnnyblabs.openspec.services;
 
+import com.intellij.openapi.application.Application;
+import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.components.Service;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.fileTypes.FileType;
 import com.intellij.openapi.fileTypes.UnknownFileType;
+import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.roots.ProjectFileIndex;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -74,23 +78,47 @@ public final class SpecCoverageService {
         ProjectFileIndex fileIndex = ProjectFileIndex.getInstance(project);
 
         fileIndex.iterateContent(file -> {
-            if (file.isDirectory() || isRecognizedBinary(file)) return true;
-            try {
-                String content = new String(file.contentsToByteArray(), StandardCharsets.UTF_8);
-                Matcher matcher = SPEC_REF_PATTERN.matcher(content);
-                while (matcher.find()) {
-                    String domain = matcher.group(1).trim();
-                    String requirement = matcher.group(2).trim();
-                    String key = domain + ":" + requirement;
-                    references.computeIfAbsent(key, k -> new ArrayList<>()).add(file.getPath());
-                }
-            } catch (Exception e) {
-                LOG.debug("Failed to read file for coverage scan: " + file.getPath(), e);
+            if (file.isDirectory()) return true;
+            ProgressManager.checkCanceled();
+            String content = readScannableContent(file);
+            if (content == null) return true;
+            Matcher matcher = SPEC_REF_PATTERN.matcher(content);
+            while (matcher.find()) {
+                String domain = matcher.group(1).trim();
+                String requirement = matcher.group(2).trim();
+                String key = domain + ":" + requirement;
+                references.computeIfAbsent(key, k -> new ArrayList<>()).add(file.getPath());
             }
             return true;
         });
 
         return references;
+    }
+
+    /**
+     * Returns the UTF-8 text of {@code file} for scanning, or {@code null} if it is a recognized
+     * binary or could not be read. File-type and content access touch the VFS/file model and must
+     * run under a read action. On a background thread (the normal case — {@code SpecCoveragePanel}
+     * scans on a pooled thread) this uses {@link ReadAction#computeCancellable}, which also yields
+     * to pending write actions so the scan never blocks the user from typing. On the EDT (which
+     * already holds read access) it reads directly. Mirrors {@code SpecParsingService}.
+     */
+    private String readScannableContent(VirtualFile file) {
+        Application app = ApplicationManager.getApplication();
+        if (app == null || app.isDispatchThread()) {
+            return readInReadContext(file);
+        }
+        return ReadAction.computeCancellable(() -> readInReadContext(file));
+    }
+
+    private String readInReadContext(VirtualFile file) {
+        if (isRecognizedBinary(file)) return null;
+        try {
+            return new String(file.contentsToByteArray(), StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            LOG.debug("Failed to read file for coverage scan: " + file.getPath(), e);
+            return null;
+        }
     }
 
     /**
