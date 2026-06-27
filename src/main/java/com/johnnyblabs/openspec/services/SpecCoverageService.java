@@ -7,6 +7,7 @@ import com.intellij.openapi.components.Service;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.fileTypes.FileType;
 import com.intellij.openapi.fileTypes.UnknownFileType;
+import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.roots.ProjectFileIndex;
@@ -115,6 +116,8 @@ public final class SpecCoverageService {
         if (isRecognizedBinary(file)) return null;
         try {
             return new String(file.contentsToByteArray(), StandardCharsets.UTF_8);
+        } catch (ProcessCanceledException e) {
+            throw e; // never swallow cancellation — let the scan abort instead of returning partial coverage
         } catch (Exception e) {
             LOG.debug("Failed to read file for coverage scan: " + file.getPath(), e);
             return null;
