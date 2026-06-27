@@ -115,7 +115,7 @@
         <!-- Line Markers -->
         <codeInsight.lineMarkerProvider language=""
                                          implementationClass="com.johnnyblabs.openspec.editor.OpenSpecLineMarkerProvider"/>
-        <codeInsight.lineMarkerProvider language="JAVA"
+        <codeInsight.lineMarkerProvider language=""
                                          implementationClass="com.johnnyblabs.openspec.editor.SpecRefLineMarkerProvider"/>
     </extensions>
 

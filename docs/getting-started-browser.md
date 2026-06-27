@@ -60,7 +60,7 @@ Switch to the **Coverage** tab in the tool window. This shows which spec require
 
 ## Step 5: Navigate via Gutter Markers
 
-When reviewing Java source files, look for gutter icons next to `@spec` annotations. Click them to jump directly to the referenced spec file. This lets you trace from implementation back to the requirement it satisfies.
+When reviewing your source files, look for gutter icons next to `@spec` annotations. Click them to jump directly to the referenced spec file. This lets you trace from implementation back to the requirement it satisfies.
 
 ## Step 6: Review with Inspections
 
