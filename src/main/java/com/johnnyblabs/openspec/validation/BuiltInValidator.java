@@ -35,6 +35,9 @@ public final class BuiltInValidator {
     private static final Pattern FULL_SPEC_PATTERN = Pattern.compile("^## (Requirements|Purpose)", Pattern.MULTILINE);
     private static final Pattern RENAMED_ENTRY_PATTERN = Pattern.compile(
             "(?m)^\\s*(?:-\\s*)?FROM:\\s*(.+)$\\s*^\\s*(?:-\\s*)?TO:\\s*(.+)$");
+    // REMOVED metadata markers, tolerant of both bold forms: **Reason:** (colon inside) and **Reason**: (colon outside).
+    private static final Pattern REMOVED_REASON_PATTERN = Pattern.compile("\\*\\*\\s*Reason\\s*:?\\s*\\*\\*", Pattern.CASE_INSENSITIVE);
+    private static final Pattern REMOVED_MIGRATION_PATTERN = Pattern.compile("\\*\\*\\s*Migration\\s*:?\\s*\\*\\*", Pattern.CASE_INSENSITIVE);
 
     private final Project project;
 
@@ -421,14 +424,17 @@ public final class BuiltInValidator {
                 String reqContent = sectionContent.substring(reqMatcher.end(), nextReq);
 
                 if ("REMOVED".equals(sectionType)) {
-                    // REMOVED requirements must have Reason and Migration
-                    boolean hasReason = reqContent.contains("**Reason**");
-                    boolean hasMigration = reqContent.contains("**Migration**");
+                    // Reason/Migration on a REMOVED block is an OpenSpec authoring convention, not an
+                    // upstream rule: the @fission-ai/openspec client validates REMOVED blocks by name
+                    // only and never inspects the body. So this is advisory (WARNING), not an ERROR that
+                    // blocks — the plugin must not be stricter than the client it wraps.
+                    boolean hasReason = REMOVED_REASON_PATTERN.matcher(reqContent).find();
+                    boolean hasMigration = REMOVED_MIGRATION_PATTERN.matcher(reqContent).find();
                     if (!hasReason || !hasMigration) {
                         String missing = !hasReason && !hasMigration ? "**Reason** and **Migration**"
                                 : !hasReason ? "**Reason**" : "**Migration**";
-                        issues.add(new ValidationIssue(ValidationIssue.Severity.ERROR, path, reqLine,
-                                "REMOVED requirement '" + reqHeader + "' must contain " + missing + " fields",
+                        issues.add(new ValidationIssue(ValidationIssue.Severity.WARNING, path, reqLine,
+                                "REMOVED requirement '" + reqHeader + "' should contain " + missing + " fields",
                                 "delta-removed-fields"));
                     }
                 } else {

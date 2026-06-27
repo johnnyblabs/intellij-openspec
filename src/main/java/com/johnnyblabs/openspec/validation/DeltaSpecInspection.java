@@ -27,6 +27,9 @@ public class DeltaSpecInspection extends LocalInspectionTool {
             "^#{4} Scenario:.+", Pattern.MULTILINE);
     private static final Pattern RENAMED_ENTRY_PATTERN = Pattern.compile(
             "(?m)^\\s*(?:-\\s*)?FROM:\\s*(.+)$\\s*^\\s*(?:-\\s*)?TO:\\s*(.+)$");
+    // REMOVED metadata markers, tolerant of both bold forms: **Reason:** (colon inside) and **Reason**: (colon outside).
+    private static final Pattern REMOVED_REASON_PATTERN = Pattern.compile("\\*\\*\\s*Reason\\s*:?\\s*\\*\\*", Pattern.CASE_INSENSITIVE);
+    private static final Pattern REMOVED_MIGRATION_PATTERN = Pattern.compile("\\*\\*\\s*Migration\\s*:?\\s*\\*\\*", Pattern.CASE_INSENSITIVE);
 
     @Override
     public ProblemDescriptor @NotNull [] checkFile(@NotNull PsiFile file,
@@ -95,16 +98,19 @@ public class DeltaSpecInspection extends LocalInspectionTool {
                 if (element == null) continue;
 
                 if ("REMOVED".equals(sectionType)) {
-                    boolean hasReason = reqContent.contains("**Reason**");
-                    boolean hasMigration = reqContent.contains("**Migration**");
+                    // Reason/Migration is an OpenSpec authoring convention, not an upstream rule — the
+                    // @fission-ai/openspec client validates REMOVED blocks by name only. Advisory (WARNING),
+                    // not ERROR, and the markers tolerate both **Reason:** and **Reason**: forms.
+                    boolean hasReason = REMOVED_REASON_PATTERN.matcher(reqContent).find();
+                    boolean hasMigration = REMOVED_MIGRATION_PATTERN.matcher(reqContent).find();
                     if (!hasReason || !hasMigration) {
                         String missing = !hasReason && !hasMigration ? "**Reason** and **Migration**"
                                 : !hasReason ? "**Reason**" : "**Migration**";
                         problems.add(manager.createProblemDescriptor(
                                 element,
-                                "REMOVED requirement '" + reqHeader + "' must contain " + missing + " fields",
+                                "REMOVED requirement '" + reqHeader + "' should contain " + missing + " fields",
                                 (LocalQuickFix) null,
-                                ProblemHighlightType.ERROR,
+                                ProblemHighlightType.WARNING,
                                 isOnTheFly));
                     }
                 } else {
