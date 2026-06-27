@@ -22,7 +22,7 @@
 
 ## 5. Build & validate
 - [x] 5.1 `./gradlew test` — BUILD SUCCESSFUL; full suite green (no feature tests existed on this branch to delete).
-- [~] 5.2 `./gradlew test` compiled + jarred the plugin (instrumentCode/jar/composedJar) green. A manual runtime "tool window has no Coverage tab" check was NOT performed.
+- [x] 5.2 `./gradlew test` compiled + jarred the plugin (instrumentCode/jar/composedJar) green. Manual runtime check DONE — plugin installed locally, confirmed the tool window has no Coverage tab.
 - [x] 5.3 `openspec validate remove-spec-code-annotations --strict` — green.
 
 ## 6. Supersede the in-flight fix & close the loop
