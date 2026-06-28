@@ -4,16 +4,19 @@ Project-specific rules for AI agents working in this repo.
 
 ## Tracker mirroring — invoke the custom skills, never inline curl
 
-OpenSpec changes are mirrored to project trackers via two project-level custom skills:
+OpenSpec changes are mirrored to project trackers via project-level custom skills. The three lifecycle skills keep the Plane card flowing **Todo → In Progress → Done** in step with the change, so it stays legible in Kanban/cycle/board views at every stage:
 
-| When | Skill |
-|---|---|
-| After `openspec-propose` or `openspec-new-change` | `/mirror-change-trackers <name>` |
-| After `openspec-archive-change` | `/close-change-trackers <archive-dir>` |
+| When | Skill | Plane state |
+|---|---|---|
+| After `openspec-propose` or `openspec-new-change` | `/mirror-change-trackers <name>` | → Todo |
+| At the start of `openspec-apply-change` (implementation begins) | `/advance-change-trackers <name>` | → In Progress |
+| After `openspec-archive-change` | `/close-change-trackers <archive-dir>` | → Done |
 
-**Why these skills are custom-named, not inside `openspec-*`:** the `openspec` CLI manages `.claude/skills/openspec-*/SKILL.md` and rewrites them on every `openspec update`. Custom-named skills (`mirror-change-trackers`, `close-change-trackers`, `release-prep`) live outside that managed surface and survive updates.
+Without the middle step the card jumps Todo→Done and never appears in the "In Progress" column while work is actually happening. Forgejo issues have no In-Progress state (open/closed only), so `advance-change-trackers` touches Plane only and leaves the issue open.
 
-**These three skills are gitignored** (`.gitignore` entries `.claude/skills/{mirror,close}-change-trackers/` and `.claude/skills/release-prep/`). They intrinsically reference `forgejo.geek`, the Plane project UUID, `mcp__homelab__*` server-tool names, and `johnb/intellij-openspec` — things that violate the anti-leak rule below if they reach the public GitHub mirror. The skill files exist on disk and work in any local session; they just don't ride to git history. Edits to these skills are local-only.
+**Why these skills are custom-named, not inside `openspec-*`:** the `openspec` CLI manages `.claude/skills/openspec-*/SKILL.md` and rewrites them on every `openspec update`. Custom-named skills (`mirror-change-trackers`, `advance-change-trackers`, `close-change-trackers`, `release-prep`) live outside that managed surface and survive updates.
+
+**These four skills are gitignored** (`.gitignore` entries `.claude/skills/{mirror,advance,close}-change-trackers/` and `.claude/skills/release-prep/`). They intrinsically reference `forgejo.geek`, the Plane project UUID, `mcp__homelab__*` server-tool names, and `johnb/intellij-openspec` — things that violate the anti-leak rule below if they reach the public GitHub mirror. The skill files exist on disk and work in any local session; they just don't ride to git history. Edits to these skills are local-only.
 
 **Do not put tracker plumbing back into the `openspec-*` skills.** If you find yourself tempted, you're at the wrong layer.
 
