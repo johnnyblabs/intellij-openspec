@@ -2,9 +2,7 @@
 
 ## Purpose
 User-facing documentation organized around four personas (Spec Browser, IDE-First Developer, CLI Companion, Standalone API User) with per-persona getting-started guides and a canonical feature reference.
-
 ## Requirements
-
 ### Requirement: Documentation defines four user personas
 The project documentation SHALL define exactly four user personas that represent the distinct ways the plugin is used: Spec Browser, IDE-First Developer, CLI Companion, and Standalone API User. Each persona definition SHALL include the persona's primary value proposition, whether AI setup is required, and which plugin features are most relevant.
 
@@ -98,3 +96,22 @@ The `Workflow-Profiles.md` documentation SHALL be committed to the project's `ma
 #### Scenario: Page reflects D2 — combo only lists CLI presets
 - **WHEN** the page describes the Settings panel workflow profile combo
 - **THEN** the page SHALL accurately reflect that the combo lists only CLI-accepted presets (default and `core`) and that the path to a non-preset workflow set is via the "Customize workflows…" button — the page SHALL NOT describe `custom` as a third combo entry the user can pick directly
+
+### Requirement: OpenSpec client coverage matrix is published
+
+The project SHALL publish and maintain a coverage matrix at `docs/openspec-support.md` that maps OpenSpec client capabilities to the plugin's support status, with each capability annotated by the minimum CLI version it requires. The matrix SHALL distinguish supported, partial, divergent, planned, and plugin-original capabilities, and SHALL state the plugin's CLI-version support contract (minimum supported version, baseline, and runtime version-awareness).
+
+#### Scenario: Matrix reflects client coverage with version annotations
+- **WHEN** a user reads `docs/openspec-support.md`
+- **THEN** it SHALL present OpenSpec client capabilities grouped by area, each with a support status and a CLI-version annotation
+- **AND** it SHALL state the minimum supported CLI version and that behavior degrades gracefully below it
+
+#### Scenario: README links to the coverage matrix
+- **WHEN** a user reads the README
+- **THEN** the README SHALL link to the OpenSpec client coverage matrix
+
+#### Scenario: Coverage matrix stays vendor-neutral on the public mirror
+- **WHEN** the coverage matrix or its accompanying change artifacts are published to the public mirror
+- **THEN** they SHALL reference only public identifiers (OpenSpec change names, CHANGELOG versions)
+- **AND** they SHALL NOT contain internal tracker identifiers or environment-specific references
+
