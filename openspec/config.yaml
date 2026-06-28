@@ -20,8 +20,8 @@ context: >
   IntelliJ Platform plugin providing spec browsing (JTree tool window),
   workflow orchestration (propose → design → specify → implement → archive),
   AI bridge (clipboard, editor tab, and direct API delivery to Claude, OpenAI,
-  and Gemini), coverage analysis (@spec gutter markers), and OpenSpec CLI
-  integration with built-in fallback for CLI-less environments.
+  and Gemini), and OpenSpec CLI integration with built-in fallback for
+  CLI-less environments.
 
 rules:
   proposal:
