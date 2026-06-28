@@ -40,7 +40,7 @@ bin/
 .vscode/
 
 ### JetBrains Junie (local IDE agent memory/plans — machine-local tooling state) ###
-.junie/
+.junie/memory/
 
 ### Mac OS ###
 .DS_Store
@@ -75,6 +75,7 @@ plugin-signing-*
 .codex/skills/
 .gemini/skills/
 .github/skills/
+.junie/skills/
 
 ### OpenSpec change tracker IDs (gitignored sidecar — see CLAUDE.md) ###
 openspec/changes/**/.tracking.yaml
