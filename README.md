@@ -57,6 +57,7 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for developmen
 ## Links
 
 - [Feature Reference](docs/feature-reference.md) — Complete reference for all plugin features, settings, and troubleshooting
+- [OpenSpec Client Coverage](docs/openspec-support.md) — What the plugin supports vs. the OpenSpec client, by CLI version
 - [Feature Comparison Matrix](docs/feature-comparison-matrix.md) — How this plugin compares to VS Code alternatives
 - [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/30678-openspec) — Plugin listing
 - [OpenSpec Framework](https://github.com/fission-ai/openspec) — The spec-driven development framework by Fission AI
