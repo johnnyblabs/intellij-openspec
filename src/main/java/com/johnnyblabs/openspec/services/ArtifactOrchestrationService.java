@@ -196,17 +196,27 @@ public final class ArtifactOrchestrationService {
     }
 
     /**
-     * Clears the cached DAG for a change (e.g., after generation).
+     * Clears the cached DAG for a change (e.g., after generation). Also invalidates the
+     * derived {@link WorkflowSchemaContextService} cache so mode/version context stays in
+     * lockstep with the underlying status.
      */
     public void invalidateCache(String changeName) {
         dagCache.remove(changeName);
+        WorkflowSchemaContextService contextService = project.getService(WorkflowSchemaContextService.class);
+        if (contextService != null) {
+            contextService.invalidateCache(changeName);
+        }
     }
 
     /**
-     * Clears all cached DAGs.
+     * Clears all cached DAGs and the derived schema-context cache.
      */
     public void invalidateAllCaches() {
         dagCache.clear();
+        WorkflowSchemaContextService contextService = project.getService(WorkflowSchemaContextService.class);
+        if (contextService != null) {
+            contextService.invalidateAllCaches();
+        }
     }
 
     /**

@@ -52,7 +52,7 @@ How this plugin maps to the [OpenSpec](https://github.com/fission-ai/openspec) c
 | Capability | Status | CLI | Notes |
 |------------|--------|-----|-------|
 | `spec-driven` schema | ✅ | `1.3+` | Fully supported |
-| `workspace-planning` schema | 🟡 | `1.4+` | Recognized & validated; workflow surfaces (e.g. Verify) do not yet adapt to it |
+| `workspace-planning` schema | 🟡 | `1.4+` | Recognized & validated; workflow surfaces now detect and reflect the active `actionContext.mode` (foundation landed) — full per-mode UX (incl. Verify) still in progress |
 | custom / forked schemas | 🟡 | `1.3+` | A forked schema name is recognized rather than flagged unknown |
 | profiles / config | ✅ | `delegated` | CLI-aligned profile picker; config validation |
 

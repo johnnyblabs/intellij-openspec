@@ -206,6 +206,62 @@ class CliOutputParserTest {
             ChangeArtifactDag dag = CliOutputParser.parseChangeStatus(json);
             assertEquals(2, dag.getReadyArtifacts().size());
         }
+
+        @Test
+        void parsesActionContextFromStatus() {
+            // The 1.3+ status JSON carries an actionContext block describing the mode.
+            String json = """
+                    {
+                      "changeName": "my-feature",
+                      "schemaName": "spec-driven",
+                      "actionContext": {
+                        "mode": "repo-local",
+                        "sourceOfTruth": "repo",
+                        "allowedEditRoots": ["/repo"],
+                        "requiresAffectedAreaSelection": false
+                      },
+                      "artifacts": [{"id": "proposal", "status": "ready"}]
+                    }
+                    """;
+
+            ChangeArtifactDag dag = CliOutputParser.parseChangeStatus(json);
+            assertNotNull(dag.getActionContext(), "actionContext must be parsed");
+            assertEquals("repo-local", dag.getActionContext().getMode());
+            assertEquals("repo", dag.getActionContext().getSourceOfTruth());
+            assertEquals(1, dag.getActionContext().getAllowedEditRoots().size());
+            assertFalse(dag.getActionContext().isRequiresAffectedAreaSelection());
+        }
+
+        @Test
+        void parsesNonDefaultActionContextMode() {
+            String json = """
+                    {
+                      "changeName": "ws-change",
+                      "schemaName": "workspace-planning",
+                      "actionContext": {
+                        "mode": "workspace-planning",
+                        "sourceOfTruth": "workspace",
+                        "allowedEditRoots": []
+                      },
+                      "artifacts": []
+                    }
+                    """;
+
+            ChangeArtifactDag dag = CliOutputParser.parseChangeStatus(json);
+            assertEquals("workspace-planning", dag.getActionContext().getMode());
+            assertEquals("workspace", dag.getActionContext().getSourceOfTruth());
+            assertTrue(dag.getActionContext().getAllowedEditRoots().isEmpty());
+        }
+
+        @Test
+        void actionContextNullWhenAbsent() {
+            // CLI below the floor omits actionContext entirely.
+            String json = """
+                    {"changeName": "old", "schemaName": "spec-driven", "artifacts": []}
+                    """;
+            ChangeArtifactDag dag = CliOutputParser.parseChangeStatus(json);
+            assertNull(dag.getActionContext());
+        }
     }
 
     // --- parseArtifactInstruction ---

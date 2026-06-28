@@ -36,6 +36,8 @@ import com.johnnyblabs.openspec.model.ChangeArtifactDag;
 import com.johnnyblabs.openspec.services.AiToolDetectionService;
 import com.johnnyblabs.openspec.services.ComplianceService;
 import com.johnnyblabs.openspec.services.ArtifactOrchestrationService;
+import com.johnnyblabs.openspec.services.WorkflowSchemaContextService;
+import com.johnnyblabs.openspec.model.WorkflowSchemaContext;
 import com.johnnyblabs.openspec.services.ChangeService;
 import com.johnnyblabs.openspec.services.GenerateAllListener;
 import com.johnnyblabs.openspec.settings.OpenSpecSettings;
@@ -120,6 +122,7 @@ public class WorkflowActionPanel extends JPanel {
     private final JBLabel complianceStatusLabel;
     private final JBLabel taskProgressStatusLabel;
     private final JBLabel deliveryModeStatusLabel;
+    private final JBLabel schemaModeStatusLabel;
 
     // Animation state
     private javax.swing.Timer pulseTimer;
@@ -259,9 +262,15 @@ public class WorkflowActionPanel extends JPanel {
         deliveryModeStatusLabel.setFont(deliveryModeStatusLabel.getFont().deriveFont(Font.PLAIN, 11f));
         deliveryModeStatusLabel.setForeground(JBColor.GRAY);
 
+        schemaModeStatusLabel = new JBLabel();
+        schemaModeStatusLabel.setFont(schemaModeStatusLabel.getFont().deriveFont(Font.PLAIN, 11f));
+        schemaModeStatusLabel.setForeground(JBColor.GRAY);
+        schemaModeStatusLabel.setVisible(false);
+
         statusStrip.add(complianceStatusLabel);
         statusStrip.add(taskProgressStatusLabel);
         statusStrip.add(deliveryModeStatusLabel);
+        statusStrip.add(schemaModeStatusLabel);
 
         // Tool selector
         toolSelector = new JComboBox<>();
@@ -403,7 +412,7 @@ public class WorkflowActionPanel extends JPanel {
 
             if (active.isEmpty()) {
                 updateChangeSelector(names);
-                updatePipelineAndButton(null);
+                updatePipelineAndButton(null, null);
                 return;
             }
 
@@ -632,10 +641,32 @@ public class WorkflowActionPanel extends JPanel {
     private void refreshForChangeOnPool(String changeName) {
         ArtifactOrchestrationService orchestration = project.getService(ArtifactOrchestrationService.class);
         ChangeArtifactDag dag = orchestration.getArtifactStatus(changeName);
-        updatePipelineAndButton(dag);
+        // Resolve the schema/version context off-EDT so workflow surfaces adapt to the
+        // active mode (actionContext.mode) instead of assuming a spec-driven layout.
+        // Snapshot it (like dag) and pass it through, so overlapping refreshes can't
+        // desync the rendered pipeline from the mode label.
+        WorkflowSchemaContextService contextService = project.getService(WorkflowSchemaContextService.class);
+        WorkflowSchemaContext ctx = contextService != null ? contextService.getContext(changeName) : null;
+        updatePipelineAndButton(dag, ctx);
     }
 
-    private void updatePipelineAndButton(ChangeArtifactDag dag) {
+    /**
+     * Reflects a non-default workflow mode (e.g. {@code workspace-planning}) in the status
+     * strip. For the default spec-driven repo-local case the label stays hidden, so existing
+     * behavior is unchanged. Reads the snapshotted context, not the on-disk layout.
+     */
+    private void updateSchemaModeLabel(WorkflowSchemaContext ctx) {
+        if (ctx != null && ctx.isNonDefaultMode()) {
+            schemaModeStatusLabel.setText(" · mode: " + ctx.mode());
+            schemaModeStatusLabel.setToolTipText("OpenSpec mode: " + ctx.mode()
+                    + " (schema: " + ctx.schemaName() + ")");
+            schemaModeStatusLabel.setVisible(true);
+        } else {
+            schemaModeStatusLabel.setVisible(false);
+        }
+    }
+
+    private void updatePipelineAndButton(ChangeArtifactDag dag, WorkflowSchemaContext ctx) {
         ApplicationManager.getApplication().invokeLater(() -> {
             pipelinePanel.removeAll();
 
@@ -645,6 +676,7 @@ public class WorkflowActionPanel extends JPanel {
                 hasTasksRemaining = false;
                 hasDeltaSpecs = false;
                 updateIconBarState();
+                schemaModeStatusLabel.setVisible(false);
                 contentCardLayout.show(contentCards, CARD_NO_CHANGES);
                 return;
             }
@@ -683,6 +715,7 @@ public class WorkflowActionPanel extends JPanel {
             updateIconBarState();
             checkDeltaSpecs();
             updateDeliveryModeLabel();
+            updateSchemaModeLabel(ctx);
 
             if (allArtifactsComplete) {
                 runChangeValidation();
