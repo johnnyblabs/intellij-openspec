@@ -8,13 +8,31 @@ Complete reference for all plugin features, organized by functional area.
 
 ### Tool Window
 
-The OpenSpec tool window (right sidebar, or **View > Tool Windows > OpenSpec**) has two permanent tabs, plus a conditional Explore tab:
+The OpenSpec tool window (right sidebar, or **View > Tool Windows > OpenSpec**) has two permanent tabs, plus conditional Explore and Coordination tabs:
 
 | Tab | Purpose |
 |-----|---------|
 | **Browse** | Tree view of specs, changes, and archives. Double-click to open files. Right-click for context menu actions. |
 | **Console** | Output panel for CLI commands (init, validate, update, etc.). |
 | **Explore** | *(Only when Direct API is configured)* Thinking-space panel with inline topic input, markdown-rendered AI responses, and Copy/Clear toolbar. Appears automatically when you configure a Direct API provider in Settings. |
+| **Coordination** | *(Only when OpenSpec 1.4 coordination state or a coordination mode is detected)* Lists workspaces, context stores, and initiatives. See [Coordination Tab](#coordination-tab) below. |
+
+### Coordination Tab
+
+Surfaces the OpenSpec 1.4 coordination layer — **workspaces**, **context stores**, and **initiatives**. It is sourced from the OpenSpec CLI (`workspace`/`context-store`/`initiative list` and `doctor`) with a built-in fallback that reads OpenSpec's global data dir directly (`$XDG_DATA_HOME/openspec`, `~/.local/share/openspec`, or `%LOCALAPPDATA%\openspec`), so a listing still appears without the CLI.
+
+The tab presents at one of three tiers:
+
+| Tier | When | Behavior |
+|------|------|----------|
+| **Hidden** | No coordination state and not in a coordination mode | The tab is not shown. |
+| **Awareness** | Coordination state detected, but no OpenSpec CLI 1.4+ | Read-only listing with status indicators; action buttons disabled. |
+| **Full** | Coordination state present and OpenSpec CLI 1.4+ available | Listing plus initiative-artifact navigation and create/set-up actions. |
+
+- **Workspaces** show a resolution indicator (resolves locally / unresolved).
+- **Context stores** show their id and root, plus metadata/git health when `doctor` detail is available.
+- **Initiatives** show a lifecycle status badge (`exploring` / `active` / `complete` / `archived`). Each initiative's artifacts — `initiative.yaml`, `requirements.md`, `design.md`, `decisions.md`, `questions.md`, `tasks.md` — open in the editor (double-click; an uncreated artifact reports that it does not exist yet).
+- **Actions** (Full tier): **New Initiative**, **Set Up Context Store**, **Set Up Workspace** delegate to the CLI and refresh the listing on success; CLI errors are surfaced.
 
 ### Browse Tab Tree Structure
 

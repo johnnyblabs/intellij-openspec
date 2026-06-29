@@ -8,9 +8,13 @@ import com.intellij.openapi.wm.ToolWindowFactory;
 import com.intellij.openapi.wm.ToolWindowManager;
 import com.intellij.openapi.wm.ex.ToolWindowManagerListener;
 import com.johnnyblabs.openspec.ai.DirectApiService;
+import com.johnnyblabs.openspec.coordination.CoordinationData;
+import com.johnnyblabs.openspec.coordination.CoordinationService;
+import com.johnnyblabs.openspec.coordination.CoordinationTier;
 import com.johnnyblabs.openspec.dialogs.SetupWizardDialog;
 import com.johnnyblabs.openspec.services.CliDetectionService;
 import com.johnnyblabs.openspec.services.WorkflowProfileService;
+import com.johnnyblabs.openspec.services.WorkflowSchemaContextService;
 import com.johnnyblabs.openspec.settings.OpenSpecSettings;
 import com.intellij.ui.content.Content;
 import com.intellij.ui.content.ContentFactory;
@@ -121,6 +125,29 @@ public class OpenSpecToolWindowFactory implements ToolWindowFactory, DumbAware {
         if (consoleService != null) {
             consoleService.register(consolePanel);
         }
+
+        // Coordination tab — added asynchronously only when 1.4 coordination state/mode is
+        // detected (tier != HIDDEN). Resolution touches the CLI/disk, so it runs off the EDT.
+        maybeAddCoordinationTab(project, toolWindow);
+    }
+
+    private static void maybeAddCoordinationTab(Project project, ToolWindow toolWindow) {
+        ApplicationManager.getApplication().executeOnPooledThread(() -> {
+            CoordinationService service = project.getService(CoordinationService.class);
+            if (service == null) return;
+            WorkflowSchemaContextService schemaCtx = project.getService(WorkflowSchemaContextService.class);
+            boolean coordinationMode = schemaCtx != null && schemaCtx.hasNonDefaultModeCached();
+            CoordinationData data = service.getCoordinationData(coordinationMode);
+            if (data.tier() == CoordinationTier.HIDDEN) return;
+            ApplicationManager.getApplication().invokeLater(() -> {
+                if (toolWindow.isDisposed()) return;
+                if (toolWindow.getContentManager().findContent("Coordination") != null) return;
+                ContentFactory contentFactory = ContentFactory.getInstance();
+                CoordinationPanel panel = new CoordinationPanel(project, data);
+                Content content = contentFactory.createContent(panel, "Coordination", false);
+                toolWindow.getContentManager().addContent(content);
+            });
+        });
     }
 
     private void createGettingStartedContent(Project project, ToolWindow toolWindow, GettingStartedPanel panel) {

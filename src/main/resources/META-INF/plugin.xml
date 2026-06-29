@@ -45,6 +45,7 @@
         <projectService serviceImplementation="com.johnnyblabs.openspec.services.ComplianceService"/>
         <projectService serviceImplementation="com.johnnyblabs.openspec.services.WorkflowProfileService"/>
         <projectService serviceImplementation="com.johnnyblabs.openspec.services.WorkflowProfileSwitchService"/>
+        <projectService serviceImplementation="com.johnnyblabs.openspec.coordination.CoordinationService"/>
 
         <!-- Status Bar Widgets -->
         <statusBarWidgetFactory id="OpenSpec.ProfileWidget"

@@ -58,13 +58,13 @@ How this plugin maps to the [OpenSpec](https://github.com/fission-ai/openspec) c
 
 ## Coordination layers
 
-> Entirely **1.4 client additions** — not yet surfaced by the plugin. The largest frontier.
+> Entirely **1.4 client additions**, now surfaced by the plugin's **Coordination** tab — CLI-sourced (`list`/`doctor`) with a built-in fallback that reads the global data dir directly. The tab is shown only when coordination state or a coordination mode is detected. Read-only without a 1.4 CLI (Awareness); create/setup actions and initiative-artifact navigation with one (Full).
 
 | Capability | Status | CLI | Notes |
 |------------|--------|-----|-------|
-| workspace | 🔜 | `1.4+` | Local state is readable; no plugin surface |
-| context-store | 🔜 | `1.4+` | Local state is readable; no plugin surface |
-| initiative | 🔜 | `1.4+` | No support |
+| workspace | ✅ | `1.4+` | Listed with resolution health; set-up action (Full tier); read-only fallback from the on-disk registry |
+| context-store | ✅ | `1.4+` | Listed with id/root and doctor health; set-up/register action (Full tier); read-only fallback |
+| initiative | ✅ | `1.4+` | Listed with lifecycle status badge; artifacts open in the editor; create action (Full tier); read-only fallback from `initiative.yaml` |
 
 ## IDE value-add (plugin-original)
 
@@ -74,6 +74,7 @@ How this plugin maps to the [OpenSpec](https://github.com/fission-ai/openspec) c
 | Delta-spec inline inspection | ✅ 🧩 | Real-time structural checks + quick-fixes |
 | Delta-spec diff viewer | ✅ 🧩 | Side-by-side delta vs main spec |
 | Tool-window workflow panel | ✅ 🧩 | Change tree + workflow actions |
+| Coordination tab (1.4) | ✅ 🧩 | Tiered Hidden/Awareness/Full surface for workspaces, context stores, initiatives |
 | Setup wizard | ✅ 🧩 | Guided onboarding & CLI detection |
 
 ## Lifecycle at a glance
@@ -94,6 +95,6 @@ The frontier, in dependency order:
 
 1. **Foundation — schema/version awareness.** Make workflow surfaces drive off `openspec status` / `instructions` (the schema + `actionContext.mode`) instead of assuming a `spec-driven` layout. Unblocks faithful Verify and correct behavior on non-default schemas.
 2. **Workflow-surface fidelity.** Rebuild **Verify** as a faithful `verify-change` surface (semantic, language-agnostic, schema-aware); fill remaining workflow gaps (`feedback`, an `onboard`-aligned path).
-3. **Coordination layers (1.4).** Surface `workspace` / `context-store` / `initiative` for cross-area / multi-repo coordination.
+3. **Coordination layers (1.4).** ✅ Shipped — the Coordination tab surfaces `workspace` / `context-store` / `initiative` for cross-area / multi-repo coordination (read-only without a 1.4 CLI; actions and artifact navigation with one). Remaining polish: per-mode authoring UX and richer initiative editing.
 
 > Each row's "delivered by" history lives in [`CHANGELOG.md`](../CHANGELOG.md) and the archived OpenSpec changes under `openspec/changes/archive/`.
