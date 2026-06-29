@@ -1,0 +1,19 @@
+{
+  "context_stores": [
+    {
+      "id": "teststore",
+      "root": "/fixture/context-stores/teststore",
+      "metadata_path": "/fixture/context-stores/teststore/.openspec-store/store.yaml",
+      "metadata": {
+        "present": true,
+        "valid": true,
+        "id": "teststore"
+      },
+      "git": {
+        "is_repository": false
+      },
+      "status": []
+    }
+  ],
+  "status": []
+}

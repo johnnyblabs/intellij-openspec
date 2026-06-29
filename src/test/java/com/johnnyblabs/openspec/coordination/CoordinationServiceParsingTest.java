@@ -49,18 +49,22 @@ class CoordinationServiceParsingTest {
 
     @Test
     void parsesInitiativeListJsonAndStatus() {
+        // Mirrors the real CLI: a flat `initiatives` array where each entry carries its own
+        // `root` (the initiative directory) and `store` (the store id).
         String json = """
-                {"context_store":{"root":"/data/store-1"},
-                 "context_stores":[],
+                {"context_store":null,"context_stores":[],
                  "initiatives":[
-                   {"id":"init-1","title":"First","summary":"s","status":"active","created":"2026-06-01","owners":["jb"]},
-                   {"id":"init-2","title":"Second","status":"frozen"}
+                   {"id":"init-1","title":"First","summary":"s","status":"active","created":"2026-06-01",
+                    "owners":["jb"],"store":"store-1","root":"/data/store-1/initiatives/init-1"},
+                   {"id":"init-2","title":"Second","status":"frozen","store":"store-1",
+                    "root":"/data/store-1/initiatives/init-2"}
                  ],"status":[]}
                 """;
         List<InitiativeEntry> result = CoordinationService.parseInitiatives(json);
         assertEquals(2, result.size());
         assertEquals(InitiativeStatus.ACTIVE, result.get(0).status());
-        assertEquals("/data/store-1", result.get(0).storeRoot()); // inherited from top-level context_store
+        assertEquals("store-1", result.get(0).store());
+        assertEquals("/data/store-1/initiatives/init-1", result.get(0).root());
         assertEquals(List.of("jb"), result.get(0).owners());
         // Unrecognized status from a future CLI is tolerated, not fatal.
         assertEquals(InitiativeStatus.UNKNOWN, result.get(1).status());
@@ -98,7 +102,8 @@ class CoordinationServiceParsingTest {
     @Test
     void readsInitiativesFromDiskViaContextStoreBackend(@TempDir Path tmp) throws Exception {
         CoordinationPaths paths = paths(tmp);
-        // A context store whose git backend localPath points at a folder containing one initiative.
+        // A context store whose git backend local_path points at the store root; initiatives
+        // live under <storeRoot>/initiatives/<id>/ (matching the real on-disk layout).
         Path storeRoot = Files.createDirectories(tmp.resolve("store-root"));
         Files.createDirectories(paths.contextStoresDir());
         Files.writeString(paths.contextStoreRegistryFile(), """
@@ -106,10 +111,11 @@ class CoordinationServiceParsingTest {
                 stores:
                   store-1:
                     backend:
-                      localPath: %s
+                      type: git
+                      local_path: %s
                 """.formatted(storeRoot.toString()));
 
-        Path initiativeDir = Files.createDirectories(storeRoot.resolve("init-1"));
+        Path initiativeDir = Files.createDirectories(storeRoot.resolve("initiatives").resolve("init-1"));
         Files.writeString(initiativeDir.resolve("initiative.yaml"), """
                 version: 1
                 id: init-1
@@ -127,7 +133,11 @@ class CoordinationServiceParsingTest {
         assertEquals("init-1", init.id());
         assertEquals("Disk Initiative", init.title());
         assertEquals(InitiativeStatus.EXPLORING, init.status());
-        assertEquals(storeRoot.toString(), init.storeRoot());
+        assertEquals("store-1", init.store());
+        assertEquals(initiativeDir.toString(), init.root());
+        // Artifact paths resolve directly under the initiative root.
+        assertEquals(initiativeDir.resolve("design.md"),
+                InitiativeArtifact.DESIGN.resolvePath(init));
     }
 
     @Test

@@ -1,0 +1,9 @@
+{
+  "context_stores": [
+    {
+      "id": "teststore",
+      "root": "/fixture/context-stores/teststore"
+    }
+  ],
+  "status": []
+}
