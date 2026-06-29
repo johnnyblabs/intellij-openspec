@@ -1,10 +1,13 @@
 package com.johnnyblabs.openspec.services;
 
 import com.intellij.openapi.project.Project;
+import com.johnnyblabs.openspec.ai.AiApiException;
+import com.johnnyblabs.openspec.ai.DirectApiService;
 import com.johnnyblabs.openspec.model.VerificationFinding;
 import com.johnnyblabs.openspec.model.VerificationFinding.Dimension;
 import com.johnnyblabs.openspec.model.VerificationFinding.Severity;
 import com.johnnyblabs.openspec.model.VerificationReport;
+import com.johnnyblabs.openspec.model.WorkflowSchemaContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -19,6 +22,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
@@ -26,6 +30,8 @@ import static org.mockito.Mockito.when;
 class VerificationServiceTest {
 
     @Mock Project project;
+    @Mock DirectApiService aiService;
+    @Mock WorkflowSchemaContextService schemaContextService;
     @TempDir Path tempDir;
 
     private VerificationService service;
@@ -171,58 +177,120 @@ class VerificationServiceTest {
         }
     }
 
-    // --- Correctness check tests ---
+    // --- Mode gate tests ---
+
+    @Nested
+    class ModeGate {
+
+        @Test
+        void non_default_mode_explains_and_stops() throws IOException {
+            Path changeDir = createChangeDir("ws-change");
+            Files.writeString(changeDir.resolve("proposal.md"), "x");
+            Files.writeString(changeDir.resolve("design.md"), "x");
+            // An incomplete task would normally be a CRITICAL completeness finding — but the
+            // mode gate must stop before any spec-driven check runs.
+            Files.writeString(changeDir.resolve("tasks.md"), "- [ ] 1.1 not done");
+
+            WorkflowSchemaContext ctx = new WorkflowSchemaContext(
+                    "workspace-planning", "workspace-planning", "workspace",
+                    List.of(), "1.4.0", "1.2.0", true);
+            when(project.getService(WorkflowSchemaContextService.class)).thenReturn(schemaContextService);
+            when(schemaContextService.getContext("ws-change")).thenReturn(ctx);
+
+            VerificationReport report = service.verify("ws-change");
+
+            assertFalse(report.hasCritical(), "mode gate must not run the incomplete-task check");
+            assertEquals(1, report.getFindings().size());
+            VerificationFinding only = report.getFindings().getFirst();
+            assertEquals(Severity.SUGGESTION, only.severity());
+            assertTrue(only.description().contains("workspace-planning"));
+        }
+    }
+
+    // --- Correctness check tests (semantic, language-agnostic, AI-delegated) ---
 
     @Nested
     class CorrectnessChecks {
 
-        @Test
-        void requirement_found_in_source_no_warning() throws IOException {
-            Path changeDir = createChangeDir("my-change");
+        private void changeWithRequirement(String name, String domain, String reqName) throws IOException {
+            Path changeDir = createChangeDir(name);
             Files.writeString(changeDir.resolve("proposal.md"), "x");
-            Files.writeString(changeDir.resolve("design.md"), "x");
+            Files.writeString(changeDir.resolve("design.md"), "## Context\nx");
             Files.writeString(changeDir.resolve("tasks.md"), "- [x] done");
-
-            // Delta spec with a requirement
-            Path specDir = changeDir.resolve("specs/auth");
+            Path specDir = changeDir.resolve("specs/" + domain);
             Files.createDirectories(specDir);
             Files.writeString(specDir.resolve("spec.md"),
-                    "## ADDED Requirements\n\n### Requirement: Authentication service\nThe plugin SHALL authenticate.\n\n#### Scenario: Login\n- **WHEN** user logs in\n- **THEN** authenticated\n");
-
-            // Source file containing the keyword
-            Path srcDir = tempDir.resolve("src/main/java");
-            Files.createDirectories(srcDir);
-            Files.writeString(srcDir.resolve("AuthService.java"),
-                    "public class AuthService {\n    // authentication logic\n}\n");
-
-            VerificationReport report = service.verify("my-change");
-            List<VerificationFinding> correctness = report.getFindings(Dimension.CORRECTNESS);
-            assertEquals(0, correctness.size());
+                    "## ADDED Requirements\n\n### Requirement: " + reqName
+                            + "\nThe plugin SHALL do it.\n\n#### Scenario: S\n- **WHEN** x\n- **THEN** y\n");
         }
 
         @Test
-        void requirement_not_found_in_source_warns() throws IOException {
-            Path changeDir = createChangeDir("my-change");
-            Files.writeString(changeDir.resolve("proposal.md"), "x");
-            Files.writeString(changeDir.resolve("design.md"), "x");
-            Files.writeString(changeDir.resolve("tasks.md"), "- [x] done");
-
-            Path specDir = changeDir.resolve("specs/billing");
-            Files.createDirectories(specDir);
-            Files.writeString(specDir.resolve("spec.md"),
-                    "## ADDED Requirements\n\n### Requirement: Subscription billing\nThe plugin SHALL bill subscriptions.\n\n#### Scenario: Charge\n- **WHEN** month ends\n- **THEN** charge\n");
-
-            // Source that doesn't mention billing/subscription
-            Path srcDir = tempDir.resolve("src/main/java");
-            Files.createDirectories(srcDir);
-            Files.writeString(srcDir.resolve("Main.java"),
-                    "public class Main {\n    public static void main(String[] args) {}\n}\n");
+        void no_ai_provider_degrades_to_not_assessed() throws IOException {
+            changeWithRequirement("my-change", "auth", "Authentication service");
+            lenient().when(project.getService(DirectApiService.class)).thenReturn(aiService);
+            when(aiService.isConfigured()).thenReturn(false);
 
             VerificationReport report = service.verify("my-change");
             List<VerificationFinding> correctness = report.getFindings(Dimension.CORRECTNESS);
-            assertTrue(correctness.size() > 0);
-            assertTrue(correctness.stream().anyMatch(f ->
-                    f.description().contains("Subscription billing")));
+            assertEquals(1, correctness.size());
+            assertEquals(Severity.SUGGESTION, correctness.getFirst().severity());
+            assertTrue(correctness.getFirst().description().contains("not assessed"));
+        }
+
+        @Test
+        void ai_ok_response_no_findings() throws Exception {
+            changeWithRequirement("my-change", "auth", "Authentication service");
+            lenient().when(project.getService(DirectApiService.class)).thenReturn(aiService);
+            when(aiService.isConfigured()).thenReturn(true);
+            when(aiService.generateRaw(anyString())).thenReturn("OK");
+
+            VerificationReport report = service.verify("my-change");
+            assertEquals(0, report.getFindings(Dimension.CORRECTNESS).size());
+        }
+
+        @Test
+        void ai_gap_lines_become_warnings() throws Exception {
+            changeWithRequirement("my-change", "auth", "Authentication service");
+            lenient().when(project.getService(DirectApiService.class)).thenReturn(aiService);
+            when(aiService.isConfigured()).thenReturn(true);
+            when(aiService.generateRaw(anyString())).thenReturn(
+                    "GAP: Authentication service — no token validation described\nnoise line");
+
+            VerificationReport report = service.verify("my-change");
+            List<VerificationFinding> correctness = report.getFindings(Dimension.CORRECTNESS);
+            assertEquals(1, correctness.size());
+            assertEquals(Severity.WARNING, correctness.getFirst().severity());
+            assertTrue(correctness.getFirst().description().contains("Authentication service"));
+        }
+
+        @Test
+        void ai_failure_degrades_to_suggestion() throws Exception {
+            changeWithRequirement("my-change", "auth", "Authentication service");
+            lenient().when(project.getService(DirectApiService.class)).thenReturn(aiService);
+            when(aiService.isConfigured()).thenReturn(true);
+            when(aiService.generateRaw(anyString())).thenThrow(new AiApiException("rate limited"));
+
+            VerificationReport report = service.verify("my-change");
+            List<VerificationFinding> correctness = report.getFindings(Dimension.CORRECTNESS);
+            assertEquals(1, correctness.size());
+            assertEquals(Severity.SUGGESTION, correctness.getFirst().severity());
+            assertTrue(correctness.getFirst().description().contains("unavailable"));
+        }
+
+        @Test
+        void language_agnostic_not_skewed_by_non_java_source() throws Exception {
+            // A Kotlin-only project: the old .java grep would have falsely reported "no evidence";
+            // the AI-delegated path is language-agnostic and never scans by extension.
+            changeWithRequirement("kt-change", "auth", "Authentication service");
+            Path srcDir = tempDir.resolve("src/main/kotlin");
+            Files.createDirectories(srcDir);
+            Files.writeString(srcDir.resolve("AuthService.kt"), "class AuthService { /* auth */ }");
+            lenient().when(project.getService(DirectApiService.class)).thenReturn(aiService);
+            when(aiService.isConfigured()).thenReturn(true);
+            when(aiService.generateRaw(anyString())).thenReturn("OK");
+
+            VerificationReport report = service.verify("kt-change");
+            assertEquals(0, report.getFindings(Dimension.CORRECTNESS).size());
         }
 
         @Test
@@ -231,11 +299,10 @@ class VerificationServiceTest {
             Files.writeString(changeDir.resolve("proposal.md"), "x");
             Files.writeString(changeDir.resolve("design.md"), "x");
             Files.writeString(changeDir.resolve("tasks.md"), "- [x] done");
-            // No specs/ directory
+            // No specs/ directory — correctness check returns before any AI lookup.
 
             VerificationReport report = service.verify("my-change");
-            List<VerificationFinding> correctness = report.getFindings(Dimension.CORRECTNESS);
-            assertEquals(0, correctness.size());
+            assertEquals(0, report.getFindings(Dimension.CORRECTNESS).size());
         }
     }
 

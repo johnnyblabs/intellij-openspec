@@ -1,12 +1,18 @@
 package com.johnnyblabs.openspec.services;
 
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.components.Service;
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.progress.ProgressIndicator;
+import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.project.Project;
+import com.johnnyblabs.openspec.ai.AiApiException;
+import com.johnnyblabs.openspec.ai.DirectApiService;
 import com.johnnyblabs.openspec.model.VerificationFinding;
 import com.johnnyblabs.openspec.model.VerificationFinding.Dimension;
 import com.johnnyblabs.openspec.model.VerificationFinding.Severity;
 import com.johnnyblabs.openspec.model.VerificationReport;
+import com.johnnyblabs.openspec.model.WorkflowSchemaContext;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -33,7 +39,13 @@ public final class VerificationService {
     }
 
     /**
-     * Runs full verification on a change. Must NOT be called on EDT.
+     * Runs verification on a change. Must NOT be called on EDT.
+     *
+     * <p>Drives off the resolved {@link WorkflowSchemaContext}: for a non-default mode
+     * (e.g. {@code workspace-planning}) it explains that repo-local verification does not
+     * apply and stops. For the default spec-driven repo-local case it checks completeness
+     * (local, deterministic) and correctness/coherence (semantic, language-agnostic,
+     * delegated to the AI bridge).
      */
     public VerificationReport verify(String changeName) {
         VerificationReport report = new VerificationReport(changeName);
@@ -47,8 +59,26 @@ public final class VerificationService {
             return report;
         }
 
+        // Mode gate — repo-local verification only applies to the default spec-driven layout.
+        // Guard against any failure resolving the context (e.g. malformed status JSON): degrade
+        // to running the default spec-driven checks rather than aborting Verify.
+        try {
+            WorkflowSchemaContextService contextService = project.getService(WorkflowSchemaContextService.class);
+            if (contextService != null) {
+                WorkflowSchemaContext ctx = contextService.getContext(changeName);
+                if (ctx != null && ctx.isNonDefaultMode()) {
+                    report.addFinding(new VerificationFinding(Severity.SUGGESTION, Dimension.COMPLETENESS,
+                            "Verify skipped: this change uses '" + ctx.mode()
+                                    + "' mode — repo-local verification does not apply."));
+                    return report;
+                }
+            }
+        } catch (RuntimeException e) {
+            LOG.warn("Failed to resolve workflow schema context; proceeding with spec-driven checks", e);
+        }
+
         checkCompleteness(report, changeDir);
-        checkCorrectness(report, changeDir, basePath);
+        checkCorrectness(report, changeDir);
         checkCoherence(report, changeDir);
 
         return report;
@@ -87,8 +117,12 @@ public final class VerificationService {
         }
     }
 
-    private void checkCorrectness(VerificationReport report, Path changeDir, String basePath) {
-        // Find delta specs and check if requirements are referenced in codebase
+    /**
+     * Correctness/coherence is a <b>semantic, language-agnostic</b> check delegated to the
+     * AI bridge — never a single-language code grep. When no AI provider is configured it
+     * degrades to "not assessed" rather than a false pass or fail, and never blocks archive.
+     */
+    private void checkCorrectness(VerificationReport report, Path changeDir) {
         Path specsDir = changeDir.resolve("specs");
         if (!Files.isDirectory(specsDir)) return;
 
@@ -109,48 +143,69 @@ public final class VerificationService {
             LOG.warn("Failed to scan delta specs", e);
         }
 
-        // Search source code for evidence of each requirement
-        Path srcDir = Path.of(basePath, "src");
-        if (!Files.isDirectory(srcDir)) return;
+        if (requirementNames.isEmpty()) return;
 
-        for (String reqName : requirementNames) {
-            // Extract key words from requirement name for search
-            String[] keywords = reqName.toLowerCase()
-                    .replaceAll("[^a-z0-9\\s]", "")
-                    .split("\\s+");
-            if (keywords.length == 0) continue;
+        DirectApiService ai = project.getService(DirectApiService.class);
+        if (ai == null || !ai.isConfigured()) {
+            report.addFinding(new VerificationFinding(Severity.SUGGESTION, Dimension.CORRECTNESS,
+                    "Correctness/coherence not assessed (AI provider not configured)"));
+            return;
+        }
 
-            // Use the most distinctive keyword (longest)
-            String searchTerm = "";
-            for (String kw : keywords) {
-                if (kw.length() > searchTerm.length()) searchTerm = kw;
+        try {
+            // The AI call is an unbounded network round-trip — honor cancellation and show progress.
+            checkCanceledIfPossible("Verifying correctness via AI…");
+            String response = ai.generateRaw(buildCorrectnessPrompt(requirementNames, changeDir));
+            for (String line : response.split("\\R")) {
+                String trimmed = line.strip();
+                if (trimmed.regionMatches(true, 0, "GAP:", 0, 4)) {
+                    String detail = trimmed.substring(4).strip();
+                    if (!detail.isEmpty()) {
+                        report.addFinding(new VerificationFinding(Severity.WARNING, Dimension.CORRECTNESS, detail));
+                    }
+                }
             }
-
-            if (searchTerm.length() < 3) continue;
-
-            boolean found = searchSourceTree(srcDir, searchTerm);
-            if (!found) {
-                report.addFinding(new VerificationFinding(Severity.WARNING, Dimension.CORRECTNESS,
-                        "No codebase evidence found for requirement: " + reqName));
-            }
+        } catch (AiApiException e) {
+            report.addFinding(new VerificationFinding(Severity.SUGGESTION, Dimension.CORRECTNESS,
+                    "Correctness/coherence check unavailable: " + e.getMessage()));
         }
     }
 
-    private boolean searchSourceTree(Path dir, String keyword) {
-        try (var stream = Files.walk(dir)) {
-            return stream
-                    .filter(p -> p.toString().endsWith(".java"))
-                    .anyMatch(p -> {
-                        try {
-                            String content = Files.readString(p, StandardCharsets.UTF_8).toLowerCase();
-                            return content.contains(keyword);
-                        } catch (IOException e) {
-                            return false;
-                        }
-                    });
+    private String buildCorrectnessPrompt(List<String> requirementNames, Path changeDir) {
+        String design = readOrEmpty(changeDir.resolve("design.md"));
+        String tasks = readOrEmpty(changeDir.resolve("tasks.md"));
+        StringBuilder reqs = new StringBuilder();
+        for (String r : requirementNames) reqs.append("- ").append(r).append('\n');
+
+        return "You are verifying an OpenSpec change for coverage and coherence with its design. "
+                + "Using only the requirements, design, and task list below, identify any requirement "
+                + "that appears unaddressed by the design/tasks or incoherent with the design. "
+                + "Do not assume any particular programming language.\n\n"
+                + "Respond with one line per problem, each starting with \"GAP: \" followed by the "
+                + "requirement name and a short reason. If everything appears addressed and coherent, "
+                + "respond with exactly \"OK\".\n\n"
+                + "Requirements:\n" + reqs + "\n"
+                + "Design:\n" + design + "\n\n"
+                + "Tasks:\n" + tasks + "\n";
+    }
+
+    private String readOrEmpty(Path path) {
+        try {
+            return Files.exists(path) ? Files.readString(path, StandardCharsets.UTF_8) : "";
         } catch (IOException e) {
-            return false;
+            return "";
         }
+    }
+
+    /**
+     * Honors task cancellation and updates the progress indicator before a slow step.
+     * No-op outside a running IntelliJ Application (unit-test context).
+     */
+    private void checkCanceledIfPossible(String statusText) {
+        if (ApplicationManager.getApplication() == null) return;
+        ProgressManager.checkCanceled();
+        ProgressIndicator indicator = ProgressManager.getInstance().getProgressIndicator();
+        if (indicator != null) indicator.setText(statusText);
     }
 
     private void checkCoherence(VerificationReport report, Path changeDir) {

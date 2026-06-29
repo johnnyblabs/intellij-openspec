@@ -1,6 +1,10 @@
 package com.johnnyblabs.openspec.actions;
 
 import com.intellij.openapi.actionSystem.AnActionEvent;
+import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.progress.ProgressIndicator;
+import com.intellij.openapi.progress.ProgressManager;
+import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.popup.JBPopupFactory;
 import com.johnnyblabs.openspec.dialogs.CompliancePreFlightDialog;
@@ -56,14 +60,22 @@ public class OpenSpecArchiveAction extends OpenSpecBaseAction {
     }
 
     private void runComplianceAndArchive(Project project, ChangeService changeService, Change target) {
-        ComplianceService complianceService = project.getService(ComplianceService.class);
-        ComplianceResult result = complianceService.checkCompliance(target.getName());
+        // checkCompliance runs Verify, which now spawns the CLI + a blocking AI call — keep it off the EDT,
+        // then show the pre-flight dialog and archive on the EDT.
+        ProgressManager.getInstance().run(new Task.Backgroundable(project, "Checking compliance: " + target.getName(), true) {
+            @Override
+            public void run(@NotNull ProgressIndicator indicator) {
+                ComplianceService complianceService = project.getService(ComplianceService.class);
+                ComplianceResult result = complianceService.checkCompliance(target.getName());
 
-        // Show pre-flight dialog
-        CompliancePreFlightDialog dialog = new CompliancePreFlightDialog(project, result);
-        if (dialog.showAndGet()) {
-            archiveChange(project, changeService, target);
-        }
+                ApplicationManager.getApplication().invokeLater(() -> {
+                    CompliancePreFlightDialog dialog = new CompliancePreFlightDialog(project, result);
+                    if (dialog.showAndGet()) {
+                        archiveChange(project, changeService, target);
+                    }
+                });
+            }
+        });
     }
 
     private void archiveChange(Project project, ChangeService changeService, Change target) {
