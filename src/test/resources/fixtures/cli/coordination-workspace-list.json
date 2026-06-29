@@ -1,0 +1,18 @@
+{
+  "workspaces": [
+    {
+      "name": "testws",
+      "root": "/fixture/workspaces/testws",
+      "context": null,
+      "links": [
+        {
+          "name": "tmp.AjRgk02gns",
+          "path": "/fixture/linked-repo",
+          "status": []
+        }
+      ],
+      "status": []
+    }
+  ],
+  "status": []
+}

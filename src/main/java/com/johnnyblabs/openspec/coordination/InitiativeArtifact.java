@@ -6,7 +6,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
- * The files that make up an initiative on disk, at {@code <storeRoot>/<id>/}. Used by the
+ * The files that make up an initiative on disk, at {@code <storeRoot>/initiatives/<id>/}. Used by the
  * coordination surface to open an initiative's artifacts in the editor.
  */
 public enum InitiativeArtifact {
@@ -35,14 +35,15 @@ public enum InitiativeArtifact {
 
     /**
      * Resolves the on-disk path of this artifact for the given initiative, or {@code null}
-     * if the initiative's store root is unknown.
+     * if the initiative's root directory is unknown. Artifacts live directly in the
+     * initiative's {@code root} (the CLI reports {@code <storeRoot>/initiatives/<id>/}).
      */
     @Nullable
     public Path resolvePath(InitiativeEntry initiative) {
-        if (initiative.storeRoot() == null) {
+        if (initiative.root() == null) {
             return null;
         }
-        return Path.of(initiative.storeRoot(), initiative.id(), fileName);
+        return Path.of(initiative.root(), fileName);
     }
 
     /**

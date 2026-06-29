@@ -121,17 +121,32 @@ public final class CoordinationService {
     }
 
     static List<WorkspaceEntry> readWorkspacesFromDisk(CoordinationPaths paths) {
-        List<WorkspaceEntry> result = new ArrayList<>();
-        Map<String, Object> registry = readYamlMap(paths.workspaceRegistryFile());
-        if (registry == null) return result;
-        Object workspaces = registry.get("workspaces");
-        if (workspaces instanceof Map<?, ?> map) {
-            for (Map.Entry<?, ?> e : map.entrySet()) {
-                String name = String.valueOf(e.getKey());
-                String path = e.getValue() != null ? String.valueOf(e.getValue()) : null;
-                boolean resolves = path != null && Files.exists(Path.of(path));
-                result.add(new WorkspaceEntry(name, path, resolves));
+        // Managed workspaces exist as subdirectories of the workspaces dir; the registry.yaml
+        // may additionally map names to external linked paths (and can be empty). Union both,
+        // preferring an explicit registry path over the managed directory.
+        java.util.LinkedHashMap<String, String> byName = new java.util.LinkedHashMap<>();
+        Path dir = paths.managedWorkspacesDir();
+        if (Files.isDirectory(dir)) {
+            try (Stream<Path> children = Files.list(dir)) {
+                children.filter(Files::isDirectory)
+                        .forEach(d -> byName.put(d.getFileName().toString(), d.toString()));
+            } catch (Exception e) {
+                LOG.debug("Failed to scan managed workspaces dir: " + dir, e);
             }
+        }
+        Map<String, Object> registry = readYamlMap(paths.workspaceRegistryFile());
+        if (registry != null && registry.get("workspaces") instanceof Map<?, ?> map) {
+            for (Map.Entry<?, ?> e : map.entrySet()) {
+                if (e.getValue() != null) {
+                    byName.put(String.valueOf(e.getKey()), String.valueOf(e.getValue()));
+                }
+            }
+        }
+        List<WorkspaceEntry> result = new ArrayList<>();
+        for (Map.Entry<String, String> e : byName.entrySet()) {
+            String path = e.getValue();
+            boolean resolves = path != null && Files.exists(Path.of(path));
+            result.add(new WorkspaceEntry(e.getKey(), path, resolves));
         }
         return result;
     }
@@ -217,11 +232,8 @@ public final class CoordinationService {
         List<InitiativeEntry> result = new ArrayList<>();
         JsonObject root = GSON.fromJson(json, JsonObject.class);
         if (root == null) return result;
-        String topStoreRoot = null;
-        JsonElement cs = root.get("context_store");
-        if (cs != null && cs.isJsonObject()) {
-            topStoreRoot = stringOf(cs.getAsJsonObject(), "root", "storeRoot", "store_root");
-        }
+        // The CLI emits a flat top-level `initiatives` array across all stores; each entry
+        // carries its own `root` (the initiative directory) and `store` (the store id).
         JsonArray arr = arrayOf(root, "initiatives");
         for (JsonElement el : arr) {
             if (!el.isJsonObject()) continue;
@@ -232,14 +244,14 @@ public final class CoordinationService {
             String summary = orEmpty(stringOf(o, "summary"));
             InitiativeStatus status = InitiativeStatus.fromString(stringOf(o, "status"));
             String created = stringOf(o, "created");
-            String storeRoot = stringOf(o, "storeRoot", "store_root", "root");
-            if (storeRoot == null) storeRoot = topStoreRoot;
+            String store = stringOf(o, "store", "store_id");
+            String initiativeRoot = stringOf(o, "root");
             List<String> owners = new ArrayList<>();
             JsonArray ownersArr = arrayOf(o, "owners");
             for (JsonElement oe : ownersArr) {
                 if (oe.isJsonPrimitive()) owners.add(oe.getAsString());
             }
-            result.add(new InitiativeEntry(id, title, summary, status, created, owners, storeRoot));
+            result.add(new InitiativeEntry(id, title, summary, status, created, owners, store, initiativeRoot));
         }
         return result;
     }
@@ -248,25 +260,26 @@ public final class CoordinationService {
         List<InitiativeEntry> result = new ArrayList<>();
         for (ContextStoreEntry store : readContextStoresFromDisk(paths)) {
             if (store.root() == null) continue;
-            Path storeRoot = Path.of(store.root());
-            if (!Files.isDirectory(storeRoot)) continue;
-            try (Stream<Path> children = Files.list(storeRoot)) {
+            // Initiatives live under <storeRoot>/initiatives/<id>/.
+            Path initiativesDir = Path.of(store.root()).resolve("initiatives");
+            if (!Files.isDirectory(initiativesDir)) continue;
+            try (Stream<Path> children = Files.list(initiativesDir)) {
                 children.filter(Files::isDirectory).forEach(dir -> {
                     Path meta = dir.resolve(InitiativeArtifact.METADATA.fileName());
                     if (Files.isRegularFile(meta)) {
-                        InitiativeEntry entry = readInitiativeYaml(meta, store.root());
+                        InitiativeEntry entry = readInitiativeYaml(meta, store.id(), dir.toString());
                         if (entry != null) result.add(entry);
                     }
                 });
             } catch (Exception e) {
-                LOG.debug("Failed to scan context store for initiatives: " + storeRoot, e);
+                LOG.debug("Failed to scan context store for initiatives: " + initiativesDir, e);
             }
         }
         return result;
     }
 
     @Nullable
-    private static InitiativeEntry readInitiativeYaml(Path metadataFile, String storeRoot) {
+    private static InitiativeEntry readInitiativeYaml(Path metadataFile, @Nullable String store, String initiativeRoot) {
         Map<String, Object> map = readYamlMap(metadataFile);
         if (map == null) return null;
         String id = map.get("id") != null ? String.valueOf(map.get("id"))
@@ -280,7 +293,7 @@ public final class CoordinationService {
         if (map.get("owners") instanceof List<?> list) {
             for (Object o : list) owners.add(String.valueOf(o));
         }
-        return new InitiativeEntry(id, title, summary, status, created, owners, storeRoot);
+        return new InitiativeEntry(id, title, summary, status, created, owners, store, initiativeRoot);
     }
 
     // ---- Doctor (lazy) -------------------------------------------------------
@@ -295,7 +308,7 @@ public final class CoordinationService {
             CliRunner.CliResult r = CliRunner.run(project, "context-store", "doctor", entry.id(), "--json");
             if (!r.isSuccess()) return entry;
             JsonObject root = GSON.fromJson(r.stdout(), JsonObject.class);
-            JsonArray stores = arrayOf(root, "stores");
+            JsonArray stores = arrayOf(root, "context_stores", "stores");
             for (JsonElement el : stores) {
                 if (!el.isJsonObject()) continue;
                 JsonObject o = el.getAsJsonObject();

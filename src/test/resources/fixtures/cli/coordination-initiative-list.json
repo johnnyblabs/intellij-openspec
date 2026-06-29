@@ -1,0 +1,44 @@
+{
+  "context_store": null,
+  "context_stores": [
+    {
+      "context_store": {
+        "id": "teststore",
+        "root": "/fixture/context-stores/teststore",
+        "source": "registry"
+      },
+      "initiatives": [
+        {
+          "version": 1,
+          "id": "test-init",
+          "title": "Test Initiative",
+          "summary": "A test",
+          "status": "exploring",
+          "created": "2026-06-29",
+          "owners": [],
+          "metadata": {},
+          "store": "teststore",
+          "root": "/fixture/context-stores/teststore/initiatives/test-init",
+          "store_path": "initiatives/test-init"
+        }
+      ],
+      "status": []
+    }
+  ],
+  "initiatives": [
+    {
+      "version": 1,
+      "id": "test-init",
+      "title": "Test Initiative",
+      "summary": "A test",
+      "status": "exploring",
+      "created": "2026-06-29",
+      "owners": [],
+      "metadata": {},
+      "store": "teststore",
+      "root": "/fixture/context-stores/teststore/initiatives/test-init",
+      "store_path": "initiatives/test-init"
+    }
+  ],
+  "status": []
+}
