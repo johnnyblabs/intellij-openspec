@@ -69,6 +69,42 @@ tasks.jacocoTestReport {
     }
 }
 
+// Coverage REGRESSION floor — wired into `check` (so CI's `./gradlew build` runs it).
+// This is a backstop against backsliding, NOT a per-PR new-code mandate: thresholds sit
+// just below current coverage. New-code test quality is governed by the OpenSpec `tasks`
+// rule ("tests SHALL verify real behavior") and the CLAUDE.md contract-test convention.
+// Ratchet the minimums upward as coverage improves.
+tasks.jacocoTestCoverageVerification {
+    dependsOn(tasks.test)
+    // Match the report: instrumented classes + the test JVM's execution data.
+    executionData.setFrom(layout.buildDirectory.file("jacoco/test.exec"))
+    classDirectories.setFrom(
+        fileTree(layout.buildDirectory.dir("instrumented/instrumentCode")) {
+            exclude("**/META-INF/**")
+        }
+    )
+    violationRules {
+        rule {
+            limit {
+                counter = "INSTRUCTION"
+                value = "COVEREDRATIO"
+                minimum = "0.30".toBigDecimal()
+            }
+        }
+        rule {
+            limit {
+                counter = "LINE"
+                value = "COVEREDRATIO"
+                minimum = "0.28".toBigDecimal()
+            }
+        }
+    }
+}
+
+tasks.check {
+    dependsOn(tasks.jacocoTestCoverageVerification)
+}
+
 changelog {
     version.set(project.version.toString())
     path.set(file("CHANGELOG.md").canonicalPath)

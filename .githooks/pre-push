@@ -1,44 +1,83 @@
 #!/usr/bin/env bash
 #
-# pre-push — block homelab-internal references from reaching the PUBLIC GitHub mirror.
+# pre-push — two guards, selected by remote:
 #
-# Homelab refs (Forgejo issue numbers, Plane IDs, *.geek hostnames, the `johnb`
-# username, mcp__homelab tool names) are perfectly fine on the private Forgejo
-# `origin`. They must NEVER reach github.com/johnnyblabs/intellij-openspec.
+#   1. TEST GATE (every remote EXCEPT the GitHub mirror): if the pushed commits
+#      touch src/, run the JVM test suite (which includes the JaCoCo coverage
+#      verification via `check`). A failing suite blocks the push, so broken or
+#      under-covered code never reaches an `origin` PR. The GitHub mirror is
+#      exempt because it only ever receives already-merged, already-CI-gated
+#      commits.
 #
-# This hook scans the tree being pushed and aborts if any forbidden pattern
-# survives outside the allowlisted files that document/implement the rule
-# itself. It is a no-op for every remote except GitHub, so normal Forgejo
-# pushes are never slowed or blocked.
+#   2. LEAK GUARD (GitHub mirror ONLY): block homelab-internal references from
+#      reaching the PUBLIC GitHub mirror. Homelab refs (Forgejo issue numbers,
+#      Plane IDs, *.geek hostnames, the `johnb` username, mcp__homelab tool
+#      names) are fine on the private Forgejo `origin`; they must NEVER reach
+#      github.com/johnnyblabs/intellij-openspec.
 #
-# See CLAUDE.md → "Tracker IDs go in a gitignored .tracking.yaml sidecar" for
-# the anti-leak rule this enforces. To clear a block: scrub the reference
-# (vendor-neutral wording — "tracker entry", "the linked issue"), or move the
-# file out of the tracked tree. A genuinely rule-documenting file can be added
-# to ALLOW below.
+# See CLAUDE.md → "Tracker IDs go in a gitignored .tracking.yaml sidecar" for the
+# anti-leak rule and "Testing — contract-test external output" for the test rule.
+# To clear a leak block: scrub the reference (vendor-neutral wording) or move the
+# file out of the tracked tree. A rule-documenting file can be added to ALLOW.
 #
 # Activation (per clone): git config core.hooksPath .githooks
 
 set -uo pipefail
 
 remote_url="${2:-}"
+repo_root="$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
+zero='0000000000000000000000000000000000000000'
 
-# Guard ONLY the public GitHub mirror. Forgejo / any other remote: no-op.
+# Capture stdin (the ref lines git feeds the hook) once — both guards read it.
+refs="$(cat)"
+
+is_github=false
 case "$remote_url" in
-  *github.com*) ;;
-  *) exit 0 ;;
+  *github.com*) is_github=true ;;
 esac
 
+# ----------------------------------------------------------------------------
+# Guard 1 — TEST GATE (skipped for the GitHub mirror).
+# ----------------------------------------------------------------------------
+if [ "$is_github" = false ]; then
+  changed=""
+  while read -r local_ref local_sha remote_ref remote_sha; do
+    [ -z "${local_sha:-}" ] && continue
+    [ "$local_sha" = "$zero" ] && continue   # branch deletion — nothing to test
+    if [ -z "${remote_sha:-}" ] || [ "$remote_sha" = "$zero" ]; then
+      # New branch on the remote: diff against the merge-base with main.
+      base="$(git merge-base "$local_sha" origin/main 2>/dev/null || true)"
+      range="${base:+$base..}$local_sha"
+    else
+      range="$remote_sha..$local_sha"
+    fi
+    files="$(git diff --name-only $range 2>/dev/null || true)"
+    changed="$changed
+$files"
+  done <<< "$refs"
+
+  if printf '%s\n' "$changed" | grep -qE '^src/'; then
+    echo "▶ pre-push: source changes detected — running ./gradlew test …" >&2
+    if ! ( cd "$repo_root" && ./gradlew --console=plain test </dev/null >&2 ); then
+      echo "" >&2
+      echo "✖ pre-push BLOCKED: tests (or the coverage floor) failed." >&2
+      echo "  Fix them before pushing — origin PRs must be green." >&2
+      echo "  To bypass in a genuine emergency: git push --no-verify" >&2
+      exit 1
+    fi
+    echo "✓ pre-push: tests passed." >&2
+  fi
+  # Non-GitHub remote: leak guard does not apply.
+  exit 0
+fi
+
+# ----------------------------------------------------------------------------
+# Guard 2 — LEAK GUARD (GitHub mirror only).
+# ----------------------------------------------------------------------------
 # Forbidden patterns — homelab IDENTIFIERS that must not reach the public mirror.
-# These are precise on purpose: the bare CI-platform name "Forgejo" is NOT
-# blocked, because the repo openly runs on Forgejo Actions (.forgejo/ is already
-# public and is not sensitive). What must never leak is the concrete homelab
-# infrastructure: hostnames, the private repo/user path, tracker IDs, MCP names.
-#   \.geek / git@geek / geek:222   homelab host (geek, forgejo.geek, plane.geek)
-#   johnb[/@]                       homelab user in repo paths / ssh URLs
-#   mcp__homelab                    homelab MCP server tool names
-#   (OSPEC|OSP|OS)-N                Plane work-item identifiers
-#   Forgejo #N                      Forgejo issue references
+# Precise on purpose: the bare CI-platform name "Forgejo" is NOT blocked (the repo
+# openly runs on Forgejo Actions). What must never leak is concrete homelab infra:
+# hostnames, the private repo/user path, tracker IDs, MCP names.
 # NOTE: \b word-boundary is NOT used — git grep's regex engine silently fails to
 # match it. Boundaries are expressed as (^|[^[:alnum:]]) instead.
 PATTERN='\.geek|git@geek|geek:222|johnb[/@]|mcp__homelab|(^|[^[:alnum:]])(OSPEC|OSP|OS)-[0-9]|Forgejo #'
@@ -46,10 +85,9 @@ PATTERN='\.geek|git@geek|geek:222|johnb[/@]|mcp__homelab|(^|[^[:alnum:]])(OSPEC|
 # Files allowed to mention the patterns: they document or implement the rule.
 ALLOW=(':!CLAUDE.md' ':!.githooks')
 
-zero='0000000000000000000000000000000000000000'
 status=0
-
 while read -r local_ref local_sha remote_ref remote_sha; do
+  [ -z "${local_sha:-}" ] && continue
   [ "$local_sha" = "$zero" ] && continue   # deleting a remote ref — nothing to scan
   hits=$(git grep -nIE "$PATTERN" "$local_sha" -- . "${ALLOW[@]}" 2>/dev/null) || true
   if [ -n "$hits" ]; then
@@ -59,7 +97,7 @@ while read -r local_ref local_sha remote_ref remote_sha; do
     echo "$hits" | sed 's/^/    /' >&2
     status=1
   fi
-done
+done <<< "$refs"
 
 if [ "$status" -ne 0 ]; then
   echo "" >&2
