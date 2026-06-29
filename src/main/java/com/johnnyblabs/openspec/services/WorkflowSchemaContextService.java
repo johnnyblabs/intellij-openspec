@@ -79,6 +79,20 @@ public final class WorkflowSchemaContextService {
                 cliVersion, configVersion, true);
     }
 
+    /**
+     * Returns true if any cached schema context reports a non-default (coordination) mode,
+     * e.g. {@code workspace-planning}. EDT-safe — reads only the cache, never spawns a process.
+     * Used by the coordination surface to factor the active mode into its presentation tier.
+     */
+    public boolean hasNonDefaultModeCached() {
+        for (WorkflowSchemaContext ctx : cache.values()) {
+            if (ctx != null && ctx.isNonDefaultMode()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /** Clears the cached context for one change. */
     public void invalidateCache(String changeName) {
         cache.remove(changeName);
