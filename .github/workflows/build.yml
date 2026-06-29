@@ -72,18 +72,10 @@ jobs:
           distribution: temurin
           java-version: 21
 
-      # Restore-only: the Plugin Verifier downloads multi-GB of IDEs into the Gradle
-      # caches, and saving them back blows the runner's maximum run time during the
-      # post-job tar (the job's main step succeeds, but the cache-save step is killed).
-      # Restoring (no save) keeps the dependency-cache speedup without the fatal tar.
-      - name: Restore Gradle cache
-        uses: actions/cache/restore@v6
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: gradle-verify-${{ hashFiles('**/*.gradle.kts', 'gradle/wrapper/gradle-wrapper.properties') }}
-          restore-keys: gradle-verify-
-
+      # No Gradle cache on this job by design. The Plugin Verifier pulls multi-GB of
+      # IDEs into ~/.gradle; caching them makes the runner's post-job steps (cache tar
+      # and/or workspace teardown of that large tree) exceed the maximum run time and
+      # get cancelled — even though verifyPlugin itself succeeds. Re-downloading per run
+      # is the reliable trade-off; the bulk is re-fetched anyway.
       - name: Run Plugin Verifier
         run: ./gradlew verifyPlugin
