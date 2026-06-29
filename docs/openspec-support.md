@@ -31,7 +31,7 @@ How this plugin maps to the [OpenSpec](https://github.com/fission-ai/openspec) c
 | sync-specs | ✅ | built-in | Built-in delta→main spec sync + AI skill |
 | archive-change | ✅ | `delegated` | Archive action (applies deltas + moves) + AI skill |
 | bulk-archive | ✅ | built-in | Bulk archive action |
-| **verify-change** | ⚠️ | `1.3+` (target: `delegated`) | Currently a local, schema-blind heuristic. Being rebuilt to drive off `openspec status` / `instructions` so it matches the real workflow across schemas. |
+| **verify-change** | 🟡 | `1.3+` · `delegated` | Rebuilt to be schema/mode-aware (drives off `openspec status` `actionContext.mode`) and **language-agnostic**: a deterministic completeness gate plus semantic correctness/coherence delegated to the AI bridge. Non-default modes (e.g. `workspace-planning`) explain and stop. The old Java-only code heuristic is retired. |
 | onboard | 🟡 | built-in | Plugin's own Setup Wizard, not the OpenSpec `onboard` workflow |
 | feedback | 🔜 | `1.3+` | No surface yet for `openspec feedback` |
 
@@ -52,7 +52,7 @@ How this plugin maps to the [OpenSpec](https://github.com/fission-ai/openspec) c
 | Capability | Status | CLI | Notes |
 |------------|--------|-----|-------|
 | `spec-driven` schema | ✅ | `1.3+` | Fully supported |
-| `workspace-planning` schema | 🟡 | `1.4+` | Recognized & validated; workflow surfaces now detect and reflect the active `actionContext.mode` (foundation landed) — full per-mode UX (incl. Verify) still in progress |
+| `workspace-planning` schema | 🟡 | `1.4+` | Recognized & validated; workflow surfaces detect and reflect the active `actionContext.mode`, and Verify mode-gates it (explains repo-local verify N/A). Full per-mode authoring UX still in progress |
 | custom / forked schemas | 🟡 | `1.3+` | A forked schema name is recognized rather than flagged unknown |
 | profiles / config | ✅ | `delegated` | CLI-aligned profile picker; config validation |
 

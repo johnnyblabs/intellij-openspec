@@ -36,7 +36,7 @@ public class OpenSpecVerifyAction extends OpenSpecBaseAction {
 
         String changeName = activeChanges.getFirst().getName();
 
-        ProgressManager.getInstance().run(new Task.Backgroundable(project, "Verifying: " + changeName, false) {
+        ProgressManager.getInstance().run(new Task.Backgroundable(project, "Verifying: " + changeName, true) {
             @Override
             public void run(@NotNull ProgressIndicator indicator) {
                 indicator.setText("Checking completeness...");

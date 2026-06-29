@@ -1355,26 +1355,33 @@ public class WorkflowActionPanel extends JPanel {
 
     private void onComplianceCheck() {
         if (activeChangeName == null) return;
-        ComplianceService complianceService = project.getService(ComplianceService.class);
-        com.johnnyblabs.openspec.model.ComplianceResult result = complianceService.checkCompliance(activeChangeName);
+        final String changeName = activeChangeName;
+        complianceStatusLabel.setText("Checking\u2026");
+        complianceStatusLabel.setForeground(JBColor.GRAY);
 
-        // Update status strip
-        if (result.isCompliant() && result.warningCount() == 0) {
-            complianceStatusLabel.setText("\u2713 Compliant");
-            complianceStatusLabel.setForeground(COLOR_DONE);
-        } else if (result.isCompliant()) {
-            complianceStatusLabel.setText(result.warningCount() + " warning" + (result.warningCount() > 1 ? "s" : ""));
-            complianceStatusLabel.setForeground(new JBColor(new Color(200, 150, 0), new Color(230, 180, 50)));
-        } else {
-            int total = result.errorCount() + result.warningCount();
-            complianceStatusLabel.setText(total + " issue" + (total > 1 ? "s" : ""));
-            complianceStatusLabel.setForeground(COLOR_ERROR);
-        }
+        // checkCompliance runs Verify, which now spawns the CLI + a blocking AI call \u2014 keep it off the EDT.
+        ApplicationManager.getApplication().executeOnPooledThread(() -> {
+            ComplianceService complianceService = project.getService(ComplianceService.class);
+            com.johnnyblabs.openspec.model.ComplianceResult result = complianceService.checkCompliance(changeName);
 
-        // Show compliance dialog
-        com.johnnyblabs.openspec.dialogs.CompliancePreFlightDialog dialog =
-                new com.johnnyblabs.openspec.dialogs.CompliancePreFlightDialog(project, result);
-        dialog.show();
+            ApplicationManager.getApplication().invokeLater(() -> {
+                // Update status strip
+                if (result.isCompliant() && result.warningCount() == 0) {
+                    complianceStatusLabel.setText("\u2713 Compliant");
+                    complianceStatusLabel.setForeground(COLOR_DONE);
+                } else if (result.isCompliant()) {
+                    complianceStatusLabel.setText(result.warningCount() + " warning" + (result.warningCount() > 1 ? "s" : ""));
+                    complianceStatusLabel.setForeground(new JBColor(new Color(200, 150, 0), new Color(230, 180, 50)));
+                } else {
+                    int total = result.errorCount() + result.warningCount();
+                    complianceStatusLabel.setText(total + " issue" + (total > 1 ? "s" : ""));
+                    complianceStatusLabel.setForeground(COLOR_ERROR);
+                }
+
+                // Show compliance dialog
+                new com.johnnyblabs.openspec.dialogs.CompliancePreFlightDialog(project, result).show();
+            });
+        });
     }
 
     private void updateFfGoEnabled() {
@@ -1482,7 +1489,7 @@ public class WorkflowActionPanel extends JPanel {
         if (activeChangeName == null) return;
         String changeName = activeChangeName;
 
-        ProgressManager.getInstance().run(new Task.Backgroundable(project, "Verifying " + changeName, false) {
+        ProgressManager.getInstance().run(new Task.Backgroundable(project, "Verifying " + changeName, true) {
             @Override
             public void run(@NotNull ProgressIndicator indicator) {
                 com.johnnyblabs.openspec.services.VerificationService verificationService =
