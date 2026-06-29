@@ -72,14 +72,10 @@ jobs:
           distribution: temurin
           java-version: 21
 
-      - name: Cache Gradle dependencies
-        uses: actions/cache@v6
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: gradle-verify-${{ hashFiles('**/*.gradle.kts', 'gradle/wrapper/gradle-wrapper.properties') }}
-          restore-keys: gradle-verify-
-
+      # No Gradle cache on this job by design. The Plugin Verifier pulls multi-GB of
+      # IDEs into ~/.gradle; caching them makes the runner's post-job steps (cache tar
+      # and/or workspace teardown of that large tree) exceed the maximum run time and
+      # get cancelled — even though verifyPlugin itself succeeds. Re-downloading per run
+      # is the reliable trade-off; the bulk is re-fetched anyway.
       - name: Run Plugin Verifier
         run: ./gradlew verifyPlugin

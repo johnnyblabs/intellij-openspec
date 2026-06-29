@@ -63,6 +63,19 @@ Default workflow (adopted 2026-06-27): non-trivial work goes through a **pull re
 - **Trivial changes** (doc/tracker/comment tweaks) may still go direct to `main` on `origin` — use judgement.
 - After a PR merges, delete the branch locally (`git branch -d`) and on `origin` (`git push origin --delete <name>`), per the standing workflow preference.
 
+## Testing — required, and tests must verify *real* behavior
+
+OpenSpec's `tasks` rules already mandate tests for every change and that *"each test SHALL fail if the code it covers is broken."* Enforcement layers on top of that:
+
+- **CI gate:** `./gradlew build` runs the suite plus a JaCoCo coverage **regression floor** (`jacocoTestCoverageVerification`, wired into `check`). A PR can't merge red. The floor is a backstop against backsliding — ratchet the minimums in `build.gradle.kts` upward as coverage grows; it is *not* a substitute for covering new code.
+- **Local pre-push gate:** `.githooks/pre-push` runs `./gradlew test` when pushed commits touch `src/` (every remote except the post-merge GitHub mirror). Activate per clone with `git config core.hooksPath .githooks`. Emergency bypass: `git push --no-verify`.
+
+**Contract-test external output — don't hand-write the expected shape.** Any code that parses output from an external tool (the OpenSpec CLI's `--json`, file/registry formats on disk, an API response) MUST be tested against **captured real output**, not a hand-authored approximation of what you *think* the shape is. Hand-written fixtures encode your assumption, so the test passes while the parser is wrong — a green-but-vacuous test.
+
+- Capture once from the real tool (for CLI state that needs setup, use an isolated `XDG_DATA_HOME` so the real global dir is untouched), **sanitize machine-specific paths**, and commit under `src/test/resources/fixtures/cli/`.
+- Add a contract test that parses the fixture (see `CliContractTest` and `CoordinationContractTest`). When the tool's output format changes, re-capture the fixture and fix the failures.
+- Incident that motivated this: the Phase 3 coordination parsers were unit-tested against inferred JSON and shipped three shape bugs (wrong artifact nesting, wrong doctor key, wrong fallback dir) that all passed CI. Contract-testing against the real CLI caught them immediately.
+
 ## Release & publishing
 
 - Never run `publishPlugin` locally. CI handles signing and JetBrains Marketplace publishing on `v*` tag push.
