@@ -5,6 +5,7 @@ plugins {
     id("jacoco")
     id("org.jetbrains.intellij.platform")
     id("org.jetbrains.changelog") version "2.2.1"
+    id("org.sonarqube") version "7.3.1.8318"
 }
 
 group = "com.johnnyblabs.openspec"
@@ -103,6 +104,19 @@ tasks.jacocoTestCoverageVerification {
 
 tasks.check {
     dependsOn(tasks.jacocoTestCoverageVerification)
+}
+
+// Reports coverage + test results to the analysis server. Host URL and token are
+// read by the scanner from the SONAR_HOST_URL / SONAR_TOKEN env vars (injected as
+// CI secrets) — never hardcoded here, so this stays safe for the public mirror.
+// Paths match the JaCoCo XML and JUnit output the `test` task already produces.
+sonar {
+    properties {
+        property("sonar.projectKey", "intellij-openspec")
+        property("sonar.projectName", "intellij-openspec")
+        property("sonar.coverage.jacoco.xmlReportPaths", "build/reports/jacoco/test/jacocoTestReport.xml")
+        property("sonar.junit.reportPaths", "build/test-results/test")
+    }
 }
 
 changelog {

@@ -52,6 +52,15 @@ jobs:
           name: test-results
           path: build/test-results/test/
 
+      # Reports coverage + JUnit results to the analysis server. Runs after Build
+      # and Test so the JaCoCo XML + test results exist. Host/token come from CI
+      # secrets — no internal host is hardcoded (safe for the public mirror).
+      - name: SonarQube analysis
+        run: gradle sonar
+        env:
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
       - name: Sign plugin
         if: github.ref == 'refs/heads/main' || github.base_ref == 'main'
         run: gradle signPlugin
