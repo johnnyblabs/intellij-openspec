@@ -35,8 +35,7 @@ public class VerifyReportDialog extends DialogWrapper {
         // Summary header
         JBLabel summary = new JBLabel(report.getSummary());
         summary.setFont(summary.getFont().deriveFont(Font.BOLD, 14f));
-        summary.setIcon(report.isClean() ? AllIcons.General.InspectionsOK :
-                report.hasCritical() ? AllIcons.General.Error : AllIcons.General.Warning);
+        summary.setIcon(summaryIcon(report));
         summary.setBorder(JBUI.Borders.empty(8));
         panel.add(summary, BorderLayout.NORTH);
 
@@ -77,7 +76,13 @@ public class VerifyReportDialog extends DialogWrapper {
         return panel;
     }
 
-    private String formatFinding(VerificationFinding finding) {
+    /** Icon for the summary header: clean → OK, any critical → error, otherwise warning. */
+    static Icon summaryIcon(VerificationReport report) {
+        if (report.isClean()) return AllIcons.General.InspectionsOK;
+        return report.hasCritical() ? AllIcons.General.Error : AllIcons.General.Warning;
+    }
+
+    static String formatFinding(VerificationFinding finding) {
         StringBuilder sb = new StringBuilder();
         sb.append("<html>").append(finding.description());
         if (finding.filePath() != null) {
@@ -88,7 +93,7 @@ public class VerifyReportDialog extends DialogWrapper {
         return sb.toString();
     }
 
-    private Icon severityIcon(VerificationFinding.Severity severity) {
+    static Icon severityIcon(VerificationFinding.Severity severity) {
         return switch (severity) {
             case CRITICAL -> AllIcons.General.Error;
             case WARNING -> AllIcons.General.Warning;
@@ -96,7 +101,7 @@ public class VerifyReportDialog extends DialogWrapper {
         };
     }
 
-    private Color severityColor(VerificationFinding.Severity severity) {
+    static Color severityColor(VerificationFinding.Severity severity) {
         return switch (severity) {
             case CRITICAL -> JBColor.RED;
             case WARNING -> JBColor.ORANGE;
