@@ -48,6 +48,29 @@ jobs:
           PLUGIN_SIGNING_CERTIFICATE: ${{ secrets.PLUGIN_SIGNING_CERTIFICATE }}
           PLUGIN_SIGNING_KEY_PASSWORD: ${{ secrets.PLUGIN_SIGNING_KEY_PASSWORD }}
 
+      # Pre-publish signature gate. Verifies the signed artifact against its certificate
+      # chain BEFORE publishing, so a mis-signed zip never reaches the Marketplace.
+      #
+      # We invoke the Marketplace ZIP Signer CLI directly rather than Gradle's
+      # `verifyPluginSignature` task: that task mis-handles a certificate chain supplied via
+      # environment variable (it splats the raw PEM onto the command line → exit 64,
+      # upstream intellij-platform-gradle-plugin#2008). signPlugin already downloads the
+      # signer's -cli jar into the Gradle cache; we reuse it. A non-zero exit fails the
+      # release before publishPlugin runs.
+      - name: Verify plugin signature (pre-publish gate)
+        run: |
+          set -euo pipefail
+          SIGNED=$(ls build/distributions/*-signed.zip)
+          printf '%s' "$PLUGIN_SIGNING_CERTIFICATE" > "$RUNNER_TEMP/cert-chain.pem"
+          CLI_JAR=$(find ~/.gradle/caches -name 'marketplace-zip-signer-*-cli.jar' | head -1)
+          [ -n "$CLI_JAR" ] || { echo "::error::marketplace-zip-signer CLI jar not found in Gradle cache"; exit 1; }
+          echo "Verifying signature of $SIGNED"
+          java -cp "$CLI_JAR" org.jetbrains.zip.signer.ZipSigningTool verify \
+            -in "$SIGNED" -cert "$RUNNER_TEMP/cert-chain.pem"
+          echo "✓ Signature verified against certificate chain"
+        env:
+          PLUGIN_SIGNING_CERTIFICATE: ${{ secrets.PLUGIN_SIGNING_CERTIFICATE }}
+
       - name: Publish to JetBrains Marketplace
         run: ./gradlew publishPlugin
         env:
