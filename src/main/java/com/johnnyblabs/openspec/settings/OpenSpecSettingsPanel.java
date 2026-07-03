@@ -46,6 +46,12 @@ public class OpenSpecSettingsPanel {
     private final JPanel mainPanel;
 
     // CLI section
+    // The version override targets the config-format version axis, which the plugin deliberately
+    // models at a single baseline (VersionSupport / config.yaml `version: 1.2.0`) — independent of
+    // the auto-detected CLI version. Only offer values that axis actually distinguishes; presenting
+    // CLI-looking versions (1.3.0/1.4.0) here would be silently ignored. The combo stays editable as
+    // an escape hatch for a custom config-format version.
+    static final String[] VERSION_OVERRIDE_PRESETS = {"", "1.2.0"};
     private final TextFieldWithBrowseButton cliPathField;
     private final JBLabel cliStatusLabel;
     private final JComboBox<String> versionCombo;
@@ -136,7 +142,7 @@ public class OpenSpecSettingsPanel {
         cliPathRow.add(detectButton);
 
         cliStatusLabel = new JBLabel("Checking...");
-        versionCombo = new JComboBox<>(new String[]{"", "1.3.0", "1.4.0"});
+        versionCombo = new JComboBox<>(VERSION_OVERRIDE_PRESETS);
         versionCombo.setEditable(true);
 
         JPanel cliSection = FormBuilder.createFormBuilder()

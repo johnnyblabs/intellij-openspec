@@ -175,6 +175,57 @@ class VerificationServiceTest {
                     .toList();
             assertEquals(0, taskFindings.size());
         }
+
+        @Test
+        void in_progress_tasks_counted_as_not_done() throws IOException {
+            Path changeDir = createChangeDir("my-change");
+            Files.writeString(changeDir.resolve("proposal.md"), "x");
+            Files.writeString(changeDir.resolve("design.md"), "x");
+            // One done, one in-progress: the [~] must count toward not-done and the total, not vanish.
+            Files.writeString(changeDir.resolve("tasks.md"),
+                    "- [x] 1.1 Done\n- [~] 1.2 In progress\n");
+
+            VerificationReport report = service.verify("my-change");
+            List<VerificationFinding> taskFindings = report.getFindings(Dimension.COMPLETENESS).stream()
+                    .filter(f -> f.description().contains("not done"))
+                    .toList();
+            assertEquals(1, taskFindings.size());
+            assertEquals(Severity.CRITICAL, taskFindings.getFirst().severity());
+            assertTrue(taskFindings.getFirst().description().contains("1 task(s) not done"));
+            assertTrue(taskFindings.getFirst().description().contains("1 in progress"));
+            assertTrue(taskFindings.getFirst().description().contains("out of 2"));
+        }
+
+        @Test
+        void mixed_checkbox_states_counted_correctly() throws IOException {
+            Path changeDir = createChangeDir("my-change");
+            Files.writeString(changeDir.resolve("proposal.md"), "x");
+            Files.writeString(changeDir.resolve("design.md"), "x");
+            // 2 done, 1 unstarted, 2 in-progress => 3 not done out of 5
+            Files.writeString(changeDir.resolve("tasks.md"),
+                    "- [x] 1.1\n- [x] 1.2\n- [ ] 1.3\n- [~] 1.4\n- [~] 1.5\n");
+
+            VerificationReport report = service.verify("my-change");
+            VerificationFinding f = report.getFindings(Dimension.COMPLETENESS).stream()
+                    .filter(x -> x.description().contains("not done"))
+                    .findFirst().orElseThrow();
+            assertEquals(Severity.CRITICAL, f.severity());
+            assertTrue(f.description().contains("3 task(s) not done"), f.description());
+            assertTrue(f.description().contains("2 in progress"), f.description());
+            assertTrue(f.description().contains("out of 5"), f.description());
+        }
+
+        @Test
+        void in_progress_alone_blocks_archive() throws IOException {
+            Path changeDir = createChangeDir("my-change");
+            Files.writeString(changeDir.resolve("proposal.md"), "x");
+            Files.writeString(changeDir.resolve("design.md"), "x");
+            // Previously [~] was dropped, so this would have reported clean. It must now block.
+            Files.writeString(changeDir.resolve("tasks.md"), "- [x] 1.1\n- [~] 1.2\n");
+
+            VerificationReport report = service.verify("my-change");
+            assertTrue(report.hasCritical(), "an in-progress [~] task must block archive");
+        }
     }
 
     // --- Mode gate tests ---

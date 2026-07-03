@@ -30,6 +30,9 @@ public final class VerificationService {
 
     private static final Pattern TASK_INCOMPLETE = Pattern.compile("^\\s*-\\s*\\[\\s*]", Pattern.MULTILINE);
     private static final Pattern TASK_COMPLETE = Pattern.compile("^\\s*-\\s*\\[x]", Pattern.MULTILINE | Pattern.CASE_INSENSITIVE);
+    // `[~]` marks an in-progress task (OpenSpec 1.4). It is not-done for the "ready to archive?"
+    // question, so it counts toward the total and blocks archive like `[ ]` — never dropped.
+    private static final Pattern TASK_IN_PROGRESS = Pattern.compile("^\\s*-\\s*\\[~]", Pattern.MULTILINE);
     private static final Pattern REQUIREMENT_HEADER = Pattern.compile("^###\\s+Requirement:\\s+(.+)$", Pattern.MULTILINE);
 
     private final Project project;
@@ -101,15 +104,24 @@ public final class VerificationService {
                 String content = Files.readString(tasksPath, StandardCharsets.UTF_8);
                 Matcher incomplete = TASK_INCOMPLETE.matcher(content);
                 Matcher complete = TASK_COMPLETE.matcher(content);
+                Matcher inProgress = TASK_IN_PROGRESS.matcher(content);
                 int incompleteCount = 0;
                 int completeCount = 0;
+                int inProgressCount = 0;
                 while (incomplete.find()) incompleteCount++;
                 while (complete.find()) completeCount++;
+                while (inProgress.find()) inProgressCount++;
 
-                if (incompleteCount > 0) {
+                int notDoneCount = incompleteCount + inProgressCount;
+                int totalCount = completeCount + notDoneCount;
+                if (notDoneCount > 0) {
+                    // Keep the original "incomplete" wording when there are no in-progress tasks;
+                    // surface the in-progress count distinctly when present.
+                    String detail = inProgressCount > 0
+                            ? notDoneCount + " task(s) not done (" + inProgressCount + " in progress) out of " + totalCount
+                            : incompleteCount + " incomplete task(s) out of " + totalCount;
                     report.addFinding(new VerificationFinding(Severity.CRITICAL, Dimension.COMPLETENESS,
-                            incompleteCount + " incomplete task(s) out of " + (completeCount + incompleteCount),
-                            tasksPath.toString(), -1));
+                            detail, tasksPath.toString(), -1));
                 }
             } catch (IOException e) {
                 LOG.warn("Failed to read tasks.md", e);
