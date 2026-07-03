@@ -1,6 +1,8 @@
 # OpenSpec IDE Extension — Feature Comparison Matrix
 
-A comprehensive comparison of the OpenSpec IntelliJ plugin against all known VS Code extensions. Last updated: 2026-03-11.
+A comprehensive comparison of the OpenSpec IntelliJ plugin against known VS Code extensions.
+
+> **Maintenance: Snapshot** — reviewed per release, not per-change. This plugin's own row is kept current; the VS Code extension data (versions, install counts, features) is a point-in-time competitive survey and may lag reality. **Last reviewed: 2026-07-03** (plugin v0.3.1). For the version-by-version support matrix (what the plugin covers vs. the OpenSpec client), see [OpenSpec Client Coverage](openspec-support.md) instead.
 
 ---
 
@@ -8,7 +10,7 @@ A comprehensive comparison of the OpenSpec IntelliJ plugin against all known VS 
 
 | Extension | IDE | Publisher | Version | Installs | Status |
 |---|---|---|---|---|---|
-| **OpenSpec IntelliJ Plugin** | IntelliJ IDEA 2024.2+ | johnb | 0.2.3 | — | Published |
+| **OpenSpec IntelliJ Plugin** | IntelliJ IDEA 2024.2+ | johnnyblabs | 0.3.1 | — | Published |
 | **OpenSpec** (Codder13) | VS Code | Denis Bolba | 0.0.5 | 1,972 | Community, proposed official |
 | **OpenSpec for Copilot** | VS Code | atman-dev | 1.0.0 | 956 | Community |
 | **OpenSpec VSCode** | VS Code | AngDrew | 1.3.0 | 592 | Community |
@@ -33,6 +35,7 @@ A comprehensive comparison of the OpenSpec IntelliJ plugin against all known VS 
 | Bulk archive (multi-change) | Yes (conflict detection) | No | No | No | No |
 | CLI update (refresh agent files) | Yes | No | No | No | No |
 | Explore (project context assembly) | Yes (panel + copy) | No | No | No | No |
+| Coordination surface (1.4 workspaces/initiatives; 1.5 stores/worksets) | Yes (Coordination tab: read + write, CLI-version-gated) | No | No | No | No |
 
 ---
 
@@ -165,6 +168,7 @@ A comprehensive comparison of the OpenSpec IntelliJ plugin against all known VS 
 - Custom schema management: fork, create, and switch workflow schemas
 - Config profile display and workflow management
 - Verify action: completeness and task-progress checking with report dialog
+- Coordination tab tracking the OpenSpec client's evolving multi-repo model — 1.4 workspaces/context-stores/initiatives and the 1.5 store/workset model — with a read-only listing plus create/manage actions, version-gated to the detected CLI
 
 ### Codder13 (VS Code)
 - CodeLens integration on `tasks.md` — click a task to open Copilot Chat with full project context injected
