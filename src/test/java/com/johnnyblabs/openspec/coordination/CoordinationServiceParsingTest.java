@@ -34,6 +34,19 @@ class CoordinationServiceParsingTest {
     }
 
     @Test
+    void parsesListJsonDespiteLeadingTelemetryNotice() {
+        // Regression: on its first run the CLI prepends a telemetry notice to stdout, which
+        // previously broke GSON parsing and silently dropped the panel to its disk fallback.
+        String json = """
+                Note: OpenSpec collects anonymous usage stats. Opt out: OPENSPEC_TELEMETRY=0
+                {"workspaces":[{"name":"alpha","path":"/tmp/does-not-exist-alpha","resolvesLocally":true}],"status":[]}
+                """;
+        List<WorkspaceEntry> result = CoordinationService.parseWorkspaces(json);
+        assertEquals(1, result.size());
+        assertEquals("alpha", result.get(0).name());
+    }
+
+    @Test
     void parsesContextStoreListJsonWithSnakeCaseKeys() {
         String json = """
                 {"context_stores":[

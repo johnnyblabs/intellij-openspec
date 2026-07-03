@@ -83,7 +83,6 @@ public final class BuiltInValidator {
         String content = readFile(file);
         if (content == null) return;
         String path = file.getPath();
-        String[] lines = content.split("\n");
 
         // Must have title
         if (!TITLE_PATTERN.matcher(content).find()) {

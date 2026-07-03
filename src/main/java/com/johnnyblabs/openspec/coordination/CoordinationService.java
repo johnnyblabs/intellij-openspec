@@ -1,5 +1,6 @@
 package com.johnnyblabs.openspec.coordination;
 
+import com.johnnyblabs.openspec.util.CliJson;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -102,7 +103,7 @@ public final class CoordinationService {
 
     static List<WorkspaceEntry> parseWorkspaces(String json) {
         List<WorkspaceEntry> result = new ArrayList<>();
-        JsonObject root = GSON.fromJson(json, JsonObject.class);
+        JsonObject root = GSON.fromJson(CliJson.extractJsonPayload(json), JsonObject.class);
         if (root == null) return result;
         JsonArray arr = arrayOf(root, "workspaces");
         for (JsonElement el : arr) {
@@ -169,7 +170,7 @@ public final class CoordinationService {
 
     static List<ContextStoreEntry> parseContextStores(String json) {
         List<ContextStoreEntry> result = new ArrayList<>();
-        JsonObject root = GSON.fromJson(json, JsonObject.class);
+        JsonObject root = GSON.fromJson(CliJson.extractJsonPayload(json), JsonObject.class);
         if (root == null) return result;
         JsonArray arr = arrayOf(root, "context_stores", "contextStores", "stores");
         for (JsonElement el : arr) {
@@ -230,7 +231,7 @@ public final class CoordinationService {
 
     static List<InitiativeEntry> parseInitiatives(String json) {
         List<InitiativeEntry> result = new ArrayList<>();
-        JsonObject root = GSON.fromJson(json, JsonObject.class);
+        JsonObject root = GSON.fromJson(CliJson.extractJsonPayload(json), JsonObject.class);
         if (root == null) return result;
         // The CLI emits a flat top-level `initiatives` array across all stores; each entry
         // carries its own `root` (the initiative directory) and `store` (the store id).
@@ -307,7 +308,7 @@ public final class CoordinationService {
         try {
             CliRunner.CliResult r = CliRunner.run(project, "context-store", "doctor", entry.id(), "--json");
             if (!r.isSuccess()) return entry;
-            JsonObject root = GSON.fromJson(r.stdout(), JsonObject.class);
+            JsonObject root = GSON.fromJson(CliJson.extractJsonPayload(r.stdout()), JsonObject.class);
             JsonArray stores = arrayOf(root, "context_stores", "stores");
             for (JsonElement el : stores) {
                 if (!el.isJsonObject()) continue;

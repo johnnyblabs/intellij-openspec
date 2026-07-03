@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.3.1
+
+### Fixed
+- **Coordination tab no longer silently drops to its offline view on the first OpenSpec CLI call in a fresh environment.** On its first run the OpenSpec CLI prints a one-time telemetry notice to standard output, ahead of the JSON that `--json` commands emit. That notice corrupted the plugin's JSON parsing, so the workspaces / context-stores / initiatives panel fell back to reading the global data directory instead of the live CLI result. The plugin now opts its own CLI invocations out of telemetry and tolerates any leading banner on CLI output, so the panel reflects live CLI state from the very first call.
+
 ## v0.3.0 — OpenSpec 1.4 Baseline
 
 ### ⚠️ Breaking
