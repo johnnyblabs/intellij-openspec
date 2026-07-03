@@ -91,21 +91,17 @@ workset SHALL confirm the removal while stating that member folders are not touc
 - **WHEN** the user invokes Remove on a workset
 - **THEN** the plugin SHALL show a confirmation stating that member folders are not touched, and SHALL only run `workset remove <name>` if confirmed
 
-### Requirement: Workset open via multi-folder integration
+### Requirement: Workset open reveals member folders
 
-The plugin SHALL open a workset by mapping its member folders onto the IDE's own multi-folder /
-attached-project model, without relying on the `--code-workspace` flag. The plugin SHALL show an
-explicit confirmation stating how many folders will open, open the first member in the current window,
-and offer the remaining members as attached directories / additional projects. The plugin SHALL NOT
-auto-open a workset when the surface loads. Folder resolution and VFS refresh SHALL run off the EDT.
+The plugin SHALL open a workset by revealing its member folders in the OS file manager, after an explicit confirmation stating how many folders will open. The plugin SHALL NOT rely on the `--code-workspace` flag and SHALL NOT auto-open a workset when the surface loads. Folder resolution and VFS refresh SHALL run off the EDT. (Deeper in-IDE multi-folder / attached-project integration is deferred: the platform's attach-to-project API is not resolvable across the plugin's minimum supported IDE build, so a portable reveal is used for this release.)
 
 #### Scenario: Confirm before opening multiple folders
 - **WHEN** the user invokes Open on a workset with N member folders
 - **THEN** the plugin SHALL show a confirmation stating that N folders will open before opening anything
 
-#### Scenario: Members mapped onto attached projects
+#### Scenario: Members revealed in the file manager
 - **WHEN** the user confirms opening a workset
-- **THEN** the plugin SHALL open the first member in the current window and offer the remaining members as attached directories / additional projects, without using the `--code-workspace` flag
+- **THEN** the plugin SHALL reveal each existing member folder in the OS file manager, without using the `--code-workspace` flag
 
 #### Scenario: No auto-open on load
 - **WHEN** the coordination surface loads or refreshes

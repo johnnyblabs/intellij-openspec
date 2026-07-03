@@ -19,7 +19,6 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
-import com.intellij.platform.PlatformProjectOpenProcessor;
 import com.intellij.ui.ColoredTreeCellRenderer;
 import com.intellij.ui.HyperlinkLabel;
 import com.intellij.ui.PopupHandler;
@@ -486,33 +485,33 @@ public final class CoordinationPanel extends JPanel {
             return;
         }
         int answer = Messages.showYesNoDialog(project,
-                "Open workset '" + workset.name() + "'?\n\nThis opens " + paths.size() + " folder"
-                        + (paths.size() == 1 ? "" : "s") + " in this window (the first in the current "
-                        + "window, the rest attached).",
+                "Open workset '" + workset.name() + "'?\n\nThis reveals " + paths.size() + " member folder"
+                        + (paths.size() == 1 ? "" : "s") + " in your file manager.",
                 "Open Workset", Messages.getQuestionIcon());
         if (answer != Messages.YES) return;
 
         ApplicationManager.getApplication().executeOnPooledThread(() -> {
-            List<Path> resolved = new ArrayList<>();
+            List<File> dirs = new ArrayList<>();
             for (String p : paths) {
-                Path nio = Path.of(p);
-                LocalFileSystem.getInstance().refreshAndFindFileByNioFile(nio);
-                resolved.add(nio);
+                File dir = new File(p);
+                LocalFileSystem.getInstance().refreshAndFindFileByIoFile(dir);
+                dirs.add(dir);
             }
             ApplicationManager.getApplication().invokeLater(() -> {
                 int opened = 0;
-                for (Path nio : resolved) {
+                for (File dir : dirs) {
                     try {
-                        if (PlatformProjectOpenProcessor.attachToProject(project, nio, null)) {
+                        if (dir.isDirectory()) {
+                            RevealFileAction.openDirectory(dir);
                             opened++;
                         }
                     } catch (Throwable t) {
-                        LOG.warn("Failed to attach workset member folder: " + nio, t);
+                        LOG.warn("Failed to reveal workset member folder: " + dir, t);
                     }
                 }
                 if (opened == 0) {
                     Messages.showWarningDialog(project,
-                            "Could not attach the workset's member folders to this window.", "Open Workset");
+                            "Could not reveal the workset's member folders.", "Open Workset");
                 }
             });
         });

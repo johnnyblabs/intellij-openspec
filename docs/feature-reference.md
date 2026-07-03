@@ -60,7 +60,7 @@ Sourcing mirrors the rest of the tab: listings come from the OpenSpec CLI (`stor
 - **Remove…** — *destructive*: forgets the registration **and deletes the store's local folder**; guarded by an explicit confirmation that says so.
 - **Open Store Root** — opens the store's OpenSpec root.
 - **New Workset…** — a dialog collecting a name and a member list (member folders are never modified), running `workset create`.
-- **Open Workset** — opens the workset's member folders in the IDE (the first in the current window, the rest as additional/attached folders), behind an explicit "opens N folders" confirmation; never auto-opens on tab load.
+- **Open Workset** — reveals the workset's member folders in your file manager, behind an explicit "opens N folders" confirmation; never auto-opens on tab load. (Deeper in-IDE multi-folder integration is a follow-up — the platform's attach-to-project API isn't available across the plugin's minimum supported IDE build.)
 - **Remove Workset** — deletes the saved workset; member folders are untouched.
 
 Actions run off the UI thread; on failure the CLI's diagnostic message (and its `fix` suggestion) is surfaced, never raw error output. A `store doctor`-driven **health strip** at the top of the panel shows the highest-severity diagnostic with its `fix` as an inline action.
