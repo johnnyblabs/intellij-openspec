@@ -30,6 +30,12 @@ public final class CliRunner {
         cmd.addParameters(args);
         cmd.setCharset(StandardCharsets.UTF_8);
 
+        // Opt this process out of the CLI's telemetry notice. On its first run in a fresh
+        // environment the CLI prepends a one-time "Note: OpenSpec collects anonymous usage stats"
+        // line to stdout, which corrupts --json parsing (see CliJson). Setting this keeps stdout
+        // clean for every invocation.
+        cmd.getEnvironment().put("OPENSPEC_TELEMETRY", "0");
+
         if (project.getBasePath() != null) {
             cmd.setWorkDirectory(project.getBasePath());
         }
