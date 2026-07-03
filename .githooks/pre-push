@@ -9,6 +9,12 @@
 #      exempt because it only ever receives already-merged, already-CI-gated
 #      commits.
 #
+#   1b. PLUGIN VERIFIER GATE (non-GitHub, platform-API changes only): if the push
+#      adds/changes a com.intellij.* reference in Java, run ./gradlew verifyPlugin.
+#      The compiler only checks the build SDK; only the verifier catches API
+#      incompatibilities against the target IDEs (e.g. an unresolved method that
+#      NoSuchMethodErrors at runtime). Skip this gate alone: SKIP_VERIFY_PLUGIN=1.
+#
 #   2. LEAK GUARD (GitHub mirror ONLY): block homelab-internal references from
 #      reaching the PUBLIC GitHub mirror. Homelab refs (Forgejo issue numbers,
 #      Plane IDs, *.geek hostnames, the `johnb` username, mcp__homelab tool
@@ -41,6 +47,7 @@ esac
 # ----------------------------------------------------------------------------
 if [ "$is_github" = false ]; then
   changed=""
+  platform_touch=false
   while read -r local_ref local_sha remote_ref remote_sha; do
     [ -z "${local_sha:-}" ] && continue
     [ "$local_sha" = "$zero" ] && continue   # branch deletion — nothing to test
@@ -54,6 +61,12 @@ if [ "$is_github" = false ]; then
     files="$(git diff --name-only $range 2>/dev/null || true)"
     changed="$changed
 $files"
+    # Any ADDED line in a Java source that references an IntelliJ Platform API
+    # (com.intellij.*) makes this push verifier-relevant. `^\+[^+]` matches added
+    # content lines while skipping the `+++ b/…` diff header.
+    if git diff $range -- '*.java' 2>/dev/null | grep -qE '^\+[^+].*com\.intellij\.'; then
+      platform_touch=true
+    fi
   done <<< "$refs"
 
   if printf '%s\n' "$changed" | grep -qE '^src/'; then
@@ -67,6 +80,30 @@ $files"
     fi
     echo "✓ pre-push: tests passed." >&2
   fi
+
+  # Gate 1b — PLUGIN VERIFIER (IntelliJ Platform API changes only).
+  # `./gradlew build`/`test` compile against the build SDK and CANNOT catch API
+  # incompatibilities against the target IDEs (sinceBuild..untilBuild) — only the
+  # Plugin Verifier can. It caught an unresolved
+  # PlatformProjectOpenProcessor.attachToProject(...) that compiled fine locally but
+  # would NoSuchMethodError on 2024.2 at runtime (verify-only failure on a PR). This
+  # gate runs verifyPlugin when the push adds/changes a com.intellij.* reference, so
+  # such breaks are caught before the ~19-min CI verify job. The target IDE archives
+  # cache under ~/.gradle, so runs after the first are ~3–5 min.
+  # Skip THIS gate only (keep the test gate): SKIP_VERIFY_PLUGIN=1 git push
+  if [ "$platform_touch" = true ] && [ "${SKIP_VERIFY_PLUGIN:-}" != "1" ]; then
+    echo "▶ pre-push: IntelliJ Platform API changes detected — running ./gradlew verifyPlugin …" >&2
+    echo "  (first run downloads the target IDEs; later runs are cached & faster)" >&2
+    if ! ( cd "$repo_root" && ./gradlew --console=plain verifyPlugin </dev/null >&2 ); then
+      echo "" >&2
+      echo "✖ pre-push BLOCKED: the Plugin Verifier found compatibility problems." >&2
+      echo "  See build/reports/pluginVerifier/ for the flagged API usage; fix it before pushing." >&2
+      echo "  Bypass this gate only: SKIP_VERIFY_PLUGIN=1 git push  (or --no-verify for all gates)" >&2
+      exit 1
+    fi
+    echo "✓ pre-push: plugin verifier passed (compatible with target IDEs)." >&2
+  fi
+
   # Non-GitHub remote: leak guard does not apply.
   exit 0
 fi
