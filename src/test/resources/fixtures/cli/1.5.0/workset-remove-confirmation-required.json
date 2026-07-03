@@ -1,0 +1,12 @@
+{
+  "removed": null,
+  "status": [
+    {
+      "severity": "error",
+      "code": "workset_remove_confirmation_required",
+      "message": "Pass --yes to remove a workset non-interactively.",
+      "target": "workset.name",
+      "fix": "openspec workset remove myview --yes"
+    }
+  ]
+}

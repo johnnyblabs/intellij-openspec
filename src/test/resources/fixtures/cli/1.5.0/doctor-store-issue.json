@@ -1,0 +1,14 @@
+{
+  "root": null,
+  "store": null,
+  "references": [],
+  "status": [
+    {
+      "severity": "error",
+      "code": "unhealthy_store_root",
+      "message": "Store 'store-d' does not have a healthy OpenSpec root at /fixture/store-d: Missing openspec/config.yaml or openspec/config.yml. Run openspec store doctor store-d to inspect it.",
+      "target": "openspec.root",
+      "fix": "Run openspec store doctor store-d to inspect it."
+    }
+  ]
+}

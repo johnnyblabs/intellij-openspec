@@ -1,0 +1,17 @@
+{
+  "store": {
+    "id": "store-b",
+    "root": "/fixture/store-b",
+    "metadata_path": "/fixture/store-b/.openspec-store/store.yaml"
+  },
+  "registry": {
+    "path": "/fixture/registry/openspec/stores/registry.yaml",
+    "removed": true
+  },
+  "files": {
+    "deleted": false,
+    "deleted_path": null,
+    "left_on_disk": "/fixture/store-b"
+  },
+  "status": []
+}

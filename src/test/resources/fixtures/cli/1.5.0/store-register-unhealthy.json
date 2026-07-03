@@ -1,0 +1,15 @@
+{
+  "store": null,
+  "registry": null,
+  "git": null,
+  "created_files": [],
+  "status": [
+    {
+      "severity": "error",
+      "code": "store_register_root_unhealthy",
+      "message": "Store register requires an existing healthy OpenSpec root. Missing openspec/ directory.",
+      "target": "openspec.root",
+      "fix": "Run openspec store setup for a new store, or point register at a checkout whose openspec/ files are present."
+    }
+  ]
+}

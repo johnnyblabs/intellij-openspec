@@ -1,0 +1,15 @@
+{
+  "store": null,
+  "registry": null,
+  "git": null,
+  "created_files": [],
+  "status": [
+    {
+      "severity": "error",
+      "code": "store_setup_path_required",
+      "message": "Pass --path with the folder where this store should live.",
+      "target": "store.root",
+      "fix": "openspec store setup store-x --path ~/openspec/store-x"
+    }
+  ]
+}

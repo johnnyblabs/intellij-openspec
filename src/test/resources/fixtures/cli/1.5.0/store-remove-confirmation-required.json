@@ -1,0 +1,14 @@
+{
+  "store": null,
+  "registry": null,
+  "files": null,
+  "status": [
+    {
+      "severity": "error",
+      "code": "store_remove_confirmation_required",
+      "message": "Pass --yes to delete store files non-interactively.",
+      "target": "store.root",
+      "fix": "openspec store remove store-a --yes"
+    }
+  ]
+}
