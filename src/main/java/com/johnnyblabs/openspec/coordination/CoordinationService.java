@@ -54,6 +54,16 @@ public final class CoordinationService {
      */
     public static final String COORDINATION_CLI_CEILING = "1.5.0";
 
+    /**
+     * The CLI version at which the {@code store} / {@code workset} model exists. At or above this
+     * floor the plugin prefers the CLI's JSON for stores and worksets; below it (or when the CLI is
+     * absent) it reads the on-disk {@code stores/registry.yaml} and {@code worksets/worksets.yaml}
+     * directly and presents whatever exists read-only. This floor is evaluated here via
+     * {@link CliVersion#atLeast}; it is deliberately <b>not</b> modeled on {@code VersionSupport}
+     * (the pinned config-format axis).
+     */
+    public static final String STORE_CLI_FLOOR = "1.5.0";
+
     private final Project project;
     private volatile @Nullable CoordinationPaths pathsOverride;
 
@@ -96,6 +106,18 @@ public final class CoordinationService {
     }
 
     /**
+     * Whether the CLI can serve the {@code store} / {@code workset} commands — i.e. it is available
+     * and its version is at or above {@link #STORE_CLI_FLOOR} ({@code 1.5.0}). When true, stores and
+     * worksets are the canonical lead model and any legacy 1.4 state on disk is demoted. The gate is
+     * derived solely from the detected CLI version and never consults the config-format version axis.
+     */
+    public boolean cliStoreAvailable() {
+        CliDetectionService detection = project.getService(CliDetectionService.class);
+        return detection != null && detection.isAvailable()
+                && CliVersion.atLeast(detection.getDetectedVersion(), STORE_CLI_FLOOR);
+    }
+
+    /**
      * Resolves all three collections and the presentation tier in one off-EDT snapshot.
      *
      * @param coordinationModeActive whether the active workflow mode is a coordination mode
@@ -103,16 +125,31 @@ public final class CoordinationService {
      */
     public CoordinationData getCoordinationData(boolean coordinationModeActive) {
         boolean cli = cliCoordinationAvailable();
+        boolean storeCli = cliStoreAvailable();
         List<WorkspaceEntry> workspaces = resolveWorkspaces();
-        List<ContextStoreEntry> stores = resolveContextStores();
+        List<ContextStoreEntry> contextStores = resolveContextStores();
         List<InitiativeEntry> initiatives = resolveInitiatives();
-        boolean hasState = !workspaces.isEmpty() || !stores.isEmpty() || !initiatives.isEmpty();
+        List<StoreEntry> stores = resolveStores();
+        List<WorksetEntry> worksets = resolveWorksets();
+        // Enrich stores with lazy doctor health off the EDT so the panel can render badges and the
+        // retained diagnostic fix text. A failed/absent doctor leaves the entry unchanged.
+        if (storeCli && !stores.isEmpty()) {
+            List<StoreEntry> enriched = new ArrayList<>(stores.size());
+            for (StoreEntry s : stores) {
+                enriched.add(fetchStoreDoctor(s));
+            }
+            stores = enriched;
+        }
+        boolean legacyState = !workspaces.isEmpty() || !contextStores.isEmpty() || !initiatives.isEmpty();
+        boolean newState = !stores.isEmpty() || !worksets.isEmpty();
+        boolean hasState = legacyState || newState;
         // On a CLI >= 1.5.0 the coordination commands (and the non-default coordination mode that
         // used to trigger them) are gone. A lingering mode marker must not force a non-Hidden tier:
         // the surface stands down to Awareness only when real on-disk state exists, else Hidden.
         boolean effectiveMode = coordinationModeActive && !cliAtOrAboveCoordinationCeiling();
         CoordinationTier tier = CoordinationTier.resolve(hasState, effectiveMode, cli);
-        return new CoordinationData(workspaces, stores, initiatives, tier, cli);
+        return new CoordinationData(workspaces, contextStores, initiatives, stores, worksets,
+                tier, cli, storeCli, storeCli, legacyState);
     }
 
     // ---- Workspaces ----------------------------------------------------------
@@ -230,8 +267,14 @@ public final class CoordinationService {
         return result;
     }
 
+    /**
+     * Extracts the {@code backend.local_path} (or {@code localPath}) from a registry entry. Shared
+     * by both the context-store registry reader and the 1.5 store registry reader — the two files
+     * are byte-identical in shape ({@code stores: {<id>: {backend: {type, local_path}}}}), so this
+     * single parser serves both and must not be forked.
+     */
     @Nullable
-    private static String backendLocalPath(@Nullable Object entry) {
+    static String backendLocalPath(@Nullable Object entry) {
         if (entry instanceof Map<?, ?> m) {
             Object backend = m.get("backend");
             if (backend instanceof Map<?, ?> b) {
@@ -241,6 +284,251 @@ public final class CoordinationService {
             }
         }
         return null;
+    }
+
+    // ---- Stores (OpenSpec 1.5) ----------------------------------------------
+
+    /**
+     * Resolves the 1.5 stores: CLI-first when {@link #cliStoreAvailable()} (parsing
+     * {@code store list --json}), falling back to reading {@code stores/registry.yaml} on a parse
+     * failure or below the floor. Never throws — a failure degrades to the on-disk fallback.
+     */
+    public List<StoreEntry> resolveStores() {
+        if (cliStoreAvailable()) {
+            String json = runListJson("store", "list");
+            if (json != null) {
+                try {
+                    return parseStores(json);
+                } catch (Exception e) {
+                    LOG.warn("Failed to parse store list JSON; falling back to disk", e);
+                }
+            }
+        }
+        return readStoresFromDisk(paths());
+    }
+
+    static List<StoreEntry> parseStores(String json) {
+        List<StoreEntry> result = new ArrayList<>();
+        JsonObject root = GSON.fromJson(CliJson.extractJsonPayload(json), JsonObject.class);
+        if (root == null) return result;
+        JsonArray arr = arrayOf(root, "stores");
+        for (JsonElement el : arr) {
+            if (!el.isJsonObject()) continue;
+            JsonObject o = el.getAsJsonObject();
+            String id = stringOf(o, "id");
+            String storeRoot = stringOf(o, "root", "storeRoot", "store_root");
+            if (id == null && storeRoot == null) continue;
+            result.add(StoreEntry.basic(id != null ? id : storeRoot, storeRoot));
+        }
+        return result;
+    }
+
+    /**
+     * Parses {@code store doctor --json} into fully-enriched {@link StoreEntry} values. Reads
+     * {@code metadata.{present,valid}}, {@code git.is_repository}, and {@code openspec_root.healthy}
+     * from their exact nested keys, and retains each per-store diagnostic (with its {@code fix}).
+     * Every {@code git} subfield is treated as nullable — a non-git store leaves them null and must
+     * never NPE.
+     */
+    static List<StoreEntry> parseStoreDoctor(String json) {
+        List<StoreEntry> result = new ArrayList<>();
+        JsonObject root = GSON.fromJson(CliJson.extractJsonPayload(json), JsonObject.class);
+        if (root == null) return result;
+        JsonArray arr = arrayOf(root, "stores", "context_stores");
+        for (JsonElement el : arr) {
+            if (!el.isJsonObject()) continue;
+            JsonObject o = el.getAsJsonObject();
+            String id = stringOf(o, "id");
+            String storeRoot = stringOf(o, "root", "storeRoot", "store_root");
+            if (id == null && storeRoot == null) continue;
+            Boolean present = null, valid = null, git = null, healthy = null;
+            if (o.get("metadata") != null && o.get("metadata").isJsonObject()) {
+                JsonObject md = o.getAsJsonObject("metadata");
+                present = boolOf(md, "present");
+                valid = boolOf(md, "valid");
+            }
+            if (o.get("git") != null && o.get("git").isJsonObject()) {
+                git = boolOf(o.getAsJsonObject("git"), "is_repository", "isRepository");
+            }
+            if (o.get("openspec_root") != null && o.get("openspec_root").isJsonObject()) {
+                healthy = boolOf(o.getAsJsonObject("openspec_root"), "healthy");
+            } else if (o.get("openspecRoot") != null && o.get("openspecRoot").isJsonObject()) {
+                healthy = boolOf(o.getAsJsonObject("openspecRoot"), "healthy");
+            }
+            List<Diagnostic> diagnostics = parseDiagnostics(o);
+            result.add(StoreEntry.basic(id != null ? id : storeRoot, storeRoot)
+                    .withDoctor(present, valid, git, healthy, diagnostics));
+        }
+        return result;
+    }
+
+    static List<StoreEntry> readStoresFromDisk(CoordinationPaths paths) {
+        List<StoreEntry> result = new ArrayList<>();
+        Map<String, Object> registry = readYamlMap(paths.storeRegistryFile());
+        if (registry == null) return result;
+        Object stores = registry.get("stores");
+        if (stores instanceof Map<?, ?> map) {
+            for (Map.Entry<?, ?> e : map.entrySet()) {
+                String id = String.valueOf(e.getKey());
+                // Reuse the shared backend-local-path parser — the store registry is byte-identical
+                // in shape to the context-store registry.
+                String storeRoot = backendLocalPath(e.getValue());
+                result.add(StoreEntry.basic(id, storeRoot));
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Lazily enriches a store with {@code store doctor} health detail and diagnostics. Runs
+     * {@code store doctor <id> --json} off the EDT. Returns the entry unchanged when the CLI is
+     * unavailable, the id is null, or the lookup fails — it never throws.
+     */
+    public StoreEntry fetchStoreDoctor(StoreEntry entry) {
+        if (!cliStoreAvailable() || entry.id() == null) return entry;
+        try {
+            CliRunner.CliResult r = CliRunner.run(project, "store", "doctor", entry.id(), "--json");
+            if (!r.isSuccess()) return entry;
+            for (StoreEntry parsed : parseStoreDoctor(r.stdout())) {
+                if (entry.id().equals(parsed.id())) {
+                    return parsed;
+                }
+            }
+        } catch (Exception e) {
+            LOG.debug("store doctor failed for " + entry.id(), e);
+        }
+        return entry;
+    }
+
+    // ---- Worksets (OpenSpec 1.5) --------------------------------------------
+
+    /**
+     * Resolves the 1.5 worksets: CLI-first when {@link #cliStoreAvailable()} (parsing
+     * {@code workset list --json}), falling back to reading {@code worksets/worksets.yaml} on a
+     * parse failure or below the floor. Never throws.
+     */
+    public List<WorksetEntry> resolveWorksets() {
+        if (cliStoreAvailable()) {
+            String json = runListJson("workset", "list");
+            if (json != null) {
+                try {
+                    return parseWorksets(json);
+                } catch (Exception e) {
+                    LOG.warn("Failed to parse workset list JSON; falling back to disk", e);
+                }
+            }
+        }
+        return readWorksetsFromDisk(paths());
+    }
+
+    static List<WorksetEntry> parseWorksets(String json) {
+        List<WorksetEntry> result = new ArrayList<>();
+        JsonObject root = GSON.fromJson(CliJson.extractJsonPayload(json), JsonObject.class);
+        if (root == null) return result;
+        JsonArray arr = arrayOf(root, "worksets");
+        for (JsonElement el : arr) {
+            if (!el.isJsonObject()) continue;
+            JsonObject o = el.getAsJsonObject();
+            String name = stringOf(o, "name");
+            if (name == null) continue;
+            List<WorksetEntry.Member> members = new ArrayList<>();
+            JsonArray memberArr = arrayOf(o, "members");
+            for (JsonElement me : memberArr) {
+                if (!me.isJsonObject()) continue;
+                JsonObject mo = me.getAsJsonObject();
+                String mName = stringOf(mo, "name");
+                String mPath = stringOf(mo, "path");
+                if (mName == null && mPath == null) continue;
+                members.add(new WorksetEntry.Member(mName != null ? mName : mPath, mPath));
+            }
+            result.add(new WorksetEntry(name, members));
+        }
+        return result;
+    }
+
+    static List<WorksetEntry> readWorksetsFromDisk(CoordinationPaths paths) {
+        List<WorksetEntry> result = new ArrayList<>();
+        Map<String, Object> registry = readYamlMap(paths.worksetsFile());
+        if (registry == null) return result;
+        Object worksets = registry.get("worksets");
+        if (worksets instanceof Map<?, ?> map) {
+            for (Map.Entry<?, ?> e : map.entrySet()) {
+                String name = String.valueOf(e.getKey());
+                List<WorksetEntry.Member> members = new ArrayList<>();
+                if (e.getValue() instanceof Map<?, ?> body && body.get("members") instanceof List<?> list) {
+                    for (Object item : list) {
+                        if (item instanceof Map<?, ?> mm) {
+                            String mName = mm.get("name") != null ? String.valueOf(mm.get("name")) : null;
+                            String mPath = mm.get("path") != null ? String.valueOf(mm.get("path")) : null;
+                            if (mName == null && mPath == null) continue;
+                            members.add(new WorksetEntry.Member(mName != null ? mName : mPath, mPath));
+                        }
+                    }
+                }
+                result.add(new WorksetEntry(name, members));
+            }
+        }
+        return result;
+    }
+
+    // ---- Diagnostic envelope + root canonicalization ------------------------
+
+    /** Parses the uniform 1.5 diagnostic envelope {@code status: [{severity, code, message, target, fix}]}. */
+    static List<Diagnostic> parseDiagnostics(@Nullable JsonObject obj) {
+        List<Diagnostic> result = new ArrayList<>();
+        JsonArray arr = arrayOf(obj, "status");
+        for (JsonElement el : arr) {
+            if (!el.isJsonObject()) continue;
+            JsonObject o = el.getAsJsonObject();
+            result.add(new Diagnostic(
+                    stringOf(o, "severity"),
+                    stringOf(o, "code"),
+                    stringOf(o, "message"),
+                    stringOf(o, "target"),
+                    stringOf(o, "fix")));
+        }
+        return result;
+    }
+
+    /**
+     * Canonicalizes a path for equality comparison: {@code toRealPath()} first (resolving symlinks
+     * and Windows short paths, matching what the CLI records), falling back to
+     * {@code toAbsolutePath().normalize()} when the path does not exist or real-path resolution
+     * throws.
+     */
+    static Path canonicalize(Path p) {
+        if (p == null) return null;
+        try {
+            return p.toRealPath();
+        } catch (Exception e) {
+            return p.toAbsolutePath().normalize();
+        }
+    }
+
+    /**
+     * Returns the store whose (canonicalized) root matches the (canonicalized) project root, or
+     * null when none matches. Both sides are canonicalized so a symlinked, non-normalized, or
+     * short-path root still matches — raw string comparison would miss those.
+     */
+    @Nullable
+    static StoreEntry storeMatchingRoot(List<StoreEntry> stores, @Nullable Path projectRoot) {
+        if (projectRoot == null) return null;
+        Path canonProject = canonicalize(projectRoot);
+        for (StoreEntry s : stores) {
+            if (s.root() == null) continue;
+            Path canonStore = canonicalize(Path.of(s.root()));
+            if (canonStore != null && canonStore.equals(canonProject)) {
+                return s;
+            }
+        }
+        return null;
+    }
+
+    /** Instance convenience: the store matching this project's base path, or null. */
+    @Nullable
+    public StoreEntry storeMatchingProjectRoot(List<StoreEntry> stores) {
+        String base = project.getBasePath();
+        return base != null ? storeMatchingRoot(stores, Path.of(base)) : null;
     }
 
     // ---- Initiatives ---------------------------------------------------------
@@ -452,7 +740,9 @@ public final class CoordinationService {
                 return r.stdout();
             }
             LOG.warn("openspec " + command + " " + sub + " --json failed: " + r.stderr());
-        } catch (CliRunner.CliException e) {
+        } catch (Exception e) {
+            // Any failure (CLI error, missing service, unexpected runtime error) degrades to the
+            // on-disk fallback rather than throwing into the caller — the read surface is beta-guarded.
             LOG.warn("openspec " + command + " " + sub + " --json errored", e);
         }
         return null;

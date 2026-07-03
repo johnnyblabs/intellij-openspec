@@ -1,0 +1,61 @@
+{
+  "stores": [
+    {
+      "id": "gitstore",
+      "root": "/fixture/gitstore",
+      "metadata_path": "/fixture/gitstore/.openspec-store/store.yaml",
+      "openspec_root": {
+        "present": true,
+        "config": {
+          "present": false
+        },
+        "specs": {
+          "present": true
+        },
+        "changes": {
+          "present": true
+        },
+        "archive": {
+          "present": true
+        },
+        "healthy": false,
+        "status": [
+          {
+            "severity": "error",
+            "code": "openspec_config_missing",
+            "message": "Missing openspec/config.yaml or openspec/config.yml.",
+            "target": "openspec.config"
+          }
+        ]
+      },
+      "metadata": {
+        "present": false,
+        "valid": false,
+        "remote": null
+      },
+      "git": {
+        "is_repository": true,
+        "has_commits": true,
+        "has_uncommitted_changes": true,
+        "has_remote": false,
+        "origin_url": null
+      },
+      "status": [
+        {
+          "severity": "error",
+          "code": "openspec_config_missing",
+          "message": "Missing openspec/config.yaml or openspec/config.yml.",
+          "target": "openspec.config"
+        },
+        {
+          "severity": "error",
+          "code": "store_metadata_missing",
+          "message": "Store metadata is missing.",
+          "target": "store.metadata",
+          "fix": "Create /fixture/gitstore/.openspec-store/store.yaml or rerun store register."
+        }
+      ]
+    }
+  ],
+  "status": []
+}

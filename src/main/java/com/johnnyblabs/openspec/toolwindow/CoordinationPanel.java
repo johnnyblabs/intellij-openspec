@@ -16,10 +16,13 @@ import com.johnnyblabs.openspec.coordination.ContextStoreEntry;
 import com.johnnyblabs.openspec.coordination.CoordinationData;
 import com.johnnyblabs.openspec.coordination.CoordinationService;
 import com.johnnyblabs.openspec.coordination.CoordinationTier;
+import com.johnnyblabs.openspec.coordination.Diagnostic;
 import com.johnnyblabs.openspec.coordination.InitiativeArtifact;
 import com.johnnyblabs.openspec.coordination.InitiativeEntry;
 import com.johnnyblabs.openspec.coordination.InitiativeStatus;
+import com.johnnyblabs.openspec.coordination.StoreEntry;
 import com.johnnyblabs.openspec.coordination.WorkspaceEntry;
+import com.johnnyblabs.openspec.coordination.WorksetEntry;
 import com.johnnyblabs.openspec.services.WorkflowSchemaContextService;
 import org.jetbrains.annotations.Nullable;
 
@@ -131,7 +134,68 @@ public final class CoordinationPanel extends JPanel {
     private void render(CoordinationData data) {
         root.removeAllChildren();
 
-        DefaultMutableTreeNode workspaces = new DefaultMutableTreeNode(new GroupNode("Workspaces", data.workspaces().size()));
+        if (data.storesAreLeadModel()) {
+            // OpenSpec 1.5: stores/worksets are the canonical lead model, read-only.
+            renderStoreGroups(root, data);
+            if (data.legacyStateExists()) {
+                // Demote any surviving 1.4 state to a muted, read-only group. No migration.
+                int legacyCount = data.workspaces().size() + data.contextStores().size()
+                        + data.initiatives().size();
+                DefaultMutableTreeNode legacy =
+                        new DefaultMutableTreeNode(new GroupNode("Legacy (pre-1.5)", legacyCount, true));
+                renderLegacyGroups(legacy, data);
+                root.add(legacy);
+            }
+        } else {
+            renderLegacyGroups(root, data);
+        }
+
+        treeModel.reload();
+        for (int i = 0; i < tree.getRowCount(); i++) {
+            tree.expandRow(i);
+        }
+
+        applyTier(data);
+    }
+
+    /** Read-only 1.5 Stores and Worksets groups. */
+    private void renderStoreGroups(DefaultMutableTreeNode parent, CoordinationData data) {
+        DefaultMutableTreeNode stores = new DefaultMutableTreeNode(new GroupNode("Stores", data.stores().size(), false));
+        if (data.stores().isEmpty()) {
+            stores.add(new DefaultMutableTreeNode(new InfoNode("No stores")));
+        } else {
+            for (StoreEntry s : data.stores()) {
+                DefaultMutableTreeNode node = new DefaultMutableTreeNode(s);
+                for (Diagnostic d : s.diagnostics()) {
+                    if (d.message() != null || d.fix() != null) {
+                        node.add(new DefaultMutableTreeNode(new DiagnosticNode(d)));
+                    }
+                }
+                stores.add(node);
+            }
+        }
+        parent.add(stores);
+
+        DefaultMutableTreeNode worksets = new DefaultMutableTreeNode(new GroupNode("Worksets", data.worksets().size(), false));
+        if (data.worksets().isEmpty()) {
+            worksets.add(new DefaultMutableTreeNode(new InfoNode("No worksets")));
+        } else {
+            for (WorksetEntry w : data.worksets()) {
+                DefaultMutableTreeNode node = new DefaultMutableTreeNode(w);
+                for (WorksetEntry.Member m : w.members()) {
+                    node.add(new DefaultMutableTreeNode(m));
+                }
+                worksets.add(node);
+            }
+        }
+        parent.add(worksets);
+    }
+
+    /** The legacy 1.4 Workspaces / Context Stores / Initiatives groups. */
+    private void renderLegacyGroups(DefaultMutableTreeNode parent, CoordinationData data) {
+        boolean muted = parent != root;
+
+        DefaultMutableTreeNode workspaces = new DefaultMutableTreeNode(new GroupNode("Workspaces", data.workspaces().size(), muted));
         if (data.workspaces().isEmpty()) {
             workspaces.add(new DefaultMutableTreeNode(new InfoNode("No workspaces")));
         } else {
@@ -139,9 +203,9 @@ public final class CoordinationPanel extends JPanel {
                 workspaces.add(new DefaultMutableTreeNode(w));
             }
         }
-        root.add(workspaces);
+        parent.add(workspaces);
 
-        DefaultMutableTreeNode stores = new DefaultMutableTreeNode(new GroupNode("Context Stores", data.contextStores().size()));
+        DefaultMutableTreeNode stores = new DefaultMutableTreeNode(new GroupNode("Context Stores", data.contextStores().size(), muted));
         if (data.contextStores().isEmpty()) {
             stores.add(new DefaultMutableTreeNode(new InfoNode("No context stores")));
         } else {
@@ -149,9 +213,9 @@ public final class CoordinationPanel extends JPanel {
                 stores.add(new DefaultMutableTreeNode(s));
             }
         }
-        root.add(stores);
+        parent.add(stores);
 
-        DefaultMutableTreeNode initiatives = new DefaultMutableTreeNode(new GroupNode("Initiatives", data.initiatives().size()));
+        DefaultMutableTreeNode initiatives = new DefaultMutableTreeNode(new GroupNode("Initiatives", data.initiatives().size(), muted));
         if (data.initiatives().isEmpty()) {
             initiatives.add(new DefaultMutableTreeNode(new InfoNode(
                     data.contextStores().isEmpty()
@@ -166,28 +230,34 @@ public final class CoordinationPanel extends JPanel {
                 initiatives.add(node);
             }
         }
-        root.add(initiatives);
-
-        treeModel.reload();
-        for (int i = 0; i < tree.getRowCount(); i++) {
-            tree.expandRow(i);
-        }
-
-        applyTier(data.tier(), data.sourcedFromCli());
+        parent.add(initiatives);
     }
 
-    private void applyTier(CoordinationTier tier, boolean sourcedFromCli) {
-        boolean full = tier.allowsWriteActions();
+    private void applyTier(CoordinationData data) {
+        // The 1.5 store/workset surface is read-only in this change: no write actions for stores or
+        // worksets. The legacy write buttons are only meaningful (and only enabled) in the legacy
+        // Full tier, which is unreachable once stores are the lead model; hide them then.
+        boolean full = data.tier().allowsWriteActions();
+        boolean showLegacyButtons = !data.storesAreLeadModel();
+        createInitiativeButton.setVisible(showLegacyButtons);
+        setupStoreButton.setVisible(showLegacyButtons);
+        setupWorkspaceButton.setVisible(showLegacyButtons);
         createInitiativeButton.setEnabled(full);
         setupStoreButton.setEnabled(full);
         setupWorkspaceButton.setEnabled(full);
 
-        String source = sourcedFromCli ? "OpenSpec CLI" : "on-disk state";
-        if (full) {
-            statusLabel.setText("Full — sourced from " + source);
+        if (data.storesAreLeadModel()) {
+            String source = data.storesSourcedFromCli() ? "OpenSpec CLI" : "on-disk state";
+            String legacy = data.legacyStateExists() ? " Legacy pre-1.5 state is shown read-only." : "";
+            statusLabel.setText("Stores & worksets (read-only) — sourced from " + source + "." + legacy);
         } else {
-            statusLabel.setText("Awareness (read-only) — sourced from " + source
-                    + ". OpenSpec CLI 1.4+ is required for coordination actions.");
+            String source = data.sourcedFromCli() ? "OpenSpec CLI" : "on-disk state";
+            if (full) {
+                statusLabel.setText("Full — sourced from " + source);
+            } else {
+                statusLabel.setText("Awareness (read-only) — sourced from " + source
+                        + ". OpenSpec CLI 1.4+ is required for coordination actions.");
+            }
         }
     }
 
@@ -282,7 +352,7 @@ public final class CoordinationPanel extends JPanel {
 
     // ---- tree node payloads --------------------------------------------------
 
-    private record GroupNode(String label, int count) {
+    private record GroupNode(String label, int count, boolean muted) {
     }
 
     private record InfoNode(String text) {
@@ -291,35 +361,97 @@ public final class CoordinationPanel extends JPanel {
     private record ArtifactNode(InitiativeEntry initiative, InitiativeArtifact artifact) {
     }
 
+    private record DiagnosticNode(Diagnostic diagnostic) {
+    }
+
     private static final class CoordinationCellRenderer extends ColoredTreeCellRenderer {
         @Override
         public void customizeCellRenderer(JTree tree, Object value, boolean selected, boolean expanded,
                                           boolean leaf, int row, boolean hasFocus) {
             if (!(value instanceof DefaultMutableTreeNode node)) return;
             Object payload = node.getUserObject();
+            boolean muted = isUnderMutedGroup(node);
             if (payload instanceof GroupNode group) {
-                append(group.label(), SimpleTextAttributes.REGULAR_BOLD_ATTRIBUTES);
+                append(group.label(), group.muted()
+                        ? SimpleTextAttributes.GRAYED_ITALIC_ATTRIBUTES
+                        : SimpleTextAttributes.REGULAR_BOLD_ATTRIBUTES);
                 append("  (" + group.count() + ")", SimpleTextAttributes.GRAYED_ATTRIBUTES);
             } else if (payload instanceof InfoNode info) {
                 append(info.text(), SimpleTextAttributes.GRAYED_ITALIC_ATTRIBUTES);
-            } else if (payload instanceof WorkspaceEntry w) {
+            } else if (payload instanceof StoreEntry s) {
+                append(s.id());
+                if (s.root() != null) {
+                    append("  " + s.root(), SimpleTextAttributes.GRAYED_ATTRIBUTES);
+                }
+                append1_5StoreHealth(s);
+            } else if (payload instanceof WorksetEntry w) {
                 append(w.name());
+                append("  (" + w.members().size() + " member" + (w.members().size() == 1 ? "" : "s") + ")",
+                        SimpleTextAttributes.GRAYED_ATTRIBUTES);
+            } else if (payload instanceof WorksetEntry.Member m) {
+                append(m.name());
+                if (m.path() != null) {
+                    append("  " + m.path(), SimpleTextAttributes.GRAYED_ATTRIBUTES);
+                }
+            } else if (payload instanceof DiagnosticNode dn) {
+                appendDiagnostic(dn.diagnostic());
+            } else if (payload instanceof WorkspaceEntry w) {
+                append(w.name(), muted ? SimpleTextAttributes.GRAYED_ATTRIBUTES : SimpleTextAttributes.REGULAR_ATTRIBUTES);
                 append(w.resolvesLocally() ? "  resolved" : "  unresolved",
                         w.resolvesLocally() ? SimpleTextAttributes.GRAYED_ATTRIBUTES
                                 : SimpleTextAttributes.ERROR_ATTRIBUTES);
             } else if (payload instanceof ContextStoreEntry s) {
-                append(s.id());
+                append(s.id(), muted ? SimpleTextAttributes.GRAYED_ATTRIBUTES : SimpleTextAttributes.REGULAR_ATTRIBUTES);
                 if (s.root() != null) {
                     append("  " + s.root(), SimpleTextAttributes.GRAYED_ATTRIBUTES);
                 }
                 appendStoreHealth(s);
             } else if (payload instanceof InitiativeEntry i) {
-                append(i.title().isEmpty() ? i.id() : i.title());
+                append(i.title().isEmpty() ? i.id() : i.title(),
+                        muted ? SimpleTextAttributes.GRAYED_ATTRIBUTES : SimpleTextAttributes.REGULAR_ATTRIBUTES);
                 append("  [" + i.status().displayLabel() + "]", statusAttributes(i.status()));
             } else if (payload instanceof ArtifactNode a) {
-                append(a.artifact().displayLabel(), SimpleTextAttributes.REGULAR_ATTRIBUTES);
+                append(a.artifact().displayLabel(),
+                        muted ? SimpleTextAttributes.GRAYED_ATTRIBUTES : SimpleTextAttributes.REGULAR_ATTRIBUTES);
             } else if (payload != null) {
                 append(String.valueOf(payload));
+            }
+        }
+
+        /** True when the node is nested under a group flagged muted (the demoted Legacy group). */
+        private boolean isUnderMutedGroup(DefaultMutableTreeNode node) {
+            for (javax.swing.tree.TreeNode p = node.getParent(); p instanceof DefaultMutableTreeNode dmtn;
+                 p = dmtn.getParent()) {
+                if (dmtn.getUserObject() instanceof GroupNode g && g.muted()) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private void append1_5StoreHealth(StoreEntry s) {
+            if (Boolean.FALSE.equals(s.metadataValid()) || Boolean.FALSE.equals(s.metadataPresent())) {
+                append("  metadata issue", SimpleTextAttributes.ERROR_ATTRIBUTES);
+            }
+            if (Boolean.FALSE.equals(s.openspecRootHealthy())) {
+                append("  unhealthy openspec-root", SimpleTextAttributes.ERROR_ATTRIBUTES);
+            }
+            if (Boolean.TRUE.equals(s.gitRepository())) {
+                append("  git", SimpleTextAttributes.GRAYED_ATTRIBUTES);
+            } else if (Boolean.FALSE.equals(s.gitRepository())) {
+                append("  not a git repo", SimpleTextAttributes.GRAYED_ATTRIBUTES);
+            }
+        }
+
+        private void appendDiagnostic(Diagnostic d) {
+            boolean error = d.severity() != null && d.severity().toLowerCase(java.util.Locale.ROOT).contains("error");
+            if (d.message() != null) {
+                append(d.message(), error ? SimpleTextAttributes.ERROR_ATTRIBUTES
+                        : SimpleTextAttributes.GRAYED_ITALIC_ATTRIBUTES);
+            }
+            if (d.fix() != null) {
+                // Read-only guidance — the fix is displayed, never executed.
+                append("  fix: " + d.fix(), SimpleTextAttributes.GRAYED_ITALIC_ATTRIBUTES);
             }
         }
 

@@ -1,0 +1,13 @@
+{
+  "stores": [
+    {
+      "id": "gitstore",
+      "root": "/fixture/gitstore"
+    },
+    {
+      "id": "nogitstore",
+      "root": "/fixture/nogitstore"
+    }
+  ],
+  "status": []
+}

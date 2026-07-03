@@ -15,6 +15,7 @@ How this plugin maps to the [OpenSpec](https://github.com/fission-ai/openspec) c
 
 - **Minimum CLI: 1.3.0.** Below the floor, the plugin shows a one-time upgrade nudge and degrades gracefully to its built-in paths (project detection, init, spec browser, tool window, validation).
 - **Baseline: the 1.4.x line** (tested against 1.4.1).
+- **1.5.x line:** CLI 1.5.0 replaced the 1.4 coordination commands with the **store / workset** model. The plugin reads that model **read-only** above a `1.5.0` store floor (evaluated from the detected CLI version), with a built-in fallback that reads the global data dir directly. Store/workset **write actions are deferred**.
 - The plugin is **runtime-version-aware**: recognized schema names are the union of its built-in set and the live `openspec schemas` list, and version-sensitive behavior is gated on the detected CLI version.
 - **Independent axis:** the checked-in config format (`openspec/config.yaml` `version: 1.2.0`) is *not* the CLI version. It is unchanged across CLI 1.2.x / 1.3.x / 1.4.x.
 
@@ -69,6 +70,15 @@ How this plugin maps to the [OpenSpec](https://github.com/fission-ai/openspec) c
 | context-store | ✅ | `1.4.x` | Listed with id/root and doctor health; set-up/register action (Full tier); read-only fallback. Removed in CLI 1.5.0 → tab stands down. |
 | initiative | ✅ | `1.4.x` | Listed with lifecycle status badge; artifacts open in the editor; create action (Full tier); read-only fallback from `initiative.yaml`. Removed in CLI 1.5.0 → tab stands down. |
 
+## Stores & worksets (1.5)
+
+> **1.5-line client model** (`store` / `workset`), replacing the 1.4 coordination layer. Surfaced **read-only** by the Coordination tab when the detected CLI is at or above the `1.5.0` store floor — CLI-sourced (`store list` / `store doctor` / `workset list`) with a built-in fallback that reads the global data dir directly (`stores/registry.yaml`, `worksets/worksets.yaml`). The store registry is byte-identical in shape to the 1.4 context-store registry, so the same backend-local-path reader serves both. At CLI ≥ `1.5.0`, stores/worksets are the lead model and any surviving pre-1.5 state is demoted to a muted, read-only "Legacy (pre-1.5)" group. **Write actions are deferred.** The plugin performs no migration.
+
+| Capability | Status | CLI | Notes |
+|------------|--------|-----|-------|
+| store | ✅ 🧩 | `1.5+` · `built-in` | Listed with id/root and `store doctor` health (metadata present/valid, git repository, openspec-root healthy); diagnostic `fix` shown read-only. CLI-sourced above the `1.5.0` floor; `built-in` on-disk fallback reads `stores/registry.yaml`. Read-only — write actions deferred. |
+| workset | ✅ 🧩 | `1.5+` · `built-in` | Listed with members (`name` + `path`) as child rows. CLI-sourced above the `1.5.0` floor; `built-in` on-disk fallback reads `worksets/worksets.yaml`. Read-only — write actions deferred. |
+
 ## IDE value-add (plugin-original)
 
 | Capability | Status | Notes |
@@ -78,6 +88,7 @@ How this plugin maps to the [OpenSpec](https://github.com/fission-ai/openspec) c
 | Delta-spec diff viewer | ✅ 🧩 | Side-by-side delta vs main spec |
 | Tool-window workflow panel | ✅ 🧩 | Change tree + workflow actions |
 | Coordination tab (1.4) | ✅ 🧩 | Tiered Hidden/Awareness/Full surface for workspaces, context stores, initiatives |
+| Store/workset read surface (1.5) | ✅ 🧩 | Read-only tab presentation of 1.5 stores (with `doctor` health) and worksets, gated at the `1.5.0` floor, with legacy pre-1.5 state demoted; write actions deferred |
 | Setup wizard | ✅ 🧩 | Guided onboarding & CLI detection |
 
 ## Lifecycle at a glance

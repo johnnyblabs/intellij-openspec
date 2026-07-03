@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Added
+- **Read-only view of the OpenSpec 1.5 store and workset model in the Coordination tab.** OpenSpec CLI 1.5.0 introduced **stores** (standalone OpenSpec repos you register on your machine) and **worksets** (purely local, composed working views over them), replacing the earlier workspace/context-store/initiative model. When the detected CLI is 1.5.0 or later, the tab now lists your stores — each with its id, root, and health from `store doctor` (metadata present/valid, whether the root is a git repository, whether its OpenSpec root is healthy) — and your worksets with their member folders. Store diagnostics, including the CLI's ready-made fix suggestion, are shown as read-only guidance. Listings come from the OpenSpec CLI, with a built-in fallback that reads OpenSpec's global data directory directly when the CLI is unavailable. Any surviving pre-1.5 coordination state is shown, read-only, in a muted "Legacy (pre-1.5)" group. This surface is read-only — creating or editing stores and worksets is not offered yet — and the plugin never migrates anything; it only reflects the state the CLI owns.
+
 ### Changed
 - **The Coordination tab stands down cleanly on OpenSpec CLI 1.5.0 and later.** CLI 1.5.0 removed the `workspace`, `context-store`, and `initiative` commands (replaced by a new store/workset model). The plugin now recognizes these as a 1.4-line-only capability: it invokes those commands only when the detected CLI is in the `[1.4.0, 1.5.0)` window, and on a 1.5.0+ CLI it no longer calls them or offers create/set-up actions that would fail — showing a read-only view when legacy on-disk coordination state exists, and hiding the tab otherwise. The built-in schema set is now `spec-driven` only, matching what a 1.5.0 CLI reports (the `workspace-planning` schema remains recognized on a 1.4.x CLI via its live schema list). The minimum supported CLI is unchanged at 1.3.0.
 
