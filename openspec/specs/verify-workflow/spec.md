@@ -2,9 +2,7 @@
 
 ## Purpose
 Pre-archive verification checking completeness, correctness, and coherence of a change's implementation against its artifacts.
-
 ## Requirements
-
 ### Requirement: Pre-archive verification
 
 The plugin SHALL provide a Verify action that drives off the resolved workflow schema context (`openspec status` `actionContext.mode`). For a non-default mode such as `workspace-planning`, Verify SHALL explain that repo-local verification does not apply and stop without producing spec-driven-shaped findings. For the `spec-driven`, repo-local case, Verify SHALL check a change across two dimensions: **completeness** (local, deterministic) and **correctness/coherence** (semantic, language-agnostic, delegated to the AI bridge). Verify SHALL NOT gate correctness on source file extension or language.
@@ -15,7 +13,12 @@ The plugin SHALL provide a Verify action that drives off the resolved workflow s
 
 #### Scenario: Completeness check
 - **WHEN** Verify runs for a spec-driven change
-- **THEN** it SHALL check, locally and deterministically, that all required artifacts exist and that `tasks.md` has no incomplete checkboxes (`- [ ]`), treating missing artifacts or incomplete tasks as completeness findings
+- **THEN** it SHALL check, locally and deterministically, that all required artifacts exist and that `tasks.md` has no not-done checkboxes — neither incomplete (`- [ ]`) nor in-progress (`- [~]`) — treating missing artifacts or any not-done task as completeness findings
+
+#### Scenario: Partial tasks count as not-done
+- **WHEN** `tasks.md` contains in-progress checkboxes written as `- [~]`
+- **THEN** Verify SHALL count each `- [~]` toward the total task count and treat it as not-done (blocking archive, with the same gating effect as `- [ ]`), and SHALL NOT exclude it from either the completed or the total count
+- **AND** the completeness finding SHALL account for in-progress tasks distinctly (e.g. reporting an in-progress count) rather than dropping them silently
 
 #### Scenario: Correctness and coherence — semantic and language-agnostic
 - **WHEN** Verify runs for a spec-driven change with delta specs and/or `design.md`
@@ -44,3 +47,4 @@ The plugin SHALL display verification results with severity levels (CRITICAL, WA
 #### Scenario: Clean report
 - **WHEN** no issues are found
 - **THEN** the plugin SHALL display "All clear — ready to archive" with a direct Archive button
+
