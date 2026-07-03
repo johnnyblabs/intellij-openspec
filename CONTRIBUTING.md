@@ -69,6 +69,17 @@ Fix tree refresh after archive — VFS listener was missing recursive flag
 Honor Default schema setting in built-in init — was hardcoding spec-driven
 ```
 
+### Testing
+
+- **JUnit 5**, with `@ExtendWith(MockitoExtension.class)` for mocking. Every change needs tests, and each test must fail if the code it covers regresses.
+- **Contract-test parsers against captured real output, never hand-written shapes.** Any code that parses output from an external tool (the OpenSpec CLI's `--json`, on-disk registry/YAML formats) is tested against fixtures captured from the real tool, sanitized (machine-specific paths rewritten to `/fixture/...`), and version-namespaced under `src/test/resources/fixtures/cli/<version>/`. A hand-authored shape encodes your assumption, so the test passes while the parser is wrong. When the tool's output format changes, re-capture the fixture and fix the failures. See `CoordinationContractTest`, `StoreWorksetContractTest`, and `util/CliContractTest`.
+- **Cross-platform fixtures and gating.** The store/workset surface is verified across Windows, macOS, and Linux:
+  - *Data-dir resolution* is tested host-independently through the parameterized resolver (`CoordinationPathsCrossPlatformTest`) — the Windows `%LOCALAPPDATA%\openspec` branch is exercised from any host via the `windows=true` override, with the native backslash-separator guarantee asserted in an `@EnabledOnOs(WINDOWS)` case.
+  - *CRLF-vs-LF parse parity* (`CrlfLfParseParityTest`) feeds each captured fixture as LF, as `\r\n`, and with a trailing lone `\r`, asserting an identical model — host-independent.
+  - *Native path round-tripping* (`NativePathRoundTripTest`, fixture `store-list-native-paths.json`) asserts spaced, Windows-drive backslash, and UNC roots survive parsing unchanged; assertions that resolve those strings through `Path` are OS-gated to where the form is valid.
+  - *OS-gated integration* — the `.cmd` shim invocation (`WindowsCmdShimInvocationTest`, `@EnabledOnOs(WINDOWS)`) and 8.3 short-path canonicalization run on the GitHub Windows matrix leg; symlink canonicalization runs on macOS/Linux. These are **skipped**, not failed, off their target OS, so `./gradlew build` stays green everywhere.
+  - *Windows data-dir capture (follow-up).* Confirming the Windows branch against a real `store register --json` `registry.path` requires a Windows host; it's a documented manual follow-up (the branch is asserted against the documented `%LOCALAPPDATA%\openspec` layout via the resolver override in the meantime).
+
 ## Pull Requests
 
 1. Fork the repo and create a branch from `main`

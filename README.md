@@ -52,6 +52,8 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for developmen
 ./gradlew test       # Tests only
 ```
 
+CI verifies the plugin on **Windows and macOS in addition to Linux**, so platform-specific behavior — Windows data-dir resolution, backslash/UNC path handling, the `.cmd` launcher shim, and root canonicalization across symlinks and short paths — is exercised on a real host of each OS.
+
 ---
 
 ## Links

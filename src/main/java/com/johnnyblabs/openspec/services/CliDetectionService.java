@@ -125,7 +125,9 @@ public final class CliDetectionService {
         }
     }
 
-    boolean tryPath(String path) {
+    // Public so cross-package integration tests (e.g. the Windows `.cmd` shim invocation test in the
+    // coordination package) can exercise the real suffix-fallback + process-spawn end-to-end.
+    public boolean tryPath(String path) {
         if (tryPathDirect(path)) return true;
         if (isWindows() && !hasRecognizedWindowsSuffix(path)) {
             for (String suffix : WINDOWS_EXE_SUFFIXES) {
