@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+- **The Coordination tab stands down cleanly on OpenSpec CLI 1.5.0 and later.** CLI 1.5.0 removed the `workspace`, `context-store`, and `initiative` commands (replaced by a new store/workset model). The plugin now recognizes these as a 1.4-line-only capability: it invokes those commands only when the detected CLI is in the `[1.4.0, 1.5.0)` window, and on a 1.5.0+ CLI it no longer calls them or offers create/set-up actions that would fail — showing a read-only view when legacy on-disk coordination state exists, and hiding the tab otherwise. The built-in schema set is now `spec-driven` only, matching what a 1.5.0 CLI reports (the `workspace-planning` schema remains recognized on a 1.4.x CLI via its live schema list). The minimum supported CLI is unchanged at 1.3.0.
+
 ## v0.3.1
 
 ### Fixed

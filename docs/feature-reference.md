@@ -21,13 +21,15 @@ The OpenSpec tool window (right sidebar, or **View > Tool Windows > OpenSpec**) 
 
 Surfaces the OpenSpec 1.4 coordination layer — **workspaces**, **context stores**, and **initiatives**. It is sourced from the OpenSpec CLI (`workspace`/`context-store`/`initiative list` and `doctor`) with a built-in fallback that reads OpenSpec's global data dir directly (`$XDG_DATA_HOME/openspec`, `~/.local/share/openspec`, or `%LOCALAPPDATA%\openspec`), so a listing still appears without the CLI.
 
+These commands exist only in the OpenSpec CLI **`[1.4.0, 1.5.0)`** window. **CLI 1.5.0 removed them** (replaced by a store/workset model), so on a 1.5.0+ CLI the plugin never invokes them: the tab stands down to read-only Awareness when legacy on-disk state exists, and Hidden otherwise.
+
 The tab presents at one of three tiers:
 
 | Tier | When | Behavior |
 |------|------|----------|
-| **Hidden** | No coordination state and not in a coordination mode | The tab is not shown. |
-| **Awareness** | Coordination state detected, but no OpenSpec CLI 1.4+ | Read-only listing with status indicators; action buttons disabled. |
-| **Full** | Coordination state present and OpenSpec CLI 1.4+ available | Listing plus initiative-artifact navigation and create/set-up actions. |
+| **Hidden** | No coordination state and not in a coordination mode (or CLI ≥ 1.5.0 with no legacy state) | The tab is not shown. |
+| **Awareness** | Coordination state detected, but no CLI in the `[1.4.0, 1.5.0)` window (missing, below 1.4, or ≥ 1.5.0) | Read-only listing with status indicators; action buttons disabled. |
+| **Full** | Coordination state present and OpenSpec CLI in `[1.4.0, 1.5.0)` | Listing plus initiative-artifact navigation and create/set-up actions. |
 
 - **Workspaces** show a resolution indicator (resolves locally / unresolved).
 - **Context stores** show their id and root, plus metadata/git health when `doctor` detail is available.

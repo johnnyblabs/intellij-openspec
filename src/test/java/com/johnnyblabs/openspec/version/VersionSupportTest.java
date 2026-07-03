@@ -44,9 +44,15 @@ class VersionSupportTest {
     }
 
     @Test
-    void v1_2_supportsSpecDrivenAndWorkspacePlanning() {
+    void v1_2_builtInSchemasAreSpecDrivenOnly() {
+        // OpenSpec CLI 1.5.0 removed workspace-planning; the built-in fallback set must not
+        // advertise a schema the supported CLI no longer recognizes. workspace-planning stays valid
+        // on a 1.4.x CLI via the live `openspec schemas` list joined in by
+        // SchemaService.getKnownSchemaNames() — it is just no longer a built-in.
         Set<String> schemas = VersionSupport.V1_2.getValidSchemas();
-        assertEquals(Set.of("spec-driven", "workspace-planning"), schemas);
+        assertEquals(Set.of("spec-driven"), schemas);
+        assertFalse(schemas.contains("workspace-planning"),
+                "workspace-planning must not be a built-in schema after 1.5.0 removed it");
     }
 
     @Test
