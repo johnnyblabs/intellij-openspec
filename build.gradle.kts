@@ -6,6 +6,7 @@ plugins {
     id("org.jetbrains.intellij.platform")
     id("org.jetbrains.changelog") version "2.2.1"
     id("org.sonarqube") version "7.3.1.8318"
+    id("org.cyclonedx.bom") version "2.4.1"
 }
 
 group = "com.johnnyblabs.openspec"
@@ -117,6 +118,15 @@ sonar {
         property("sonar.coverage.jacoco.xmlReportPaths", "build/reports/jacoco/test/jacocoTestReport.xml")
         property("sonar.junit.reportPaths", "build/test-results/test")
     }
+}
+
+// CycloneDX SBOM for dependency/CVE/license visibility. Scoped to runtimeClasspath — the
+// IntelliJ Platform SDK graph is huge and mostly provided/test noise, so an unscoped SBOM would
+// drown the real deps. Emits build/reports/bom.json, uploaded to the analysis server in CI.
+tasks.cyclonedxBom {
+    setIncludeConfigs(listOf("runtimeClasspath"))
+    setOutputFormat("json")
+    setOutputName("bom")
 }
 
 changelog {

@@ -61,6 +61,24 @@ jobs:
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
+      # Generates the CycloneDX SBOM (build/reports/bom.json) and uploads it to the
+      # dependency-analysis server for CVE/license visibility. Non-blocking: `if: always()`
+      # plus `|| echo` keep server downtime from ever reddening the build. Host/key come
+      # from CI secrets — nothing internal is hardcoded (safe for the public mirror).
+      - name: SBOM → Dependency-Track
+        if: always()
+        run: |
+          gradle cyclonedxBom
+          curl -sf -X POST "$DTRACK_URL/api/v1/bom" \
+            -H "X-Api-Key: $DT_API_KEY" \
+            -F "autoCreate=true" \
+            -F "projectName=intellij-openspec" \
+            -F "projectVersion=main" \
+            -F "bom=@build/reports/bom.json" || echo "DT upload skipped (non-fatal)"
+        env:
+          DTRACK_URL: ${{ secrets.DTRACK_URL }}
+          DT_API_KEY: ${{ secrets.DT_API_KEY }}
+
       - name: Sign plugin
         if: github.ref == 'refs/heads/main' || github.base_ref == 'main'
         run: gradle signPlugin
