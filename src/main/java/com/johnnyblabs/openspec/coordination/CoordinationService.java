@@ -45,6 +45,15 @@ public final class CoordinationService {
      */
     public static final String COORDINATION_CLI_FLOOR = "1.4.0";
 
+    /**
+     * The CLI version at which the coordination commands were <b>removed</b>. OpenSpec CLI 1.5.0
+     * replaced {@code workspace} / {@code context-store} / {@code initiative} with the {@code store}
+     * / {@code workset} model, so those subcommands no longer exist. Coordination is therefore
+     * served by the CLI only in the half-open window {@code [COORDINATION_CLI_FLOOR, this)}; on
+     * {@code >= this} the plugin must not invoke the removed commands.
+     */
+    public static final String COORDINATION_CLI_CEILING = "1.5.0";
+
     private final Project project;
     private volatile @Nullable CoordinationPaths pathsOverride;
 
@@ -62,11 +71,28 @@ public final class CoordinationService {
         return override != null ? override : CoordinationPaths.resolve();
     }
 
-    /** Whether the CLI is available at or above the coordination floor (1.4). */
+    /**
+     * Whether the CLI can serve the coordination commands — i.e. it is available and its version is
+     * in the window {@code [1.4.0, 1.5.0)}. Returns {@code false} on CLI {@code >= 1.5.0}, where the
+     * {@code workspace} / {@code context-store} / {@code initiative} commands were removed, so the
+     * plugin falls back to reading on-disk state (Awareness) and never invokes a removed command.
+     */
     public boolean cliCoordinationAvailable() {
         CliDetectionService detection = project.getService(CliDetectionService.class);
         return detection != null && detection.isAvailable()
-                && CliVersion.atLeast(detection.getDetectedVersion(), COORDINATION_CLI_FLOOR);
+                && CliVersion.inRange(detection.getDetectedVersion(),
+                        COORDINATION_CLI_FLOOR, COORDINATION_CLI_CEILING);
+    }
+
+    /**
+     * Whether the detected CLI is at or above the coordination ceiling ({@code >= 1.5.0}) — a
+     * version that has removed the coordination commands. Used to stand the surface down (no Full
+     * tier, and no mode-forced Awareness) even if a stale non-default-mode marker is present.
+     */
+    private boolean cliAtOrAboveCoordinationCeiling() {
+        CliDetectionService detection = project.getService(CliDetectionService.class);
+        return detection != null && detection.isAvailable()
+                && CliVersion.atLeast(detection.getDetectedVersion(), COORDINATION_CLI_CEILING);
     }
 
     /**
@@ -81,7 +107,11 @@ public final class CoordinationService {
         List<ContextStoreEntry> stores = resolveContextStores();
         List<InitiativeEntry> initiatives = resolveInitiatives();
         boolean hasState = !workspaces.isEmpty() || !stores.isEmpty() || !initiatives.isEmpty();
-        CoordinationTier tier = CoordinationTier.resolve(hasState, coordinationModeActive, cli);
+        // On a CLI >= 1.5.0 the coordination commands (and the non-default coordination mode that
+        // used to trigger them) are gone. A lingering mode marker must not force a non-Hidden tier:
+        // the surface stands down to Awareness only when real on-disk state exists, else Hidden.
+        boolean effectiveMode = coordinationModeActive && !cliAtOrAboveCoordinationCeiling();
+        CoordinationTier tier = CoordinationTier.resolve(hasState, effectiveMode, cli);
         return new CoordinationData(workspaces, stores, initiatives, tier, cli);
     }
 
@@ -351,7 +381,8 @@ public final class CoordinationService {
      */
     public WriteResult createInitiative(String id, String title) {
         if (!cliCoordinationAvailable()) {
-            return WriteResult.fail("OpenSpec CLI 1.4+ is required to create initiatives.");
+            return WriteResult.fail("Creating initiatives requires an OpenSpec CLI in the 1.4.x line "
+                    + "(the coordination commands were removed in 1.5.0).");
         }
         try {
             CliRunner.CliResult r = CliRunner.run(project, "initiative", "create", id, "--title", title);
@@ -368,7 +399,8 @@ public final class CoordinationService {
     /** Sets up/registers a context store via {@code openspec context-store setup [id]}. Off-EDT. */
     public WriteResult setupContextStore(@Nullable String id) {
         if (!cliCoordinationAvailable()) {
-            return WriteResult.fail("OpenSpec CLI 1.4+ is required to set up a context store.");
+            return WriteResult.fail("Setting up a context store requires an OpenSpec CLI in the 1.4.x "
+                    + "line (the coordination commands were removed in 1.5.0).");
         }
         try {
             CliRunner.CliResult r = (id == null || id.isBlank())
@@ -385,7 +417,8 @@ public final class CoordinationService {
     /** Sets up a workspace via {@code openspec workspace setup --name <name>}. Off-EDT. */
     public WriteResult setupWorkspace(String name) {
         if (!cliCoordinationAvailable()) {
-            return WriteResult.fail("OpenSpec CLI 1.4+ is required to set up a workspace.");
+            return WriteResult.fail("Setting up a workspace requires an OpenSpec CLI in the 1.4.x line "
+                    + "(the coordination commands were removed in 1.5.0).");
         }
         try {
             CliRunner.CliResult r = CliRunner.run(project,

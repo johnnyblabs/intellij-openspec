@@ -16,7 +16,12 @@ public enum VersionSupport {
             // See align-config-contract-with-cli archive for the contract-alignment rationale.
             Set.of("schema"),
             Set.of("proposal", "design", "specs", "tasks"),
-            Set.of("spec-driven", "workspace-planning"));
+            // `workspace-planning` was removed here when OpenSpec CLI 1.5.0 dropped the
+            // workspace/context-store/initiative model, matching `openspec schemas` on 1.5.0 (which
+            // lists only `spec-driven`). On a 1.4.x CLI the schema is still recognized via the live
+            // list that SchemaService.getKnownSchemaNames() joins in, so this removal doesn't strand
+            // 1.4 users — it just stops the built-in fallback from advertising a removed schema.
+            Set.of("spec-driven"));
 
     private final String version;
     private final Set<String> requiredConfigFields;
@@ -57,10 +62,11 @@ public enum VersionSupport {
      *   <li>Callers without project context (scaffolding templates, sync-time defaults)
      *       can't invoke {@code SchemaService} — they need a synchronous, project-free
      *       way to ask "what schemas does the plugin natively know about?"</li>
-     *   <li>It documents which schemas the plugin natively supports (currently
-     *       {@code spec-driven} and {@code workspace-planning}); upstream additions
-     *       continue to land here via the existing enum-update pattern (cf. the
-     *       {@code openspec-1-4-baseline} change that added {@code workspace-planning}).</li>
+     *   <li>It documents which schemas the plugin natively supports (currently only
+     *       {@code spec-driven}); upstream additions land here via the existing enum-update
+     *       pattern. ({@code workspace-planning}, added for the 1.4 line, was removed when CLI
+     *       1.5.0 dropped it; a 1.4.x CLI still surfaces it through the live
+     *       {@code openspec schemas} list.)</li>
      * </ol>
      *
      * <p>Callers needing the broader "all currently-known schema names" set (including

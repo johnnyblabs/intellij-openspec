@@ -37,6 +37,47 @@ public final class CliVersion {
     }
 
     /**
+     * Returns {@code true} when {@code detected} is non-null, non-empty, parseable, and strictly
+     * less than {@code ceiling} in the same semver-style numeric comparison used by
+     * {@link #atLeast(String, String)}. Returns {@code false} for null or empty {@code detected}
+     * (a missing version is not "below" anything, mirroring {@code atLeast}'s null/empty handling)
+     * and for {@code detected >= ceiling}.
+     *
+     * <p>This is the upper-bound companion to {@link #atLeast(String, String)}: together they let a
+     * caller express "this feature exists only up to (but not including) version X" — e.g. a CLI
+     * command that was removed in a later release.
+     *
+     * <p>Examples:
+     * <ul>
+     *   <li>{@code below("1.4.1", "1.5.0")} → {@code true}
+     *   <li>{@code below("1.5.0", "1.5.0")} → {@code false}
+     *   <li>{@code below("1.5.1", "1.5.0")} → {@code false}
+     *   <li>{@code below(null, "1.5.0")} → {@code false}
+     *   <li>{@code below("", "1.5.0")} → {@code false}
+     * </ul>
+     */
+    public static boolean below(String detected, String ceiling) {
+        if (detected == null || detected.isEmpty()) {
+            return false;
+        }
+        return compare(detected, ceiling) < 0;
+    }
+
+    /**
+     * Returns {@code true} when {@code detected} falls in the half-open window
+     * {@code [floorInclusive, ceilingExclusive)} — i.e. at or above {@code floorInclusive} and
+     * strictly below {@code ceilingExclusive}. Implemented as
+     * {@code atLeast(detected, floorInclusive) && below(detected, ceilingExclusive)}, so a
+     * null/empty/unparseable {@code detected} yields {@code false}.
+     *
+     * <p>Example: {@code inRange(v, "1.4.0", "1.5.0")} is {@code true} only for CLI versions in the
+     * {@code 1.4.x} line and {@code false} on {@code 1.3.x} or {@code >= 1.5.0}.
+     */
+    public static boolean inRange(String detected, String floorInclusive, String ceilingExclusive) {
+        return atLeast(detected, floorInclusive) && below(detected, ceilingExclusive);
+    }
+
+    /**
      * Compares two semantic version strings.
      *
      * @return negative if {@code a < b}, 0 if equal, positive if {@code a > b}

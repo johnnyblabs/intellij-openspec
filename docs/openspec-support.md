@@ -8,6 +8,7 @@ How this plugin maps to the [OpenSpec](https://github.com/fission-ai/openspec) c
 - `built-in` — the plugin implements this itself; works regardless of CLI (even with no CLI installed)
 - `1.3+` — needs the CLI floor
 - `1.4+` — needs a 1.4-line CLI
+- `1.4.x` — exists only in the `[1.4.0, 1.5.0)` window (the command was removed in 1.5.0)
 - `delegated` — runs against the CLI at runtime; degrades to a built-in path / guidance below the floor
 
 ## Version support
@@ -18,6 +19,8 @@ How this plugin maps to the [OpenSpec](https://github.com/fission-ai/openspec) c
 - **Independent axis:** the checked-in config format (`openspec/config.yaml` `version: 1.2.0`) is *not* the CLI version. It is unchanged across CLI 1.2.x / 1.3.x / 1.4.x.
 
 > Verified by comparing CLI 1.3.1 ↔ 1.4.0: all change-lifecycle workflows (incl. `verify-change`) and the `status` / `instructions` / `templates` / `schemas` / `validate` / `show` commands exist at the 1.3 floor. The `workspace-planning` schema and the `workspace` / `context-store` / `initiative` / `set` commands are 1.4 additions.
+>
+> **CLI 1.5.0 removed the `workspace` / `context-store` / `initiative` commands and the `workspace-planning` schema** (replaced by the `store` / `workset` model). The plugin's built-in schema set is therefore `spec-driven` only, and coordination is gated to the `[1.4.0, 1.5.0)` window — on a 1.5.0+ CLI the plugin never invokes the removed commands and the Coordination tab stands down (read-only Awareness if legacy on-disk state exists, Hidden otherwise).
 
 ## Change-lifecycle workflows
 
@@ -58,13 +61,13 @@ How this plugin maps to the [OpenSpec](https://github.com/fission-ai/openspec) c
 
 ## Coordination layers
 
-> Entirely **1.4 client additions**, now surfaced by the plugin's **Coordination** tab — CLI-sourced (`list`/`doctor`) with a built-in fallback that reads the global data dir directly. The tab is shown only when coordination state or a coordination mode is detected. Read-only without a 1.4 CLI (Awareness); create/setup actions and initiative-artifact navigation with one (Full).
+> **1.4-line client commands** (`workspace` / `context-store` / `initiative`), surfaced by the plugin's **Coordination** tab — CLI-sourced (`list`/`doctor`) within the window `[1.4.0, 1.5.0)`, with a built-in fallback that reads the global data dir directly. **CLI 1.5.0 removed these commands** (replaced by the store/workset model), so on a 1.5.0+ CLI the plugin never invokes them: the tab stands down to read-only Awareness when legacy on-disk state exists, and Hidden otherwise. The tab is shown only when coordination state or a coordination mode is detected.
 
 | Capability | Status | CLI | Notes |
 |------------|--------|-----|-------|
-| workspace | ✅ | `1.4+` | Listed with resolution health; set-up action (Full tier); read-only fallback from the on-disk registry |
-| context-store | ✅ | `1.4+` | Listed with id/root and doctor health; set-up/register action (Full tier); read-only fallback |
-| initiative | ✅ | `1.4+` | Listed with lifecycle status badge; artifacts open in the editor; create action (Full tier); read-only fallback from `initiative.yaml` |
+| workspace | ✅ | `1.4.x` | Listed with resolution health; set-up action (Full tier); read-only fallback from the on-disk registry. Removed in CLI 1.5.0 → tab stands down. |
+| context-store | ✅ | `1.4.x` | Listed with id/root and doctor health; set-up/register action (Full tier); read-only fallback. Removed in CLI 1.5.0 → tab stands down. |
+| initiative | ✅ | `1.4.x` | Listed with lifecycle status badge; artifacts open in the editor; create action (Full tier); read-only fallback from `initiative.yaml`. Removed in CLI 1.5.0 → tab stands down. |
 
 ## IDE value-add (plugin-original)
 

@@ -86,15 +86,12 @@ class ConfigVersionValidationTest {
     }
 
     @Test
-    void legacyVersion_1_1_0_routesToV1_2_andAcceptsWorkspacePlanning() {
-        // workspace-planning is in V1_2's valid schemas (since openspec-1-4-baseline).
-        // A legacy 1.1.0 config that declares schema: workspace-planning is now accepted
-        // — by routing to V1_2 — rather than warning, which is a deliberate consequence
-        // of the floor bump. The user has either upgraded their schema or they're on a
-        // working CLI 1.3+ where it makes sense.
+    void legacyVersion_1_1_0_routesToV1_2() {
+        // A legacy 1.1.0 config routes to V1_2 (the floor bump collapsed V1_0/V1_1). spec-driven —
+        // the sole built-in schema after CLI 1.5.0 removed workspace-planning — validates cleanly.
         VersionSupport resolved = VersionSupport.fromString("1.1.0");
         assertEquals(VersionSupport.V1_2, resolved);
-        List<ValidationIssue> issues = validateChangeSchema("workspace-planning", resolved);
+        List<ValidationIssue> issues = validateChangeSchema("spec-driven", resolved);
         assertTrue(issues.stream().noneMatch(i ->
                 i.rule().equals("change-schema-incompatible")));
     }
@@ -117,12 +114,15 @@ class ConfigVersionValidationTest {
     }
 
     @Test
-    void v1_2_workspacePlanning_passes() {
-        // workspace-planning was added in OpenSpec CLI 1.4.x and SHALL be valid under V1_2.
+    void v1_2_workspacePlanning_warnsUnderBuiltInsOnly() {
+        // workspace-planning was removed in CLI 1.5.0, so it is no longer a built-in schema. With no
+        // live CLI list to supply it, the built-in fallback warns; it stays valid on a 1.4.x CLI via
+        // the known-set path (see the known-set tests below that pass it explicitly).
         List<ValidationIssue> issues = validateChangeSchema("workspace-planning", VersionSupport.V1_2);
-        assertTrue(issues.stream().noneMatch(i ->
-                i.rule().equals("change-schema-incompatible")),
-                "V1_2 project with workspace-planning schema should pass under CLI 1.4.x");
+        assertTrue(issues.stream().anyMatch(i ->
+                i.severity() == ValidationIssue.Severity.WARNING
+                        && i.rule().equals("change-schema-incompatible")),
+                "workspace-planning is no longer a built-in after 1.5.0 removed it");
     }
 
     // --- v0.3.0 schema-validation-cli-runtime-driven: known-set semantics ---
