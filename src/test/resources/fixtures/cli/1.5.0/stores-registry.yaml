@@ -1,0 +1,10 @@
+version: 1
+stores:
+  gitstore:
+    backend:
+      type: git
+      local_path: /fixture/gitstore
+  nogitstore:
+    backend:
+      type: git
+      local_path: /fixture/nogitstore

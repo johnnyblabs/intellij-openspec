@@ -31,6 +31,13 @@ public final class CoordinationPaths {
     public static final String CONTEXT_STORES_DIR_NAME = "context-stores";
     public static final String REGISTRY_FILE_NAME = "registry.yaml";
 
+    // OpenSpec 1.5 store/workset layout, resolved under the same global data dir. The store
+    // registry file is byte-identical in shape to the context-store registry — only the
+    // directory name differs (see the shared backend-local-path parser in CoordinationService).
+    public static final String STORES_DIR_NAME = "stores";
+    public static final String WORKSETS_DIR_NAME = "worksets";
+    public static final String WORKSETS_FILE_NAME = "worksets.yaml";
+
     private final Path globalDataDir;
 
     private CoordinationPaths(Path globalDataDir) {
@@ -76,5 +83,23 @@ public final class CoordinationPaths {
 
     public Path contextStoreRegistryFile() {
         return contextStoresDir().resolve(REGISTRY_FILE_NAME);
+    }
+
+    // ---- OpenSpec 1.5 stores & worksets --------------------------------------
+
+    public Path storesDir() {
+        return globalDataDir.resolve(STORES_DIR_NAME);
+    }
+
+    public Path storeRegistryFile() {
+        return storesDir().resolve(REGISTRY_FILE_NAME);
+    }
+
+    public Path worksetsDir() {
+        return globalDataDir.resolve(WORKSETS_DIR_NAME);
+    }
+
+    public Path worksetsFile() {
+        return worksetsDir().resolve(WORKSETS_FILE_NAME);
     }
 }

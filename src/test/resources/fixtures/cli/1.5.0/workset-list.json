@@ -1,0 +1,18 @@
+{
+  "worksets": [
+    {
+      "name": "myview",
+      "members": [
+        {
+          "name": "gitstore",
+          "path": "/fixture/gitstore"
+        },
+        {
+          "name": "nogitstore",
+          "path": "/fixture/nogitstore"
+        }
+      ]
+    }
+  ],
+  "status": []
+}

@@ -1,0 +1,79 @@
+{
+  "stores": [
+    {
+      "id": "gitstore",
+      "root": "/fixture/gitstore",
+      "metadata_path": "/fixture/gitstore/.openspec-store/store.yaml",
+      "openspec_root": {
+        "present": true,
+        "config": {
+          "present": true,
+          "path": "openspec/config.yaml"
+        },
+        "specs": {
+          "present": true
+        },
+        "changes": {
+          "present": true
+        },
+        "archive": {
+          "present": true
+        },
+        "healthy": true,
+        "status": []
+      },
+      "metadata": {
+        "present": true,
+        "valid": true,
+        "id": "gitstore",
+        "remote": null
+      },
+      "git": {
+        "is_repository": true,
+        "has_commits": true,
+        "has_uncommitted_changes": false,
+        "has_remote": false,
+        "origin_url": null
+      },
+      "status": []
+    },
+    {
+      "id": "nogitstore",
+      "root": "/fixture/nogitstore",
+      "metadata_path": "/fixture/nogitstore/.openspec-store/store.yaml",
+      "openspec_root": {
+        "present": true,
+        "config": {
+          "present": true,
+          "path": "openspec/config.yaml"
+        },
+        "specs": {
+          "present": true
+        },
+        "changes": {
+          "present": true
+        },
+        "archive": {
+          "present": true
+        },
+        "healthy": true,
+        "status": []
+      },
+      "metadata": {
+        "present": true,
+        "valid": true,
+        "id": "nogitstore",
+        "remote": null
+      },
+      "git": {
+        "is_repository": false,
+        "has_commits": null,
+        "has_uncommitted_changes": null,
+        "has_remote": null,
+        "origin_url": null
+      },
+      "status": []
+    }
+  ],
+  "status": []
+}

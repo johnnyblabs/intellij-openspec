@@ -1,0 +1,8 @@
+version: 1
+worksets:
+  myview:
+    members:
+      - name: gitstore
+        path: /fixture/gitstore
+      - name: nogitstore
+        path: /fixture/nogitstore
