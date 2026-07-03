@@ -68,21 +68,4 @@ class CoordinationServiceWindowTest {
         assertFalse(data.tier().allowsWriteActions(), "Full tier must be unreachable at >= 1.5.0");
     }
 
-    // ---- 6.5: write actions are guarded on CLI >= 1.5.0 (no removed command run) --
-
-    @Test
-    void writeActionsFailWithoutInvokingRemovedCommandsOnCli150() {
-        // detection is stubbed at 1.5.0 and NO ProcessRunner is configured; if a write reached
-        // CliRunner it would try to launch a real process. The guard short-circuits first, so each
-        // returns a failure and never invokes a removed command.
-        CoordinationService service = serviceWith("1.5.0", true);
-
-        CoordinationService.WriteResult init = service.createInitiative("id", "Title");
-        CoordinationService.WriteResult store = service.setupContextStore("id");
-        CoordinationService.WriteResult ws = service.setupWorkspace("name");
-
-        assertFalse(init.success(), "createInitiative must fail on a 1.5.0 CLI");
-        assertFalse(store.success(), "setupContextStore must fail on a 1.5.0 CLI");
-        assertFalse(ws.success(), "setupWorkspace must fail on a 1.5.0 CLI");
-    }
 }

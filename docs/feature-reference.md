@@ -36,7 +36,7 @@ The tab presents at one of three tiers:
 - **Initiatives** show a lifecycle status badge (`exploring` / `active` / `complete` / `archived`). Each initiative's artifacts — `initiative.yaml`, `requirements.md`, `design.md`, `decisions.md`, `questions.md`, `tasks.md` — open in the editor (double-click; an uncreated artifact reports that it does not exist yet).
 - **Actions** (Full tier): **New Initiative**, **Set Up Context Store**, **Set Up Workspace** delegate to the CLI and refresh the listing on success; CLI errors are surfaced.
 
-### Stores & Worksets (OpenSpec 1.5, read-only)
+### Stores & Worksets (OpenSpec 1.5)
 
 OpenSpec CLI **1.5.0** replaced the 1.4 coordination model with **stores** and **worksets**:
 
@@ -52,7 +52,18 @@ When the detected CLI is at or above the **`1.5.0`** store floor, the Coordinati
 
 Sourcing mirrors the rest of the tab: listings come from the OpenSpec CLI (`store list` / `store doctor` / `workset list`), with a **built-in fallback** that reads the global data dir directly (`stores/registry.yaml` and `worksets/worksets.yaml`) when the CLI is unavailable or a payload fails to parse — a parse failure degrades to the on-disk fallback and never throws into the UI. The store gate derives solely from the detected CLI version (the checked-in config-format version is a separate, independent axis and is not consulted).
 
-**Write actions for stores and worksets are deferred** — this surface is read-only in the current release.
+**Write actions (Full tier).** When the CLI is at or above `1.5.0` and the surface is at the Full tier, a toolbar and a tree right-click menu expose CLI-delegated actions:
+
+- **New Store…** — a dialog collecting a store id and a **folder location** (a path is required), running `store setup`.
+- **Register Existing Store…** — registers an already-existing store folder.
+- **Unregister** — forgets a store's registration without deleting files.
+- **Remove…** — *destructive*: forgets the registration **and deletes the store's local folder**; guarded by an explicit confirmation that says so.
+- **Open Store Root** — opens the store's OpenSpec root.
+- **New Workset…** — a dialog collecting a name and a member list (member folders are never modified), running `workset create`.
+- **Open Workset** — reveals the workset's member folders in your file manager, behind an explicit "opens N folders" confirmation; never auto-opens on tab load. (Deeper in-IDE multi-folder integration is a follow-up — the platform's attach-to-project API isn't available across the plugin's minimum supported IDE build.)
+- **Remove Workset** — deletes the saved workset; member folders are untouched.
+
+Actions run off the UI thread; on failure the CLI's diagnostic message (and its `fix` suggestion) is surfaced, never raw error output. A `store doctor`-driven **health strip** at the top of the panel shows the highest-severity diagnostic with its `fix` as an inline action.
 
 ### Browse Tab Tree Structure
 

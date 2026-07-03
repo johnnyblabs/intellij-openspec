@@ -147,7 +147,11 @@ public final class CoordinationService {
         // used to trigger them) are gone. A lingering mode marker must not force a non-Hidden tier:
         // the surface stands down to Awareness only when real on-disk state exists, else Hidden.
         boolean effectiveMode = coordinationModeActive && !cliAtOrAboveCoordinationCeiling();
-        CoordinationTier tier = CoordinationTier.resolve(hasState, effectiveMode, cli);
+        // The Full tier (which gates write actions) must be reachable for BOTH the legacy 1.4 CLI
+        // window and the 1.5 store/workset model. The "CLI at or above the floor" input is therefore
+        // the union of the two floors: the coordination window ([1.4.0, 1.5.0)) OR the store floor
+        // (>= 1.5.0). Below either, and with no state, the surface stays Hidden as before.
+        CoordinationTier tier = CoordinationTier.resolve(hasState, effectiveMode, cli || storeCli);
         return new CoordinationData(workspaces, contextStores, initiatives, stores, worksets,
                 tier, cli, storeCli, storeCli, legacyState);
     }
@@ -649,85 +653,245 @@ public final class CoordinationService {
         return entry;
     }
 
-    // ---- Write actions (Full tier) ------------------------------------------
+    // ---- Store / workset write actions (Full tier, CLI >= 1.5.0) ------------
 
-    /** Outcome of a coordination write action. */
-    public record WriteResult(boolean success, String message, @Nullable String createdPath) {
-        public static WriteResult ok(String message, @Nullable String path) {
-            return new WriteResult(true, message, path);
+    /**
+     * Guidance shown when a store/workset write is attempted below the bar (CLI &lt; 1.5.0 or the CLI
+     * is unavailable). No command is shelled out in that case — the write short-circuits here.
+     */
+    static final String STORE_WRITE_GUIDANCE =
+            "Store and workset actions require the OpenSpec CLI at version 1.5.0 or newer.";
+
+    /**
+     * Outcome of a store/workset write action. Carries the highest-severity remediation
+     * ({@link #fix}) taken verbatim from the CLI's uniform {@code status[]} envelope, the retained
+     * {@link #diagnostics}, and — for {@code store setup}/{@code register} — the created store root
+     * ({@link #createdPath}) and {@link #createdFiles}. {@link #destructive} marks a result produced
+     * by a file-deleting command ({@code store remove}).
+     *
+     * <p>The failure {@link #message} is always the parsed {@code status[]} message (or a generic
+     * fallback) — raw CLI stderr is NEVER surfaced to the user.
+     */
+    public record WriteResult(boolean success,
+                              String message,
+                              @Nullable String createdPath,
+                              @Nullable String fix,
+                              boolean destructive,
+                              List<String> createdFiles,
+                              List<Diagnostic> diagnostics) {
+
+        public WriteResult {
+            createdFiles = createdFiles != null ? List.copyOf(createdFiles) : List.of();
+            diagnostics = diagnostics != null ? List.copyOf(diagnostics) : List.of();
         }
 
+        /** A below-the-bar guidance failure — no command was run. */
+        public static WriteResult gated() {
+            return new WriteResult(false, STORE_WRITE_GUIDANCE, null, null, false, List.of(), List.of());
+        }
+
+        /** A generic failure with a parsed (never-stderr) message. */
         public static WriteResult fail(String message) {
-            return new WriteResult(false, message, null);
+            return new WriteResult(false, message, null, null, false, List.of(), List.of());
+        }
+    }
+
+    /** Creates and registers a store: {@code store setup <id> --path <path> --json}. Off-EDT. */
+    public WriteResult setupStore(String id, String path) {
+        return runStoreWrite(false, "Created store '" + id + "'.",
+                "store", "setup", id, "--path", path, "--json");
+    }
+
+    /** Registers an existing store root: {@code store register <path> --json}. Off-EDT. */
+    public WriteResult registerStore(String path) {
+        return runStoreWrite(false, "Registered store.",
+                "store", "register", path, "--json");
+    }
+
+    /**
+     * Forgets a store registration without deleting files: {@code store unregister <id> --json}.
+     * Off-EDT. Not destructive — the member folder is left on disk.
+     */
+    public WriteResult unregisterStore(String id) {
+        return runStoreWrite(false, "Unregistered store '" + id + "'.",
+                "store", "unregister", id, "--json");
+    }
+
+    /**
+     * Forgets a store registration AND deletes its local folder:
+     * {@code store remove <id> --yes --json}. Off-EDT and <b>destructive</b>. The {@code --yes} flag
+     * is mandatory: without it the 1.5.0 CLI returns {@code store_remove_confirmation_required} and
+     * (in a TTY) would block on a prompt, which would hang the pooled thread. The caller MUST have
+     * obtained explicit user confirmation before invoking this.
+     */
+    public WriteResult removeStore(String id) {
+        return runStoreWrite(true, "Removed store '" + id + "' and deleted its local files.",
+                "store", "remove", id, "--yes", "--json");
+    }
+
+    /**
+     * Creates a workset from member folders: {@code workset create <name> --member name=path …}.
+     * One {@code --member} argument per row; the first is the primary. Off-EDT.
+     */
+    public WriteResult createWorkset(String name, List<WorksetEntry.Member> members) {
+        List<String> args = new ArrayList<>();
+        args.add("workset");
+        args.add("create");
+        args.add(name);
+        for (WorksetEntry.Member m : members) {
+            args.add("--member");
+            args.add(m.name() + "=" + m.path());
+        }
+        args.add("--json");
+        return runStoreWrite(false, "Created workset '" + name + "'.", args.toArray(new String[0]));
+    }
+
+    /**
+     * Deletes a saved workset: {@code workset remove <name> --yes --json}. Off-EDT. Member folders
+     * are never touched (so this is not flagged destructive to the filesystem). The {@code --yes}
+     * flag is mandatory for the same non-interactive reason as {@link #removeStore}.
+     */
+    public WriteResult removeWorkset(String name) {
+        return runStoreWrite(false, "Removed workset '" + name + "'.",
+                "workset", "remove", name, "--yes", "--json");
+    }
+
+    /**
+     * Resolves the ordered member folder paths for the {@code workset open} flow (first = primary),
+     * mapping onto the IDE's own multi-folder / attached-project model rather than the CLI's
+     * {@code workset open}/{@code --code-workspace}. Off-EDT. Returns an empty list when the workset
+     * is unknown.
+     */
+    public List<String> openWorkset(String name) {
+        for (WorksetEntry w : resolveWorksets()) {
+            if (name.equals(w.name())) {
+                return WorksetOpenPlan.orderedPaths(w);
+            }
+        }
+        return List.of();
+    }
+
+    /**
+     * Runs {@code doctor --store <id> --json} and returns the highest-severity entry of the uniform
+     * {@code status[]} array (with its {@code fix} intact), or null when the store is healthy /
+     * unavailable. Off-EDT. Never surfaces raw stderr.
+     */
+    @Nullable
+    public Diagnostic storeDoctor(String id) {
+        if (!cliStoreAvailable()) return null;
+        try {
+            CliRunner.CliResult r = CliRunner.run(project, "doctor", "--store", id, "--json");
+            JsonObject root = GSON.fromJson(CliJson.extractJsonPayload(r.stdout()), JsonObject.class);
+            return highestSeverity(parseDiagnostics(root));
+        } catch (Exception e) {
+            LOG.debug("doctor --store failed for " + id, e);
+            return null;
         }
     }
 
     /**
-     * Creates an initiative via {@code openspec initiative create <id> --title <title>}.
-     * Off-EDT. On success, returns the path to the created {@code initiative.yaml} when it
-     * can be located so the caller can open it.
+     * Shared driver for every store/workset write: gates on {@link #cliStoreAvailable()} (CLI
+     * &gt;= 1.5.0), shells out off the EDT, and parses the uniform result envelope. Below the bar it
+     * short-circuits with {@link WriteResult#gated()} and never launches a process.
      */
-    public WriteResult createInitiative(String id, String title) {
-        if (!cliCoordinationAvailable()) {
-            return WriteResult.fail("Creating initiatives requires an OpenSpec CLI in the 1.4.x line "
-                    + "(the coordination commands were removed in 1.5.0).");
+    private WriteResult runStoreWrite(boolean destructive, String successMessage, String... args) {
+        if (!cliStoreAvailable()) {
+            return WriteResult.gated();
         }
         try {
-            CliRunner.CliResult r = CliRunner.run(project, "initiative", "create", id, "--title", title);
-            if (!r.isSuccess()) {
-                return WriteResult.fail(stderrOrStdout(r));
+            CliRunner.CliResult r = CliRunner.run(project, args);
+            return parseWriteEnvelope(r.isSuccess(), r.stdout(), successMessage, destructive);
+        } catch (CliRunner.CliException e) {
+            // Never leak stderr / the raw exception detail to the user surface.
+            LOG.warn("store/workset write failed", e);
+            return WriteResult.fail("The OpenSpec CLI command could not be run.");
+        }
+    }
+
+    /**
+     * Parses the uniform 1.5 write envelope shared by {@code store setup}/{@code register}/
+     * {@code unregister}/{@code remove} and {@code workset create}/{@code remove}. Extracts the
+     * created store root and {@code created_files} when present, and derives the failure message and
+     * {@code fix} solely from the parsed {@code status[]} array — never from stderr.
+     */
+    static WriteResult parseWriteEnvelope(boolean success, @Nullable String json,
+                                          String successMessage, boolean destructive) {
+        JsonObject root = null;
+        try {
+            root = GSON.fromJson(CliJson.extractJsonPayload(json), JsonObject.class);
+        } catch (Exception ignored) {
+            // A malformed payload leaves root null; the status-derived path below handles it.
+        }
+        List<Diagnostic> diagnostics = parseDiagnostics(root);
+        String createdPath = null;
+        List<String> createdFiles = new ArrayList<>();
+        if (root != null) {
+            if (root.get("store") != null && root.get("store").isJsonObject()) {
+                createdPath = stringOf(root.getAsJsonObject("store"), "root", "storeRoot", "store_root");
             }
-            String createdPath = findInitiativeMetadataPath(id);
-            return WriteResult.ok("Created initiative '" + id + "'.", createdPath);
-        } catch (CliRunner.CliException e) {
-            return WriteResult.fail("Failed to create initiative: " + e.getMessage());
+            for (JsonElement el : arrayOf(root, "created_files", "createdFiles")) {
+                if (el.isJsonPrimitive()) createdFiles.add(el.getAsString());
+            }
         }
-    }
-
-    /** Sets up/registers a context store via {@code openspec context-store setup [id]}. Off-EDT. */
-    public WriteResult setupContextStore(@Nullable String id) {
-        if (!cliCoordinationAvailable()) {
-            return WriteResult.fail("Setting up a context store requires an OpenSpec CLI in the 1.4.x "
-                    + "line (the coordination commands were removed in 1.5.0).");
+        if (success) {
+            return new WriteResult(true, successMessage, createdPath, firstFix(diagnostics),
+                    destructive, createdFiles, diagnostics);
         }
-        try {
-            CliRunner.CliResult r = (id == null || id.isBlank())
-                    ? CliRunner.run(project, "context-store", "setup")
-                    : CliRunner.run(project, "context-store", "setup", id);
-            return r.isSuccess()
-                    ? WriteResult.ok("Set up context store.", null)
-                    : WriteResult.fail(stderrOrStdout(r));
-        } catch (CliRunner.CliException e) {
-            return WriteResult.fail("Failed to set up context store: " + e.getMessage());
-        }
-    }
-
-    /** Sets up a workspace via {@code openspec workspace setup --name <name>}. Off-EDT. */
-    public WriteResult setupWorkspace(String name) {
-        if (!cliCoordinationAvailable()) {
-            return WriteResult.fail("Setting up a workspace requires an OpenSpec CLI in the 1.4.x line "
-                    + "(the coordination commands were removed in 1.5.0).");
-        }
-        try {
-            CliRunner.CliResult r = CliRunner.run(project,
-                    "workspace", "setup", "--name", name, "--no-interactive");
-            return r.isSuccess()
-                    ? WriteResult.ok("Set up workspace '" + name + "'.", null)
-                    : WriteResult.fail(stderrOrStdout(r));
-        } catch (CliRunner.CliException e) {
-            return WriteResult.fail("Failed to set up workspace: " + e.getMessage());
-        }
+        Diagnostic top = highestSeverity(diagnostics);
+        String message = (top != null && top.message() != null && !top.message().isBlank())
+                ? top.message()
+                : "The OpenSpec CLI command did not complete.";
+        String fix = top != null ? top.fix() : null;
+        return new WriteResult(false, message, null, fix, destructive, List.of(), diagnostics);
     }
 
     @Nullable
-    private String findInitiativeMetadataPath(String id) {
-        for (InitiativeEntry initiative : resolveInitiatives()) {
-            if (id.equals(initiative.id())) {
-                Path p = InitiativeArtifact.METADATA.resolveExistingPath(initiative);
-                return p != null ? p.toString() : null;
-            }
+    private static String firstFix(List<Diagnostic> diagnostics) {
+        for (Diagnostic d : diagnostics) {
+            if (d.fix() != null && !d.fix().isBlank()) return d.fix();
         }
         return null;
+    }
+
+    /** Numeric rank for a diagnostic severity: error &gt; warning &gt; info &gt; unknown. */
+    public static int severityRank(@Nullable String severity) {
+        if (severity == null) return 0;
+        return switch (severity.toLowerCase(java.util.Locale.ROOT)) {
+            case "error", "fatal" -> 3;
+            case "warn", "warning" -> 2;
+            case "info", "notice" -> 1;
+            default -> 0;
+        };
+    }
+
+    /** The highest-severity diagnostic in the list, or null when the list is empty. */
+    @Nullable
+    static Diagnostic highestSeverity(List<Diagnostic> diagnostics) {
+        Diagnostic best = null;
+        int bestRank = -1;
+        for (Diagnostic d : diagnostics) {
+            int rank = severityRank(d.severity());
+            if (rank > bestRank) {
+                bestRank = rank;
+                best = d;
+            }
+        }
+        return best;
+    }
+
+    /**
+     * The highest-severity diagnostic that is <b>actionable</b> (warning or error) across the given
+     * stores' retained {@code doctor} diagnostics — the entry the health strip renders. Returns null
+     * when every store is healthy or only informational entries exist, so the strip stays hidden.
+     */
+    @Nullable
+    public static Diagnostic highestActionableDiagnostic(List<StoreEntry> stores) {
+        List<Diagnostic> all = new ArrayList<>();
+        for (StoreEntry s : stores) {
+            all.addAll(s.diagnostics());
+        }
+        Diagnostic top = highestSeverity(all);
+        return (top != null && severityRank(top.severity()) >= 2) ? top : null;
     }
 
     // ---- helpers -------------------------------------------------------------
@@ -801,10 +965,4 @@ public final class CoordinationService {
         return s != null ? s : "";
     }
 
-    private static String stderrOrStdout(CliRunner.CliResult r) {
-        String err = r.stderr() != null ? r.stderr().trim() : "";
-        if (!err.isEmpty()) return err;
-        String out = r.stdout() != null ? r.stdout().trim() : "";
-        return out.isEmpty() ? "OpenSpec CLI command failed." : out;
-    }
 }

@@ -1,0 +1,19 @@
+{
+  "root": {
+    "path": "/fixture/store-a",
+    "source": "store",
+    "store_id": "store-a",
+    "healthy": true,
+    "status": []
+  },
+  "store": {
+    "id": "store-a",
+    "metadata": {
+      "present": true,
+      "valid": true
+    },
+    "status": []
+  },
+  "references": [],
+  "status": []
+}

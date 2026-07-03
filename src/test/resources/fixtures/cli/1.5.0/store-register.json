@@ -1,0 +1,19 @@
+{
+  "store": {
+    "id": "store-d",
+    "root": "/fixture/store-d",
+    "metadata_path": "/fixture/store-d/.openspec-store/store.yaml"
+  },
+  "registry": {
+    "path": "/fixture/registry/openspec/stores/registry.yaml",
+    "registered": true,
+    "already_registered": false
+  },
+  "git": {
+    "is_repository": true,
+    "initialized": false,
+    "committed": false
+  },
+  "created_files": [],
+  "status": []
+}

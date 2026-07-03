@@ -1,0 +1,16 @@
+{
+  "workset": {
+    "name": "myview",
+    "members": [
+      {
+        "name": "primary",
+        "path": "/fixture/store-a"
+      },
+      {
+        "name": "secondary",
+        "path": "/fixture/store-b"
+      }
+    ]
+  },
+  "status": []
+}
