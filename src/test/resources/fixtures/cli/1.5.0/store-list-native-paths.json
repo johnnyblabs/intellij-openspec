@@ -1,0 +1,21 @@
+{
+  "stores": [
+    {
+      "id": "spaced",
+      "root": "C:\\Program Files\\my store"
+    },
+    {
+      "id": "drive",
+      "root": "D:\\stores\\team-store"
+    },
+    {
+      "id": "unc",
+      "root": "\\\\fileserver\\share\\team store"
+    },
+    {
+      "id": "posix-spaced",
+      "root": "/home/user/my store"
+    }
+  ],
+  "status": []
+}
