@@ -61,12 +61,24 @@ jobs:
         run: |
           set -euo pipefail
           SIGNED=$(ls build/distributions/*-signed.zip)
-          printf '%s' "$PLUGIN_SIGNING_CERTIFICATE" > "$RUNNER_TEMP/cert-chain.pem"
+          CERT="$RUNNER_TEMP/cert-chain.pem"
+          # PLUGIN_SIGNING_CERTIFICATE may be stored base64-encoded (the Gradle
+          # signing plugin accepts and decodes that form) or as raw PEM. The
+          # zip-signer CLI only reads raw PEM, so normalize before verifying:
+          # if the value already contains a PEM header use it as-is, otherwise
+          # base64-decode it. Without this the CLI reports "No certificate data
+          # found" on a base64 blob even though the signature is valid.
+          if printf '%s' "$PLUGIN_SIGNING_CERTIFICATE" | grep -q 'BEGIN CERTIFICATE'; then
+            printf '%s' "$PLUGIN_SIGNING_CERTIFICATE" > "$CERT"
+          else
+            printf '%s' "$PLUGIN_SIGNING_CERTIFICATE" | base64 -d > "$CERT"
+          fi
+          grep -q 'BEGIN CERTIFICATE' "$CERT" || { echo "::error::normalized certificate is not PEM"; exit 1; }
           CLI_JAR=$(find ~/.gradle/caches -name 'marketplace-zip-signer-*-cli.jar' | head -1)
           [ -n "$CLI_JAR" ] || { echo "::error::marketplace-zip-signer CLI jar not found in Gradle cache"; exit 1; }
           echo "Verifying signature of $SIGNED"
           java -cp "$CLI_JAR" org.jetbrains.zip.signer.ZipSigningTool verify \
-            -in "$SIGNED" -cert "$RUNNER_TEMP/cert-chain.pem"
+            -in "$SIGNED" -cert "$CERT"
           echo "✓ Signature verified against certificate chain"
         env:
           PLUGIN_SIGNING_CERTIFICATE: ${{ secrets.PLUGIN_SIGNING_CERTIFICATE }}
