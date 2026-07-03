@@ -49,6 +49,7 @@
 - [ ] 9.1 Update README with the read-only store/workset surface and the legacy demotion (vendor-neutral, language-agnostic).
 - [ ] 9.2 Update CHANGELOG under the unreleased section.
 - [ ] 9.3 Update `docs/feature-reference.md` (and any wiki source) to describe stores, worksets, the `1.5.0` floor, and that write actions are deferred.
+- [ ] 9.4 Update the coverage matrix `docs/openspec-support.md`: add a **Stores & worksets (1.5)** section with `store` and `workset` rows — CLI column `1.5+` for the CLI-sourced listing and `built-in` for the on-disk fallback; note read-only in this change (write actions deferred). Extend the **Version support** section to add the 1.5.x line and the store/workset floor, and reflect stores/worksets in the plugin-original / IDE value-add table where appropriate. Keep vendor-neutral.
 
 ## Tests
 

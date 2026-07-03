@@ -32,5 +32,5 @@ This is a **safety-only** narrowing. It introduces no reading or UI for the new 
 - **Behavior:** users on CLI 1.4.x are unaffected (full coordination surface as before). Users on 1.5.0+ no longer see failing refreshes or dead write actions; they see Hidden, or read-only Awareness if legacy 1.4 state is still on disk. Users below 1.4 are unaffected (already Awareness-at-most).
 - **Out of scope (tracked by other changes — referenced, not implemented here):** reading/UI for the new `store`/`workset` model (`add-store-workset-read-surface`); write actions for it (`add-store-workset-write-actions`); the cross-platform CI matrix (`add-cross-platform-ci-matrix`). The CRLF/telemetry parsing fix already shipped separately and is not part of this change.
 - **Platform compatibility:** unchanged — continues to support IntelliJ IDEA 2024.2 and later. All CLI/IO stays off the EDT.
-- **Docs:** README, CHANGELOG, and the feature reference updated to describe the coordination CLI window and the 1.5.0 stand-down behavior (vendor-neutral).
+- **Docs:** README, CHANGELOG, the feature reference, and the coverage matrix (`docs/openspec-support.md`) updated to describe the coordination CLI window `[1.4.0, 1.5.0)` and the 1.5.0 stand-down behavior (vendor-neutral).
 - **Tracker:** the linked tracker entry.

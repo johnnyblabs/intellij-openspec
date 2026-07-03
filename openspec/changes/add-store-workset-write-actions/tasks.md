@@ -41,6 +41,7 @@
 - [ ] 7.1 Update README with the store/workset write actions and the health strip (vendor-neutral).
 - [ ] 7.2 Update CHANGELOG under the unreleased section.
 - [ ] 7.3 Update `docs/feature-reference.md` (and any wiki source) with the new actions, destructive-remove confirmations, and `workset open` behavior.
+- [ ] 7.4 Update the coverage matrix `docs/openspec-support.md`: update the `store`/`workset` rows to reflect Full-tier write actions (setup / register / create / open / remove) and the doctor-driven health strip, so the rows no longer read as read-only. Keep vendor-neutral.
 
 ## Tests
 

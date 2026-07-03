@@ -33,5 +33,5 @@ Because stores and worksets are flagged very-early-beta with promised breaking c
   - Store/workset **write actions** and the aggregate **health strip** — `add-store-workset-write-actions`.
   - **Cross-platform CI matrix** for the new on-disk/path behavior — `add-cross-platform-ci-matrix`.
   - Consuming `context --json` / `doctor --json` **agent-brief** output — deferred: the `context.members[]` shape could not be captured non-empty from the real 1.5.0 binary, and hand-authoring the shape would violate the contract-test-against-captured-output rule. Left as future work once a non-empty capture exists.
-- **Docs:** README, CHANGELOG, and feature-reference updated (vendor-neutral) to describe the read-only store/workset surface and the legacy demotion.
+- **Docs:** README, CHANGELOG, feature-reference, and the coverage matrix (`docs/openspec-support.md`) updated (vendor-neutral) to describe the read-only store/workset surface, the 1.5.x version-support line, and the legacy demotion.
 - **Tracker:** the linked entry.

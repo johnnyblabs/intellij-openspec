@@ -89,9 +89,9 @@ the read surface — it depends on and builds directly on it (see the linked tra
 - **Platform compatibility:** no change — continues to support the supported IntelliJ Platform range
   across the JetBrains IDE family; nothing is language- or IDE-specific. All CLI/IO runs off the EDT;
   UI updates via `invokeLater`; services registered as `projectService`.
-- **Docs:** README, CHANGELOG, and feature-reference updated to describe the store/workset write
-  actions, the destructive-remove confirmations, `workset open` behavior, and the health strip
-  (vendor-neutral).
+- **Docs:** README, CHANGELOG, feature-reference, and the coverage matrix (`docs/openspec-support.md`)
+  updated to describe the store/workset write actions, the destructive-remove confirmations,
+  `workset open` behavior, and the health strip (vendor-neutral).
 - **Tracker:** the linked issue.
 
 ### Out of scope (referenced by name)

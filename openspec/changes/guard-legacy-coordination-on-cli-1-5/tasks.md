@@ -23,6 +23,7 @@
 
 - [ ] 5.1 Update README and `docs/feature-reference.md` to describe the coordination CLI window `[1.4.0, 1.5.0)` and the read-only/Hidden stand-down on 1.5.0+ (vendor-neutral).
 - [ ] 5.2 Add a CHANGELOG entry under the unreleased section describing the safety guard (coordination no longer invokes removed CLI commands on 1.5.0+).
+- [ ] 5.3 Update the coverage matrix `docs/openspec-support.md`: change the **Coordination layers** rows (workspace / context-store / initiative) to state the supported CLI window is `[1.4.0, 1.5.0)` — these commands are **removed in 1.5.0**, with the surface standing down to read-only/Hidden on 1.5.0+; update the **Version support** section to note the coordination commands are 1.4-only. Keep vendor-neutral.
 
 ## 6. Tests
 
