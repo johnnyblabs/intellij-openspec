@@ -107,6 +107,10 @@ public class OpenSpecSettingsPanel {
     private JButton forkButton;
     private JButton newSchemaButton;
     private JButton refreshSchemasButton;
+    private JButton validateSchemaButton;
+    private JButton openTemplatesButton;
+    private JBLabel schemaValidationResultLabel;
+    private java.util.Map<String, com.johnnyblabs.openspec.model.SchemaResolution> schemaOrigins = java.util.Map.of();
     private JBLabel schemaUnsupportedLabel;
     private JPanel schemasContentPanel;
 
@@ -378,14 +382,7 @@ public class OpenSpecSettingsPanel {
                                                           boolean isSelected, boolean cellHasFocus) {
                 super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
                 if (value instanceof SchemaInfo info) {
-                    String label = info.name();
-                    if (!info.description().isEmpty()) {
-                        label += " — " + info.description();
-                    }
-                    if (info.isBuiltIn()) {
-                        label += " (built-in)";
-                    }
-                    setText(label);
+                    setText(schemaRowLabel(info, schemaOrigins.get(info.name())));
                 }
                 return this;
             }
@@ -404,9 +401,19 @@ public class OpenSpecSettingsPanel {
         refreshSchemasButton = new JButton("Refresh");
         refreshSchemasButton.addActionListener(e -> refreshSchemaList());
 
+        validateSchemaButton = new JButton("Validate");
+        validateSchemaButton.setToolTipText("Check the selected schema's structure and templates (openspec schema validate)");
+        validateSchemaButton.addActionListener(e -> validateSelectedSchema());
+
+        openTemplatesButton = new JButton("Open Templates");
+        openTemplatesButton.setToolTipText("Open the selected schema's artifact templates in the editor");
+        openTemplatesButton.addActionListener(e -> openSelectedSchemaTemplates());
+
         JPanel buttonRow = new JPanel(new FlowLayout(FlowLayout.LEFT, JBUI.scale(4), 0));
         buttonRow.add(forkButton);
         buttonRow.add(newSchemaButton);
+        buttonRow.add(validateSchemaButton);
+        buttonRow.add(openTemplatesButton);
         buttonRow.add(refreshSchemasButton);
 
         schemaUnsupportedLabel = new JBLabel("Schema management requires OpenSpec CLI v1.3.0+");
@@ -427,6 +434,12 @@ public class OpenSpecSettingsPanel {
 
         buttonRow.setAlignmentX(Component.LEFT_ALIGNMENT);
         schemasContentPanel.add(buttonRow);
+
+        schemaValidationResultLabel = new JBLabel();
+        schemaValidationResultLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        schemaValidationResultLabel.setBorder(JBUI.Borders.emptyLeft(4));
+        schemaValidationResultLabel.setVisible(false);
+        schemasContentPanel.add(schemaValidationResultLabel);
 
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
@@ -450,6 +463,8 @@ public class OpenSpecSettingsPanel {
         forkButton.setEnabled(supported);
         newSchemaButton.setEnabled(supported);
         refreshSchemasButton.setEnabled(supported);
+        validateSchemaButton.setEnabled(supported);
+        openTemplatesButton.setEnabled(supported);
         if (supported) {
             loadSchemaList();
         }
@@ -461,7 +476,17 @@ public class OpenSpecSettingsPanel {
 
         com.intellij.openapi.application.ApplicationManager.getApplication().executeOnPooledThread(() -> {
             List<SchemaInfo> schemas = schemaService.listSchemas();
+            // Provenance rides the same cache lifecycle as the listing (cleared on fork/init).
+            java.util.Map<String, com.johnnyblabs.openspec.model.SchemaResolution> origins = new java.util.HashMap<>();
+            for (SchemaInfo info : schemas) {
+                com.johnnyblabs.openspec.model.SchemaResolution resolution =
+                        schemaService.getSchemaResolution(info.name());
+                if (resolution != null) {
+                    origins.put(info.name(), resolution);
+                }
+            }
             com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater(() -> {
+                schemaOrigins = origins;
                 schemaListModel.clear();
                 defaultSchemaCombo.removeAllItems();
                 for (SchemaInfo info : schemas) {
@@ -473,6 +498,113 @@ public class OpenSpecSettingsPanel {
                 String defaultSchema = settings.getDefaultSchema();
                 if (defaultSchema != null && !defaultSchema.isEmpty()) {
                     defaultSchemaCombo.setSelectedItem(defaultSchema);
+                }
+            });
+        });
+    }
+
+    /**
+     * Row label for the schemas list: name — description (built-in) [origin]. The origin
+     * tag comes from {@code openspec schema which} and is omitted when provenance is
+     * unavailable; a project/user copy that shadows another source says so explicitly.
+     */
+    static String schemaRowLabel(SchemaInfo info,
+                                 com.johnnyblabs.openspec.model.SchemaResolution resolution) {
+        String label = info.name();
+        if (!info.description().isEmpty()) {
+            label += " — " + info.description();
+        }
+        if (info.isBuiltIn()) {
+            label += " (built-in)";
+        }
+        if (resolution != null && resolution.source() != null && !resolution.source().isEmpty()) {
+            label += resolution.isShadowing()
+                    ? "  [" + resolution.source() + ", shadows " + String.join(", ", resolution.shadowedSources()) + "]"
+                    : "  [" + resolution.source() + "]";
+        }
+        return label;
+    }
+
+    /**
+     * Inline HTML for a schema validation report: a green confirmation for a valid schema,
+     * or one line per issue with its severity and offending path. CLI-failure reports are
+     * not rendered here — they go to the notification surface.
+     */
+    static String formatValidationReport(com.johnnyblabs.openspec.model.SchemaValidationReport report) {
+        if (report.valid()) {
+            return "<html>Schema '" + escapeHtml(report.name()) + "' is valid.</html>";
+        }
+        StringBuilder html = new StringBuilder("<html>Schema '")
+                .append(escapeHtml(report.name())).append("' has ")
+                .append(report.issues().size())
+                .append(report.issues().size() == 1 ? " problem:" : " problems:");
+        for (com.johnnyblabs.openspec.model.SchemaValidationReport.Issue issue : report.issues()) {
+            html.append("<br>&nbsp;&nbsp;")
+                    .append(escapeHtml(issue.level().toUpperCase(java.util.Locale.ROOT)))
+                    .append(' ').append(escapeHtml(issue.path()))
+                    .append(" — ").append(escapeHtml(firstLine(issue.message())));
+        }
+        return html.append("</html>").toString();
+    }
+
+    private static String firstLine(String s) {
+        int nl = s.indexOf('\n');
+        return nl >= 0 ? s.substring(0, nl) : s;
+    }
+
+    private static String escapeHtml(String s) {
+        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+    }
+
+    private void validateSelectedSchema() {
+        SchemaInfo selected = schemaList.getSelectedValue();
+        if (selected == null) return;
+        SchemaService schemaService = project.getService(SchemaService.class);
+        if (schemaService == null) return;
+
+        com.intellij.openapi.application.ApplicationManager.getApplication().executeOnPooledThread(() -> {
+            com.johnnyblabs.openspec.model.SchemaValidationReport report =
+                    schemaService.validateSchema(selected.name());
+            com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater(() -> {
+                if (report.isCliFailure()) {
+                    schemaValidationResultLabel.setVisible(false);
+                    com.johnnyblabs.openspec.util.OpenSpecNotifier.error(project,
+                            "Schema validation failed to run: " + report.cliError());
+                    return;
+                }
+                schemaValidationResultLabel.setText(formatValidationReport(report));
+                schemaValidationResultLabel.setVisible(true);
+            });
+        });
+    }
+
+    private void openSelectedSchemaTemplates() {
+        SchemaInfo selected = schemaList.getSelectedValue();
+        if (selected == null) return;
+        SchemaService schemaService = project.getService(SchemaService.class);
+        if (schemaService == null) return;
+
+        com.intellij.openapi.application.ApplicationManager.getApplication().executeOnPooledThread(() -> {
+            java.util.Map<String, String> templates = schemaService.resolveTemplates(selected.name());
+            com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater(() -> {
+                if (templates == null) {
+                    com.johnnyblabs.openspec.util.OpenSpecNotifier.error(project,
+                            "Could not resolve templates for schema '" + selected.name() + "'");
+                    return;
+                }
+                java.util.List<String> missing = new java.util.ArrayList<>();
+                for (java.util.Map.Entry<String, String> entry : templates.entrySet()) {
+                    VirtualFile file = LocalFileSystem.getInstance().refreshAndFindFileByPath(entry.getValue());
+                    if (file != null) {
+                        FileEditorManager.getInstance(project).openFile(file, true);
+                    } else {
+                        // Creation is the CLI's job (schema init scaffolds templates) — report, don't create.
+                        missing.add(entry.getKey() + ": " + entry.getValue());
+                    }
+                }
+                if (!missing.isEmpty()) {
+                    com.johnnyblabs.openspec.util.OpenSpecNotifier.warn(project,
+                            "Template file(s) not found on disk — " + String.join("; ", missing));
                 }
             });
         });

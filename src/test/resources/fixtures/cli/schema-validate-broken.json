@@ -1,0 +1,12 @@
+{
+  "name": "custom-flow",
+  "path": "/home/user/project/openspec/schemas/custom-flow",
+  "valid": false,
+  "issues": [
+    {
+      "level": "error",
+      "path": "schema.yaml",
+      "message": "Parse error: Map keys must be unique at line 43, column 5:\n\n      This is the foundation - specs, design, and tasks all build on this.\n    requires: []\n    ^\n"
+    }
+  ]
+}
