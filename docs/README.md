@@ -46,6 +46,14 @@ The [**Version support**](openspec-support.md#version-support) block in `openspe
 
 Deep, cited analyses of what each OpenSpec **client** version introduced, modified, deprecated, or removed — and how the plugin responds — live under [`cli-versions/`](cli-versions/README.md). They ground the plugin's version-support decisions (the epistemic base behind the coverage matrix above), one document per CLI version, produced via an OpenSpec explore over upstream docs. Start at the [cli-versions index](cli-versions/README.md).
 
+## Testing layers
+
+Three complementary layers, cheapest first; each exists because the one above it structurally cannot see what it covers:
+
+1. **Headless platform tests** (`src/test/java`, every PR via `gradle build`) — behavior against the real IntelliJ platform without rendering: parsers (contract-tested against captured CLI output), services, notification flows, tree models, validators. This is the primary automated coverage and the JaCoCo floor's domain.
+2. **Manual test-drive** (the `lifecycle-testdrive` project skill) — a seeded sandbox IDE (`runIde`) plus an in-project walkthrough checklist, for *judgment* checks: wording, layout, feel. Seeding source: `scripts/seed-lifecycle-demo.sh`.
+3. **UI smoke journeys** (`src/integrationTest/kotlin`, `gradle uiSmoke`) — a real IDE booted by the Starter framework with the built plugin installed, driven via the Driver SDK; asserts *presence and wiring* of rendered surfaces (tool window, Update cleanup notice, Settings section). Policy: manual dispatch + release-tag gating only — **never a per-PR blocker**. Shares the seeding source with layer 2. Failure artifacts land under `out/perf-startup/`.
+
 ## Repository-root docs
 
 | Doc | Purpose | Primary audience | Maintenance |

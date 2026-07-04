@@ -1,0 +1,56 @@
+name: UI Smoke Journeys
+
+# Execution policy (spec: ui-smoke-journeys): manual dispatch + release tags ONLY.
+# Never a required check on pull requests — UI tests boot a full IDE per journey and
+# are the flakiest test class; they gate releases, not merges.
+#
+# First-dispatch checklist (empirical runner verification, tasks.md 3.2): the runner
+# needs xvfb (Starter auto-starts a virtual display when DISPLAY is absent but the
+# xvfb binary must exist) and node/npm for the OpenSpec CLI used by the Update
+# journey. If the runner cannot satisfy these, the documented fallback applies:
+# run `gradle uiSmoke` locally as part of release-prep instead of CI.
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+env:
+  PATH: /opt/gradle-9.0.0/bin:/opt/apache-maven-3.9.9/bin:/opt/java/openjdk/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+  GRADLE_OPTS: -Dorg.gradle.daemon=false
+
+jobs:
+  ui-smoke:
+    runs-on: java-21
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-uismoke-${{ hashFiles('**/*.gradle.kts', 'gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: gradle-uismoke-
+
+      - name: Verify display + CLI prerequisites
+        run: |
+          command -v Xvfb || echo "WARNING: Xvfb missing — Starter cannot create a virtual display"
+          command -v npm && npm i -g @fission-ai/openspec@1.4.1 \
+            || echo "WARNING: npm missing — the Update journey needs the OpenSpec CLI"
+          command -v openspec && openspec --version || true
+
+      # Starter downloads its own IDE installer into out/ide-tests (an IDE-sized
+      # artifact — deliberately NOT in the Gradle cache; same lesson as the verifier
+      # cache scoping). Retry once at the job level per the flakiness policy.
+      - name: Run UI smoke journeys
+        run: gradle uiSmoke || gradle uiSmoke
+
+      - name: Upload journey artifacts (logs + screenshots)
+        uses: https://code.forgejo.org/forgejo/upload-artifact@v4
+        if: always()
+        with:
+          name: ui-smoke-artifacts
+          path: |
+            out/perf-startup/tests/**/log/
+            build/test-results/uiSmoke/

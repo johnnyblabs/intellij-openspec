@@ -26,49 +26,21 @@ The demo project is deliberately seeded to trigger real behavior:
 
    ```bash
    DEMO="${TMPDIR:-/tmp}/openspec-lifecycle-demo-$(date +%s)"
-   mkdir -p "$DEMO" && cd "$DEMO"
-   export OPENSPEC_TELEMETRY=0
    ```
 
-2. **Seed the project** (old CLI on purpose — creates the legacy command files):
+   (Do not create the directory — the seeding script insists on a fresh path.)
+
+2. **Seed the project with the shared script** — `scripts/seed-lifecycle-demo.sh` is the
+   single source of truth for the demo shape, shared with the automated UI smoke
+   journeys (uiTest fixtures) so the manual and automated environments cannot drift:
 
    ```bash
-   npx -y @fission-ai/openspec@1.3.1 init --tools junie . < /dev/null > /dev/null 2>&1
-
-   mkdir -p openspec/specs/greeting
-   cat > openspec/specs/greeting/spec.md <<'EOF'
-   # Greeting
-
-   ## Purpose
-   Demo capability for the lifecycle walkthrough.
-
-   ## Requirements
-
-   ### requirement: Friendly greeting
-   The system SHALL greet the user by name.
-
-   #### Scenario: Greet
-   - **WHEN** the user arrives
-   - **THEN** the system greets them by name
-   EOF
-
-   openspec new change demo-add-farewell > /dev/null 2>&1
-   cat > openspec/changes/demo-add-farewell/proposal.md <<'EOF'
-   ## Why
-   The demo needs a change mid-lifecycle so the workflow chips show done / ready / blocked states.
-
-   ## What Changes
-   - Add a farewell message alongside the greeting.
-
-   ## Capabilities
-
-   ### Modified Capabilities
-   - `greeting`: adds a farewell requirement.
-
-   ## Impact
-   Demo only.
-   EOF
+   <repo>/scripts/seed-lifecycle-demo.sh "$DEMO"
    ```
+
+   (It refuses an existing directory — see step 1. Note: `openspec validate` on the
+   seeded change reports "no deltas" — that is authentic mid-lifecycle state, not a
+   seeding bug; the workflow chips read `openspec status`, which shows 1/4 done.)
 
 3. **Copy the walkthrough into the project** so it is readable inside the sandbox:
 
