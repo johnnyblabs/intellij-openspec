@@ -117,7 +117,11 @@ fi
 # hostnames, the private repo/user path, tracker IDs, MCP names.
 # NOTE: \b word-boundary is NOT used — git grep's regex engine silently fails to
 # match it. Boundaries are expressed as (^|[^[:alnum:]]) instead.
-PATTERN='\.geek|git@geek|geek:222|johnb[/@]|mcp__homelab|(^|[^[:alnum:]])(OSPEC|OSP|OS)-[0-9]|Forgejo #'
+# `johnb([^a-z]|$)` catches the homelab username as a whole word — "johnb" followed by
+# a non-lowercase char or end-of-line — so bare "johnb" (e.g. a publisher/author field)
+# is caught, while "johnboyce" (the public git identity) is not. The earlier `johnb[/@]`
+# only caught the path/email forms and let a bare "johnb" leak through.
+PATTERN='\.geek|git@geek|geek:222|johnb([^a-z]|$)|mcp__homelab|(^|[^[:alnum:]])(OSPEC|OSP|OS)-[0-9]|Forgejo #'
 
 # Files allowed to mention the patterns: they document or implement the rule.
 ALLOW=(':!CLAUDE.md' ':!.githooks')
