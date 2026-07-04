@@ -4,7 +4,7 @@
 
 - [ ] 1.1 Resolve the current JetBrains UI-test integration artifacts for the IntelliJ Platform Gradle Plugin 2.x line (official docs, read-only) and pin versions in the version catalog
 - [ ] 1.2 `uiTest` source set + Gradle task: sandbox IDE with robot-server, driver-side test JVM, fixed virtual display resolution
-- [ ] 1.3 Extract the demo-project seeding recipe into a single shared source consumed by both the `lifecycle-testdrive` skill and the uiTest fixtures (static fixture fallback if the runner lacks CLI/network access)
+- [x] 1.3 Extract the demo-project seeding recipe into a single shared source consumed by both the `lifecycle-testdrive` skill and the uiTest fixtures (static fixture fallback if the runner lacks CLI/network access)
 
 ## 2. Journeys
 
