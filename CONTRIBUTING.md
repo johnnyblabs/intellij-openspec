@@ -80,6 +80,15 @@ Honor Default schema setting in built-in init — was hardcoding spec-driven
   - *OS-gated integration* — the `.cmd` shim invocation (`WindowsCmdShimInvocationTest`, `@EnabledOnOs(WINDOWS)`) and 8.3 short-path canonicalization run on the GitHub Windows matrix leg; symlink canonicalization runs on macOS/Linux. These are **skipped**, not failed, off their target OS, so `./gradlew build` stays green everywhere.
   - *Windows data-dir capture (follow-up).* Confirming the Windows branch against a real `store register --json` `registry.path` requires a Windows host; it's a documented manual follow-up (the branch is asserted against the documented `%LOCALAPPDATA%\openspec` layout via the resolver override in the meantime).
 
+### Version-support fidelity
+
+The plugin gates behavior on the detected OpenSpec CLI version (e.g. coordination reads/writes exist only in the `[1.4.0, 1.5.0)` window; the store/workset model leads at `>= 1.5.0`). This gating is a contract, not an implementation detail — a capability that silently appears, disappears, or changes which CLI line it targets is a regression even when the build is green. (This rule exists because the 1.4 coordination write actions shipped in a release, were silently dropped in a later rebuild with no spec delta or CHANGELOG note, and shipped broken until restored.)
+
+Therefore, parallel to documentation fidelity: **any change that touches CLI-version-gated behavior MUST, in the same change, update the per-version behavior contract and its per-version tests.**
+
+- The contract lives in the `coordination-surfaces` spec (*CLI-version behavior contract* requirement) and is mirrored, user-facing, in `docs/openspec-support.md` (the single source of truth for per-version behavior).
+- The enforcing tests are the per-version matrix in `CoordinationServiceWindowTest` — assert, for each supported line (1.3.x / 1.4.x / 1.5.x), exactly which read surface, tier, and write path is enabled, so that adding, removing, or re-gating a version-gated capability fails the build. No vacuous asserts: each row must fail if that version's behavior regresses.
+
 ## Pull Requests
 
 1. Fork the repo and create a branch from `main`

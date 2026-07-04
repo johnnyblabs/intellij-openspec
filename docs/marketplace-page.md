@@ -91,6 +91,7 @@ Paste this HTML into the "Description" field on the plugin edit page:
   <li>Explore panel: assembled project context for AI conversations</li>
   <li>Custom schema management: fork, create, and switch workflow schemas</li>
   <li>Config profile display and workflow management</li>
+  <li>Coordination tab: on an OpenSpec 1.4.x CLI, view and create/manage workspaces, context stores, and initiatives (these in-IDE create/set-up actions retire automatically when you upgrade to a 1.5 CLI); on a 1.5.x CLI, browse the newer stores and worksets model</li>
   <li>Verify action: check artifact completeness and task progress</li>
   <li>Continue action: incremental one-artifact-at-a-time generation</li>
   <li>CLI update action: refresh agent instruction files from the IDE</li>
