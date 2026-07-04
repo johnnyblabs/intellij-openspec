@@ -2,6 +2,8 @@
 
 *For reviewers, team leads, and PMs who want to browse specs — no AI setup required.*
 
+> **Maintenance: Reference** — stable; updated only when the described setup flow changes (see the [documentation index](README.md)).
+
 ---
 
 ## Prerequisites

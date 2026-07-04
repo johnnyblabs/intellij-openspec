@@ -2,6 +2,8 @@
 
 *For developers with an API key who want a fully self-contained workflow — no external AI tool needed.*
 
+> **Maintenance: Reference** — stable; updated only when the described setup flow changes (see the [documentation index](README.md)).
+
 ---
 
 ## Prerequisites

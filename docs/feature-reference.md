@@ -2,6 +2,8 @@
 
 Complete reference for all plugin features, organized by functional area.
 
+> **Maintenance: Living** — updated as part of every relevant change (see the [documentation index](README.md)). For canonical CLI/plugin version facts, see the [Version support](openspec-support.md#version-support) block.
+
 ---
 
 ## Browsing & Navigation

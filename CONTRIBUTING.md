@@ -2,6 +2,8 @@
 
 Thanks for your interest in contributing! This guide covers everything you need to get started.
 
+> **Maintenance: Reference** — stable; updated only when the contribution workflow changes (see the [documentation index](docs/README.md)).
+
 ## Development Setup
 
 ### Prerequisites

@@ -2,6 +2,8 @@
 
 *For developers using Claude Code, Gemini CLI, or other terminal-based AI tools alongside IntelliJ.*
 
+> **Maintenance: Reference** — stable; updated only when the described setup flow changes (see the [documentation index](README.md)).
+
 ---
 
 ## Prerequisites
