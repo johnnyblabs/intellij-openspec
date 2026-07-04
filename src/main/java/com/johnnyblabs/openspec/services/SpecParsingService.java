@@ -24,7 +24,7 @@ public final class SpecParsingService {
     private static final Logger LOG = Logger.getInstance(SpecParsingService.class);
 
     private static final Pattern TITLE_PATTERN = Pattern.compile("^#\\s+(.+)$", Pattern.MULTILINE);
-    private static final Pattern REQUIREMENT_PATTERN = Pattern.compile("^###\\s+Requirement:\\s+(.+)$", Pattern.MULTILINE);
+    private static final Pattern REQUIREMENT_PATTERN = com.johnnyblabs.openspec.util.SpecPatterns.REQUIREMENT_HEADER;
     private static final Pattern SCENARIO_PATTERN = Pattern.compile("^(?:#{4}\\s+Scenario:\\s+(.+)|\\*\\*Scenario:\\s+(.+?)\\*\\*)$", Pattern.MULTILINE);
     private static final Pattern KEYWORD_PATTERN = Pattern.compile("\\b(SHALL NOT|SHOULD NOT|SHALL|SHOULD|MAY)\\b");
 

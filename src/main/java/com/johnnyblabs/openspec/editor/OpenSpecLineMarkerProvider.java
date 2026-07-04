@@ -24,12 +24,13 @@ public class OpenSpecLineMarkerProvider implements LineMarkerProvider {
         }
 
         String text = element.getText();
-        if (text != null && text.startsWith("### Requirement:")) {
+        String name = com.johnnyblabs.openspec.util.SpecPatterns.requirementName(text);
+        if (name != null) {
             return new LineMarkerInfo<>(
                     element,
                     element.getTextRange(),
                     REQUIREMENT_ICON,
-                    e -> "Requirement: " + text.substring("### Requirement:".length()).trim(),
+                    e -> "Requirement: " + name,
                     null,
                     GutterIconRenderer.Alignment.LEFT,
                     () -> "OpenSpec Requirement"

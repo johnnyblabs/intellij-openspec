@@ -33,7 +33,7 @@ public final class VerificationService {
     // `[~]` marks an in-progress task (OpenSpec 1.4). It is not-done for the "ready to archive?"
     // question, so it counts toward the total and blocks archive like `[ ]` — never dropped.
     private static final Pattern TASK_IN_PROGRESS = Pattern.compile("^\\s*-\\s*\\[~]", Pattern.MULTILINE);
-    private static final Pattern REQUIREMENT_HEADER = Pattern.compile("^###\\s+Requirement:\\s+(.+)$", Pattern.MULTILINE);
+    private static final Pattern REQUIREMENT_HEADER = com.johnnyblabs.openspec.util.SpecPatterns.REQUIREMENT_HEADER;
 
     private final Project project;
 

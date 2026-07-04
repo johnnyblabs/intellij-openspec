@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class BuiltInValidatorRulesTest {
 
     // Patterns matching BuiltInValidator
-    private static final Pattern REQUIREMENT_PATTERN = Pattern.compile("^### Requirement:\\s*.+", Pattern.MULTILINE);
+    private static final Pattern REQUIREMENT_PATTERN = com.johnnyblabs.openspec.util.SpecPatterns.REQUIREMENT_HEADER;
     private static final Pattern RFC_KEYWORD_PATTERN = Pattern.compile("\\b(SHALL NOT|SHOULD NOT|SHALL|SHOULD|MAY|MUST)\\b");
     private static final Pattern SCENARIO_PATTERN = Pattern.compile("^#{4} Scenario:.+", Pattern.MULTILINE);
     private static final Pattern DELTA_SECTION_PATTERN = Pattern.compile("^## (ADDED|MODIFIED|REMOVED|RENAMED) Requirements", Pattern.MULTILINE);
@@ -421,6 +421,112 @@ class BuiltInValidatorRulesTest {
                 "Mixed delta with RENAMED + ADDED + REMOVED should have no structural errors");
     }
 
+    // --- CLI 1.4 parity: case-insensitive headers + keyword-placement hint ---
+
+    @Test
+    void lowercaseRequirementHeader_isRecognized() {
+        String content = """
+                # Test Spec
+
+                ### requirement: Lowercase header token
+                The system SHALL parse this requirement.
+
+                #### Scenario: Parse
+                - **WHEN** the spec is validated
+                - **THEN** the requirement is recognized
+                """;
+        List<ValidationIssue> issues = validateSpec(content);
+        assertTrue(issues.isEmpty(),
+                "CLI 1.4+ parses headers case-insensitively; expected no issues but got: " + issues);
+    }
+
+    @Test
+    void uppercaseAndMixedCaseHeaders_areRecognized() {
+        String content = """
+                # Test Spec
+
+                ### REQUIREMENT: Uppercase token
+                Body text without keyword and without scenario.
+
+                ### ReQuIrEmEnT: Mixed-case token
+                More body text.
+                """;
+        List<ValidationIssue> issues = validateSpec(content);
+        // Both requirements must be SEEN (each missing keyword + scenario = 2 issues apiece).
+        assertEquals(4, issues.size(),
+                "Both non-canonical headers should be validated as requirements: " + issues);
+    }
+
+    @Test
+    void headerTokenMidLine_isNotARequirement() {
+        String content = """
+                # Test Spec
+
+                Some prose mentioning ### Requirement: inline should not match.
+                """;
+        Matcher m = REQUIREMENT_PATTERN.matcher(content);
+        assertFalse(m.find(), "Header pattern must stay line-anchored");
+    }
+
+    @Test
+    void keywordOnlyInHeader_getsTargetedHint() {
+        String content = """
+                # Test Spec
+
+                ### Requirement: The system SHALL support login
+                Users can authenticate with a password.
+
+                #### Scenario: Login
+                - **WHEN** user submits credentials
+                - **THEN** the session starts
+                """;
+        List<ValidationIssue> issues = validateSpec(content);
+        assertTrue(issues.stream().anyMatch(i -> i.rule().equals("spec-rfc-keyword-in-header")),
+                "Keyword in header only should get the targeted hint: " + issues);
+        assertTrue(issues.stream().noneMatch(i -> i.rule().equals("spec-rfc-keywords")),
+                "Targeted hint replaces the generic missing-keyword error: " + issues);
+        assertTrue(issues.stream()
+                        .filter(i -> i.rule().equals("spec-rfc-keyword-in-header"))
+                        .allMatch(i -> i.message().contains("move the keyword onto the requirement body line")),
+                "Hint must carry the CLI's remediation text");
+    }
+
+    @Test
+    void keywordInBody_headerKeywordIsFine() {
+        String content = """
+                # Test Spec
+
+                ### Requirement: The system SHALL support login
+                The system SHALL authenticate users with a password.
+
+                #### Scenario: Login
+                - **WHEN** user submits credentials
+                - **THEN** the session starts
+                """;
+        List<ValidationIssue> issues = validateSpec(content);
+        assertTrue(issues.isEmpty(),
+                "Keyword present in the body satisfies the rule regardless of the header: " + issues);
+    }
+
+    @Test
+    void keywordNowhere_staysGenericError() {
+        String content = """
+                # Test Spec
+
+                ### Requirement: Login support
+                Users can authenticate with a password.
+
+                #### Scenario: Login
+                - **WHEN** user submits credentials
+                - **THEN** the session starts
+                """;
+        List<ValidationIssue> issues = validateSpec(content);
+        assertTrue(issues.stream().anyMatch(i -> i.rule().equals("spec-rfc-keywords")),
+                "No keyword anywhere keeps the generic error: " + issues);
+        assertTrue(issues.stream().noneMatch(i -> i.rule().equals("spec-rfc-keyword-in-header")),
+                "Targeted hint requires a keyword in the header: " + issues);
+    }
+
     // --- Helpers: extract validation logic matching BuiltInValidator ---
 
     private List<ValidationIssue> validateSpec(String content) {
@@ -431,13 +537,19 @@ class BuiltInValidatorRulesTest {
         while (reqMatcher.find()) {
             int reqStart = reqMatcher.start();
             int reqLine = lineNumberAt(content, reqStart);
-            String reqHeader = reqMatcher.group().replaceFirst("^###\\s*Requirement:\\s*", "").trim();
+            String reqHeader = reqMatcher.group(1).trim();
             int nextReq = findNext(REQUIREMENT_PATTERN, content, reqMatcher.end());
             String reqContent = content.substring(reqMatcher.end(), nextReq);
 
             if (!RFC_KEYWORD_PATTERN.matcher(reqContent).find()) {
-                issues.add(new ValidationIssue(ValidationIssue.Severity.ERROR, path, reqLine,
-                        "Requirement '" + reqHeader + "' must contain RFC 2119 keywords (SHALL, MUST, SHOULD, MAY)", "spec-rfc-keywords"));
+                if (RFC_KEYWORD_PATTERN.matcher(reqMatcher.group()).find()) {
+                    issues.add(new ValidationIssue(ValidationIssue.Severity.ERROR, path, reqLine,
+                            "Requirement '" + reqHeader + "' has its RFC 2119 keyword only in the header — "
+                                    + "move the keyword onto the requirement body line", "spec-rfc-keyword-in-header"));
+                } else {
+                    issues.add(new ValidationIssue(ValidationIssue.Severity.ERROR, path, reqLine,
+                            "Requirement '" + reqHeader + "' must contain RFC 2119 keywords (SHALL, MUST, SHOULD, MAY)", "spec-rfc-keywords"));
+                }
             }
 
             if (!SCENARIO_PATTERN.matcher(reqContent).find()) {
@@ -494,7 +606,7 @@ class BuiltInValidatorRulesTest {
             Matcher reqMatcher = REQUIREMENT_PATTERN.matcher(sectionContent);
             while (reqMatcher.find()) {
                 int reqLine = lineNumberAt(content, sectionStart + reqMatcher.start());
-                String reqHeader = reqMatcher.group().replaceFirst("^###\\s*Requirement:\\s*", "").trim();
+                String reqHeader = reqMatcher.group(1).trim();
                 int nextReq = findNext(REQUIREMENT_PATTERN, sectionContent, reqMatcher.end());
                 String reqContent = sectionContent.substring(reqMatcher.end(), nextReq);
 

@@ -51,7 +51,7 @@ This section is the **single source of truth** for the plugin's per-CLI-version 
 | Surface | Status | CLI | Notes |
 |---------|--------|-----|-------|
 | init / update / list / show | ✅ | built-in · `delegated` | Actions + tool-window tree |
-| validate | ✅ | built-in | Built-in delta-spec + config validation, aligned to the client's rules |
+| validate | ✅ | built-in | Built-in delta-spec + config validation, aligned to the client's rules — including the two permanent CLI 1.4.0 parser/validator behaviors: requirement headers are recognized **case-insensitively** everywhere the plugin parses them, and an RFC 2119 keyword appearing only in a requirement's header gets the CLI's targeted "move the keyword onto the requirement body line" diagnostic (`spec-rfc-keyword-in-header`) with a quick-fix |
 | delta specs (ADDED/MODIFIED/REMOVED/RENAMED) | ✅ | built-in | Create / inspect / diff / sync. All four delta types (incl. `RENAMED`) were introduced upstream in **1.0.0**, well below the plugin's floor; implemented built-in (works at the floor). |
 | status | 🟡 | `1.3+` | Used by apply/continue/list; not yet by Verify |
 | instructions | 🟡 | `1.3+` | Used by Explore; not yet broadly |

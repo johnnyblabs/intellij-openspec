@@ -49,6 +49,34 @@ class SpecParsingServiceTest {
     }
 
     @Test
+    void parseSpecContent_recognizesNonCanonicalHeaderCasing() {
+        String content = """
+                # Case Parity
+
+                ### requirement: Lowercase token
+                The system SHALL parse this.
+
+                #### Scenario: Parse
+                - **WHEN** parsed
+                - **THEN** listed
+
+                ### REQUIREMENT: Uppercase token
+                The system MAY parse this too.
+
+                #### Scenario: Parse again
+                - **WHEN** parsed
+                - **THEN** listed
+                """;
+        SpecParsingService service = new SpecParsingService(null);
+        SpecFile spec = service.parseSpecContent(content, "case-parity", "/test/spec.md");
+
+        assertEquals(2, spec.getRequirements().size(),
+                "CLI 1.4+ parses the header token case-insensitively; tree parsing must match");
+        assertEquals("Lowercase token", spec.getRequirements().get(0).getName());
+        assertEquals("Uppercase token", spec.getRequirements().get(1).getName());
+    }
+
+    @Test
     void parseSpecContent_parsesScenarios() throws IOException {
         String content = loadTestResource("openspec/specs/test-domain/spec.md");
         SpecParsingService service = new SpecParsingService(null);

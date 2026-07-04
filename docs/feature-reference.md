@@ -197,6 +197,8 @@ Three editor inspections run in real-time as you edit:
 | **Delta Spec Structure** | ADDED/MODIFIED/REMOVED section headers and content |
 | **Config Validation** | `openspec/config.yaml` structure and values |
 
+Requirement headers (`### Requirement:`) are recognized **case-insensitively**, matching OpenSpec CLI 1.4+ parsing. When a requirement carries its RFC 2119 keyword only in the header line, the Spec Format inspection reports a targeted warning — *move the keyword onto the requirement body line* — with a quick-fix that inserts the keyword-bearing sentence as the first body line.
+
 ### Annotations
 
 - **Spec block syntax highlighting** — Visual distinction for spec content blocks
