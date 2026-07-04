@@ -33,6 +33,19 @@ public final class CoordinationActionGating {
     }
 
     /**
+     * Whether the legacy 1.4 coordination write actions (New Initiative, Set Up Context Store, Set
+     * Up Workspace) are permitted: the surface is at the Full tier and the detected CLI is within the
+     * coordination window {@code [1.4.0, 1.5.0)} (exactly {@code cliCoordinationAvailable}). This is
+     * the sibling of {@link #writeEnabled(boolean, boolean)} for the pre-1.5 model: the two are
+     * mutually exclusive by CLI version — a CLI in the 1.4.x line satisfies this gate, a CLI at or
+     * above 1.5.0 satisfies the store gate, and neither satisfies both. The 1.4 commands were removed
+     * in 1.5.0, so these actions self-retire when the user upgrades their CLI.
+     */
+    public static boolean coordinationWriteEnabled(boolean fullTier, boolean cliCoordinationAvailable) {
+        return fullTier && cliCoordinationAvailable;
+    }
+
+    /**
      * Creation / registration actions (New Store, Register Existing Store, New Workset) — enabled
      * whenever writes are permitted, regardless of the current selection.
      */

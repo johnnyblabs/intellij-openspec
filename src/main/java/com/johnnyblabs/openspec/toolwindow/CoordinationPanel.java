@@ -87,8 +87,14 @@ public final class CoordinationPanel extends JPanel {
 
     /** Whether store/workset writes are permitted right now — Full tier AND CLI &gt;= 1.5.0. */
     private volatile boolean writeEnabled = false;
-    /** Whether the store model leads (CLI &gt;= 1.5.0); gates whether the actions are shown at all. */
+    /** Whether the store model leads (CLI &gt;= 1.5.0); gates whether the store actions are shown at all. */
     private volatile boolean storeModel = false;
+    /**
+     * Whether the legacy 1.4 coordination writes are permitted right now — Full tier AND the detected
+     * CLI is within the coordination window {@code [1.4.0, 1.5.0)}. Mutually exclusive with
+     * {@link #writeEnabled} by CLI version; self-retires when the user upgrades to a 1.5 CLI.
+     */
+    private volatile boolean coordinationWriteEnabled = false;
 
     public CoordinationPanel(Project project) {
         this(project, null);
@@ -168,6 +174,13 @@ public final class CoordinationPanel extends JPanel {
         DefaultActionGroup group = new DefaultActionGroup();
         group.add(new RefreshAction());
         group.addSeparator();
+        // Legacy 1.4 coordination writes — visible only on the pre-1.5 (legacy) surface, and enabled
+        // only within the CLI window [1.4.0, 1.5.0). They self-retire on a 1.5 CLI (hidden).
+        group.add(new NewInitiativeAction());
+        group.add(new SetUpContextStoreAction());
+        group.add(new SetUpWorkspaceAction());
+        group.add(new Separator());
+        // 1.5 store/workset writes — visible only on the store-lead surface (CLI >= 1.5.0).
         group.add(new NewStoreAction());
         group.add(new RegisterStoreAction());
         group.add(new NewWorksetAction());
@@ -302,6 +315,9 @@ public final class CoordinationPanel extends JPanel {
     private void applyTier(CoordinationData data) {
         storeModel = data.storesAreLeadModel();
         writeEnabled = CoordinationActionGating.writeEnabled(data.tier().allowsWriteActions(), storeModel);
+        // data.sourcedFromCli() is exactly cliCoordinationAvailable() — the CLI is in [1.4.0, 1.5.0).
+        coordinationWriteEnabled = CoordinationActionGating.coordinationWriteEnabled(
+                data.tier().allowsWriteActions(), data.sourcedFromCli());
 
         // Health strip reflects the highest-severity actionable doctor diagnostic across stores.
         healthStrip.update(CoordinationService.highestActionableDiagnostic(data.stores()));
@@ -318,8 +334,15 @@ public final class CoordinationPanel extends JPanel {
             }
         } else {
             String source = data.sourcedFromCli() ? "OpenSpec CLI" : "on-disk state";
-            statusLabel.setText("Legacy coordination (read-only) — sourced from " + source
-                    + ". Write actions require the OpenSpec 1.5 store/workset model.");
+            if (coordinationWriteEnabled) {
+                // CLI is in the 1.4.x window: the create/set-up actions are live.
+                statusLabel.setText("Coordination — Full (create/set-up actions enabled), sourced from "
+                        + source + ". These actions retire when you upgrade to an OpenSpec 1.5 CLI.");
+            } else {
+                // Below 1.4 (commands don't exist yet); at/above 1.5 the surface would be storeModel.
+                statusLabel.setText("Coordination (read-only) — sourced from " + source
+                        + ". Create/set-up actions require an OpenSpec CLI in the 1.4.x line.");
+            }
         }
 
         if (toolbar != null) {
@@ -385,6 +408,37 @@ public final class CoordinationPanel extends JPanel {
         });
     }
 
+    // ---- legacy 1.4 coordination write actions -------------------------------
+
+    private void onNewInitiative() {
+        String id = Messages.showInputDialog(project,
+                "Initiative id (e.g. lower-kebab-case):", "New Initiative", Messages.getQuestionIcon());
+        if (id == null || id.isBlank()) return;
+        String title = Messages.showInputDialog(project,
+                "Initiative title:", "New Initiative", Messages.getQuestionIcon());
+        if (title == null) return;
+        String finalId = id.trim();
+        String finalTitle = title.trim();
+        runWrite(service -> service.createInitiative(finalId, finalTitle));
+    }
+
+    private void onSetUpContextStore() {
+        String id = Messages.showInputDialog(project,
+                "Context store id (leave blank for the default):", "Set Up Context Store",
+                Messages.getQuestionIcon());
+        if (id == null) return; // cancelled (empty is allowed → default store)
+        String finalId = id.isBlank() ? null : id.trim();
+        runWrite(service -> service.setupContextStore(finalId));
+    }
+
+    private void onSetUpWorkspace() {
+        String name = Messages.showInputDialog(project,
+                "Workspace name:", "Set Up Workspace", Messages.getQuestionIcon());
+        if (name == null || name.isBlank()) return;
+        String finalName = name.trim();
+        runWrite(service -> service.setupWorkspace(finalName));
+    }
+
     // ---- store write actions -------------------------------------------------
 
     private void onNewStore() {
@@ -392,7 +446,7 @@ public final class CoordinationPanel extends JPanel {
         if (!dlg.showAndGet()) return;
         String id = dlg.getStoreId();
         String path = dlg.getStorePath();
-        runStoreWrite(service -> service.setupStore(id, path));
+        runWrite(service -> service.setupStore(id, path));
     }
 
     private void onRegisterStore() {
@@ -403,7 +457,7 @@ public final class CoordinationPanel extends JPanel {
                 project, null);
         if (chosen == null) return;
         String path = chosen.getPath();
-        runStoreWrite(service -> service.registerStore(path));
+        runWrite(service -> service.registerStore(path));
     }
 
     private void onStoreDoctor(StoreEntry store) {
@@ -440,7 +494,7 @@ public final class CoordinationPanel extends JPanel {
     }
 
     private void onUnregisterStore(StoreEntry store) {
-        runStoreWrite(service -> service.unregisterStore(store.id()));
+        runWrite(service -> service.unregisterStore(store.id()));
     }
 
     private void onRemoveStore(StoreEntry store) {
@@ -450,7 +504,7 @@ public final class CoordinationPanel extends JPanel {
                         + "cannot be undone." + where,
                 "Remove Store", "Delete Files", "Cancel", Messages.getWarningIcon());
         if (answer != Messages.YES) return;
-        runStoreWrite(service -> service.removeStore(store.id()));
+        runWrite(service -> service.removeStore(store.id()));
     }
 
     // ---- workset write actions ----------------------------------------------
@@ -460,7 +514,7 @@ public final class CoordinationPanel extends JPanel {
         if (!dlg.showAndGet()) return;
         String name = dlg.getWorksetName();
         List<WorksetEntry.Member> members = dlg.getMembers();
-        runStoreWrite(service -> service.createWorkset(name, members));
+        runWrite(service -> service.createWorkset(name, members));
     }
 
     private void onRemoveWorkset(WorksetEntry workset) {
@@ -469,7 +523,7 @@ public final class CoordinationPanel extends JPanel {
                         + "saved workset is deleted.",
                 "Remove Workset", Messages.getQuestionIcon());
         if (answer != Messages.YES) return;
-        runStoreWrite(service -> service.removeWorkset(workset.name()));
+        runWrite(service -> service.removeWorkset(workset.name()));
     }
 
     /**
@@ -519,7 +573,7 @@ public final class CoordinationPanel extends JPanel {
 
     // ---- write dispatch ------------------------------------------------------
 
-    private void runStoreWrite(Function<CoordinationService, CoordinationService.WriteResult> action) {
+    private void runWrite(Function<CoordinationService, CoordinationService.WriteResult> action) {
         ApplicationManager.getApplication().executeOnPooledThread(() -> {
             CoordinationService service = project.getService(CoordinationService.class);
             CoordinationService.WriteResult result = service != null
@@ -579,6 +633,61 @@ public final class CoordinationPanel extends JPanel {
         @Override
         public void actionPerformed(@NotNull AnActionEvent e) {
             reload();
+        }
+    }
+
+    // ---- legacy 1.4 coordination write actions -------------------------------
+    // Visible only on the pre-1.5 (legacy) surface, and enabled only within the CLI window
+    // [1.4.0, 1.5.0). On a 1.5 CLI the surface is store-lead, so these hide — they self-retire.
+
+    private final class NewInitiativeAction extends CoordinationAction {
+        NewInitiativeAction() {
+            super("New Initiative", "Create an initiative via the OpenSpec CLI", AllIcons.General.Add);
+        }
+
+        @Override
+        public void update(@NotNull AnActionEvent e) {
+            e.getPresentation().setVisible(!storeModel);
+            e.getPresentation().setEnabled(coordinationWriteEnabled);
+        }
+
+        @Override
+        public void actionPerformed(@NotNull AnActionEvent e) {
+            onNewInitiative();
+        }
+    }
+
+    private final class SetUpContextStoreAction extends CoordinationAction {
+        SetUpContextStoreAction() {
+            super("Set Up Context Store", "Set up or register a context store", AllIcons.Nodes.Folder);
+        }
+
+        @Override
+        public void update(@NotNull AnActionEvent e) {
+            e.getPresentation().setVisible(!storeModel);
+            e.getPresentation().setEnabled(coordinationWriteEnabled);
+        }
+
+        @Override
+        public void actionPerformed(@NotNull AnActionEvent e) {
+            onSetUpContextStore();
+        }
+    }
+
+    private final class SetUpWorkspaceAction extends CoordinationAction {
+        SetUpWorkspaceAction() {
+            super("Set Up Workspace", "Set up a coordination workspace", AllIcons.Actions.AddMulticaret);
+        }
+
+        @Override
+        public void update(@NotNull AnActionEvent e) {
+            e.getPresentation().setVisible(!storeModel);
+            e.getPresentation().setEnabled(coordinationWriteEnabled);
+        }
+
+        @Override
+        public void actionPerformed(@NotNull AnActionEvent e) {
+            onSetUpWorkspace();
         }
     }
 

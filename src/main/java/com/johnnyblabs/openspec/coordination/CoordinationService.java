@@ -694,6 +694,15 @@ public final class CoordinationService {
         public static WriteResult fail(String message) {
             return new WriteResult(false, message, null, null, false, List.of(), List.of());
         }
+
+        /**
+         * A success carrying an optional created path (e.g. a freshly created {@code initiative.yaml})
+         * so the caller can refresh VFS and open it. Used by the legacy 1.4 coordination writes, whose
+         * 1.4 CLI commands do not emit the uniform {@code status[]} envelope the store writes parse.
+         */
+        public static WriteResult ok(String message, @Nullable String createdPath) {
+            return new WriteResult(true, message, createdPath, null, false, List.of(), List.of());
+        }
     }
 
     /** Creates and registers a store: {@code store setup <id> --path <path> --json}. Off-EDT. */
@@ -892,6 +901,115 @@ public final class CoordinationService {
         }
         Diagnostic top = highestSeverity(all);
         return (top != null && severityRank(top.severity()) >= 2) ? top : null;
+    }
+
+    // ---- Legacy 1.4 coordination write actions (Full tier, CLI [1.4.0, 1.5.0)) ----
+
+    /**
+     * Guidance shown when a legacy coordination write is attempted outside the coordination window
+     * {@code [1.4.0, 1.5.0)} — i.e. below {@code 1.4.0} (the commands do not yet exist) or at/above
+     * {@code 1.5.0} (the {@code workspace} / {@code context-store} / {@code initiative} commands were
+     * removed). No command is shelled out in that case — the write short-circuits here. The message
+     * is accurate for both out-of-window cases and never tells an in-window (1.4.x) user they need a
+     * different version, because an in-window user never reaches this guard.
+     */
+    static final String COORDINATION_WRITE_GUIDANCE =
+            "Coordination write actions require an OpenSpec CLI in the 1.4.x line "
+                    + "(the workspace / context-store / initiative commands were removed in 1.5.0).";
+
+    /**
+     * Creates an initiative via {@code openspec initiative create <id> --title <title>}. Runs only
+     * within the coordination window {@code [1.4.0, 1.5.0)} (via {@link #cliCoordinationAvailable()});
+     * outside it, short-circuits with {@link #COORDINATION_WRITE_GUIDANCE} and never shells out. Off
+     * the EDT. On success, returns the path to the created {@code initiative.yaml} when it can be
+     * located so the caller can open it.
+     */
+    public WriteResult createInitiative(String id, String title) {
+        if (!cliCoordinationAvailable()) {
+            return WriteResult.fail(COORDINATION_WRITE_GUIDANCE);
+        }
+        try {
+            CliRunner.CliResult r = CliRunner.run(project, "initiative", "create", id, "--title", title);
+            if (!r.isSuccess()) {
+                return WriteResult.fail(stderrOrStdout(r));
+            }
+            return WriteResult.ok("Created initiative '" + id + "'.", findInitiativeMetadataPath(id));
+        } catch (CliRunner.CliException e) {
+            return WriteResult.fail("Failed to create initiative: " + e.getMessage());
+        } catch (Exception e) {
+            // A pooled-thread write must never crash the thread; degrade to a fail result.
+            LOG.warn("initiative create failed", e);
+            return WriteResult.fail("Failed to create initiative.");
+        }
+    }
+
+    /**
+     * Sets up / registers a context store via {@code openspec context-store setup [id]}. Window-gated
+     * like {@link #createInitiative}. Off the EDT.
+     */
+    public WriteResult setupContextStore(@Nullable String id) {
+        if (!cliCoordinationAvailable()) {
+            return WriteResult.fail(COORDINATION_WRITE_GUIDANCE);
+        }
+        try {
+            CliRunner.CliResult r = (id == null || id.isBlank())
+                    ? CliRunner.run(project, "context-store", "setup")
+                    : CliRunner.run(project, "context-store", "setup", id);
+            return r.isSuccess()
+                    ? WriteResult.ok("Set up context store.", null)
+                    : WriteResult.fail(stderrOrStdout(r));
+        } catch (CliRunner.CliException e) {
+            return WriteResult.fail("Failed to set up context store: " + e.getMessage());
+        } catch (Exception e) {
+            LOG.warn("context-store setup failed", e);
+            return WriteResult.fail("Failed to set up context store.");
+        }
+    }
+
+    /**
+     * Sets up a workspace via {@code openspec workspace setup --name <name>}. Window-gated like
+     * {@link #createInitiative}. Off the EDT.
+     */
+    public WriteResult setupWorkspace(String name) {
+        if (!cliCoordinationAvailable()) {
+            return WriteResult.fail(COORDINATION_WRITE_GUIDANCE);
+        }
+        try {
+            CliRunner.CliResult r = CliRunner.run(project,
+                    "workspace", "setup", "--name", name, "--no-interactive");
+            return r.isSuccess()
+                    ? WriteResult.ok("Set up workspace '" + name + "'.", null)
+                    : WriteResult.fail(stderrOrStdout(r));
+        } catch (CliRunner.CliException e) {
+            return WriteResult.fail("Failed to set up workspace: " + e.getMessage());
+        } catch (Exception e) {
+            LOG.warn("workspace setup failed", e);
+            return WriteResult.fail("Failed to set up workspace.");
+        }
+    }
+
+    @Nullable
+    private String findInitiativeMetadataPath(String id) {
+        for (InitiativeEntry initiative : resolveInitiatives()) {
+            if (id.equals(initiative.id())) {
+                Path p = InitiativeArtifact.METADATA.resolveExistingPath(initiative);
+                return p != null ? p.toString() : null;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * The CLI's error output for a failed legacy coordination command, preferring stderr then stdout,
+     * with a generic fallback. Unlike the 1.5 store writes (which parse a uniform {@code status[]}
+     * envelope), the 1.4 {@code initiative}/{@code context-store}/{@code workspace} commands do not
+     * emit that envelope, so the spec requires surfacing the CLI's own error text here.
+     */
+    private static String stderrOrStdout(CliRunner.CliResult r) {
+        String err = r.stderr() != null ? r.stderr().trim() : "";
+        if (!err.isEmpty()) return err;
+        String out = r.stdout() != null ? r.stdout().trim() : "";
+        return out.isEmpty() ? "The OpenSpec CLI command failed." : out;
     }
 
     // ---- helpers -------------------------------------------------------------
