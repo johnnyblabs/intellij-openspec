@@ -2,6 +2,8 @@
 
 Reference for filling in the [plugin edit page](https://plugins.jetbrains.com/plugin/30678-openspec/edit).
 
+> **Maintenance: Reference** — stable; updated only when the Marketplace listing copy changes (see the [documentation index](README.md)).
+
 ---
 
 ## Short Description (search results line)

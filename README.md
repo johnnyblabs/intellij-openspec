@@ -6,6 +6,8 @@
 
 An IDE-native client for the [OpenSpec](https://github.com/fission-ai/openspec) spec-driven development framework by [Fission AI](https://github.com/fission-ai). Browse specs, orchestrate the propose → generate → implement → archive lifecycle, and route AI-generated artifacts through the tool of your choice — all without leaving IntelliJ.
 
+> **Maintenance: Living** — updated as part of every relevant change. See the [documentation index](docs/README.md) for the full doc map and each doc's maintenance class.
+
 ---
 
 ## Four Ways to Use It
@@ -32,7 +34,7 @@ cd intellij-openspec
 
 **Requirements:** IntelliJ IDEA 2024.2+ (Community or Ultimate), Java 21 JDK for building from source.
 
-**OpenSpec CLI (optional):** The plugin works without the CLI via its built-in fallback paths, and AI-tool detection (all 30 supported tools) is plugin-side — it works on any CLI, or none. **Minimum supported CLI is 1.3.0.** The plugin tracks the CLI's evolving model per version: on **1.4.x** it surfaces the legacy coordination layer (workspaces, context stores, and initiatives, plus the `workspace-planning` schema) that exists in the `[1.4.0, 1.5.0)` window; on **1.5.0+** it surfaces the current **store/workset** model that replaced it. Note that **OpenSpec CLI 1.5.0 replaced the coordination commands and the `workspace-planning` schema with a store/workset model**; on 1.5.0+ the plugin stops calling the removed commands and instead shows the new model in the Coordination tab — your registered **stores** (with id, root, and health) and your local **worksets** (with their member folders), sourced from the CLI with a built-in fallback that reads OpenSpec's global data directory. Any surviving pre-1.5 state appears in a muted, read-only "Legacy (pre-1.5)" group. With CLI 1.5.0+ the IDE also offers store/workset **write actions** — creating or registering a store, revealing a workset's member folders, and creating or removing stores/worksets (store Remove is a guarded, destructive delete) — all delegating to the CLI; the plugin never migrates state — it only reflects what the CLI owns. The surface is language-agnostic and works across the JetBrains IDE family. Users on CLI 1.0, 1.1, or 1.2 will see a one-time startup notification recommending upgrade — the plugin continues to function but features that require the CLI are disabled:
+**OpenSpec CLI (optional):** The plugin works without the CLI via its built-in fallback paths, and AI-tool detection (all 30 supported tools) is plugin-side — it works on any CLI, or none. **Minimum supported CLI is 1.3.0** (see the canonical [Version support](docs/openspec-support.md#version-support) block for the full per-version support list). The plugin tracks the CLI's evolving model per version: on **1.4.x** it surfaces the legacy coordination layer (workspaces, context stores, and initiatives, plus the `workspace-planning` schema) that exists in the `[1.4.0, 1.5.0)` window; on **1.5.0+** it surfaces the current **store/workset** model that replaced it. Note that **OpenSpec CLI 1.5.0 replaced the coordination commands and the `workspace-planning` schema with a store/workset model**; on 1.5.0+ the plugin stops calling the removed commands and instead shows the new model in the Coordination tab — your registered **stores** (with id, root, and health) and your local **worksets** (with their member folders), sourced from the CLI with a built-in fallback that reads OpenSpec's global data directory. Any surviving pre-1.5 state appears in a muted, read-only "Legacy (pre-1.5)" group. With CLI 1.5.0+ the IDE also offers store/workset **write actions** — creating or registering a store, revealing a workset's member folders, and creating or removing stores/worksets (store Remove is a guarded, destructive delete) — all delegating to the CLI; the plugin never migrates state — it only reflects what the CLI owns. The surface is language-agnostic and works across the JetBrains IDE family. Users on CLI 1.0, 1.1, or 1.2 will see a one-time startup notification recommending upgrade — the plugin continues to function but features that require the CLI are disabled:
 
 ```bash
 npm i -g @fission-ai/openspec
@@ -58,6 +60,7 @@ CI verifies the plugin on **Windows and macOS in addition to Linux**, so platfor
 
 ## Links
 
+- [Documentation Index](docs/README.md) — Map of every doc: purpose, audience, and maintenance class
 - [Feature Reference](docs/feature-reference.md) — Complete reference for all plugin features, settings, and troubleshooting
 - [OpenSpec Client Coverage](docs/openspec-support.md) — What the plugin supports vs. the OpenSpec client, by CLI version
 - [Feature Comparison Matrix](docs/feature-comparison-matrix.md) — How this plugin compares to VS Code alternatives
