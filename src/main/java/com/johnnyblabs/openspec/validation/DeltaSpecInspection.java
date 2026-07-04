@@ -21,8 +21,8 @@ public class DeltaSpecInspection extends LocalInspectionTool {
             "^## (ADDED|MODIFIED|REMOVED|RENAMED) Requirements", Pattern.MULTILINE);
     private static final Pattern FULL_SPEC_PATTERN = Pattern.compile(
             "^## (Requirements|Purpose)", Pattern.MULTILINE);
-    private static final Pattern REQUIREMENT_PATTERN = Pattern.compile(
-            "^### Requirement:\\s*.+", Pattern.MULTILINE);
+    private static final Pattern REQUIREMENT_PATTERN =
+            com.johnnyblabs.openspec.util.SpecPatterns.REQUIREMENT_HEADER;
     private static final Pattern SCENARIO_PATTERN = Pattern.compile(
             "^#{4} Scenario:.+", Pattern.MULTILINE);
     private static final Pattern RENAMED_ENTRY_PATTERN = Pattern.compile(
@@ -90,7 +90,7 @@ public class DeltaSpecInspection extends LocalInspectionTool {
 
             Matcher reqMatcher = REQUIREMENT_PATTERN.matcher(sectionContent);
             while (reqMatcher.find()) {
-                String reqHeader = reqMatcher.group().replaceFirst("^###\\s*Requirement:\\s*", "").trim();
+                String reqHeader = reqMatcher.group(1).trim();
                 int nextReq = findNext(REQUIREMENT_PATTERN, sectionContent, reqMatcher.end());
                 String reqContent = sectionContent.substring(reqMatcher.end(), nextReq);
 
@@ -176,7 +176,7 @@ public class DeltaSpecInspection extends LocalInspectionTool {
             String content = new String(specFile.contentsToByteArray(), StandardCharsets.UTF_8);
             Matcher reqMatcher = REQUIREMENT_PATTERN.matcher(content);
             while (reqMatcher.find()) {
-                String name = reqMatcher.group().replaceFirst("^###\\s*Requirement:\\s*", "").trim();
+                String name = reqMatcher.group(1).trim();
                 if (reqName.equals(name)) {
                     int blockEnd = findNextStatic(REQUIREMENT_PATTERN, content, reqMatcher.end());
                     // Also stop at next ## heading
@@ -231,7 +231,7 @@ public class DeltaSpecInspection extends LocalInspectionTool {
             // Find the requirement line in the delta spec
             Matcher reqMatcher = REQUIREMENT_PATTERN.matcher(text);
             while (reqMatcher.find()) {
-                String name = reqMatcher.group().replaceFirst("^###\\s*Requirement:\\s*", "").trim();
+                String name = reqMatcher.group(1).trim();
                 if (!reqName.equals(name)) continue;
 
                 // Find the end of this requirement block

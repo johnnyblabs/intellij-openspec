@@ -30,6 +30,71 @@ class SpecSyncServiceTest {
     }
 
     @Nested
+    class HeaderCasingParity {
+
+        @Test
+        void parsesDeltaWithLowercaseHeaderToken() {
+            String content = """
+                    ## ADDED Requirements
+
+                    ### requirement: Lowercase header
+                    The system SHALL accept this requirement.
+
+                    #### Scenario: Accept
+                    - **WHEN** the delta is parsed
+                    - **THEN** the block is found
+                    """;
+
+            List<DeltaSpecOperation> ops = service.parseDeltaSpecContent("case-parity", content);
+
+            assertEquals(1, ops.size(), "CLI 1.4+ parses the header token case-insensitively");
+            assertEquals("Lowercase header", ops.getFirst().requirementName());
+        }
+
+        @Test
+        void findsRequirementBlockWithNonCanonicalHeaderCasing() {
+            String mainSpec = """
+                    # Case Parity
+
+                    ## Requirements
+
+                    ### requirement: Target block
+                    The system SHALL be found.
+
+                    #### Scenario: Find
+                    - **WHEN** sync looks it up
+                    - **THEN** it resolves
+                    """;
+
+            int[] block = service.findRequirementBlock(mainSpec, "Target block");
+
+            assertNotNull(block, "Lookup must resolve a lowercase-token header");
+            assertTrue(mainSpec.substring(block[0], block[1]).contains("The system SHALL be found."));
+        }
+
+        @Test
+        void renamedRewritesNonCanonicalHeaderToCanonicalCasing() {
+            String mainSpec = """
+                    # Case Parity
+
+                    ### requirement: Old name
+                    The system SHALL be renamed.
+                    """;
+            DeltaSpecOperation op = new DeltaSpecOperation(
+                    OperationType.RENAMED, "case-parity", null, null, "Old name", "New name");
+            List<String> warnings = new ArrayList<>();
+
+            String result = service.applyRenamed(mainSpec, op, warnings);
+
+            assertTrue(warnings.isEmpty(), "Rename must match the lowercase-token header: " + warnings);
+            assertTrue(result.contains("### Requirement: New name"),
+                    "Rewritten header must use canonical casing, got: " + result);
+            assertFalse(result.contains("### requirement:"),
+                    "Non-canonical source header must not survive the rewrite: " + result);
+        }
+    }
+
+    @Nested
     class ParseDeltaSpecContent {
 
         @Test

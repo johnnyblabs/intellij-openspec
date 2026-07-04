@@ -153,8 +153,8 @@ public final class ExploreContextService {
         }
     }
 
-    private static final Pattern REQUIREMENT_PATTERN = Pattern.compile(
-            "^### Requirement:\\s*(.+)", Pattern.MULTILINE);
+    private static final Pattern REQUIREMENT_PATTERN =
+            com.johnnyblabs.openspec.util.SpecPatterns.REQUIREMENT_HEADER;
     private static final Pattern SCENARIO_PATTERN = Pattern.compile(
             "^#### Scenario:", Pattern.MULTILINE);
 

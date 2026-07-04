@@ -27,7 +27,7 @@ import java.util.regex.Pattern;
 public final class BuiltInValidator {
 
     private static final Pattern TITLE_PATTERN = Pattern.compile("^# .+", Pattern.MULTILINE);
-    private static final Pattern REQUIREMENT_PATTERN = Pattern.compile("^### Requirement:\\s*.+", Pattern.MULTILINE);
+    private static final Pattern REQUIREMENT_PATTERN = com.johnnyblabs.openspec.util.SpecPatterns.REQUIREMENT_HEADER;
     private static final Pattern RFC_KEYWORD_PATTERN = Pattern.compile("\\b(SHALL NOT|SHOULD NOT|SHALL|SHOULD|MAY)\\b");
     private static final Pattern SCENARIO_PATTERN = Pattern.compile("^#{4} Scenario:.+", Pattern.MULTILINE);
     private static final Pattern CLAUSE_PATTERN = Pattern.compile("^-\\s+\\*{0,2}(GIVEN|WHEN|THEN|AND)\\*{0,2}\\b", Pattern.MULTILINE);
@@ -101,14 +101,22 @@ public final class BuiltInValidator {
         while (reqMatcher.find()) {
             int reqStart = reqMatcher.start();
             int reqLine = lineNumberAt(content, reqStart);
-            String reqHeader = reqMatcher.group().replaceFirst("^###\\s*Requirement:\\s*", "").trim();
+            String reqHeader = reqMatcher.group(1).trim();
             // Find the content between this requirement and the next requirement or end
             int nextReq = findNextRequirement(content, reqMatcher.end());
             String reqContent = content.substring(reqMatcher.end(), nextReq);
 
             if (!RFC_KEYWORD_PATTERN.matcher(reqContent).find()) {
-                issues.add(new ValidationIssue(ValidationIssue.Severity.ERROR, path, reqLine,
-                        "Requirement '" + reqHeader + "' must contain RFC 2119 keywords (SHALL, MUST, SHOULD, MAY)", "spec-rfc-keywords"));
+                // CLI 1.4+ parity: a keyword that appears only in the header gets the CLI's
+                // targeted remediation instead of the generic missing-keyword error.
+                if (RFC_KEYWORD_PATTERN.matcher(reqMatcher.group()).find()) {
+                    issues.add(new ValidationIssue(ValidationIssue.Severity.ERROR, path, reqLine,
+                            "Requirement '" + reqHeader + "' has its RFC 2119 keyword only in the header — "
+                                    + "move the keyword onto the requirement body line", "spec-rfc-keyword-in-header"));
+                } else {
+                    issues.add(new ValidationIssue(ValidationIssue.Severity.ERROR, path, reqLine,
+                            "Requirement '" + reqHeader + "' must contain RFC 2119 keywords (SHALL, MUST, SHOULD, MAY)", "spec-rfc-keywords"));
+                }
             }
 
             // Requirement must have at least one scenario
@@ -418,7 +426,7 @@ public final class BuiltInValidator {
             Matcher reqMatcher = REQUIREMENT_PATTERN.matcher(sectionContent);
             while (reqMatcher.find()) {
                 int reqLine = lineNumberAt(content, sectionStart + reqMatcher.start());
-                String reqHeader = reqMatcher.group().replaceFirst("^###\\s*Requirement:\\s*", "").trim();
+                String reqHeader = reqMatcher.group(1).trim();
                 int nextReq = findNextRequirement(sectionContent, reqMatcher.end());
                 String reqContent = sectionContent.substring(reqMatcher.end(), nextReq);
 

@@ -35,8 +35,8 @@ public final class SpecSyncService {
 
     private static final Pattern SECTION_HEADER = Pattern.compile(
             "^## (ADDED|MODIFIED|REMOVED|RENAMED) Requirements\\s*$", Pattern.MULTILINE);
-    private static final Pattern REQUIREMENT_HEADER = Pattern.compile(
-            "^### Requirement:\\s*(.+)$", Pattern.MULTILINE);
+    private static final Pattern REQUIREMENT_HEADER =
+            com.johnnyblabs.openspec.util.SpecPatterns.REQUIREMENT_HEADER;
     private static final Pattern RENAMED_ENTRY = Pattern.compile(
             "(?m)^\\s*(?:-\\s*)?FROM:\\s*(.+)$\\s*^\\s*(?:-\\s*)?TO:\\s*(.+)$");
 
@@ -382,14 +382,17 @@ public final class SpecSyncService {
             return content;
         }
         Pattern headerPattern = Pattern.compile(
-                "^(### Requirement:\\s*)" + Pattern.quote(op.fromName()) + "\\s*$",
+                "^(###\\s+Requirement:\\s*)" + Pattern.quote(op.fromName()) + "\\s*$",
                 Pattern.MULTILINE | Pattern.CASE_INSENSITIVE);
         Matcher m = headerPattern.matcher(content);
         if (!m.find()) {
             warnings.add("RENAMED: requirement '" + op.fromName() + "' not found in " + op.capabilityName());
             return content;
         }
-        return m.replaceFirst("$1" + Matcher.quoteReplacement(op.toName()));
+        // Rewritten headers always come out in canonical casing, even when the matched
+        // source header used a non-canonical token (recognized for CLI 1.4+ parity).
+        return m.replaceFirst(Matcher.quoteReplacement(
+                com.johnnyblabs.openspec.util.SpecPatterns.CANONICAL_HEADER_PREFIX + op.toName()));
     }
 
     /**
@@ -399,7 +402,7 @@ public final class SpecSyncService {
      */
     int[] findRequirementBlock(String content, String reqName) {
         Pattern headerPattern = Pattern.compile(
-                "^### Requirement:\\s*" + Pattern.quote(reqName) + "\\s*$",
+                "^###\\s+Requirement:\\s*" + Pattern.quote(reqName) + "\\s*$",
                 Pattern.MULTILINE | Pattern.CASE_INSENSITIVE);
         Matcher m = headerPattern.matcher(content);
         if (!m.find()) return null;
