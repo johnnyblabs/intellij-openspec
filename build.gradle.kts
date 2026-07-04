@@ -134,9 +134,12 @@ sonar {
 // IntelliJ Platform SDK graph is huge and mostly provided/test noise, so an unscoped SBOM would
 // drown the real deps. Emits build/reports/bom.json, uploaded to the analysis server in CI.
 tasks.cyclonedxBom {
-    setIncludeConfigs(listOf("runtimeClasspath"))
-    setOutputFormat("json")
-    setOutputName("bom")
+    includeConfigs.set(listOf("runtimeClasspath"))
+    // The 2.4.x plugin deprecated outputFormat/outputName in favor of the json/xmlOutput
+    // file properties. Pin jsonOutput to build/reports/bom.json — the exact path CI
+    // uploads to the dependency server. (The plugin also emits bom.xml alongside it;
+    // harmless — build/reports is ephemeral and only bom.json is uploaded.)
+    jsonOutput.set(layout.buildDirectory.file("reports/bom.json"))
 }
 
 changelog {
