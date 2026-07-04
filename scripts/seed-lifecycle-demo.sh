@@ -56,6 +56,25 @@ The system SHALL greet the user by name.
 - **THEN** the system greets them by name
 EOF
 
+# Keyword only in the requirement HEADER — triggers the plugin's targeted
+# "move the keyword onto the requirement body line" diagnostic (CLI 1.4 parity).
+mkdir -p openspec/specs/keyword-in-header
+cat > openspec/specs/keyword-in-header/spec.md << 'EOF'
+# Keyword In Header
+
+## Purpose
+Demo spec whose requirement carries its RFC 2119 keyword only in the header.
+
+## Requirements
+
+### Requirement: The system SHALL demonstrate the header hint
+A body sentence without the normative keyword anywhere.
+
+#### Scenario: Hint
+- **WHEN** the file is inspected
+- **THEN** the targeted keyword-placement diagnostic appears
+EOF
+
 mkdir -p openspec/changes/demo-add-farewell
 cat > openspec/changes/demo-add-farewell/.openspec.yaml << 'EOF'
 schema: spec-driven

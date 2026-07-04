@@ -5,9 +5,12 @@ import com.intellij.driver.client.Remote
 import com.intellij.driver.model.OnDispatcher
 import com.intellij.driver.sdk.Project
 import com.intellij.driver.sdk.getToolWindow
+import com.intellij.driver.sdk.isCodeAnalysisRunning
+import com.intellij.driver.sdk.openFile
 import com.intellij.driver.sdk.invokeAction
 import com.intellij.driver.sdk.singleProject
 import com.intellij.driver.sdk.ui.components.ideFrame
+import com.intellij.driver.sdk.ui.ui
 import com.intellij.driver.sdk.waitForIndicators
 import com.intellij.ide.starter.driver.engine.runIdeWithDriver
 import com.intellij.ide.starter.ide.IdeProductProvider
@@ -157,5 +160,68 @@ class OpenSpecUiSmokeTest {
         return driver.utility(ActionCenterRef::class)
             .getNotifications(project)
             .map { it.getContent() }
+    }
+
+    /**
+     * Journey 4 — editor validator parity (of 5): the lowercase-header spec draws no
+     * requirement-recognition complaint; the keyword-in-header spec draws the
+     * targeted diagnostic. Asserted through the Problems view's rendered text.
+     */
+    @Test
+    fun editorShowsValidatorParityDiagnostics() {
+        newContext(freshDemoProject()).runIdeWithDriver().useDriverAndCloseIde {
+            waitForIndicators(5.minutes)
+            val project = singleProject()
+
+            openFile("openspec/specs/keyword-in-header/spec.md", project)
+            withContext(OnDispatcher.EDT) { getToolWindow("Problems View").show() }
+            ideFrame {
+                waitUntil("targeted keyword-placement diagnostic in Problems view", timeout = 2.minutes) {
+                    hasText("Requirement 'The system SHALL demonstrate the header hint' has its RFC 2119 keyword only in the header — move the keyword onto the requirement body line")
+                }
+            }
+
+            openFile("openspec/specs/greeting/spec.md", project)
+            waitUntil("code analysis settles on the greeting spec", timeout = 2.minutes) {
+                !isCodeAnalysisRunning(project)
+            }
+            ideFrame {
+                // Parity: the lowercase '### requirement:' header counts as a requirement
+                // heading, so the missing-requirement inspection must NOT fire.
+                check(!hasText("Spec file should contain at least one '### Requirement:' heading")) {
+                    "lowercase header was flagged — CLI 1.4 parity regression"
+                }
+            }
+        }
+    }
+
+    /**
+     * Journey 5 — archive guard: Archive on the 1/4-complete change surfaces the
+     * compliance pre-flight, cancel leaves the change directory unmoved.
+     */
+    @Test
+    fun archiveGuardsIncompleteChange() {
+        val projectPath = freshDemoProject()
+        newContext(projectPath).runIdeWithDriver().useDriverAndCloseIde {
+            waitForIndicators(5.minutes)
+
+            invokeAction("OpenSpec.Archive", now = false)
+
+            // Dialogs are separate windows, NOT descendants of the IDE frame — search
+            // from the driver-level UI root (learned from the hierarchy dump).
+            waitUntil("compliance pre-flight dialog for the incomplete change", timeout = 3.minutes) {
+                ui.x { byTitle("Compliance Check — demo-add-farewell") }.present()
+            }
+            // Robot Escape depends on focus — click the dialog's Cancel button instead.
+            ui.x { byTitle("Compliance Check — demo-add-farewell") }
+                .x { byAccessibleName("Cancel") }
+                .click(null)
+            waitUntil("pre-flight dialog closed on cancel") {
+                ui.x { byTitle("Compliance Check — demo-add-farewell") }.notPresent()
+            }
+        }
+        check(Files.isDirectory(projectPath.resolve("openspec/changes/demo-add-farewell"))) {
+            "change directory was moved despite cancelling the archive"
+        }
     }
 }

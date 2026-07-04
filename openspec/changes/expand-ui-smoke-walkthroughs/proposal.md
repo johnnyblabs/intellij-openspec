@@ -6,11 +6,10 @@ The first three UI smoke journeys automated the walkthrough's rendering spine (t
 
 ## What Changes
 
-- **Three additional journeys** on the existing Starter/Driver infrastructure, reusing the shared seeded fixture:
+- **Additional journeys** on the existing Starter/Driver infrastructure, reusing the shared seeded fixture:
   1. *Editor validator parity:* open the seeded lowercase-header spec in the editor and assert via the highlighting daemon that the header draws no complaint; open a keyword-in-header-only fixture and assert the targeted diagnostic appears.
-  2. *Feedback dialog guard:* invoke Send OpenSpec Feedback, assert the dialog renders, assert an empty message blocks submission, and leave via cancel — no message is ever sent.
-  3. *Archive guard:* invoke Archive on the seeded incomplete change and assert the confirmation/warning surface appears, then cancel — the change directory is not moved.
-- **Spec revision:** the `ui-smoke-journeys` suite-size language ("2–3") is updated to reflect a six-journey suite with the same policy (presence-level assertions, manual dispatch + release gating, never a per-PR blocker).
+  2. *Archive guard:* invoke Archive on the seeded incomplete change and assert the confirmation/warning surface appears, then cancel — the change directory is not moved.
+- **Spec revision:** the `ui-smoke-journeys` suite-size language ("2–3") is updated to reflect a five-journey suite with the same policy (presence-level assertions, manual dispatch + release gating, never a per-PR blocker).
 - Fixture gains one file (a keyword-in-header-only spec) added through the shared seeding script so the manual and automated environments stay in lockstep.
 
 ## Capabilities
@@ -21,7 +20,7 @@ The first three UI smoke journeys automated the walkthrough's rendering spine (t
 
 ### Modified Capabilities
 
-- `ui-smoke-journeys`: suite grows to six journeys (editor parity, feedback guard, archive guard added); size language revised; policy unchanged.
+- `ui-smoke-journeys`: suite grows to five journeys (editor parity and archive guard added; a planned feedback-dialog journey was dropped when the feedback feature itself was withdrawn — see change remove-feedback-action); size language revised; policy unchanged.
 
 ## Impact
 

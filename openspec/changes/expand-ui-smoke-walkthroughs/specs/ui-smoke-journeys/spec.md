@@ -4,7 +4,7 @@
 
 ### Requirement: Rendered-UI smoke journeys exist
 
-The project SHALL maintain a small suite (currently six) of automated UI smoke journeys that drive a real sandbox IDE with the plugin installed, asserting presence and wiring of rendered surfaces. Journeys SHALL assert component presence and wiring, not textual prose or pixels, and SHALL NOT mutate durable state (dialog journeys exit via cancel; no archive is performed, no feedback is sent).
+The project SHALL maintain a small suite (currently five) of automated UI smoke journeys that drive a real sandbox IDE with the plugin installed, asserting presence and wiring of rendered surfaces. Journeys SHALL assert component presence and wiring, not textual prose or pixels, and SHALL NOT mutate durable state (dialog journeys exit via cancel; no archive is performed).
 
 #### Scenario: Open-and-render journey
 - **WHEN** the smoke suite opens a seeded demo project
@@ -21,10 +21,6 @@ The project SHALL maintain a small suite (currently six) of automated UI smoke j
 #### Scenario: Editor validator-parity journey
 - **WHEN** the smoke suite opens the seeded lowercase-header spec and a seeded keyword-in-header-only spec in the editor
 - **THEN** it SHALL assert via the highlighting daemon that the lowercase header draws no requirement-recognition complaint and that the keyword-in-header spec draws the targeted move-the-keyword diagnostic
-
-#### Scenario: Feedback dialog guard journey
-- **WHEN** the smoke suite invokes the Send OpenSpec Feedback action
-- **THEN** it SHALL assert the dialog renders and an empty message blocks submission, and SHALL leave via cancel without sending anything
 
 #### Scenario: Archive guard journey
 - **WHEN** the smoke suite invokes Archive on the seeded incomplete change
