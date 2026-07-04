@@ -122,6 +122,44 @@ class SchemaServiceTest {
         }
     }
 
+    /**
+     * Pins the declared supported-version floor at exactly {@code 1.3.0}
+     * (plugin-core "Supported CLI versions and capability preservation" — the
+     * "floor is declared and pinned" scenario). {@code isSchemaSupported()} is a
+     * floor-consuming behavior; asserting the boundary here means the declared
+     * floor cannot drift up or down without failing the build.
+     */
+    @Nested
+    class SupportedVersionFloor {
+
+        private void detect(String version) {
+            when(project.getService(CliDetectionService.class)).thenReturn(cliDetection);
+            when(cliDetection.isAvailable()).thenReturn(true);
+            when(cliDetection.getDetectedVersion()).thenReturn(version);
+        }
+
+        @Test
+        void floorVersionIsSupported() {
+            detect("1.3.0");
+            assertTrue(service.isSchemaSupported(),
+                    "1.3.0 is the declared supported-version floor and MUST be supported");
+        }
+
+        @Test
+        void justBelowFloorIsNotSupported() {
+            detect("1.2.9");
+            assertFalse(service.isSchemaSupported(),
+                    "1.2.9 is below the 1.3.0 floor and MUST NOT be supported — raising the floor is a deliberate, disclosed change");
+        }
+
+        @Test
+        void aboveFloorIsSupported() {
+            detect("1.4.1");
+            assertTrue(service.isSchemaSupported(),
+                    "1.4.1 is above the floor and MUST be supported");
+        }
+    }
+
     @Nested
     class ForkSchema {
 
