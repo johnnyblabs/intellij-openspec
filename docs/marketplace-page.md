@@ -89,6 +89,7 @@ Paste this HTML into the "Description" field on the plugin edit page:
   <li>Bulk archive with conflict detection for multi-change projects</li>
   <li>Setup wizard for first-run onboarding</li>
   <li>Explore panel: assembled project context for AI conversations</li>
+  <li>Coordination tab: browse the OpenSpec store/workset model (and, on CLI 1.5.0+, create and manage stores and worksets), with legacy 1.4 coordination shown read-only</li>
   <li>Custom schema management: fork, create, and switch workflow schemas</li>
   <li>Config profile display and workflow management</li>
   <li>Verify action: check artifact completeness and task progress</li>

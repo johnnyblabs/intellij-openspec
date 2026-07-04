@@ -27,14 +27,15 @@ The tab presents at one of three tiers:
 
 | Tier | When | Behavior |
 |------|------|----------|
-| **Hidden** | No coordination state and not in a coordination mode (or CLI ≥ 1.5.0 with no legacy state) | The tab is not shown. |
-| **Awareness** | Coordination state detected, but no CLI in the `[1.4.0, 1.5.0)` window (missing, below 1.4, or ≥ 1.5.0) | Read-only listing with status indicators; action buttons disabled. |
-| **Full** | Coordination state present and OpenSpec CLI in `[1.4.0, 1.5.0)` | Listing plus initiative-artifact navigation and create/set-up actions. |
+| **Hidden** | No coordination or store/workset state, and not in a coordination mode | The tab is not shown. |
+| **Awareness** | State detected on disk but no supported CLI (missing, or below 1.4 with no 1.5 store CLI) | Read-only listing with status indicators; no write actions. |
+| **Full — 1.4 line** | Coordination state present and CLI in `[1.4.0, 1.5.0)` | **Read-only** listing of workspaces / context stores / initiatives, plus initiative-artifact navigation. The plugin does **not** offer IDE write actions for the 1.4 model — creation/set-up is run from the terminal via the CLI (`openspec initiative create`, `openspec context-store setup`, …). |
+| **Full — 1.5 line** | Store/workset state present and CLI `≥ 1.5.0` | Stores and worksets, **read and write** — see [Stores & Worksets](#stores--worksets-openspec-15) below. |
 
 - **Workspaces** show a resolution indicator (resolves locally / unresolved).
 - **Context stores** show their id and root, plus metadata/git health when `doctor` detail is available.
 - **Initiatives** show a lifecycle status badge (`exploring` / `active` / `complete` / `archived`). Each initiative's artifacts — `initiative.yaml`, `requirements.md`, `design.md`, `decisions.md`, `questions.md`, `tasks.md` — open in the editor (double-click; an uncreated artifact reports that it does not exist yet).
-- **Actions** (Full tier): **New Initiative**, **Set Up Context Store**, **Set Up Workspace** delegate to the CLI and refresh the listing on success; CLI errors are surfaced.
+- **1.4 coordination is read-only in the IDE.** The plugin lists workspaces / context stores / initiatives and opens initiative artifacts, but does not provide IDE create/set-up actions for the 1.4 model — those are run from the terminal via the OpenSpec CLI. (IDE-native write actions exist for the 1.5 store/workset model; see below.)
 
 ### Stores & Worksets (OpenSpec 1.5)
 

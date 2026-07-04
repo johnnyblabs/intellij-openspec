@@ -62,6 +62,7 @@ While your terminal AI works, use the plugin to:
 
 - **Browse tab** — See the tree of specs, changes, and archives
 - **Explore tab** — View assembled project context (config, changes, specs, tools) in Markdown. Use the **Copy** button to feed this context into your CLI tool
+- **Coordination tab** *(appears when coordination or store/workset state is detected)* — On CLI 1.5.0+, browse your registered **stores** and local **worksets** (create/manage them here too); on a 1.4.x CLI, view workspaces/context-stores/initiatives read-only. A natural fit for working across multiple repos from the terminal. See [Stores & Worksets](feature-reference.md#stores--worksets-openspec-15).
 
 See the [Tool Window reference](feature-reference.md#tool-window) for details on each tab.
 
