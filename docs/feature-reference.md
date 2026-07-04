@@ -159,7 +159,7 @@ When you click Generate, the plugin delivers the assembled prompt via your confi
 
 ### AI Tool Detection
 
-The plugin scans your project for AI tool configuration directories:
+The plugin scans your project for AI tool configuration directories — **30 tools are detected** in total; a representative subset is shown below:
 
 | Directory | Tool | Type |
 |-----------|------|------|

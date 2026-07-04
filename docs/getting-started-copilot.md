@@ -2,7 +2,7 @@
 
 *For developers using GitHub Copilot, Cursor, Windsurf, or Cline inside IntelliJ.*
 
-*Last verified: 2026-03-16 against plugin v0.2.3 source*
+*Last verified: 2026-07-03 against plugin v0.3.1 source*
 
 This guide walks you through setting up the OpenSpec IntelliJ plugin and completing your first spec-driven change using an IDE-based AI tool. The examples use GitHub Copilot, but the clipboard workflow works identically with Cursor, Windsurf, and Cline. By the end, you'll have proposed, generated, implemented, and archived a change — the full OpenSpec lifecycle.
 

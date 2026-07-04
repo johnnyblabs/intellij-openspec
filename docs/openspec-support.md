@@ -93,7 +93,7 @@ This section is the **single source of truth** for the plugin's per-CLI-version 
 | Delta-spec diff viewer | ✅ 🧩 | Side-by-side delta vs main spec |
 | Tool-window workflow panel | ✅ 🧩 | Change tree + workflow actions |
 | Coordination tab (1.4) | ✅ 🧩 | Tiered Hidden/Awareness/Full surface for workspaces, context stores, initiatives |
-| Store/workset read surface (1.5) | ✅ 🧩 | Read-only tab presentation of 1.5 stores (with `doctor` health) and worksets, gated at the `1.5.0` floor, with legacy pre-1.5 state demoted; write actions deferred |
+| Store/workset surface (1.5) | ✅ 🧩 | Tab presentation of 1.5 stores (with `doctor` health) and worksets, gated at the `1.5.0` floor, with legacy pre-1.5 state demoted; at the Full tier, CLI-delegated write actions (store setup/register/unregister/remove, workset create/open/remove) plus a `store doctor` health strip |
 | Setup wizard | ✅ 🧩 | Guided onboarding & CLI detection |
 
 ## Lifecycle at a glance

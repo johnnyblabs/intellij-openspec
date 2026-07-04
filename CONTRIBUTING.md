@@ -28,13 +28,19 @@ Or use the Makefile shortcuts: `make build`, `make test`, `make install`.
 src/main/java/com/johnnyblabs/openspec/
 ├── actions/          # IntelliJ actions (menu items, toolbar)
 ├── ai/               # AI provider integration (Claude, OpenAI, Gemini)
+├── coordination/     # OpenSpec coordination model (1.4 workspaces/initiatives; 1.5 stores/worksets)
 ├── dialogs/          # UI dialogs
+├── editor/           # Editor integration (inspections, annotators, line markers)
+├── filetype/         # OpenSpec file-type registration
 ├── model/            # Data models
+├── scaffolding/      # Artifact/project scaffolding + content detection
 ├── services/         # Project services (core logic)
 ├── settings/         # Plugin settings
+├── statusbar/        # Status bar widgets (CLI + AI tools)
 ├── toolwindow/       # Tool window UI (tree, panels)
 ├── util/             # Utilities
-└── validation/       # Built-in validation
+├── validation/       # Built-in validation
+└── version/          # CLI/config version-support model
 ```
 
 The `openspec/` directory contains the project's own specs and change history — this plugin uses the [OpenSpec](https://github.com/fission-ai/openspec) framework for its own development.
