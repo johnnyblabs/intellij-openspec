@@ -198,11 +198,6 @@
                     text="Setup Wizard..."
                     description="Run the OpenSpec setup wizard"
                     icon="AllIcons.Actions.IntentionBulb"/>
-            <action id="OpenSpec.Feedback"
-                    class="com.johnnyblabs.openspec.actions.OpenSpecFeedbackAction"
-                    text="Send OpenSpec Feedback..."
-                    description="Send feedback to the OpenSpec maintainers via openspec feedback"
-                    icon="AllIcons.General.Balloon"/>
             <add-to-group group-id="MainMenu" anchor="before" relative-to-action="ToolsMenu"/>
         </group>
 
@@ -219,7 +214,6 @@
             <reference ref="OpenSpec.Update"/>
             <reference ref="OpenSpec.ManageTools"/>
             <reference ref="OpenSpec.SetupWizard"/>
-            <reference ref="OpenSpec.Feedback"/>
         </group>
     </actions>
 </idea-plugin>
