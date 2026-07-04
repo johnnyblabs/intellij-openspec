@@ -53,3 +53,19 @@ The cleanup flow SHALL preserve non-destructive exits: a terminal handoff for th
 #### Scenario: Pending set changes after dismissal
 - **WHEN** a later `openspec update` reports a different pending file set than the dismissed one
 - **THEN** the cleanup notice SHALL be offered again
+
+### Requirement: Regeneration-loop recognition
+
+Some CLI versions regenerate the very files their migration detector flags (observed on 1.4.1 and 1.5.0 for the junie integration: `init`/`update`/`--force` all re-create the flagged `.junie/commands/opsx-*.md` files), so cleanup cannot resolve the pending state. The plugin SHALL recognize this loop from its post-cleanup verification re-run and terminate the flow truthfully: explain that the CLI itself regenerates these files and nothing on the user's side needs fixing, auto-suppress the notice while the CLI reports the same set, and not offer deletion again for a set observed to regenerate.
+
+#### Scenario: Cleanup verified successful
+- **WHEN** the post-cleanup `openspec update` re-run reports no pending files (or a disjoint set)
+- **THEN** the plugin SHALL report the cleanup as complete
+
+#### Scenario: Regeneration loop detected
+- **WHEN** the post-cleanup `openspec update` re-run reports the same file set that was just removed
+- **THEN** the plugin SHALL explain that this CLI version regenerates the flagged files, SHALL auto-suppress the notice while the reported set is unchanged, and SHALL NOT offer deletion for that set again
+
+#### Scenario: CLI change re-opens the flow
+- **WHEN** a later `openspec update` (e.g. after a CLI upgrade) reports a pending set different from the recorded regenerating set
+- **THEN** the cleanup flow SHALL be available again for the new set

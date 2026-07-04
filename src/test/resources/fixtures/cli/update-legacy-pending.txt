@@ -1,0 +1,23 @@
+
+Upgrading to the new OpenSpec
+
+OpenSpec now uses agent skills, the emerging standard across coding
+agents. This simplifies your setup while keeping everything working
+as before.
+
+Files to remove
+No user content to preserve:
+  • .junie/commands/opsx-apply.md
+  • .junie/commands/opsx-archive.md
+  • .junie/commands/opsx-explore.md
+  • .junie/commands/opsx-propose.md
+
+⚠ Run with --force to auto-cleanup legacy files, or run interactively.
+
+Updating 1 tool(s): junie (1.3.1 → 1.4.1)
+
+
+✓ Updated: Junie (v1.4.1)
+Tools: Junie
+
+Restart your IDE for changes to take effect.

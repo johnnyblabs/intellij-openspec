@@ -19,6 +19,19 @@ public class OpenSpecUpdateAction extends OpenSpecCliAction {
     private static final String STANDARD_DESCRIPTION = "Refresh agent instruction files via openspec update";
 
     @Override
+    protected void showOutput(Project project, com.johnnyblabs.openspec.util.CliRunner.CliResult result) {
+        super.showOutput(project, result);
+        // The CLI reports pending skills-migration cleanup with exit 0 and remediations
+        // (interactive run / --force) that a non-interactive console can't provide —
+        // hand the outcome to the graceful cleanup flow instead of ending on bare success.
+        com.johnnyblabs.openspec.services.UpdateLegacyCleanupService cleanup =
+                project.getService(com.johnnyblabs.openspec.services.UpdateLegacyCleanupService.class);
+        if (cleanup != null) {
+            cleanup.handleUpdateResult(result.stdout());
+        }
+    }
+
+    @Override
     protected String[] getCliArgs() {
         return new String[]{"update"};
     }
