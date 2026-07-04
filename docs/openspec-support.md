@@ -26,7 +26,7 @@ This section is the **single source of truth** for the plugin's per-CLI-version 
 - The plugin is **runtime-version-aware**: recognized schema names are the union of its built-in set and the live `openspec schemas` list, and version-sensitive behavior is gated on the detected CLI version.
 - **Independent axis:** the checked-in config format (`openspec/config.yaml` `version: 1.2.0`) is *not* the CLI version. It is unchanged across CLI 1.2.x / 1.3.x / 1.4.x.
 
-> Verified by comparing CLI 1.3.1 ↔ 1.4.0: all change-lifecycle workflows (incl. `verify-change`) and the `status` / `instructions` / `templates` / `schemas` / `validate` / `show` commands exist at the 1.3 floor, as do the `schema which` / `schema validate` subcommands (re-verified empirically on 1.3.1, 2026-07-04 — the schema tooling surface needs no gate beyond the 1.3.0 floor). The `workspace-planning` schema and the `workspace` / `context-store` / `initiative` commands are 1.4 additions (see [`cli-versions/1.4.md`](cli-versions/1.4.md) for the cited analysis). An `openspec set` command is **not yet confirmed against upstream** and remains to be verified on a real 1.4.x CLI.
+> Verified by comparing CLI 1.3.1 ↔ 1.4.0: all change-lifecycle workflows (incl. `verify-change`) and the `status` / `instructions` / `templates` / `schemas` / `validate` / `show` commands exist at the 1.3 floor, as do the `schema which` / `schema validate` subcommands (re-verified empirically on 1.3.1, 2026-07-04 — the schema tooling surface needs no gate beyond the 1.3.0 floor). The `workspace-planning` schema and the `workspace` / `context-store` / `initiative` commands are 1.4 additions (see [`cli-versions/1.4.md`](cli-versions/1.4.md) for the cited analysis). The `openspec set` command is **confirmed on the 1.4 line** (verified on a real 1.4.1 CLI, 2026-07-04): `set change <name> --initiative <id> [--store <id> | --store-path <path>] [--json]` links a repo-local change to an initiative — coordination-beta machinery removed in CLI 1.5.0, deliberately given no plugin surface.
 >
 > **CLI 1.5.0 removed the `workspace` / `context-store` / `initiative` commands and the `workspace-planning` schema** (replaced by the `store` / `workset` model). The plugin's built-in schema set is therefore `spec-driven` only, and coordination is gated to the `[1.4.0, 1.5.0)` window — on a 1.5.0+ CLI the plugin never invokes the removed commands and the Coordination tab stands down (read-only Awareness if legacy on-disk state exists, Hidden otherwise).
 
@@ -40,11 +40,11 @@ This section is the **single source of truth** for the plugin's per-CLI-version 
 | continue-change | ✅ | built-in · `status` | Resume action |
 | ff-change | ✅ | built-in | Fast-forward action |
 | sync-specs | ✅ | built-in | Built-in delta→main spec sync + AI skill |
-| archive-change | ✅ | `delegated` | Archive action (applies deltas + moves) + AI skill |
+| archive-change | ✅ | built-in | Archive action (applies deltas + moves via VFS, no CLI call) + AI skill |
 | bulk-archive | ✅ | built-in | Bulk archive action |
 | **verify-change** | 🟡 | `1.3+` · `delegated` | Rebuilt to be schema/mode-aware (drives off `openspec status` `actionContext.mode`) and **language-agnostic**: a deterministic completeness gate plus semantic correctness/coherence delegated to the AI bridge. Non-default modes (e.g. `workspace-planning`) explain and stop. The old Java-only code heuristic is retired. |
 | onboard | 🟡 | built-in | Plugin's own Setup Wizard, not the OpenSpec `onboard` workflow |
-| feedback | 🔜 | `1.3+` | No surface yet for `openspec feedback` |
+| feedback | ✅ | `1.3+` · `delegated` | Send OpenSpec Feedback action (Tools menu + tool-window toolbar) — message + optional body, delegated to `openspec feedback`; hidden without a CLI |
 
 ## Model & CLI surfaces
 
@@ -74,7 +74,7 @@ This section is the **single source of truth** for the plugin's per-CLI-version 
 | Capability | Status | CLI | Notes |
 |------------|--------|-----|-------|
 | workspace | ✅ | `1.4.x` | Listed with resolution health; set-up action (Full tier); read-only fallback from the on-disk registry. Removed in CLI 1.5.0 → tab stands down. |
-| context-store | ✅ | `1.4.x` | Listed with id/root and doctor health; set-up/register action (Full tier); read-only fallback. Removed in CLI 1.5.0 → tab stands down. |
+| context-store | ✅ | `1.4.x` | Listed with id/root and doctor health; set-up action (Full tier — the 1.4 line has no register action in the plugin; register/unregister/remove exist only for 1.5 stores); read-only fallback. Removed in CLI 1.5.0 → tab stands down. |
 | initiative | ✅ | `1.4.x` | Listed with lifecycle status badge; artifacts open in the editor; create action (Full tier); read-only fallback from `initiative.yaml`. Removed in CLI 1.5.0 → tab stands down. |
 
 ## Stores & worksets (1.5)
