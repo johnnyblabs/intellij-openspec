@@ -37,4 +37,4 @@ No migration; purely additive UI. Ships in the next minor release with the suppo
 
 ## Open Questions
 
-- Whether `schema which/validate` and `templates` exist on 1.3.x CLIs — resolved empirically during implementation (decision 5 defines both outcomes).
+- ~~Whether `schema which/validate` and `templates` exist on 1.3.x CLIs~~ — **resolved during implementation (2026-07-04):** verified empirically on CLI 1.3.1 (`npx @fission-ai/openspec@1.3.1`): `schema which`, `schema validate`, and `templates` all exist there. No per-action gate needed; the existing 1.3.0 floor guard covers the whole surface.

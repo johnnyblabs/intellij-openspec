@@ -26,7 +26,7 @@ This section is the **single source of truth** for the plugin's per-CLI-version 
 - The plugin is **runtime-version-aware**: recognized schema names are the union of its built-in set and the live `openspec schemas` list, and version-sensitive behavior is gated on the detected CLI version.
 - **Independent axis:** the checked-in config format (`openspec/config.yaml` `version: 1.2.0`) is *not* the CLI version. It is unchanged across CLI 1.2.x / 1.3.x / 1.4.x.
 
-> Verified by comparing CLI 1.3.1 ↔ 1.4.0: all change-lifecycle workflows (incl. `verify-change`) and the `status` / `instructions` / `templates` / `schemas` / `validate` / `show` commands exist at the 1.3 floor. The `workspace-planning` schema and the `workspace` / `context-store` / `initiative` commands are 1.4 additions (see [`cli-versions/1.4.md`](cli-versions/1.4.md) for the cited analysis). An `openspec set` command is **not yet confirmed against upstream** and remains to be verified on a real 1.4.x CLI.
+> Verified by comparing CLI 1.3.1 ↔ 1.4.0: all change-lifecycle workflows (incl. `verify-change`) and the `status` / `instructions` / `templates` / `schemas` / `validate` / `show` commands exist at the 1.3 floor, as do the `schema which` / `schema validate` subcommands (re-verified empirically on 1.3.1, 2026-07-04 — the schema tooling surface needs no gate beyond the 1.3.0 floor). The `workspace-planning` schema and the `workspace` / `context-store` / `initiative` commands are 1.4 additions (see [`cli-versions/1.4.md`](cli-versions/1.4.md) for the cited analysis). An `openspec set` command is **not yet confirmed against upstream** and remains to be verified on a real 1.4.x CLI.
 >
 > **CLI 1.5.0 removed the `workspace` / `context-store` / `initiative` commands and the `workspace-planning` schema** (replaced by the `store` / `workset` model). The plugin's built-in schema set is therefore `spec-driven` only, and coordination is gated to the `[1.4.0, 1.5.0)` window — on a 1.5.0+ CLI the plugin never invokes the removed commands and the Coordination tab stands down (read-only Awareness if legacy on-disk state exists, Hidden otherwise).
 
@@ -56,7 +56,7 @@ This section is the **single source of truth** for the plugin's per-CLI-version 
 | status | 🟡 | `1.3+` | Used by apply/continue/list; not yet by Verify |
 | instructions | 🟡 | `1.3+` | Used by Explore; not yet broadly |
 | view (dashboard) | 🟡 | built-in | Plugin tool-window tree rather than the CLI `view` dashboard |
-| templates | 🔜 | `1.3+` | Not surfaced |
+| templates | ✅ | `1.3+` · `delegated` | Open Templates action in Settings resolves each artifact's template via `templates --json` and opens it in the editor |
 
 ## Schemas & profiles
 
@@ -64,7 +64,7 @@ This section is the **single source of truth** for the plugin's per-CLI-version 
 |------------|--------|-----|-------|
 | `spec-driven` schema | ✅ | `1.3+` | Fully supported |
 | `workspace-planning` schema | 🟡 | `1.4+` | Recognized & validated; workflow surfaces detect and reflect the active `actionContext.mode`, and Verify mode-gates it (explains repo-local verify N/A). Full per-mode authoring UX still in progress |
-| custom / forked schemas | 🟡 | `1.3+` | A forked schema name is recognized rather than flagged unknown |
+| custom / forked schemas | ✅ | `1.3+` | A forked schema name is recognized rather than flagged unknown; full authoring loop in Settings — fork/create, **Validate** (`schema validate --json`, problems rendered inline), resolution provenance (`schema which --json`, origin tag incl. shadowing), and Open Templates |
 | profiles / config | ✅ | `delegated` | CLI-aligned profile picker; config validation |
 
 ## Coordination layers

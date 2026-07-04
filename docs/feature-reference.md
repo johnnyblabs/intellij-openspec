@@ -253,11 +253,13 @@ Read-only display of the current profile name and description from `config.yaml`
 
 | Setting | Purpose |
 |---------|---------|
-| **Schema list** | Available workflow schemas. Select one as default for new changes. |
+| **Schema list** | Available workflow schemas, each tagged with where it resolves from (`[project]`, `[user]`, `[package]`); a copy that shadows another source says so (e.g. `[project, shadows package]`). Select one as default for new changes. |
 | **Fork** | Fork an existing schema to customize it. |
 | **New** | Create a new schema with selected artifact types. |
+| **Validate** | Check the selected schema's structure and templates via `openspec schema validate` — structure errors, missing templates, and circular dependencies appear inline below the list. |
+| **Open Templates** | Open the selected schema's artifact templates in the editor (paths resolved via `openspec templates`); missing template files are reported, never created. |
 
-> Schema management requires the OpenSpec CLI v1.2.0 or later.
+> Schema management requires the OpenSpec CLI v1.3.0 or later.
 
 ### Tools & Delivery
 
@@ -306,4 +308,4 @@ Check that **Auto-refresh** is enabled in **Settings > Tools > OpenSpec**. You c
 
 ### Schema management options are disabled
 
-Schema management (fork, new, default selection) requires the OpenSpec CLI v1.2.0 or later.
+Schema management (fork, new, validate, templates, default selection) requires the OpenSpec CLI v1.3.0 or later.
