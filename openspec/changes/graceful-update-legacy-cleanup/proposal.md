@@ -14,6 +14,7 @@ OpenSpec's CLI migrated agent integrations from command files to agent skills, a
   - **Not now** — dismisses without re-nagging on subsequent Updates until the pending file set changes.
 - **The plugin never runs `update --force` on the user's behalf.** The bundled force behavior (cleanup + refresh-everything) remains a deliberate non-surface; the surgical path above achieves the cleanup without the destructive half.
 - **Safety invariant:** the plugin only ever deletes files that both appeared in the CLI's own "Files to remove" list and exist on disk — a partial parse degrades to offering fewer files, never more.
+- **Regeneration-loop recognition.** Reproduction showed that some CLI versions regenerate the very files they flag (junie on 1.4.1/1.5.0; even `--force` regenerates rather than removes). The post-cleanup verification re-run detects this: same set back → the plugin explains that the CLI itself regenerates these files and nothing on the user's side needs fixing, auto-suppresses the notice while the CLI's report is unchanged, and never re-offers a deletion known to be futile.
 
 ## Capabilities
 

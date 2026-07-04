@@ -1,0 +1,7 @@
+Updating 1 tool(s): junie (config sync)
+
+
+✓ Updated: Junie (v1.4.1)
+Tools: Junie
+
+Restart your IDE for changes to take effect.

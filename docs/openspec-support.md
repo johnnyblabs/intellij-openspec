@@ -50,7 +50,7 @@ This section is the **single source of truth** for the plugin's per-CLI-version 
 
 | Surface | Status | CLI | Notes |
 |---------|--------|-----|-------|
-| init / update / list / show | ✅ | built-in · `delegated` | Actions + tool-window tree |
+| init / update / list / show | ✅ | built-in · `delegated` | Actions + tool-window tree. `update`'s skills-migration "legacy files pending" outcome (exit 0 + `--force`/interactive ask) gets a graceful in-IDE resolution: consented per-file removal via undoable VFS ops, terminal handoff, no-nag dismissal, and truthful loop detection when the CLI regenerates the files it flags. The plugin never runs `update --force` on the user's behalf. |
 | validate | ✅ | built-in | Built-in delta-spec + config validation, aligned to the client's rules — including the two permanent CLI 1.4.0 parser/validator behaviors: requirement headers are recognized **case-insensitively** everywhere the plugin parses them, and an RFC 2119 keyword appearing only in a requirement's header gets the CLI's targeted "move the keyword onto the requirement body line" diagnostic (`spec-rfc-keyword-in-header`) with a quick-fix |
 | delta specs (ADDED/MODIFIED/REMOVED/RENAMED) | ✅ | built-in | Create / inspect / diff / sync. All four delta types (incl. `RENAMED`) were introduced upstream in **1.0.0**, well below the plugin's floor; implemented built-in (works at the floor). |
 | status | 🟡 | `1.3+` | Used by apply/continue/list; not yet by Verify |
