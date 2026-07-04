@@ -66,7 +66,7 @@ A comprehensive comparison of the OpenSpec IntelliJ plugin against known VS Code
 | Direct API: Gemini | Yes | No | No | No | No |
 | Secure credential storage (OS keychain) | Yes (PasswordSafe) | No | No | No | No |
 | API connection test | Yes | No | No | No | No |
-| AI tool auto-detection | Yes (6 tools) | No | No | No | No |
+| AI tool auto-detection | Yes (30 tools) | No | No | No | No |
 | Tool type classification (CLI/IDE panel) | Yes | No | No | No | No |
 | Tool-aware guidance text | Yes | No | No | No | No |
 | Preferred tool selection | Yes (persisted) | No | No | No | No |
@@ -135,7 +135,7 @@ A comprehensive comparison of the OpenSpec IntelliJ plugin against known VS Code
 | AI provider/model selection | Yes | No | No | No | No |
 | Preferred delivery method | Yes (persisted) | No | No | No | No |
 | Config profile display | Yes | No | No | No | No |
-| Custom schema management (fork/new) | Yes (CLI v1.2.0+) | No | No | No | No |
+| Custom schema management (fork/new) | Yes (CLI v1.3.0+) | No | No | No | No |
 
 ---
 
