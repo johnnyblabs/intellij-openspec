@@ -42,6 +42,10 @@ The [**Version support**](openspec-support.md#version-support) block in `openspe
 | [getting-started-api.md](getting-started-api.md) | Setup guide: standalone API-key workflow | API-key developers | Reference |
 | [marketplace-page.md](marketplace-page.md) | Source copy for the JetBrains Marketplace listing | Maintainers | Reference |
 
+## Per-CLI-version analyses
+
+Deep, cited analyses of what each OpenSpec **client** version introduced, modified, deprecated, or removed — and how the plugin responds — live under [`cli-versions/`](cli-versions/README.md). They ground the plugin's version-support decisions (the epistemic base behind the coverage matrix above), one document per CLI version, produced via an OpenSpec explore over upstream docs. Start at the [cli-versions index](cli-versions/README.md).
+
 ## Repository-root docs
 
 | Doc | Purpose | Primary audience | Maintenance |
