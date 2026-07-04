@@ -4,6 +4,11 @@ Keep this file open in a split editor and work through the stops in order.
 This project was initialized by OpenSpec CLI **1.3.1** on purpose — it carries
 legacy `.junie/commands/opsx-*.md` files so the new Update cleanup flow fires.
 
+> **Automated coverage** (`gradle uiSmoke`, same seeded fixture): presence/wiring of
+> Stops 1 (tree + panel), 2 (editor parity incl. the seeded `keyword-in-header` spec),
+> 3 (cleanup notice), 5 (Settings schemas), and the Stop 6 archive confirmation guard. This manual walkthrough remains the judgment pass —
+> wording, layout, feel — not the only safety net.
+
 ---
 
 ## Stop 1 — Browse tree & workflow chips
