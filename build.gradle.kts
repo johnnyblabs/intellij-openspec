@@ -75,7 +75,10 @@ tasks.jacocoTestReport {
 // This is a backstop against backsliding, NOT a per-PR new-code mandate: thresholds sit
 // just below current coverage. New-code test quality is governed by the OpenSpec `tasks`
 // rule ("tests SHALL verify real behavior") and the CLAUDE.md contract-test convention.
-// Ratchet the minimums upward as coverage improves.
+//
+// BASELINE (measured 2026-07-03): INSTRUCTION 32.6%, LINE 30.7%, BRANCH 29.1%, METHOD 37.0%.
+// Floors are set just below the baseline so any regression fails `check`. Ratchet the
+// minimums upward as coverage improves; never lower a floor without recorded justification.
 tasks.jacocoTestCoverageVerification {
     dependsOn(tasks.test)
     // Match the report: instrumented classes + the test JVM's execution data.
@@ -90,14 +93,21 @@ tasks.jacocoTestCoverageVerification {
             limit {
                 counter = "INSTRUCTION"
                 value = "COVEREDRATIO"
-                minimum = "0.31".toBigDecimal()
+                minimum = "0.32".toBigDecimal()
             }
         }
         rule {
             limit {
                 counter = "LINE"
                 value = "COVEREDRATIO"
-                minimum = "0.29".toBigDecimal()
+                minimum = "0.30".toBigDecimal()
+            }
+        }
+        rule {
+            limit {
+                counter = "BRANCH"
+                value = "COVEREDRATIO"
+                minimum = "0.28".toBigDecimal()
             }
         }
     }
