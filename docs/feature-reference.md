@@ -127,7 +127,6 @@ The panel includes a **change selector** dropdown for switching between multiple
 | **List** | OpenSpec > List | List all specs and changes. |
 | **Refresh Tree** | OpenSpec > Refresh Tree | Manually refresh the tool window tree. |
 | **Setup Wizard** | OpenSpec > Setup Wizard... | Guided onboarding for new projects. |
-| **Send OpenSpec Feedback** | OpenSpec > Send OpenSpec Feedback... | Collects a one-line message (required) and optional details, then runs `openspec feedback` in the background — success or the CLI's error output arrives as a notification. Hidden when no CLI is detected. |
 
 ### Profile-Aware Action Visibility
 

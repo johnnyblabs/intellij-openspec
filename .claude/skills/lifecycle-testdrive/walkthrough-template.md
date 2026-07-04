@@ -6,7 +6,8 @@ legacy `.junie/commands/opsx-*.md` files so the new Update cleanup flow fires.
 
 > **Automated coverage** (`gradle uiSmoke`, same seeded fixture): presence/wiring of
 > Stops 1 (tree + panel), 2 (editor parity incl. the seeded `keyword-in-header` spec),
-> 3 (cleanup notice), 5 (Settings schemas), and the Stop 6 archive confirmation guard. This manual walkthrough remains the judgment pass —
+> 3 (cleanup notice), 4 (Settings schemas), and the Stop 5 archive confirmation guard.
+> This manual walkthrough remains the judgment pass —
 > wording, layout, feel — not the only safety net.
 
 ---
@@ -47,14 +48,7 @@ Run **OpenSpec ▸ Update** (menu or tool-window toolbar).
       re-creates the files it flags — the notice explains it and suppresses future nags
 - [ ] Run **Update** again → no re-nag (suppressed while the CLI reports the same set)
 
-## Stop 4 — Send OpenSpec Feedback
-
-Run **OpenSpec ▸ Send OpenSpec Feedback…**
-
-- [ ] Try submitting with an empty message → inline validation blocks it
-- [ ] (Optional) A real message actually submits to the maintainers — cancel unless you mean it
-
-## Stop 5 — Schema tooling (Settings)
+## Stop 4 — Schema tooling (Settings)
 
 Open **Settings ▸ Tools ▸ OpenSpec**, Schemas section.
 
@@ -65,7 +59,7 @@ Open **Settings ▸ Tools ▸ OpenSpec**, Schemas section.
       after Refresh); delete one of its `templates/*.md` files and Validate again to see
       the inline error list
 
-## Stop 6 — Finish the lifecycle
+## Stop 5 — Finish the lifecycle
 
 Back in the tool window, on `demo-add-farewell`:
 
