@@ -1,5 +1,23 @@
 # Delta — cli-update
 
+## MODIFIED Requirements
+
+### Requirement: Update action triggers CLI update
+
+The plugin SHALL provide an "Update OpenSpec" action that runs `openspec update` in the background and displays the output in the OpenSpec console panel.
+
+#### Scenario: Successful update
+- **WHEN** the user triggers the Update OpenSpec action and the CLI is available
+- **THEN** the plugin SHALL run `openspec update` via CliRunner, display stdout in the console panel, and show a success notification upon completion — unless the output reports pending legacy cleanup, in which case the review notice defined by the Legacy-cleanup outcome detection requirement replaces the bare success notification
+
+#### Scenario: Update with errors
+- **WHEN** `openspec update` exits with a non-zero exit code
+- **THEN** the plugin SHALL display stderr in the console panel and show an error notification with the exit code
+
+#### Scenario: Update progress
+- **WHEN** the update command is running
+- **THEN** the plugin SHALL show a background progress indicator with the label "Running openspec update"
+
 ## ADDED Requirements
 
 ### Requirement: Legacy-cleanup outcome detection
