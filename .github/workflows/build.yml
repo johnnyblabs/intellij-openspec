@@ -30,11 +30,21 @@ jobs:
       - name: Cache Gradle dependencies
         uses: actions/cache@v6
         with:
+          # Cache the downloaded dependency artifacts + wrapper ONLY. Deliberately
+          # EXCLUDE ~/.gradle/caches/<gradle-version>/transforms — that is where the
+          # IntelliJ Platform plugin *extracts* the build SDK and (on the persistent
+          # self-hosted runner, when the verify job has run) the ~7 Plugin Verifier
+          # IDEs, ballooning the whole ~/.gradle/caches tree to ~38 GB and making the
+          # actions/cache tar restore/save take ~12 min each way (the "verify slow /
+          # cancelled" symptom). Transforms are regenerable — Gradle re-extracts them
+          # from the cached modules-2 archives on a miss, far cheaper than a 29 GB tar.
+          # Key bumped to gradle-v2- to abandon the existing bloated cache entirely.
           path: |
-            ~/.gradle/caches
+            ~/.gradle/caches/modules-2
+            ~/.gradle/caches/jars-9
             ~/.gradle/wrapper
-          key: gradle-build-${{ hashFiles('**/*.gradle.kts', 'gradle/wrapper/gradle-wrapper.properties') }}
-          restore-keys: gradle-build-
+          key: gradle-v2-${{ hashFiles('**/*.gradle.kts', 'gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: gradle-v2-
 
       - name: Build and Test
         run: ./gradlew build
