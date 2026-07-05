@@ -8,6 +8,9 @@ import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.project.Project;
 import com.johnnyblabs.openspec.ai.AiApiException;
 import com.johnnyblabs.openspec.ai.DirectApiService;
+import com.johnnyblabs.openspec.model.ArtifactInfo;
+import com.johnnyblabs.openspec.model.ArtifactStatus;
+import com.johnnyblabs.openspec.model.ChangeArtifactDag;
 import com.johnnyblabs.openspec.model.VerificationFinding;
 import com.johnnyblabs.openspec.model.VerificationFinding.Dimension;
 import com.johnnyblabs.openspec.model.VerificationFinding.Severity;
@@ -47,8 +50,9 @@ public final class VerificationService {
      * <p>Drives off the resolved {@link WorkflowSchemaContext}: for a non-default mode
      * (e.g. {@code workspace-planning}) it explains that repo-local verification does not
      * apply and stops. For the default spec-driven repo-local case it checks completeness
-     * (local, deterministic) and correctness/coherence (semantic, language-agnostic,
-     * delegated to the AI bridge).
+     * (artifact level from the CLI status DAG with a deterministic filesystem fallback,
+     * task level from {@code tasks.md}) and correctness/coherence (semantic,
+     * language-agnostic, delegated to the AI bridge).
      */
     public VerificationReport verify(String changeName) {
         VerificationReport report = new VerificationReport(changeName);
@@ -80,15 +84,67 @@ public final class VerificationService {
             LOG.warn("Failed to resolve workflow schema context; proceeding with spec-driven checks", e);
         }
 
-        checkCompleteness(report, changeDir);
+        checkCompleteness(report, changeDir, changeName);
         checkCorrectness(report, changeDir);
         checkCoherence(report, changeDir);
 
         return report;
     }
 
-    private void checkCompleteness(VerificationReport report, Path changeDir) {
-        // Check required artifacts exist
+    /**
+     * Artifact-level completeness comes from the CLI status DAG (schema-aware, consistent
+     * with the Apply gate), falling back to the fixed spec-driven filesystem check when no
+     * usable DAG is available. Task-checkbox granularity always comes from parsing
+     * {@code tasks.md} locally — the status DAG reports the tasks artifact as a single
+     * status, not per-checkbox state.
+     */
+    private void checkCompleteness(VerificationReport report, Path changeDir, String changeName) {
+        if (!checkArtifactsFromStatus(report, changeDir, changeName)) {
+            checkArtifactsOnDisk(report, changeDir);
+        }
+        checkTasksFile(report, changeDir);
+    }
+
+    /**
+     * Emits a completeness finding for each artifact the status DAG reports as not done.
+     * Returns false when no usable DAG is available (CLI missing, below the version floor,
+     * or unparseable output) so the caller can fall back to the filesystem check.
+     *
+     * <p>Reads the <em>cached</em> DAG: the mode gate's context resolution just refreshed it
+     * via {@link ArtifactOrchestrationService#getArtifactStatus}, so Verify spawns the CLI
+     * at most once per run. The cached DAG already carries the scaffolding overrides,
+     * keeping Verify's verdict consistent with the Apply gate.
+     */
+    private boolean checkArtifactsFromStatus(VerificationReport report, Path changeDir, String changeName) {
+        try {
+            ArtifactOrchestrationService orchestration = project.getService(ArtifactOrchestrationService.class);
+            ChangeArtifactDag dag = orchestration != null ? orchestration.getCachedArtifactStatus(changeName) : null;
+            if (dag == null || dag.getArtifacts().isEmpty()) {
+                LOG.info("No usable status DAG for '" + changeName + "' — completeness falls back to filesystem checks");
+                return false;
+            }
+            for (ArtifactInfo artifact : dag.getArtifacts()) {
+                if (artifact.status() == ArtifactStatus.DONE) continue;
+                String detail = "Artifact not done: " + artifact.id()
+                        + " (" + artifact.status().name().toLowerCase() + ")"
+                        + (dag.getApplyRequires().contains(artifact.id()) ? " — required before apply" : "");
+                String outputPath = artifact.outputPath();
+                if (outputPath != null && !outputPath.contains("*")) {
+                    report.addFinding(new VerificationFinding(Severity.WARNING, Dimension.COMPLETENESS,
+                            detail, changeDir.resolve(outputPath).toString(), -1));
+                } else {
+                    report.addFinding(new VerificationFinding(Severity.WARNING, Dimension.COMPLETENESS, detail));
+                }
+            }
+            return true;
+        } catch (RuntimeException e) {
+            LOG.warn("Failed to read status DAG; completeness falls back to filesystem checks", e);
+            return false;
+        }
+    }
+
+    /** Fallback artifact check: the pre-status fixed spec-driven layout, straight off the filesystem. */
+    private void checkArtifactsOnDisk(VerificationReport report, Path changeDir) {
         for (String artifact : List.of("proposal.md", "design.md", "tasks.md")) {
             Path artifactPath = changeDir.resolve(artifact);
             if (!Files.exists(artifactPath)) {
@@ -96,8 +152,9 @@ public final class VerificationService {
                         "Missing artifact: " + artifact, artifactPath.toString(), -1));
             }
         }
+    }
 
-        // Check task completion
+    private void checkTasksFile(VerificationReport report, Path changeDir) {
         Path tasksPath = changeDir.resolve("tasks.md");
         if (Files.exists(tasksPath)) {
             try {

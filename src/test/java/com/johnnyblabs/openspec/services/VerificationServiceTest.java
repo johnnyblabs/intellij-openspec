@@ -3,6 +3,9 @@ package com.johnnyblabs.openspec.services;
 import com.intellij.openapi.project.Project;
 import com.johnnyblabs.openspec.ai.AiApiException;
 import com.johnnyblabs.openspec.ai.DirectApiService;
+import com.johnnyblabs.openspec.model.ArtifactInfo;
+import com.johnnyblabs.openspec.model.ArtifactStatus;
+import com.johnnyblabs.openspec.model.ChangeArtifactDag;
 import com.johnnyblabs.openspec.model.VerificationFinding;
 import com.johnnyblabs.openspec.model.VerificationFinding.Dimension;
 import com.johnnyblabs.openspec.model.VerificationFinding.Severity;
@@ -32,6 +35,7 @@ class VerificationServiceTest {
     @Mock Project project;
     @Mock DirectApiService aiService;
     @Mock WorkflowSchemaContextService schemaContextService;
+    @Mock ArtifactOrchestrationService orchestrationService;
     @TempDir Path tempDir;
 
     private VerificationService service;
@@ -225,6 +229,115 @@ class VerificationServiceTest {
 
             VerificationReport report = service.verify("my-change");
             assertTrue(report.hasCritical(), "an in-progress [~] task must block archive");
+        }
+    }
+
+    // --- Status-driven completeness tests (artifact level from the CLI status DAG) ---
+
+    @Nested
+    class StatusDrivenCompleteness {
+
+        private ChangeArtifactDag dag(boolean complete, List<String> applyRequires, ArtifactInfo... artifacts) {
+            ChangeArtifactDag dag = new ChangeArtifactDag();
+            dag.setComplete(complete);
+            dag.setApplyRequires(applyRequires);
+            dag.setArtifacts(List.of(artifacts));
+            return dag;
+        }
+
+        private void mockDag(String changeName, ChangeArtifactDag dag) {
+            when(project.getService(ArtifactOrchestrationService.class)).thenReturn(orchestrationService);
+            when(orchestrationService.getCachedArtifactStatus(changeName)).thenReturn(dag);
+        }
+
+        @Test
+        void non_done_artifact_from_status_reported_schema_aware() throws IOException {
+            // All three legacy files exist on disk — the old filesystem check would stay silent.
+            // The DAG knows the schema also wants a specs artifact that isn't done.
+            Path changeDir = createChangeDir("my-change");
+            Files.writeString(changeDir.resolve("proposal.md"), "x");
+            Files.writeString(changeDir.resolve("design.md"), "x");
+            Files.writeString(changeDir.resolve("tasks.md"), "- [x] 1.1 Done");
+
+            mockDag("my-change", dag(false, List.of("tasks"),
+                    new ArtifactInfo("proposal", "proposal.md", ArtifactStatus.DONE, List.of()),
+                    new ArtifactInfo("design", "design.md", ArtifactStatus.DONE, List.of()),
+                    new ArtifactInfo("specs", "specs/**/*.md", ArtifactStatus.READY, List.of()),
+                    new ArtifactInfo("tasks", "tasks.md", ArtifactStatus.DONE, List.of())));
+
+            VerificationReport report = service.verify("my-change");
+            List<VerificationFinding> completeness = report.getFindings(Dimension.COMPLETENESS);
+            assertEquals(1, completeness.size());
+            VerificationFinding f = completeness.getFirst();
+            assertEquals(Severity.WARNING, f.severity());
+            assertTrue(f.description().contains("Artifact not done: specs (ready)"), f.description());
+            assertNull(f.filePath(), "glob output paths must not produce a file link");
+        }
+
+        @Test
+        void apply_required_artifact_called_out() throws IOException {
+            Path changeDir = createChangeDir("my-change");
+            Files.writeString(changeDir.resolve("proposal.md"), "x");
+
+            mockDag("my-change", dag(false, List.of("tasks"),
+                    new ArtifactInfo("proposal", "proposal.md", ArtifactStatus.DONE, List.of()),
+                    new ArtifactInfo("tasks", "tasks.md", ArtifactStatus.BLOCKED, List.of("design"))));
+
+            VerificationReport report = service.verify("my-change");
+            VerificationFinding f = report.getFindings(Dimension.COMPLETENESS).stream()
+                    .filter(x -> x.description().contains("tasks"))
+                    .findFirst().orElseThrow();
+            assertTrue(f.description().contains("blocked"), f.description());
+            assertTrue(f.description().contains("required before apply"), f.description());
+            assertEquals(changeDir.resolve("tasks.md").toString(), f.filePath());
+        }
+
+        @Test
+        void done_dag_with_not_done_checkboxes_still_blocks() throws IOException {
+            // The DAG says every artifact is done — but task-checkbox granularity comes from
+            // tasks.md, and a not-done checkbox must still block archive.
+            Path changeDir = createChangeDir("my-change");
+            Files.writeString(changeDir.resolve("proposal.md"), "x");
+            Files.writeString(changeDir.resolve("design.md"), "x");
+            Files.writeString(changeDir.resolve("tasks.md"), "- [x] 1.1 Done\n- [ ] 1.2 Not done\n");
+
+            mockDag("my-change", dag(true, List.of("tasks"),
+                    new ArtifactInfo("proposal", "proposal.md", ArtifactStatus.DONE, List.of()),
+                    new ArtifactInfo("design", "design.md", ArtifactStatus.DONE, List.of()),
+                    new ArtifactInfo("tasks", "tasks.md", ArtifactStatus.DONE, List.of())));
+
+            VerificationReport report = service.verify("my-change");
+            assertTrue(report.hasCritical(), "a not-done checkbox must block even when the DAG is all done");
+            assertTrue(report.getFindings(Dimension.COMPLETENESS).stream()
+                    .noneMatch(f -> f.description().startsWith("Artifact not done")));
+        }
+
+        @Test
+        void null_dag_falls_back_to_filesystem_checks() throws IOException {
+            Path changeDir = createChangeDir("my-change");
+            Files.writeString(changeDir.resolve("proposal.md"), "x");
+            Files.writeString(changeDir.resolve("tasks.md"), "- [x] 1.1 Done");
+            // No design.md — the fallback must report it the pre-status way.
+
+            mockDag("my-change", null);
+
+            VerificationReport report = service.verify("my-change");
+            List<VerificationFinding> completeness = report.getFindings(Dimension.COMPLETENESS);
+            assertEquals(1, completeness.size());
+            assertTrue(completeness.getFirst().description().contains("Missing artifact: design.md"));
+        }
+
+        @Test
+        void empty_dag_falls_back_to_filesystem_checks() throws IOException {
+            Path changeDir = createChangeDir("my-change");
+            Files.writeString(changeDir.resolve("proposal.md"), "x");
+            Files.writeString(changeDir.resolve("design.md"), "x");
+            Files.writeString(changeDir.resolve("tasks.md"), "- [x] 1.1 Done");
+
+            mockDag("my-change", dag(false, List.of()));
+
+            VerificationReport report = service.verify("my-change");
+            assertEquals(0, report.getFindings(Dimension.COMPLETENESS).size());
         }
     }
 
