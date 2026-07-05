@@ -1,5 +1,6 @@
 package com.johnnyblabs.openspec.util;
 
+import com.johnnyblabs.openspec.model.ArtifactInfo;
 import com.johnnyblabs.openspec.model.ArtifactInstruction;
 import com.johnnyblabs.openspec.model.ArtifactStatus;
 import com.johnnyblabs.openspec.model.ChangeArtifactDag;
@@ -10,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -90,6 +92,63 @@ class CliContractTest {
 
             assertEquals(1, dag.getReadyArtifacts().size());
             assertEquals("specs", dag.getReadyArtifacts().get(0).id());
+        }
+    }
+
+    /**
+     * Contract for the status shape Verify's completeness gate consumes: a captured
+     * status with a mix of done/ready/blocked artifacts and a populated actionContext
+     * block (the pre-existing status.json fixture predates actionContext).
+     */
+    @Nested
+    class StatusWithContextContract {
+
+        @Test
+        void parsesMixedArtifactStatuses() {
+            String json = loadFixture("status-with-context.json");
+            ChangeArtifactDag dag = CliOutputParser.parseChangeStatus(json);
+
+            assertNotNull(dag);
+            assertEquals("demo-change", dag.getChangeName());
+            assertEquals("spec-driven", dag.getSchemaName());
+            assertFalse(dag.isComplete());
+
+            assertEquals(4, dag.getArtifacts().size());
+            assertEquals(ArtifactStatus.DONE, dag.getArtifacts().get(0).status());    // proposal
+            assertEquals(ArtifactStatus.READY, dag.getArtifacts().get(1).status());   // design
+            assertEquals(ArtifactStatus.READY, dag.getArtifacts().get(2).status());   // specs
+            assertEquals(ArtifactStatus.BLOCKED, dag.getArtifacts().get(3).status()); // tasks
+        }
+
+        @Test
+        void parsesMissingDepsOnBlockedArtifact() {
+            String json = loadFixture("status-with-context.json");
+            ChangeArtifactDag dag = CliOutputParser.parseChangeStatus(json);
+
+            ArtifactInfo tasks = dag.getArtifacts().get(3);
+            assertEquals("tasks", tasks.id());
+            assertEquals(List.of("design", "specs"), tasks.missingDeps());
+        }
+
+        @Test
+        void parsesApplyRequires() {
+            String json = loadFixture("status-with-context.json");
+            ChangeArtifactDag dag = CliOutputParser.parseChangeStatus(json);
+
+            assertEquals(List.of("tasks"), dag.getApplyRequires());
+        }
+
+        @Test
+        void parsesActionContext() {
+            String json = loadFixture("status-with-context.json");
+            ChangeArtifactDag dag = CliOutputParser.parseChangeStatus(json);
+
+            ChangeArtifactDag.ActionContext ac = dag.getActionContext();
+            assertNotNull(ac, "captured 1.3+ status must surface actionContext");
+            assertEquals("repo-local", ac.getMode());
+            assertEquals("repo", ac.getSourceOfTruth());
+            assertEquals(List.of("/home/user/demo-project"), ac.getAllowedEditRoots());
+            assertFalse(ac.isRequiresAffectedAreaSelection());
         }
     }
 
