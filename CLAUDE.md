@@ -14,9 +14,9 @@ OpenSpec changes are mirrored to project trackers via project-level custom skill
 
 Without the middle step the card jumps Todo→Done and never appears in the "In Progress" column while work is actually happening. Forgejo issues have no In-Progress state (open/closed only), so `advance-change-trackers` touches Plane only and leaves the issue open.
 
-**Why these skills are custom-named, not inside `openspec-*`:** the `openspec` CLI manages `.claude/skills/openspec-*/SKILL.md` and rewrites them on every `openspec update`. Custom-named skills (`mirror-change-trackers`, `advance-change-trackers`, `close-change-trackers`, `release-prep`) live outside that managed surface and survive updates.
+**Why these skills are custom-named, not inside `openspec-*`:** the `openspec` CLI manages `.claude/skills/openspec-*/SKILL.md` and rewrites them on every `openspec update`. Custom-named skills (`mirror-change-trackers`, `advance-change-trackers`, `close-change-trackers`, `release-cut`, `release-prep`) live outside that managed surface and survive updates.
 
-**These four skills are gitignored** (`.gitignore` entries `.claude/skills/{mirror,advance,close}-change-trackers/` and `.claude/skills/release-prep/`). They intrinsically reference `forgejo.geek`, the Plane project UUID, `mcp__homelab__*` server-tool names, and `johnb/intellij-openspec` — things that violate the anti-leak rule below if they reach the public GitHub mirror. The skill files exist on disk and work in any local session; they just don't ride to git history. Edits to these skills are local-only.
+**These five skills are gitignored** (`.gitignore` entries `.claude/skills/{mirror,advance,close}-change-trackers/`, `.claude/skills/release-cut/`, and `.claude/skills/release-prep/`). They intrinsically reference `forgejo.geek`, the Plane project UUID, `mcp__homelab__*` server-tool names, and `johnb/intellij-openspec` — things that violate the anti-leak rule below if they reach the public GitHub mirror. The skill files exist on disk and work in any local session; they just don't ride to git history. Edits to these skills are local-only.
 
 **Do not put tracker plumbing back into the `openspec-*` skills.** If you find yourself tempted, you're at the wrong layer.
 
@@ -80,5 +80,6 @@ OpenSpec's `tasks` rules already mandate tests for every change and that *"each 
 ## Release & publishing
 
 - Never run `publishPlugin` locally. CI handles signing and JetBrains Marketplace publishing on `v*` tag push.
+- Use `/release-cut <version>` to start a release — it bumps `build.gradle.kts`, rolls `## Unreleased` into a versioned changelog section (`./gradlew patchChangelog`), and opens the release PR.
 - Use `/release-prep <version>` before tagging — it validates `build.gradle.kts`, `CHANGELOG.md`, build, archived changes, and tracker state.
 - `CHANGELOG.md` is for plugin users only — no internal housekeeping, tracker triage, or personal workflow notes.

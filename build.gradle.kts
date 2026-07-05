@@ -203,6 +203,12 @@ changelog {
     version.set(project.version.toString())
     path.set(file("CHANGELOG.md").canonicalPath)
     headerParserRegex.set("""v(\d+\.\d+\.\d+).*""".toRegex())
+    // patchChangelog rolls ## Unreleased into a released section at cut time.
+    // Emit headers in this file's established "## vX.Y.Z" style (no date), and
+    // don't seed the fresh Unreleased section with empty group skeletons —
+    // entries here are written per-change, with only the groups they need.
+    header.set(provider { "v${version.get()}" })
+    groups.empty()
 }
 
 intellijPlatform {
