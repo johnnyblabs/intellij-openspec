@@ -1,3 +1,4 @@
+import org.jetbrains.changelog.markdownToHTML
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 
 plugins {
@@ -216,10 +217,23 @@ intellijPlatform {
         id = "com.johnnyblabs.openspec"
         name = "OpenSpec"
         version = project.version.toString()
-        description = "IntelliJ IDEA plugin for OpenSpec spec-driven development framework"
+        // The Marketplace listing description is extracted from README.md between the
+        // plugin-description markers — one source of truth for GitHub and the listing.
+        // MarketplaceListingHygieneTest enforces the markers, a content floor, and that
+        // links are absolute (relative links break on the Marketplace page).
+        description = providers.fileContents(layout.projectDirectory.file("README.md")).asText.map {
+            val start = "<!-- Plugin description -->"
+            val end = "<!-- Plugin description end -->"
+            with(it.lines()) {
+                if (!containsAll(listOf(start, end))) {
+                    throw GradleException("Plugin description markers not found in README.md")
+                }
+                subList(indexOf(start) + 1, indexOf(end)).joinToString("\n")
+            }.let(::markdownToHTML)
+        }
         vendor {
             name = "johnnyblabs"
-            url = "https://github.com/johnnyblabs/intellij-openspec"
+            url = "https://openspec.johnnyblabs.com"
         }
         changeNotes = provider {
             with(changelog) {

@@ -2,20 +2,10 @@
     <id>com.johnnyblabs.openspec</id>
     <name>OpenSpec</name>
     <vendor url="https://openspec.johnnyblabs.com" email="johnboyce@comcast.net">johnnyblabs</vendor>
-    <description><![CDATA[
-        <p><b>OpenSpec</b> brings spec-driven development to IntelliJ IDEA. Write specifications first, then implement with confidence — your specs become living documentation that stays connected to your code.</p>
-
-        <p><b>Features:</b></p>
-        <ul>
-            <li><b>Spec browsing</b> — Tree view of domains, capabilities, and requirements with syntax highlighting</li>
-            <li><b>Workflow automation</b> — Init, Propose, Apply, and Archive actions from the IDE</li>
-            <li><b>AI-assisted generation</b> — Generate proposals, designs, and specs via Claude, OpenAI, or Gemini</li>
-            <li><b>Validation &amp; inspections</b> — Real-time spec format checks and delta spec validation</li>
-            <li><b>Setup wizard</b> — Guided onboarding for new and existing projects</li>
-        </ul>
-
-        <p>Compatible with IntelliJ IDEA 2024.2+. Works with any project that uses the <a href="https://github.com/fission-ai/openspec">OpenSpec</a> framework.</p>
-    ]]></description>
+    <!-- No description element here: the build patches it in from README.md's plugin-description
+         section (see pluginConfiguration in build.gradle.kts). A description written here is
+         silently overwritten in the shipped artifact — which is exactly how the Marketplace
+         listing carried a stale one-liner until v0.3.x. -->
 
     <depends>com.intellij.modules.platform</depends>
     <depends>org.jetbrains.plugins.yaml</depends>

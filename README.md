@@ -4,7 +4,20 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![JetBrains Marketplace](https://img.shields.io/jetbrains/plugin/v/30678-openspec.svg)](https://plugins.jetbrains.com/plugin/30678-openspec)
 
-An IDE-native client for the [OpenSpec](https://github.com/fission-ai/openspec) spec-driven development framework by [Fission AI](https://github.com/fission-ai). Browse specs, orchestrate the propose → generate → implement → archive lifecycle, and route AI-generated artifacts through the tool of your choice — all without leaving IntelliJ.
+<!-- Plugin description -->
+An IDE-native client for the [OpenSpec](https://github.com/fission-ai/openspec) spec-driven development framework by [Fission AI](https://github.com/fission-ai). Browse specs, orchestrate the propose → generate → implement → archive lifecycle, and route AI-generated artifacts through the tool of your choice — all without leaving your IDE.
+
+**Features:**
+
+- **Spec browser** — a tree view of capabilities and requirements with syntax highlighting, real-time validation, editor inspections, and quick-fixes matching the OpenSpec CLI's own parser
+- **Change lifecycle** — create, implement, verify, and archive OpenSpec changes from a dedicated tool window, with schema-aware completeness gates and task-level progress
+- **Works with your AI tooling** — detects 30+ AI coding tools (Claude Code, GitHub Copilot, Cursor, Gemini CLI, and more) and hands generation off to the one you already use, or calls the Anthropic, OpenAI, or Google APIs directly with your own key
+- **Schema authoring** — fork, create, and validate custom workflow schemas, with template editing and resolution-provenance tags straight from the CLI
+- **Stores & worksets** — browse and manage the OpenSpec CLI 1.5 coordination model, with health diagnostics and graceful support back to the 1.4 workspace model
+- **Setup wizard** — guided onboarding for new and existing projects; the plugin works with or without the OpenSpec CLI installed and degrades gracefully
+
+Compatible with IntelliJ IDEA, PyCharm, GoLand, WebStorm, RubyMine, and the rest of the JetBrains IDE family, 2024.2 and later. Spec browsing and validation are fully language-agnostic.
+<!-- Plugin description end -->
 
 > **Maintenance: Living** — updated as part of every relevant change. See the [documentation index](docs/README.md) for the full doc map and each doc's maintenance class.
 

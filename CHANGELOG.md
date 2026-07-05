@@ -18,6 +18,9 @@
 - **Windows and macOS are now verified in CI alongside Linux.** The plugin's build and test suite runs on Windows and macOS hosts in addition to Linux, exercising platform-specific behavior Linux can't — Windows `%LOCALAPPDATA%\openspec` data-dir resolution and backslash/UNC path handling, the `.cmd` launcher shim invocation from paths containing spaces, and root canonicalization across symlinks (macOS/Linux) and 8.3 short paths (Windows). CRLF-vs-LF parse parity for the store and workset listings is checked on every platform. This hardens the store/workset read surface for Windows users in particular.
 - **The Coordination tab stands down cleanly on OpenSpec CLI 1.5.0 and later.** CLI 1.5.0 removed the `workspace`, `context-store`, and `initiative` commands (replaced by a new store/workset model). The plugin now recognizes these as a 1.4-line-only capability: it invokes those commands only when the detected CLI is in the `[1.4.0, 1.5.0)` window, and on a 1.5.0+ CLI it no longer calls them or offers create/set-up actions that would fail — showing a read-only view when legacy on-disk coordination state exists, and hiding the tab otherwise. The built-in schema set is now `spec-driven` only, matching what a 1.5.0 CLI reports (the `workspace-planning` schema remains recognized on a 1.4.x CLI via its live schema list). The minimum supported CLI is unchanged at 1.3.0.
 
+### Fixed
+- **The JetBrains Marketplace listing now shows the plugin's full description.** The listing had been displaying a one-line summary because the build was overwriting the rich description at packaging time. The description is now sourced from the README's overview section — one source of truth for GitHub and the Marketplace — and covers the current feature set: spec browser, change lifecycle, AI-tool handoff, schema authoring, and stores/worksets.
+
 ## v0.3.1
 
 ### Fixed
@@ -150,7 +153,7 @@
 
 - **Gutter markers**: `@spec` references in Java source are annotated with clickable icons linking back to the spec
 - **Coverage panel**: new Coverage tab in the OpenSpec tool window shows which requirements are referenced in code
-- **Removed in-plugin tracker integration** (Forgejo/Plane) — external AI workflows handle this better
+- **Removed in-plugin issue-tracker integration** — external AI workflows handle this better
 
 ## v0.1.0 — Ship It Clean
 
