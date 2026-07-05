@@ -83,6 +83,39 @@ jobs:
         env:
           PLUGIN_SIGNING_CERTIFICATE: ${{ secrets.PLUGIN_SIGNING_CERTIFICATE }}
 
+      # Publish-surface scrub gate. Blocks publishPlugin if an internal-infrastructure
+      # identifier appears in the rendered release notes (Marketplace "What's New" +
+      # GitHub release body) or anywhere inside the signed artifact. Last line of
+      # defense behind the local pre-push guard and MarketplaceListingHygieneTest —
+      # this one runs even if local gates were skipped. Same pattern set as those
+      # layers; character-class boundaries, not \b (grep implementations differ).
+      - name: Scrub release notes and artifact (pre-publish gate)
+        run: |
+          set -euo pipefail
+          PATTERN='forgejo|(^|[^a-zA-Z])geek([^a-zA-Z]|$)|(^|[^a-zA-Z])plane([^a-zA-Z]|$)|OSPEC-[0-9]|OSP-[0-9]|johnb/'
+          VERSION="${GITHUB_REF_NAME#v}"
+          NOTES=$(./gradlew -q getChangelog --no-header --project-version="$VERSION" || true)
+          if printf '%s\n' "$NOTES" | grep -niE "$PATTERN"; then
+            echo "::error::internal identifier in rendered release notes — scrub CHANGELOG.md before releasing"
+            exit 1
+          fi
+          SIGNED=$(ls build/distributions/*-signed.zip)
+          SCAN="$RUNNER_TEMP/artifact-scan"
+          mkdir -p "$SCAN" && unzip -qo "$SIGNED" -d "$SCAN"
+          # Extract and scan only our own jars: third-party libs are upstream artifacts
+          # (false-positive prone on common words), and internal identifiers can only
+          # enter through ours. Raw .jar files are excluded from the grep — compressed
+          # bytes can't be string-matched; their extracted contents are what's scanned.
+          find "$SCAN" -name 'intellij-openspec-*.jar' | while read -r J; do
+            unzip -qo "$J" -d "${J%.jar}-contents"
+          done
+          if HITS=$(grep -rlaiE "$PATTERN" "$SCAN" --exclude='*.jar'); then
+            echo "$HITS"
+            echo "::error::internal identifier found inside the plugin artifact"
+            exit 1
+          fi
+          echo "Release notes and artifact scrub clean"
+
       - name: Publish to JetBrains Marketplace
         run: ./gradlew publishPlugin
         env:
