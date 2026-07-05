@@ -91,11 +91,18 @@ jobs:
           PLUGIN_SIGNING_KEY_PASSWORD: ${{ secrets.PLUGIN_SIGNING_KEY_PASSWORD }}
           JETBRAINS_MARKETPLACE_TOKEN: ${{ secrets.JETBRAINS_MARKETPLACE_TOKEN }}
 
+      # Render release notes with the gradle-changelog-plugin — the same parser that
+      # produces the Marketplace changeNotes — so both surfaces always agree. The old
+      # hand-rolled awk required a space after the version header, so a bare "## vX.Y.Z"
+      # (no subtitle) extracted nothing and the release shipped with empty notes.
+      # Non-fatal on a missing changelog section: publishPlugin has already run by this
+      # point, and action-gh-release falls back to generate_release_notes.
       - name: Extract changelog for this version
         id: changelog
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          NOTES=$(awk "/^## v${VERSION} /{found=1; next} /^## v/{if(found) exit} found" CHANGELOG.md)
+          NOTES=$(./gradlew -q getChangelog --no-header --project-version="$VERSION") \
+            || { echo "::warning::no v${VERSION} section in CHANGELOG.md — falling back to generated notes"; NOTES=""; }
           echo "notes<<EOF" >> "$GITHUB_OUTPUT"
           echo "$NOTES" >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
