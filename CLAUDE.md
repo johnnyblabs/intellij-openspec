@@ -37,10 +37,10 @@ The broader rule: nothing local-homelab-specific ever lands in artifacts that wi
 ## If `openspec update` clobbers customizations
 
 ```bash
-git checkout HEAD -- .augment/ .claude/ .codex/ .gemini/ .github/
+git checkout HEAD -- .claude/skills/
 ```
 
-After the migration to custom skills landed, the `openspec-*` files match what the CLI regenerates, so this should be a quieter recovery than it used to be.
+Since the 1.5.0 skills-only migration, `.claude/skills/openspec-*/` is the only *tracked* surface the CLI regenerates. The other AI-tool skill mirrors (`.augment/`, `.codex/`, `.gemini/`, `.github/skills/`, `.junie/`) are gitignored regenerated copies — clobbering there is harmless, and git can't (and needn't) restore them. The custom-named skills are gitignored too, so the checkout won't touch them.
 
 ## Plugin-internal config fields — audit before "aligning" to upstream
 
