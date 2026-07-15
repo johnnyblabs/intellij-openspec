@@ -1,0 +1,15 @@
+{
+  "store": null,
+  "registry": null,
+  "git": null,
+  "created_files": [],
+  "status": [
+    {
+      "severity": "error",
+      "code": "store_root_pointer_declared",
+      "message": "This repo's planning is externalized to store 'some-external-store' (/fixture/pointer-root/openspec/config.yaml); it is not itself a store root.",
+      "target": "store.pointer",
+      "fix": "Register the checkout for the declared store, or remove the store: line first to convert this repo into a local store root."
+    }
+  ]
+}

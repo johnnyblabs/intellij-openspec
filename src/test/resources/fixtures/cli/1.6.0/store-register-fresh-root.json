@@ -1,0 +1,21 @@
+{
+  "store": {
+    "id": "fresh-root",
+    "root": "/fixture/fresh-root",
+    "metadata_path": "/fixture/fresh-root/.openspec-store/store.yaml"
+  },
+  "registry": {
+    "path": "/fixture/registry/openspec/stores/registry.yaml",
+    "registered": true,
+    "already_registered": false
+  },
+  "git": {
+    "is_repository": false,
+    "initialized": false,
+    "committed": false
+  },
+  "created_files": [
+    ".openspec-store/store.yaml"
+  ],
+  "status": []
+}

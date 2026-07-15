@@ -25,11 +25,25 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * {@code workset create ...}, and {@code workset list --json}; sanitize absolute paths to
  * {@code /fixture/...}. The diagnostic fixture comes from a real {@code store doctor} run against a
  * store whose metadata was removed. If the CLI output format changes, re-capture and fix failures.
+ *
+ * <p>The {@code 1.6.0/} healthy-empty doctor fixture was captured the same way from CLI 1.6.0,
+ * registering a config-only root ({@code openspec/config.yaml} only) with
+ * {@code store register --yes}: 1.6 reports it {@code healthy: true} with the planning directories
+ * {@code present: false} — health comes solely from the CLI's own {@code healthy} flag, never from
+ * plugin-side directory checks.
  */
 class StoreWorksetContractTest {
 
     private static String fixture(String name) {
-        String path = "/fixtures/cli/1.5.0/" + name;
+        return fixtureAt("1.5.0", name);
+    }
+
+    private static String fixture16(String name) {
+        return fixtureAt("1.6.0", name);
+    }
+
+    private static String fixtureAt(String cliVersion, String name) {
+        String path = "/fixtures/cli/" + cliVersion + "/" + name;
         try (InputStream is = StoreWorksetContractTest.class.getResourceAsStream(path)) {
             if (is == null) {
                 throw new IllegalStateException("Fixture not found: " + path);
@@ -87,6 +101,24 @@ class StoreWorksetContractTest {
         assertEquals(Boolean.FALSE, nogit.gitRepository());
         assertEquals(Boolean.TRUE, nogit.metadataPresent());
         assertEquals(Boolean.TRUE, nogit.openspecRootHealthy());
+    }
+
+    @Test
+    void healthyEmptyStoreParsesHealthyOn16Generation() {
+        // CLI 1.6: a fresh/config-only store (planning dirs present:false) is healthy:true.
+        // openspecRootHealthy must read that flag alone — directory absence is NOT unhealthiness,
+        // and no diagnostic is derived from it.
+        List<StoreEntry> stores = CoordinationService.parseStoreDoctor(
+                fixture16("store-doctor-healthy-empty.json"));
+        assertEquals(1, stores.size());
+        StoreEntry fresh = stores.get(0);
+        assertEquals("fresh-root", fresh.id());
+        assertEquals(Boolean.TRUE, fresh.openspecRootHealthy());
+        assertEquals(Boolean.TRUE, fresh.metadataPresent());
+        assertEquals(Boolean.TRUE, fresh.metadataValid());
+        assertEquals(Boolean.FALSE, fresh.gitRepository());
+        assertTrue(fresh.diagnostics().isEmpty(),
+                "a healthy-empty store has no diagnostics — absence of planning dirs is not an issue");
     }
 
     // ---- T.4: workset list ---------------------------------------------------

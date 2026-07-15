@@ -58,7 +58,9 @@ import java.awt.event.MouseEvent;
 import java.io.File;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 
 /**
@@ -924,6 +926,29 @@ public final class CoordinationPanel extends JPanel {
     private record DiagnosticNode(Diagnostic diagnostic) {
     }
 
+    /**
+     * Health markers for a store row: label → {@code true} when the marker is an error. Health is
+     * read solely from the doctor-reported flags on the entry — a store whose openspec-root is
+     * healthy but whose planning directories are absent (a CLI 1.6+ fresh/config-only store) carries
+     * {@code openspecRootHealthy == TRUE} and gets no unhealthy marker; directory absence is never
+     * inferred as unhealthiness here.
+     */
+    static Map<String, Boolean> storeHealthMarkers(StoreEntry s) {
+        Map<String, Boolean> markers = new LinkedHashMap<>();
+        if (Boolean.FALSE.equals(s.metadataValid()) || Boolean.FALSE.equals(s.metadataPresent())) {
+            markers.put("metadata issue", true);
+        }
+        if (Boolean.FALSE.equals(s.openspecRootHealthy())) {
+            markers.put("unhealthy openspec-root", true);
+        }
+        if (Boolean.TRUE.equals(s.gitRepository())) {
+            markers.put("git", false);
+        } else if (Boolean.FALSE.equals(s.gitRepository())) {
+            markers.put("not a git repo", false);
+        }
+        return markers;
+    }
+
     private static final class CoordinationCellRenderer extends ColoredTreeCellRenderer {
         @Override
         public void customizeCellRenderer(JTree tree, Object value, boolean selected, boolean expanded,
@@ -989,16 +1014,10 @@ public final class CoordinationPanel extends JPanel {
         }
 
         private void append1_5StoreHealth(StoreEntry s) {
-            if (Boolean.FALSE.equals(s.metadataValid()) || Boolean.FALSE.equals(s.metadataPresent())) {
-                append("  metadata issue", SimpleTextAttributes.ERROR_ATTRIBUTES);
-            }
-            if (Boolean.FALSE.equals(s.openspecRootHealthy())) {
-                append("  unhealthy openspec-root", SimpleTextAttributes.ERROR_ATTRIBUTES);
-            }
-            if (Boolean.TRUE.equals(s.gitRepository())) {
-                append("  git", SimpleTextAttributes.GRAYED_ATTRIBUTES);
-            } else if (Boolean.FALSE.equals(s.gitRepository())) {
-                append("  not a git repo", SimpleTextAttributes.GRAYED_ATTRIBUTES);
+            for (Map.Entry<String, Boolean> marker : storeHealthMarkers(s).entrySet()) {
+                append("  " + marker.getKey(), marker.getValue()
+                        ? SimpleTextAttributes.ERROR_ATTRIBUTES
+                        : SimpleTextAttributes.GRAYED_ATTRIBUTES);
             }
         }
 
