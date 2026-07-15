@@ -7,7 +7,7 @@ Automated rendered-UI smoke coverage: scope, journeys, execution policy, and fla
 
 ### Requirement: Rendered-UI smoke journeys exist
 
-The project SHALL maintain a small suite (currently five) of automated UI smoke journeys that drive a real sandbox IDE with the plugin installed, asserting presence and wiring of rendered surfaces. Journeys SHALL assert component presence and wiring, not textual prose or pixels, and SHALL NOT mutate durable state (dialog journeys exit via cancel; no archive is performed).
+The project SHALL maintain a small suite (currently six) of automated UI smoke journeys that drive a real sandbox IDE with the plugin installed, asserting presence and wiring of rendered surfaces. Journeys SHALL assert component presence and wiring, not textual prose or pixels, and SHALL NOT mutate durable user state (dialog journeys exit via cancel; no archive is performed). A journey that must exercise state-writing actions SHALL isolate that state to journey-scoped temporary locations — e.g. an isolated OpenSpec data directory injected via the IDE process environment — so nothing outlives the journey or touches the user's real data.
 
 #### Scenario: Open-and-render journey
 - **WHEN** the smoke suite opens a seeded demo project
@@ -28,6 +28,10 @@ The project SHALL maintain a small suite (currently five) of automated UI smoke 
 #### Scenario: Archive guard journey
 - **WHEN** the smoke suite invokes Archive on the seeded incomplete change
 - **THEN** it SHALL assert the incomplete-change confirmation surface appears, cancel it, and assert the change directory was not moved
+
+#### Scenario: Store-health journey (CLI 1.6 semantics)
+- **WHEN** the smoke suite runs against a host CLI at 1.6+ with an isolated OpenSpec data directory, a pre-registered fresh/config-only store, and prepared store roots (a pointer-declaring root, a never-a-store root, and a fresh root with store identity)
+- **THEN** it SHALL assert the fresh store's row renders with no unhealthy or metadata error marker, that registering the pointer-declaring and never-a-store roots surfaces the CLI's refusal/confirmation message and fix in the write-failure dialog (dismissed without confirming), and that registering the identified fresh root succeeds and lists a new row with no error marker; on a host CLI below 1.6 the journey SHALL be skipped, not failed
 
 ### Requirement: Smoke journeys never gate ordinary PRs
 
