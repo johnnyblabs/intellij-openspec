@@ -17,10 +17,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * {@code CoordinationService} parsers against the actual CLI output shape (field names,
  * nesting), not a hand-written approximation.
  *
- * <p>If the CLI output format changes, re-capture the fixtures (set up a context store /
- * initiative / workspace under an isolated {@code XDG_DATA_HOME} and pipe the
- * {@code list --json} / {@code doctor --json} output through the same path sanitization) and
- * fix any failures here.
+ * <p><b>These fixtures are permanently pinned (1.4-generation).</b> The {@code workspace},
+ * {@code context-store}, and {@code initiative} commands were removed upstream at CLI 1.5.0,
+ * so the captures can never be refreshed; they remain the only parse coverage for the
+ * still-supported 1.4.x line. See {@code fixtures/cli/README.md} (provenance manifest).
+ * Delete them only when 1.4.x support is dropped by a spec-level change.
  */
 class CoordinationContractTest {
 

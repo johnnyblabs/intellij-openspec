@@ -1,0 +1,37 @@
+{
+  "changeName": "demo-change",
+  "artifactId": "tasks",
+  "schemaName": "spec-driven",
+  "changeDir": "/fixture/demo-project/openspec/changes/demo-change",
+  "planningHome": {
+    "kind": "repo",
+    "root": "/fixture/demo-project",
+    "changesDir": "/fixture/demo-project/openspec/changes",
+    "defaultSchema": "spec-driven"
+  },
+  "outputPath": "tasks.md",
+  "resolvedOutputPath": "/fixture/demo-project/openspec/changes/demo-change/tasks.md",
+  "existingOutputPaths": [],
+  "description": "Implementation checklist with trackable tasks",
+  "instruction": "Create the task list that breaks down the implementation work.\n\n**IMPORTANT: Follow the template below exactly.** The apply phase parses\ncheckbox format to track progress. Tasks not using `- [ ]` won't be tracked.\n\nGuidelines:\n- Group related tasks under ## numbered headings\n- Each task MUST be a checkbox: `- [ ] X.Y Task description`\n- Tasks should be small enough to complete in one session\n- Order tasks by dependency (what must be done first?)\n\nExample:\n```\n## 1. Setup\n\n- [ ] 1.1 Create new module structure\n- [ ] 1.2 Add dependencies to package.json\n\n## 2. Core Implementation\n\n- [ ] 2.1 Implement data export function\n- [ ] 2.2 Add CSV formatting utilities\n```\n\nReference specs for what needs to be built, design for how to build it.\nEach task should be verifiable - you know when it's done.\n",
+  "template": "## 1. <!-- Task Group Name -->\n\n- [ ] 1.1 <!-- Task description -->\n- [ ] 1.2 <!-- Task description -->\n\n## 2. <!-- Task Group Name -->\n\n- [ ] 2.1 <!-- Task description -->\n- [ ] 2.2 <!-- Task description -->\n",
+  "dependencies": [
+    {
+      "id": "specs",
+      "done": false,
+      "path": "specs/**/*.md",
+      "description": "Detailed specifications for the change"
+    },
+    {
+      "id": "design",
+      "done": true,
+      "path": "design.md",
+      "description": "Technical design document with implementation details"
+    }
+  ],
+  "unlocks": [],
+  "root": {
+    "path": "/fixture/demo-project",
+    "source": "nearest"
+  }
+}

@@ -12,14 +12,6 @@ import java.util.regex.Pattern;
 
 public final class CliOutputParser {
 
-    // Matches JSON item structure from `openspec validate --all --json`
-    private static final Pattern JSON_ITEM = Pattern.compile(
-            "\"id\"\\s*:\\s*\"([^\"]+)\".*?\"type\"\\s*:\\s*\"([^\"]+)\".*?\"valid\"\\s*:\\s*(true|false).*?\"issues\"\\s*:\\s*\\[([^\\]]*)]",
-            Pattern.DOTALL);
-    private static final Pattern JSON_ISSUE = Pattern.compile(
-            "\"level\"\\s*:\\s*\"([^\"]+)\".*?\"message\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\"",
-            Pattern.DOTALL);
-
     // Matches stderr lines like "✗ spec/actions" or "✓ spec/actions"
     private static final Pattern CHECK_LINE = Pattern.compile("^[✗✓]\\s+(.+)$", Pattern.MULTILINE);
 
@@ -36,29 +28,50 @@ public final class CliOutputParser {
 
     /**
      * Parses the output of `openspec validate --all --json`.
+     *
+     * <p>Structural JSON parsing, not regex: 1.6 issue paths like {@code requirements[0]}
+     * carry a {@code ]} that breaks any bracket-delimited scan of the issues array.
+     * Issues are extracted only from {@code valid: false} items; issues the CLI reports
+     * on valid items (warnings, the 1.6 INFO level) never flip the result.
      */
     public static ValidationResult parseJsonOutput(String jsonOutput) {
         List<ValidationIssue> issues = new ArrayList<>();
 
-        Matcher itemMatcher = JSON_ITEM.matcher(jsonOutput);
-        while (itemMatcher.find()) {
-            String id = itemMatcher.group(1);
-            String type = itemMatcher.group(2);
-            boolean valid = "true".equals(itemMatcher.group(3));
-            String issuesBlock = itemMatcher.group(4);
+        JsonObject root = null;
+        try {
+            JsonElement parsed = JsonParser.parseString(
+                    CliJson.extractJsonPayload(jsonOutput == null ? "" : jsonOutput));
+            if (parsed.isJsonObject()) {
+                root = parsed.getAsJsonObject();
+            }
+        } catch (JsonSyntaxException ignored) {
+            // Not JSON at all — treat as no reported items, matching the previous
+            // regex behavior of finding nothing.
+        }
 
-            if (!valid && !issuesBlock.isBlank()) {
-                Matcher issueMatcher = JSON_ISSUE.matcher(issuesBlock);
-                while (issueMatcher.find()) {
-                    String level = issueMatcher.group(1);
-                    String message = issueMatcher.group(2)
-                            .replace("\\n", "\n")
-                            .replace("\\\"", "\"");
+        if (root != null && root.has("items") && root.get("items").isJsonArray()) {
+            for (JsonElement element : root.getAsJsonArray("items")) {
+                if (!element.isJsonObject()) {
+                    continue;
+                }
+                JsonObject item = element.getAsJsonObject();
+                boolean valid = item.has("valid") && item.get("valid").getAsBoolean();
+                if (valid || !item.has("issues") || !item.get("issues").isJsonArray()) {
+                    continue;
+                }
+                String id = item.has("id") ? item.get("id").getAsString() : "";
+                String type = item.has("type") ? item.get("type").getAsString() : "";
+                for (JsonElement issueElement : item.getAsJsonArray("issues")) {
+                    if (!issueElement.isJsonObject()) {
+                        continue;
+                    }
+                    JsonObject issue = issueElement.getAsJsonObject();
+                    String level = issue.has("level") ? issue.get("level").getAsString() : null;
+                    String message = issue.has("message") ? issue.get("message").getAsString() : "";
                     // Use just the first line of the message for display
                     String shortMessage = message.contains("\n")
                             ? message.substring(0, message.indexOf("\n")) : message;
-                    ValidationIssue.Severity severity = parseSeverity(level);
-                    issues.add(new ValidationIssue(severity, type + "/" + id, 0,
+                    issues.add(new ValidationIssue(parseSeverity(level), type + "/" + id, 0,
                             shortMessage, "cli"));
                 }
             }

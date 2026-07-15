@@ -1,0 +1,88 @@
+{
+  "items": [
+    {
+      "id": "actions",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 2
+    },
+    {
+      "id": "broken",
+      "type": "spec",
+      "valid": false,
+      "issues": [
+        {
+          "level": "ERROR",
+          "path": "requirements[0]",
+          "message": "Requirement \"Records are kept\" must contain SHALL or MUST"
+        }
+      ],
+      "durationMs": 0
+    },
+    {
+      "id": "delta-change",
+      "type": "change",
+      "valid": true,
+      "issues": [
+        {
+          "level": "INFO",
+          "path": "actions/spec.md",
+          "line": 14,
+          "message": "Header \"### Implementation notes\" in MODIFIED Requirements is not a \"### Requirement:\" header and is ignored by validation. Use \"### Requirement: Implementation notes\" if it should be validated as a requirement."
+        }
+      ],
+      "durationMs": 3
+    },
+    {
+      "id": "demo-change",
+      "type": "change",
+      "valid": false,
+      "issues": [
+        {
+          "level": "ERROR",
+          "path": "file",
+          "message": "Change must have at least one delta. No deltas found. Ensure your change has a specs/ directory with capability folders (e.g. specs/http-server/spec.md) containing .md files that use delta headers (## ADDED/MODIFIED/REMOVED/RENAMED Requirements) and that each requirement includes at least one \"#### Scenario:\" block. Tip: run \"openspec change show <change-id> --json --deltas-only\" to inspect parsed deltas."
+        }
+      ],
+      "durationMs": 2
+    },
+    {
+      "id": "validation",
+      "type": "spec",
+      "valid": true,
+      "issues": [
+        {
+          "level": "WARNING",
+          "path": "overview",
+          "message": "Purpose section is too brief (less than 50 characters)"
+        }
+      ],
+      "durationMs": 0
+    }
+  ],
+  "summary": {
+    "totals": {
+      "items": 5,
+      "passed": 3,
+      "failed": 2
+    },
+    "byType": {
+      "change": {
+        "items": 2,
+        "passed": 1,
+        "failed": 1
+      },
+      "spec": {
+        "items": 3,
+        "passed": 2,
+        "failed": 1
+      }
+    }
+  },
+  "version": "1.0",
+  "root": {
+    "path": "/fixture/demo-project",
+    "source": "nearest"
+  }
+}

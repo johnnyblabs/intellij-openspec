@@ -1,0 +1,6 @@
+Migrated: custom profile with 6 workflows
+New in this version: /opsx:propose. Try 'openspec config profile core' for the streamlined experience.
+✓ All 1 tool(s) up to date (v1.6.0)
+  Tools: claude
+
+Use --force to refresh files anyway.

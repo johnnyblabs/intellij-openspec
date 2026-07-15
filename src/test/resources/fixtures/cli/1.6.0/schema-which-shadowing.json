@@ -1,0 +1,11 @@
+{
+  "name": "spec-driven",
+  "source": "project",
+  "path": "/fixture/demo-project/openspec/schemas/spec-driven",
+  "shadows": [
+    {
+      "source": "package",
+      "path": "/fixture/node_modules/@fission-ai/openspec/schemas/spec-driven"
+    }
+  ]
+}

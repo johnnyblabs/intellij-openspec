@@ -1,0 +1,12 @@
+{
+  "name": "custom-flow",
+  "path": "/fixture/demo-project/openspec/schemas/custom-flow",
+  "valid": false,
+  "issues": [
+    {
+      "level": "error",
+      "path": "schema.yaml",
+      "message": "Parse error: Flow sequence in block collection must be sufficiently indented and end with a ] at line 2, column 19:\n\n  broken yaml here\n                  ^\n"
+    }
+  ]
+}
