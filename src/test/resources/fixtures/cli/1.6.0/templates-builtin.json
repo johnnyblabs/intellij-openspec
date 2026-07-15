@@ -1,0 +1,18 @@
+{
+  "proposal": {
+    "path": "/fixture/node_modules/@fission-ai/openspec/schemas/spec-driven/templates/proposal.md",
+    "source": "package"
+  },
+  "specs": {
+    "path": "/fixture/node_modules/@fission-ai/openspec/schemas/spec-driven/templates/spec.md",
+    "source": "package"
+  },
+  "design": {
+    "path": "/fixture/node_modules/@fission-ai/openspec/schemas/spec-driven/templates/design.md",
+    "source": "package"
+  },
+  "tasks": {
+    "path": "/fixture/node_modules/@fission-ai/openspec/schemas/spec-driven/templates/tasks.md",
+    "source": "package"
+  }
+}

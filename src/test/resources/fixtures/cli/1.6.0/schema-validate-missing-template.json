@@ -1,0 +1,12 @@
+{
+  "name": "custom-flow",
+  "path": "/fixture/demo-project/openspec/schemas/custom-flow",
+  "valid": false,
+  "issues": [
+    {
+      "level": "error",
+      "path": "artifacts.design.template",
+      "message": "Template file 'design.md' not found for artifact 'design'"
+    }
+  ]
+}

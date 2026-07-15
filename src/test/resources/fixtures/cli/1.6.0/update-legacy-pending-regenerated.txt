@@ -1,0 +1,22 @@
+
+Upgrading to the new OpenSpec
+
+OpenSpec now uses agent skills, the emerging standard across coding
+agents. This simplifies your setup while keeping everything working
+as before.
+
+Files to remove
+No user content to preserve:
+  • .junie/commands/opsx-apply.md
+  • .junie/commands/opsx-archive.md
+  • .junie/commands/opsx-explore.md
+  • .junie/commands/opsx-propose.md
+
+⚠ Run with --force to auto-cleanup legacy files, or run interactively.
+
+✓ All 1 tool(s) up to date (v1.6.0)
+  Tools: junie
+
+Use --force to refresh files anyway.
+Note: The core profile now includes sync. Your custom profile is preserving the old core workflow set.
+Run `openspec config profile core` and then `openspec update` to add sync.

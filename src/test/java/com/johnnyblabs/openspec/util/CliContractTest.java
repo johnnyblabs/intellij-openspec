@@ -4,6 +4,7 @@ import com.johnnyblabs.openspec.model.ArtifactInfo;
 import com.johnnyblabs.openspec.model.ArtifactInstruction;
 import com.johnnyblabs.openspec.model.ArtifactStatus;
 import com.johnnyblabs.openspec.model.ChangeArtifactDag;
+import com.johnnyblabs.openspec.validation.ValidationIssue;
 import com.johnnyblabs.openspec.validation.ValidationResult;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -19,6 +20,11 @@ import static org.junit.jupiter.api.Assertions.*;
  * Contract tests that parse real CLI JSON output captured as fixtures.
  * If the CLI output format changes, update the fixtures under
  * src/test/resources/fixtures/cli/ with fresh output and fix any failures.
+ *
+ * <p>Fixtures are per CLI generation: the versionless root files are frozen legacy
+ * captures (see {@code fixtures/cli/README.md}), and the {@code 1.6.0/} twins are
+ * asserted by the {@code ...V16} nests below. Legacy assertions stay untouched while
+ * their generation remains supported.
  */
 class CliContractTest {
 
@@ -32,6 +38,10 @@ class CliContractTest {
         } catch (IOException e) {
             throw new RuntimeException("Failed to read fixture: " + path, e);
         }
+    }
+
+    private static String fixture16(String name) {
+        return loadFixture("1.6.0/" + name);
     }
 
     @Nested
@@ -268,6 +278,202 @@ class CliContractTest {
 
             assertEquals(0, result.warningCount(),
                     "warnings on valid items are not extracted by parseJsonOutput");
+        }
+    }
+
+    /**
+     * 1.6-generation status contract. The capture (a seeded {@code demo-change} with
+     * proposal/design/tasks written, no specs delta) reproduces the legacy per-index
+     * statuses while carrying the additive 1.6 keys ({@code planningHome},
+     * {@code changeRoot}, {@code artifactPaths}, {@code nextSteps}) — parsing it with
+     * exact-value assertions proves the parser tolerates the 1.6 envelope.
+     */
+    @Nested
+    class StatusContractV16 {
+
+        @Test
+        void parsesRealStatusOutputWithAdditive16Keys() {
+            ChangeArtifactDag dag = CliOutputParser.parseChangeStatus(fixture16("status.json"));
+
+            assertNotNull(dag);
+            assertEquals("demo-change", dag.getChangeName());
+            assertEquals("spec-driven", dag.getSchemaName());
+            assertFalse(dag.isComplete());
+            assertEquals(List.of("tasks"), dag.getApplyRequires());
+        }
+
+        @Test
+        void artifactStatusesDeserializeCorrectly() {
+            ChangeArtifactDag dag = CliOutputParser.parseChangeStatus(fixture16("status.json"));
+
+            assertEquals(4, dag.getArtifacts().size());
+            assertEquals(ArtifactStatus.DONE, dag.getArtifacts().get(0).status());   // proposal
+            assertEquals(ArtifactStatus.DONE, dag.getArtifacts().get(1).status());   // design
+            assertEquals(ArtifactStatus.READY, dag.getArtifacts().get(2).status());  // specs
+            assertEquals(ArtifactStatus.DONE, dag.getArtifacts().get(3).status());   // tasks
+        }
+
+        @Test
+        void getReadyArtifactsWorksOnRealData() {
+            ChangeArtifactDag dag = CliOutputParser.parseChangeStatus(fixture16("status.json"));
+
+            assertEquals(1, dag.getReadyArtifacts().size());
+            assertEquals("specs", dag.getReadyArtifacts().get(0).id());
+        }
+
+        @Test
+        void parsesMixedStatusesAndMissingDeps() {
+            ChangeArtifactDag dag =
+                    CliOutputParser.parseChangeStatus(fixture16("status-with-context.json"));
+
+            assertEquals(ArtifactStatus.DONE, dag.getArtifacts().get(0).status());    // proposal
+            assertEquals(ArtifactStatus.READY, dag.getArtifacts().get(1).status());   // design
+            assertEquals(ArtifactStatus.READY, dag.getArtifacts().get(2).status());   // specs
+            assertEquals(ArtifactStatus.BLOCKED, dag.getArtifacts().get(3).status()); // tasks
+
+            ArtifactInfo tasks = dag.getArtifacts().get(3);
+            assertEquals("tasks", tasks.id());
+            assertEquals(List.of("design", "specs"), tasks.missingDeps());
+        }
+
+        @Test
+        void parsesActionContext() {
+            ChangeArtifactDag dag =
+                    CliOutputParser.parseChangeStatus(fixture16("status-with-context.json"));
+
+            ChangeArtifactDag.ActionContext ac = dag.getActionContext();
+            assertNotNull(ac, "captured 1.6 status must surface actionContext");
+            assertEquals("repo-local", ac.getMode());
+            assertEquals("repo", ac.getSourceOfTruth());
+            assertEquals(List.of("/fixture/demo-project"), ac.getAllowedEditRoots());
+            assertFalse(ac.isRequiresAffectedAreaSelection());
+        }
+    }
+
+    /** 1.6-generation instructions contract (staged DAG states of the same seed). */
+    @Nested
+    class InstructionContractV16 {
+
+        @Test
+        void parsesProposalWithNoDependencies() {
+            ArtifactInstruction inst =
+                    CliOutputParser.parseArtifactInstruction(fixture16("instructions-proposal.json"));
+
+            assertNotNull(inst);
+            assertEquals("proposal", inst.artifactId());
+            assertEquals("proposal.md", inst.outputPath());
+            assertTrue(inst.dependencies().isEmpty());
+            assertEquals(List.of("design", "specs"), inst.unlocks());
+        }
+
+        @Test
+        void parsesSpecsWithOneDependency() {
+            ArtifactInstruction inst =
+                    CliOutputParser.parseArtifactInstruction(fixture16("instructions-specs.json"));
+
+            assertEquals("specs", inst.artifactId());
+            assertEquals("demo-change", inst.changeName());
+            assertEquals(1, inst.dependencies().size());
+
+            ArtifactInstruction.Dependency dep = inst.dependencies().get(0);
+            assertEquals("proposal", dep.id());
+            assertTrue(dep.done());
+            assertEquals("proposal.md", dep.path());
+            assertNotNull(dep.description());
+        }
+
+        @Test
+        void parsesTasksWithMultipleDependencies() {
+            ArtifactInstruction inst =
+                    CliOutputParser.parseArtifactInstruction(fixture16("instructions-tasks.json"));
+
+            assertEquals("tasks", inst.artifactId());
+            assertEquals(2, inst.dependencies().size());
+
+            ArtifactInstruction.Dependency specsDep = inst.dependencies().stream()
+                    .filter(d -> "specs".equals(d.id())).findFirst().orElseThrow();
+            assertFalse(specsDep.done());
+            assertEquals("specs/**/*.md", specsDep.path());
+
+            ArtifactInstruction.Dependency designDep = inst.dependencies().stream()
+                    .filter(d -> "design".equals(d.id())).findFirst().orElseThrow();
+            assertTrue(designDep.done());
+            assertEquals("design.md", designDep.path());
+        }
+
+        @Test
+        void parsesEmptyUnlocksAsEmptyList() {
+            ArtifactInstruction inst =
+                    CliOutputParser.parseArtifactInstruction(fixture16("instructions-tasks.json"));
+
+            assertNotNull(inst.unlocks());
+            assertTrue(inst.unlocks().isEmpty());
+        }
+
+        @Test
+        void buildPromptIncludesDependencies() {
+            ArtifactInstruction inst =
+                    CliOutputParser.parseArtifactInstruction(fixture16("instructions-specs.json"));
+
+            String prompt = inst.buildPrompt();
+            assertTrue(prompt.contains("Dependencies:"));
+            assertTrue(prompt.contains("### proposal"));
+        }
+    }
+
+    /**
+     * 1.6-generation validate contract. The capture was seeded to exercise every issue
+     * class 1.6 emits: a valid spec, a valid spec with a WARNING, a missing-SHALL spec
+     * (the re-pathed {@code requirements[0]} ERROR with the reworded message), a
+     * delta-less change (ERROR), and a valid change whose delta carries a non-canonical
+     * level-3 header (the new INFO-level issue with a {@code line} field — 1.6 emits it
+     * on {@code valid: true} items, so it must never surface from the parser).
+     */
+    @Nested
+    class ValidateContractV16 {
+
+        @Test
+        void parsesRealValidateOutput() {
+            ValidationResult result = CliOutputParser.parseJsonOutput(fixture16("validate.json"));
+
+            assertNotNull(result);
+            assertFalse(result.passed(), "capture contains two invalid items");
+            assertEquals(2, result.errorCount(),
+                    "missing-SHALL spec + delta-less change are the only invalid items");
+        }
+
+        @Test
+        void extractsRepathedMissingShallError() {
+            ValidationResult result = CliOutputParser.parseJsonOutput(fixture16("validate.json"));
+
+            assertTrue(result.issues().stream().anyMatch(i ->
+                            i.severity() == ValidationIssue.Severity.ERROR
+                                    && i.message().contains("must contain SHALL or MUST")),
+                    "the 1.6 requirements[0] missing-SHALL error must surface with its reworded message");
+        }
+
+        @Test
+        void extractsDeltaLessChangeError() {
+            ValidationResult result = CliOutputParser.parseJsonOutput(fixture16("validate.json"));
+
+            assertTrue(result.issues().stream().anyMatch(i ->
+                            i.severity() == ValidationIssue.Severity.ERROR
+                                    && i.message().contains("Change must have at least one delta")),
+                    "the delta-less change error must surface");
+        }
+
+        @Test
+        void skipsWarningAndInfoIssuesOnValidItems() {
+            // The seeded capture has a WARNING on a valid spec and the new 1.6 INFO
+            // (with a line field) on a valid change. parseJsonOutput only extracts
+            // issues from valid:false items, so neither may appear.
+            ValidationResult result = CliOutputParser.parseJsonOutput(fixture16("validate.json"));
+
+            assertEquals(0, result.warningCount(),
+                    "warnings on valid items are not extracted by parseJsonOutput");
+            assertTrue(result.issues().stream()
+                            .noneMatch(i -> i.severity() == ValidationIssue.Severity.INFO),
+                    "the 1.6 INFO issue rides a valid:true item and must be skipped");
         }
     }
 }

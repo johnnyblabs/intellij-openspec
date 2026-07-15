@@ -70,6 +70,18 @@ public class UpdateLegacyCleanupFlowTest extends OpenSpecIntegrationTestBase {
         assertFalse("Clean output must not raise the cleanup notice", cleanupNoticeRaised());
     }
 
+    public void testPending16OutputRaisesActionableNotice() {
+        // 1.6-generation capture: same block, new "Migrated: custom profile" preamble.
+        service().handleUpdateResult(loadFixture("1.6.0/update-legacy-pending.txt"));
+        assertTrue("1.6 pending migration block must raise the review notice", cleanupNoticeRaised());
+    }
+
+    public void testClean16OutputRaisesNothing() {
+        service().handleUpdateResult(loadFixture("1.6.0/update-clean.txt"));
+        assertFalse("1.6 clean output (Migrated: preamble, no block) must not raise the notice",
+                cleanupNoticeRaised());
+    }
+
     public void testDismissedSetIsSuppressed() {
         String fixture = loadFixture("update-legacy-pending.txt");
         List<String> pending = com.johnnyblabs.openspec.util.UpdateOutputParser.parseLegacyCleanup(fixture);
