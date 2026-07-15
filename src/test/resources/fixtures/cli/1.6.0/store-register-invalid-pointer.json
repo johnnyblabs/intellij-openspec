@@ -1,0 +1,15 @@
+{
+  "store": null,
+  "registry": null,
+  "git": null,
+  "created_files": [],
+  "status": [
+    {
+      "severity": "error",
+      "code": "invalid_store_pointer",
+      "message": "The store declaration in /fixture/badptr-root/openspec/config.yaml is invalid (the store key must be a single store id string).",
+      "target": "store.pointer",
+      "fix": "Fix or remove the store: line in /fixture/badptr-root/openspec/config.yaml before registering this path as a store."
+    }
+  ]
+}

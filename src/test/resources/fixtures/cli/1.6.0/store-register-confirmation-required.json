@@ -1,0 +1,15 @@
+{
+  "store": null,
+  "registry": null,
+  "git": null,
+  "created_files": [],
+  "status": [
+    {
+      "severity": "error",
+      "code": "store_register_identity_confirmation_required",
+      "message": "Turn this OpenSpec root into store 'fresh-two'?",
+      "target": "store.metadata",
+      "fix": "Run interactively or pass --yes to create /fixture/fresh-two/.openspec-store/store.yaml."
+    }
+  ]
+}

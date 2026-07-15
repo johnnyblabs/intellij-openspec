@@ -1,0 +1,42 @@
+{
+  "stores": [
+    {
+      "id": "fresh-root",
+      "root": "/fixture/fresh-root",
+      "metadata_path": "/fixture/fresh-root/.openspec-store/store.yaml",
+      "openspec_root": {
+        "present": true,
+        "config": {
+          "present": true,
+          "path": "openspec/config.yaml"
+        },
+        "specs": {
+          "present": false
+        },
+        "changes": {
+          "present": false
+        },
+        "archive": {
+          "present": false
+        },
+        "healthy": true,
+        "status": []
+      },
+      "metadata": {
+        "present": true,
+        "valid": true,
+        "id": "fresh-root",
+        "remote": null
+      },
+      "git": {
+        "is_repository": false,
+        "has_commits": null,
+        "has_uncommitted_changes": null,
+        "has_remote": null,
+        "origin_url": null
+      },
+      "status": []
+    }
+  ],
+  "status": []
+}
