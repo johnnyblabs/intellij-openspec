@@ -91,5 +91,6 @@ docs/releases/
 .claude/skills/close-change-trackers/
 .claude/skills/release-cut/
 .claude/skills/release-prep/
+.claude/agents/release-manager.md
 # Starter/Allure UI-test artifacts (emitted at repo root by the uiSmoke run)
 allure-results/

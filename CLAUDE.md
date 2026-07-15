@@ -77,6 +77,17 @@ OpenSpec's `tasks` rules already mandate tests for every change and that *"each 
 - Add a contract test that parses the fixture (see `CliContractTest` and `CoordinationContractTest`). When the tool's output format changes, re-capture the fixture and fix the failures.
 - Incident that motivated this: the Phase 3 coordination parsers were unit-tested against inferred JSON and shipped three shape bugs (wrong artifact nesting, wrong doctor key, wrong fallback dir) that all passed CI. Contract-testing against the real CLI caught them immediately.
 
+## Agent routing — consult the project subagents at their trigger points
+
+Project subagents live in `.claude/agents/`. Their descriptions state when to invoke them; the failure mode to avoid is doing the work inline when a designated agent exists for it. Standing trigger points:
+
+- **test-engineer** — PLAN mode at the *start* of implementing every OpenSpec change (fixture strategy, what only verifyPlugin/uiSmoke can catch); AUDIT mode alongside code review whenever a diff touches parsers of external output or adds tests with inline expected-shape literals.
+- **openspec-guru** — before any design decision that turns on what upstream OpenSpec models or emits (CLI shapes, config schemas, lifecycle procedure). Rule of thumb: if the proposal would introduce a concept, verify upstream has it first.
+- **jetbrains-platform-guru** — before implementing anything that touches new IntelliJ Platform APIs or extension points (feasibility on 2024.2+, threading/dumb-mode implications).
+- **plugin-ui-specialist** — when a feature needs a UI home ("which surface tells the story") or a demo/walkthrough is being planned.
+- **intellij-code-reviewer** — after the generic review, for any diff touching PSI/VFS/EDT/services/actions/inspections.
+- A gitignored, clone-local **project-management agent** may also exist (untracked — it references private infrastructure). When present: run its tracker/board **audit** after closing an epic item and before any release cut (`/release-prep` step 0 invokes it). Per-change tracker mechanics stay with the lifecycle skills, not the agent.
+
 ## Release & publishing
 
 - Never run `publishPlugin` locally. CI handles signing and JetBrains Marketplace publishing on `v*` tag push.
