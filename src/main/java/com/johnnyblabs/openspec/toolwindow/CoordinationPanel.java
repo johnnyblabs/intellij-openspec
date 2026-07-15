@@ -452,6 +452,13 @@ public final class CoordinationPanel extends JPanel {
     }
 
     private void onRegisterStore() {
+        // UI-smoke seam: the platform file chooser cannot be driven over the remote Driver SDK,
+        // so the smoke journey preselects the folder via this property (set per journey stop).
+        String preset = System.getProperty("openspec.uismoke.register.store.root");
+        if (preset != null && !preset.isBlank()) {
+            runWrite(service -> service.registerStore(preset));
+            return;
+        }
         VirtualFile chosen = FileChooser.chooseFile(
                 FileChooserDescriptorFactory.createSingleFolderDescriptor()
                         .withTitle("Register Existing Store")

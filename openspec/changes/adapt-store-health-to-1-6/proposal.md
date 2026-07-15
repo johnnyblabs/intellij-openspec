@@ -21,6 +21,7 @@ None.
 
 - `store-workset-surface`: the store-health display requirement changes — doctor-backed health detail SHALL treat a store whose openspec-root is healthy but whose planning directories are absent as healthy (optionally showing the empty state), and SHALL NOT infer or display unhealthiness from directory absence.
 - `store-workset-actions`: the store registration requirement changes — registration outcome semantics become CLI-generation-aware: a fresh root is a success on 1.6+, and the 1.6 refusal codes (`invalid_store_pointer`, `store_root_pointer_declared`) SHALL be surfaced with their `fix` remediation like every other store-write error.
+- `ui-smoke-journeys`: the journey-suite requirement grows a sixth journey — an automated store-health walkthrough (register wiring, refusal/confirmation surfacing, healthy-empty rendering) replacing the manual sandbox check for this behavior — and the no-durable-state-mutation rule is refined to permit state-writing journeys that isolate all written state to journey-scoped temporary locations.
 
 ## Impact
 

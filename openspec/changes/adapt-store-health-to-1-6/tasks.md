@@ -28,4 +28,6 @@
 ## 5. Verification
 
 - [x] 5.1 Run `./gradlew build` (full suite + coverage floor) and confirm green; ratchet the JaCoCo floor if coverage meaningfully rose
-- [ ] 5.2 Manual sandbox check: with CLI 1.6.0, register a fresh store root via the coordination surface and confirm it lists as healthy with no error marker (lifecycle-testdrive walkthrough)
+- [x] 5.2 Automate the walkthrough as uiSmoke journey 6 (`storeHealthFollowsCli16Semantics`): register-store seam property in `CoordinationPanel.onRegisterStore`, journey-scoped `XDG_DATA_HOME` isolation, CLI-1.6+ assumption guard, stops for healthy-empty rendering, pointer/confirmation refusal surfacing, and fresh-root register wiring
+- [x] 5.3 Update the `ui-smoke-journeys` delta spec (six journeys; isolated-state refinement of the no-durable-state rule) and re-validate the change
+- [x] 5.4 Run `./gradlew uiSmoke` filtered to the new journey and confirm green (release pipeline runs the full suite)

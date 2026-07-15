@@ -51,6 +51,48 @@ class OpenSpecUiSmokeTest {
         fun getNotifications(project: Project?): List<NotificationRef>
     }
 
+    /** JMX stub to flip the register-store UI-smoke seam property between journey stops. */
+    @Remote("java.lang.System")
+    interface SystemRef {
+        fun setProperty(key: String, value: String): String?
+    }
+
+    // Programmatic tool-window content selection: robot clicks on ContentTabLabel are
+    // unreliable in the Starter run (SmoothRobot "click unsuccessful"), so the store-health
+    // journey selects the Coordination tab through the platform API instead. The SDK's own
+    // ToolWindow ref exposes only show/hide — these richer stubs follow its getInstance pattern.
+    @Remote("com.intellij.openapi.wm.ToolWindowManager")
+    interface ToolWindowManagerRef {
+        fun getInstance(project: Project): ToolWindowManagerRef
+        fun getToolWindow(id: String): RichToolWindowRef?
+    }
+
+    @Remote("com.intellij.openapi.wm.ToolWindow")
+    interface RichToolWindowRef {
+        fun getContentManager(): ContentManagerRef
+    }
+
+    @Remote("com.intellij.ui.content.ContentManager")
+    interface ContentManagerRef {
+        fun findContent(displayName: String): ContentRef?
+        fun setSelectedContent(content: ContentRef)
+    }
+
+    @Remote("com.intellij.ui.content.Content")
+    interface ContentRef
+
+    /** Programmatic action fire — physical robot clicks don't land in this environment. */
+    @Remote("com.intellij.openapi.actionSystem.impl.ActionButton")
+    interface ActionButtonRef {
+        fun click()
+    }
+
+    /** Programmatic modal-dialog dismissal (ends the dialog's modality). */
+    @Remote("java.awt.Window")
+    interface WindowRef {
+        fun dispose()
+    }
+
     @Remote("com.intellij.notification.Notification")
     interface NotificationRef {
         fun getContent(): String
@@ -222,6 +264,148 @@ class OpenSpecUiSmokeTest {
         }
         check(Files.isDirectory(projectPath.resolve("openspec/changes/demo-add-farewell"))) {
             "change directory was moved despite cancelling the archive"
+        }
+    }
+
+    // ---- Journey 6 — store health follows CLI 1.6 semantics ----------------------
+
+    private fun hostCliVersion(): String? = runCatching {
+        ProcessBuilder("openspec", "--version").redirectErrorStream(true).start()
+            .inputStream.bufferedReader().readText().trim().lines().lastOrNull()
+    }.getOrNull()
+
+    private fun seedStoreRoot(base: Path, name: String, configYaml: String, withIdentity: Boolean): Path {
+        val root = base.resolve(name)
+        Files.createDirectories(root.resolve("openspec"))
+        Files.writeString(root.resolve("openspec/config.yaml"), configYaml)
+        if (withIdentity) {
+            Files.createDirectories(root.resolve(".openspec-store"))
+            Files.writeString(root.resolve(".openspec-store/store.yaml"), "version: 1\nid: $name\n")
+        }
+        return root
+    }
+
+    /**
+     * Journey 6 — store health follows CLI 1.6 semantics (change adapt-store-health-to-1-6).
+     * The IDE (and every CLI child process it spawns) runs against an ISOLATED registry via
+     * XDG_DATA_HOME, so the journey never touches the user's real OpenSpec data dir — that's
+     * what keeps this register-exercising journey inside the no-durable-state-mutation rule.
+     * The register action's file chooser is bypassed through the
+     * `openspec.uismoke.register.store.root` seam, flipped per stop via remote System.setProperty.
+     * Requires a 1.6+ host CLI (skipped otherwise).
+     */
+    @Test
+    fun storeHealthFollowsCli16Semantics() {
+        val cliVersion = hostCliVersion()
+        org.junit.jupiter.api.Assumptions.assumeTrue(
+            cliVersion != null && Regex("""^(\d+)\.(\d+)""").find(cliVersion)?.destructured
+                ?.let { (maj, min) -> maj.toInt() > 1 || (maj.toInt() == 1 && min.toInt() >= 6) } == true
+        ) { "store-health journey needs OpenSpec CLI 1.6+ on the host (found: $cliVersion)" }
+
+        val base = Files.createTempDirectory("openspec-ui-smoke-stores-")
+        val xdg = Files.createDirectories(base.resolve("xdg-data"))
+        // Pre-seed ONE registered fresh/config-only store via the real host CLI so the
+        // Coordination tab has state to show (an empty registry hides the tab) — and its row
+        // is itself the healthy-empty rendering under test.
+        val seedRoot = seedStoreRoot(base, "seed-empty-store", "schema: spec-driven\n", withIdentity = true)
+        val register = ProcessBuilder("openspec", "store", "register", seedRoot.toString(), "--yes", "--json")
+            .apply { environment()["XDG_DATA_HOME"] = xdg.toString() }
+            .redirectErrorStream(true).start()
+        check(register.waitFor() == 0) { "seeding register failed: ${register.inputStream.bufferedReader().readText()}" }
+
+        val healthyRoot = seedStoreRoot(base, "healthy-empty-store", "schema: spec-driven\n", withIdentity = true)
+        val pointerRoot = seedStoreRoot(base, "pointer-store", "store: some-external-store\n", withIdentity = false)
+        val brandNewRoot = seedStoreRoot(base, "brand-new-store", "schema: spec-driven\n", withIdentity = false)
+
+        val context = newContext(freshDemoProject()).apply {
+            applyVMOptionsPatch { withEnv("XDG_DATA_HOME", xdg.toString()) }
+        }
+        context.runIdeWithDriver().useDriverAndCloseIde {
+            waitForIndicators(5.minutes)
+            val project = singleProject()
+            withContext(OnDispatcher.EDT) { getToolWindow("OpenSpec").show() }
+
+            // The Coordination content is added asynchronously once the (isolated) registry
+            // shows state — poll for it, then select it programmatically.
+            waitUntil("Coordination tab appears and is selected", timeout = 3.minutes) {
+                withContext(OnDispatcher.EDT) {
+                    val manager = utility(ToolWindowManagerRef::class).getInstance(project)
+                    val contentManager = manager.getToolWindow("OpenSpec")?.getContentManager()
+                    val coordination = contentManager?.findContent("Coordination")
+                    if (coordination != null) {
+                        contentManager.setSelectedContent(coordination)
+                        true
+                    } else false
+                }
+            }
+
+            ideFrame {
+                // Stop A (rendering): the seeded fresh store — planning dirs absent, doctor
+                // healthy:true with present:false — must list with NO error marker.
+                waitUntil("seeded healthy-empty store row renders", timeout = 2.minutes) {
+                    hasText("seed-empty-store")
+                }
+                check(!hasSubtext("unhealthy openspec-root")) {
+                    "healthy-empty store rendered the unhealthy marker — 1.6 semantics regression"
+                }
+                check(!hasSubtext("metadata issue")) {
+                    "healthy-empty store rendered a metadata error marker"
+                }
+            }
+
+            val sys = utility(SystemRef::class)
+
+            // Physical robot clicks don't land in this environment (SmoothRobot "click
+            // unsuccessful") — fire the register action programmatically via ActionButton.click()
+            // and end each failure dialog's modality via Window.dispose(), both on the EDT.
+            val fireRegisterAction = {
+                val button = ui.x { byAccessibleName("Register Existing Store") }
+                waitUntil("register toolbar button present") { button.present() }
+                withContext(OnDispatcher.EDT) {
+                    cast(button.component, ActionButtonRef::class).click()
+                }
+            }
+            val expectFailureDialog = { what: String, expectedText: String, complaint: String ->
+                val dialog = ui.x { byTitle("Coordination Action Failed") }
+                waitUntil(what, timeout = 2.minutes) { dialog.present() }
+                check(dialog.hasSubtext(expectedText)) { complaint }
+                withContext(OnDispatcher.EDT) {
+                    cast(dialog.component, WindowRef::class).dispose()
+                }
+                waitUntil("$what dismissed") { dialog.notPresent() }
+            }
+
+            // Stop B (refusal wiring): a store:-pointer root is refused with the CLI's
+            // message + fix — surfaced in the write-failure dialog, never raw stderr.
+            sys.setProperty("openspec.uismoke.register.store.root", pointerRoot.toString())
+            fireRegisterAction()
+            expectFailureDialog(
+                "pointer-declared refusal dialog", "externalized",
+                "refusal dialog does not carry the CLI's pointer-declared message"
+            )
+
+            // Stop C (confirmation wiring): a never-a-store root gets 1.6's identity
+            // confirmation envelope, surfaced with its --yes fix text; the plugin never
+            // auto-confirms.
+            sys.setProperty("openspec.uismoke.register.store.root", brandNewRoot.toString())
+            fireRegisterAction()
+            expectFailureDialog(
+                "identity-confirmation dialog", "--yes",
+                "confirmation envelope's fix text not surfaced"
+            )
+
+            // Stop A (register wiring): registering a fresh root WITH identity succeeds on
+            // 1.6 (1.5 refused it) and the new row lists healthy — no error marker.
+            sys.setProperty("openspec.uismoke.register.store.root", healthyRoot.toString())
+            fireRegisterAction()
+            ideFrame {
+                waitUntil("freshly registered healthy-empty store row renders", timeout = 2.minutes) {
+                    hasText("healthy-empty-store")
+                }
+                check(!hasSubtext("unhealthy openspec-root")) {
+                    "freshly registered healthy-empty store rendered the unhealthy marker"
+                }
+            }
         }
     }
 }
