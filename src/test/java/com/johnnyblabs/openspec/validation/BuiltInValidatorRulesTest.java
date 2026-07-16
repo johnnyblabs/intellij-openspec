@@ -18,7 +18,7 @@ class BuiltInValidatorRulesTest {
 
     // Patterns matching BuiltInValidator
     private static final Pattern REQUIREMENT_PATTERN = com.johnnyblabs.openspec.util.SpecPatterns.REQUIREMENT_HEADER;
-    private static final Pattern RFC_KEYWORD_PATTERN = Pattern.compile("\\b(SHALL NOT|SHOULD NOT|SHALL|SHOULD|MAY|MUST)\\b");
+    private static final Pattern RFC_KEYWORD_PATTERN = Pattern.compile("\\b(SHALL|MUST)\\b");
     private static final Pattern SCENARIO_PATTERN = Pattern.compile("^#{4} Scenario:.+", Pattern.MULTILINE);
     private static final Pattern DELTA_SECTION_PATTERN = Pattern.compile("^## (ADDED|MODIFIED|REMOVED|RENAMED) Requirements", Pattern.MULTILINE);
     private static final Pattern RENAMED_ENTRY_PATTERN = Pattern.compile(
@@ -548,7 +548,7 @@ class BuiltInValidatorRulesTest {
                                     + "move the keyword onto the requirement body line", "spec-rfc-keyword-in-header"));
                 } else {
                     issues.add(new ValidationIssue(ValidationIssue.Severity.ERROR, path, reqLine,
-                            "Requirement '" + reqHeader + "' must contain RFC 2119 keywords (SHALL, MUST, SHOULD, MAY)", "spec-rfc-keywords"));
+                            "Requirement '" + reqHeader + "' must contain SHALL or MUST", "spec-rfc-keywords"));
                 }
             }
 
@@ -648,5 +648,51 @@ class BuiltInValidatorRulesTest {
             return m.start();
         }
         return content.length();
+    }
+
+    // --- maskFences (the real production utility, not a mirror) ---
+
+    @Test
+    void maskFencesMasksBacktickFenceContentAndMarkers() {
+        String in = "before\n```\nThe system SHALL work.\n```\nafter\n";
+        String out = BuiltInValidator.maskFences(in);
+        assertEquals(in.length(), out.length(), "offset preservation");
+        assertFalse(out.contains("SHALL"));
+        assertFalse(out.contains("```"), "fence marker lines are masked too");
+        assertTrue(out.contains("before") && out.contains("after"));
+        assertEquals(countNewlines(in), countNewlines(out), "line preservation");
+    }
+
+    @Test
+    void maskFencesHandlesTildeFences() {
+        String out = BuiltInValidator.maskFences("~~~\n#### Scenario: hidden\n~~~\nvisible\n");
+        assertFalse(out.contains("Scenario"));
+        assertTrue(out.contains("visible"));
+    }
+
+    @Test
+    void maskFencesUnclosedFenceMasksToEndOfContent() {
+        String out = BuiltInValidator.maskFences("ok\n```\nSHALL forever\nno close");
+        assertTrue(out.contains("ok"));
+        assertFalse(out.contains("SHALL"));
+        assertFalse(out.contains("no close"));
+    }
+
+    @Test
+    void maskFencesBacktickInsideTildeFenceDoesNotClose() {
+        String out = BuiltInValidator.maskFences("~~~\n```\nstill fenced SHALL\n~~~\nvisible SHALL\n");
+        assertFalse(out.contains("still fenced"));
+        assertTrue(out.contains("visible SHALL"));
+    }
+
+    @Test
+    void maskFencesIndentedFenceRecognized() {
+        String out = BuiltInValidator.maskFences("  ```\n  fenced MUST\n  ```\nplain MUST\n");
+        assertFalse(out.contains("fenced MUST"));
+        assertTrue(out.contains("plain MUST"));
+    }
+
+    private static long countNewlines(String s) {
+        return s.chars().filter(c -> c == '\n').count();
     }
 }

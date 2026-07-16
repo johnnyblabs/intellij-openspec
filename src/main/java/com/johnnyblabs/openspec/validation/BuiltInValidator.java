@@ -28,7 +28,10 @@ public final class BuiltInValidator {
 
     private static final Pattern TITLE_PATTERN = Pattern.compile("^# .+", Pattern.MULTILINE);
     private static final Pattern REQUIREMENT_PATTERN = com.johnnyblabs.openspec.util.SpecPatterns.REQUIREMENT_HEADER;
-    private static final Pattern RFC_KEYWORD_PATTERN = Pattern.compile("\\b(SHALL NOT|SHOULD NOT|SHALL|SHOULD|MAY)\\b");
+    // CLI parity (all generations): only SHALL/MUST satisfy the requirement-keyword rule.
+    // SHOULD/MAY never satisfied `openspec validate`; accepting them made the plugin laxer
+    // than the client it wraps. "SHALL NOT" still satisfies via the SHALL word match.
+    private static final Pattern RFC_KEYWORD_PATTERN = Pattern.compile("\\b(SHALL|MUST)\\b");
     private static final Pattern SCENARIO_PATTERN = Pattern.compile("^#{4} Scenario:.+", Pattern.MULTILINE);
     private static final Pattern CLAUSE_PATTERN = Pattern.compile("^-\\s+\\*{0,2}(GIVEN|WHEN|THEN|AND)\\*{0,2}\\b", Pattern.MULTILINE);
     private static final Pattern DELTA_SECTION_PATTERN = Pattern.compile("^## (ADDED|MODIFIED|REMOVED|RENAMED)", Pattern.MULTILINE);
@@ -80,8 +83,10 @@ public final class BuiltInValidator {
     }
 
     private void validateSpecFile(VirtualFile file, List<ValidationIssue> issues) {
-        String content = readFile(file);
-        if (content == null) return;
+        String raw = readFile(file);
+        if (raw == null) return;
+        // All structural matching runs on the fence-masked form (offsets preserved).
+        String content = maskFences(raw);
         String path = file.getPath();
 
         // Must have title
@@ -115,7 +120,7 @@ public final class BuiltInValidator {
                                     + "move the keyword onto the requirement body line", "spec-rfc-keyword-in-header"));
                 } else {
                     issues.add(new ValidationIssue(ValidationIssue.Severity.ERROR, path, reqLine,
-                            "Requirement '" + reqHeader + "' must contain RFC 2119 keywords (SHALL, MUST, SHOULD, MAY)", "spec-rfc-keywords"));
+                            "Requirement '" + reqHeader + "' must contain SHALL or MUST", "spec-rfc-keywords"));
                 }
             }
 
@@ -212,7 +217,17 @@ public final class BuiltInValidator {
     }
 
     private void validateDeltaSpecs(String changePath, List<ValidationIssue> issues) {
-        VirtualFile changeDir = com.intellij.openapi.vfs.LocalFileSystem.getInstance().findFileByPath(changePath);
+        // Resolve through the project's changes dir first (works on any VFS, including
+        // the test fixture's temp filesystem); fall back to a local-path lookup.
+        VirtualFile changeDir = null;
+        VirtualFile changesDir = OpenSpecFileUtil.getChangesDir(project);
+        if (changesDir != null) {
+            String name = changePath.substring(changePath.lastIndexOf('/') + 1);
+            changeDir = changesDir.findChild(name);
+        }
+        if (changeDir == null) {
+            changeDir = com.intellij.openapi.vfs.LocalFileSystem.getInstance().findFileByPath(changePath);
+        }
         if (changeDir == null) return;
         VirtualFile specsDir = changeDir.findChild("specs");
         if (specsDir == null || !specsDir.exists()) return;
@@ -221,8 +236,10 @@ public final class BuiltInValidator {
             if (!domainDir.isDirectory()) continue;
             VirtualFile specFile = domainDir.findChild("spec.md");
             if (specFile == null) continue;
-            String content = readFile(specFile);
-            if (content == null) continue;
+            String raw = readFile(specFile);
+            if (raw == null) continue;
+            // All structural matching runs on the fence-masked form (offsets preserved).
+            String content = maskFences(raw);
 
             // Skip full specs (## Requirements / ## Purpose) — only delta specs need ADDED/MODIFIED/REMOVED/RENAMED
             if (!DELTA_SECTION_PATTERN.matcher(content).find() && !FULL_SPEC_PATTERN.matcher(content).find()) {
@@ -360,6 +377,46 @@ public final class BuiltInValidator {
         }
     }
 
+    /**
+     * Masks fenced code blocks (backtick or tilde fences) so structural matchers do not
+     * see their content — CLI 1.6 parity: a keyword, scenario header, or requirement
+     * header that exists only inside a fence does not count. Every non-newline character
+     * on fence lines and fenced content becomes a space, so all offsets and line numbers
+     * in the masked string equal those in the original.
+     */
+    static String maskFences(String content) {
+        StringBuilder out = new StringBuilder(content.length());
+        String openMarker = null;
+        int lineStart = 0;
+        while (lineStart <= content.length()) {
+            int lineEnd = content.indexOf('\n', lineStart);
+            boolean hasNewline = lineEnd >= 0;
+            if (!hasNewline) lineEnd = content.length();
+            String line = content.substring(lineStart, lineEnd);
+            String trimmed = line.stripLeading();
+            boolean fenceLine = trimmed.startsWith("```") || trimmed.startsWith("~~~");
+            boolean masked;
+            if (openMarker == null) {
+                if (fenceLine) {
+                    openMarker = trimmed.startsWith("```") ? "```" : "~~~";
+                    masked = true;
+                } else {
+                    masked = false;
+                }
+            } else {
+                masked = true;
+                if (fenceLine && trimmed.startsWith(openMarker)) {
+                    openMarker = null;
+                }
+            }
+            out.append(masked ? " ".repeat(line.length()) : line);
+            if (hasNewline) out.append('\n');
+            lineStart = lineEnd + 1;
+            if (!hasNewline) break;
+        }
+        return out.toString();
+    }
+
     private int lineNumberAt(String content, int offset) {
         int line = 1;
         for (int i = 0; i < offset && i < content.length(); i++) {
@@ -393,6 +450,27 @@ public final class BuiltInValidator {
         return content.length();
     }
 
+    private static final Pattern LEVEL3_HEADER_PATTERN = Pattern.compile("^###\\s+(.*)$", Pattern.MULTILINE);
+
+    private void emitSkippedHeaderHints(String content, int sectionStart, String sectionContent,
+                                        String sectionType, String path, List<ValidationIssue> issues) {
+        Matcher h3 = LEVEL3_HEADER_PATTERN.matcher(sectionContent);
+        while (h3.find()) {
+            String headerLine = h3.group().trim();
+            if (REQUIREMENT_PATTERN.matcher(headerLine).find()) continue; // canonical named header — parsed, not skipped
+            int line = lineNumberAt(content, sectionStart + h3.start());
+            String title = h3.group(1).trim();
+            boolean namelessRequirement = title.matches("(?i)requirement:?");
+            String message = namelessRequirement
+                    ? "Header '### Requirement:' in " + sectionType + " Requirements is missing a requirement name"
+                            + " and is ignored by validation — add a name, e.g. '### Requirement: <name>'"
+                    : "Header '" + headerLine + "' in " + sectionType + " Requirements is not a '### Requirement:'"
+                            + " header and is ignored by validation — use '### Requirement: " + title
+                            + "' if it should be validated as a requirement";
+            issues.add(new ValidationIssue(ValidationIssue.Severity.INFO, path, line, message, "delta-skipped-header"));
+        }
+    }
+
     private void validateDeltaSpecStructure(String content, String path, List<ValidationIssue> issues) {
         // Find each delta section and validate requirement blocks within
         Pattern deltaSectionStart = Pattern.compile("^## (ADDED|MODIFIED|REMOVED|RENAMED) Requirements", Pattern.MULTILINE);
@@ -410,6 +488,12 @@ public final class BuiltInValidator {
                 sectionEnd = nextH2Matcher.start();
             }
             String sectionContent = content.substring(sectionStart, sectionEnd);
+
+            // CLI 1.6 parity: upstream's parser skips non-canonical level-3 headers inside
+            // ADDED/MODIFIED sections and reports each as an INFO advisory (never verdict-affecting).
+            if ("ADDED".equals(sectionType) || "MODIFIED".equals(sectionType)) {
+                emitSkippedHeaderHints(content, sectionStart, sectionContent, sectionType, path, issues);
+            }
 
             if ("RENAMED".equals(sectionType)) {
                 // RENAMED sections carry FROM:/TO: pairs (bullet or plain form), not requirement blocks.

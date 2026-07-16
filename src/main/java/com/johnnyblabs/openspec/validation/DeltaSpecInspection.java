@@ -39,7 +39,8 @@ public class DeltaSpecInspection extends LocalInspectionTool {
             return ProblemDescriptor.EMPTY_ARRAY;
         }
 
-        String text = file.getText();
+        // Fence-masked (offset-preserving) so fenced code never satisfies or triggers rules — CLI 1.6 parity.
+        String text = BuiltInValidator.maskFences(file.getText());
         List<ProblemDescriptor> problems = new ArrayList<>();
 
         // Skip full specs (## Requirements / ## Purpose) — only delta specs need ADDED/MODIFIED/REMOVED/RENAMED
