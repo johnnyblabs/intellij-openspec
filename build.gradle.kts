@@ -177,6 +177,31 @@ val uiSmoke by intellijPlatformTesting.testIdeUi.registering {
         // committed fixture is its captured output so CI needs no network/CLI to seed).
         systemProperty("demo.project.path",
             layout.projectDirectory.dir("src/integrationTest/testData/lifecycle-demo").asFile)
+        // The screenshot tour shares this source set but is a docs tool, not a smoke
+        // gate — keep it out of release-gating runs.
+        filter { excludeTestsMatching("*MarketplaceScreenshotTour*") }
+        dependsOn(tasks.prepareSandbox)
+    }
+}
+
+// Marketplace screenshot tour: boots one sandbox IDE against the seeded demo and emits
+// docs/screenshots/*.png at 1280x800 for the Marketplace listing. A docs tool, NOT a
+// smoke journey (no assertions gate a release; uiSmoke excludes it, this runs only it).
+// Requires a GUI session and an OpenSpec CLI 1.6+ on PATH; output needs a human
+// flip-through before upload. Run with: ./gradlew screenshotTour
+val screenshotTour by intellijPlatformTesting.testIdeUi.registering {
+    task {
+        val integrationTestSourceSet = sourceSets.getByName("integrationTest")
+        testClassesDirs = integrationTestSourceSet.output.classesDirs
+        classpath = integrationTestSourceSet.runtimeClasspath
+        useJUnitPlatform()
+        systemProperty("path.to.build.plugin",
+            tasks.prepareSandbox.get().pluginDirectory.get().asFile)
+        systemProperty("demo.project.path",
+            layout.projectDirectory.dir("src/integrationTest/testData/lifecycle-demo").asFile)
+        systemProperty("screenshot.output.dir",
+            layout.projectDirectory.dir("docs/screenshots").asFile)
+        filter { includeTestsMatching("*MarketplaceScreenshotTour*") }
         dependsOn(tasks.prepareSandbox)
     }
 }

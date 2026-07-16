@@ -2,6 +2,9 @@
 # Capture JetBrains Marketplace screenshots at 1280x800
 # Usage: ./scripts/capture-screenshots.sh
 #
+# Automated alternative: ./gradlew screenshotTour (see MarketplaceScreenshotTour) emits
+# shots 01-04+06 unattended; this manual flow remains for shot 05 (Settings) and re-takes.
+#
 # Prerequisites: IDE must be running with the plugin loaded
 # The script will resize the frontmost window and capture it.
 
