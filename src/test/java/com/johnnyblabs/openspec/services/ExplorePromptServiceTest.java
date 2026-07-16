@@ -36,6 +36,25 @@ class ExplorePromptServiceTest {
         Path tempDir;
 
         @Test
+        void skillsEraPathWinsOverLegacyCommandPath() throws IOException {
+            when(project.getBasePath()).thenReturn(tempDir.toString());
+
+            // Skills-era file (1.5+ layout) with 1.6-style stamped frontmatter.
+            Path skillsDir = tempDir.resolve(".claude/skills/openspec-explore");
+            Files.createDirectories(skillsDir);
+            Files.writeString(skillsDir.resolve("SKILL.md"),
+                    "---\nname: openspec-explore\nallowed-tools: Bash(openspec:*)\ngeneratedBy: 1.6.0\n---\nSkills-era explore instructions.");
+            // Legacy command file also present — must lose to the skills-era file.
+            Path legacyDir = tempDir.resolve(".claude/commands/opsx");
+            Files.createDirectories(legacyDir);
+            Files.writeString(legacyDir.resolve("explore.md"), "Legacy explore instructions.");
+
+            String instructions = service.loadSkillInstructions();
+
+            assertEquals("Skills-era explore instructions.", instructions);
+        }
+
+        @Test
         void loadsClaudeSkillFile() throws IOException {
             when(project.getBasePath()).thenReturn(tempDir.toString());
 
