@@ -111,6 +111,13 @@ jobs:
       - name: Build and Test
         run: ./gradlew --console=plain test
 
+      - name: Upload test results
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: test-results-${{ matrix.os }}
+          path: build/test-results/test/
+
   verify:
     runs-on: ubuntu-latest
     steps:

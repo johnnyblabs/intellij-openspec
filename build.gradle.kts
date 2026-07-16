@@ -87,6 +87,12 @@ tasks.test {
         isIncludeNoLocationClasses = true
         excludes = listOf("jdk.internal.*")
     }
+    // Full exception detail in console output — CI legs without report artifacts
+    // (notably the mirror's Windows/macOS matrix) must be diagnosable from the log.
+    testLogging {
+        events("failed")
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+    }
     finalizedBy(tasks.jacocoTestReport)
 }
 

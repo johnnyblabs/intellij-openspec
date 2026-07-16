@@ -345,11 +345,11 @@ class ArtifactOrchestrationServiceTest {
                 ArtifactInstruction tasksInstr = new ArtifactInstruction("c", "tasks", changeDir.toString(), "tasks.md", "write tasks", null, List.of(), List.of());
 
                 cli.when(() -> CliRunner.run(eq(project), eq("instructions"), eq("proposal"), eq("--change"), eq("c"), eq("--json")))
-                        .thenReturn(new CliRunner.CliResult(0, "{\"changeName\":\"c\",\"artifactId\":\"proposal\",\"changeDir\":\"" + changeDir + "\",\"outputPath\":\"proposal.md\",\"instruction\":\"write proposal\"}", ""));
+                        .thenReturn(new CliRunner.CliResult(0, "{\"changeName\":\"c\",\"artifactId\":\"proposal\",\"changeDir\":\"" + jsonEscapedPath(changeDir) + "\",\"outputPath\":\"proposal.md\",\"instruction\":\"write proposal\"}", ""));
                 cli.when(() -> CliRunner.run(eq(project), eq("instructions"), eq("design"), eq("--change"), eq("c"), eq("--json")))
-                        .thenReturn(new CliRunner.CliResult(0, "{\"changeName\":\"c\",\"artifactId\":\"design\",\"changeDir\":\"" + changeDir + "\",\"outputPath\":\"design.md\",\"instruction\":\"write design\"}", ""));
+                        .thenReturn(new CliRunner.CliResult(0, "{\"changeName\":\"c\",\"artifactId\":\"design\",\"changeDir\":\"" + jsonEscapedPath(changeDir) + "\",\"outputPath\":\"design.md\",\"instruction\":\"write design\"}", ""));
                 cli.when(() -> CliRunner.run(eq(project), eq("instructions"), eq("tasks"), eq("--change"), eq("c"), eq("--json")))
-                        .thenReturn(new CliRunner.CliResult(0, "{\"changeName\":\"c\",\"artifactId\":\"tasks\",\"changeDir\":\"" + changeDir + "\",\"outputPath\":\"tasks.md\",\"instruction\":\"write tasks\"}", ""));
+                        .thenReturn(new CliRunner.CliResult(0, "{\"changeName\":\"c\",\"artifactId\":\"tasks\",\"changeDir\":\"" + jsonEscapedPath(changeDir) + "\",\"outputPath\":\"tasks.md\",\"instruction\":\"write tasks\"}", ""));
 
                 // Mock API generate
                 when(apiService.generate(any())).thenReturn("generated content");
@@ -422,9 +422,9 @@ class ArtifactOrchestrationServiceTest {
                         });
 
                 cli.when(() -> CliRunner.run(eq(project), eq("instructions"), eq("proposal"), eq("--change"), eq("c"), eq("--json")))
-                        .thenReturn(new CliRunner.CliResult(0, "{\"changeName\":\"c\",\"artifactId\":\"proposal\",\"changeDir\":\"" + changeDir + "\",\"outputPath\":\"proposal.md\",\"instruction\":\"x\"}", ""));
+                        .thenReturn(new CliRunner.CliResult(0, "{\"changeName\":\"c\",\"artifactId\":\"proposal\",\"changeDir\":\"" + jsonEscapedPath(changeDir) + "\",\"outputPath\":\"proposal.md\",\"instruction\":\"x\"}", ""));
                 cli.when(() -> CliRunner.run(eq(project), eq("instructions"), eq("design"), eq("--change"), eq("c"), eq("--json")))
-                        .thenReturn(new CliRunner.CliResult(0, "{\"changeName\":\"c\",\"artifactId\":\"design\",\"changeDir\":\"" + changeDir + "\",\"outputPath\":\"design.md\",\"instruction\":\"x\"}", ""));
+                        .thenReturn(new CliRunner.CliResult(0, "{\"changeName\":\"c\",\"artifactId\":\"design\",\"changeDir\":\"" + jsonEscapedPath(changeDir) + "\",\"outputPath\":\"design.md\",\"instruction\":\"x\"}", ""));
 
                 // First generate succeeds, second throws
                 when(apiService.generate(any()))
@@ -491,7 +491,7 @@ class ArtifactOrchestrationServiceTest {
                         });
 
                 cli.when(() -> CliRunner.run(eq(project), eq("instructions"), eq("proposal"), eq("--change"), eq("c"), eq("--json")))
-                        .thenReturn(new CliRunner.CliResult(0, "{\"changeName\":\"c\",\"artifactId\":\"proposal\",\"changeDir\":\"" + changeDir + "\",\"outputPath\":\"proposal.md\",\"instruction\":\"x\"}", ""));
+                        .thenReturn(new CliRunner.CliResult(0, "{\"changeName\":\"c\",\"artifactId\":\"proposal\",\"changeDir\":\"" + jsonEscapedPath(changeDir) + "\",\"outputPath\":\"proposal.md\",\"instruction\":\"x\"}", ""));
 
                 when(apiService.generate(any())).thenReturn("content");
 
@@ -508,5 +508,14 @@ class ArtifactOrchestrationServiceTest {
             // First artifact file preserved
             assertTrue(Files.exists(tempDir.resolve("openspec/changes/c/proposal.md")));
         }
+    }
+
+    /**
+     * JSON-escapes a filesystem path for embedding in hand-built mock CLI JSON.
+     * Windows paths contain backslashes, which are invalid JSON escape openers —
+     * embedding them raw corrupts the parsed changeDir (the Windows CI leg caught this).
+     */
+    private static String jsonEscapedPath(java.nio.file.Path p) {
+        return p.toString().replace("\\", "\\\\");
     }
 }
