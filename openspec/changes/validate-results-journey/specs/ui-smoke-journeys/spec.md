@@ -1,0 +1,33 @@
+## MODIFIED Requirements
+
+### Requirement: Rendered-UI smoke journeys exist
+
+The project SHALL maintain a small suite (currently seven) of automated UI smoke journeys that drive a real sandbox IDE with the plugin installed, asserting presence and wiring of rendered surfaces. Journeys SHALL assert component presence and wiring, not textual prose or pixels, and SHALL NOT mutate durable user state (dialog journeys exit via cancel; no archive is performed). A journey that must exercise state-writing actions SHALL isolate that state to journey-scoped temporary locations — e.g. an isolated OpenSpec data directory injected via the IDE process environment — so nothing outlives the journey or touches the user's real data.
+
+#### Scenario: Open-and-render journey
+- **WHEN** the smoke suite opens a seeded demo project
+- **THEN** it SHALL assert the OpenSpec tool window opens and the Browse tree shows the seeded spec and change
+
+#### Scenario: Update cleanup journey
+- **WHEN** the smoke suite triggers the Update action in a project seeded with legacy files
+- **THEN** it SHALL assert the review notification appears with its action
+
+#### Scenario: Settings journey
+- **WHEN** the smoke suite opens the plugin's Settings page
+- **THEN** it SHALL assert the Schemas section renders with the built-in schema row
+
+#### Scenario: Editor validator-parity journey
+- **WHEN** the smoke suite opens the seeded lowercase-header spec, a seeded keyword-in-header-only spec, and a seeded spec whose only keyword sits inside a fenced code block
+- **THEN** it SHALL assert via the highlighting daemon that the lowercase header draws no requirement-recognition complaint, that the keyword-in-header spec draws the targeted move-the-keyword diagnostic, and that the fenced-keyword spec draws the missing-keyword diagnostic (CLI 1.6 fence masking)
+
+#### Scenario: Archive guard journey
+- **WHEN** the smoke suite invokes Archive on the seeded incomplete change
+- **THEN** it SHALL assert the incomplete-change confirmation surface appears, cancel it, and assert the change directory was not moved
+
+#### Scenario: Store-health journey (CLI 1.6 semantics)
+- **WHEN** the smoke suite runs against a host CLI at 1.6+ with an isolated OpenSpec data directory, a pre-registered fresh/config-only store, and prepared store roots (a pointer-declaring root, a never-a-store root, and a fresh root with store identity)
+- **THEN** it SHALL assert the fresh store's row renders with no unhealthy or metadata error marker, that registering the pointer-declaring and never-a-store roots surfaces the CLI's refusal/confirmation message and fix in the write-failure dialog (dismissed without confirming), and that registering the identified fresh root succeeds and lists a new row with no error marker; on a host CLI below 1.6 the journey SHALL be skipped, not failed
+
+#### Scenario: Validate-results journey (CLI-parsed errors reach the rendered results)
+- **WHEN** the smoke suite, on a 1.6+ host CLI, seeds a spec whose requirement lacks SHALL/MUST, opens the plugin tool window, and triggers the Validate action
+- **THEN** it SHALL assert the validation summary notification reports the failure and that the plugin's Console surface renders the CLI-parsed error line for that spec (identified by the CLI parser's `type/id` path form, not satisfiable by the built-in validator's duplicate); on a host CLI below 1.6 the journey SHALL be skipped, not failed
