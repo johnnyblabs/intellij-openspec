@@ -22,8 +22,8 @@ The project SHALL maintain a small suite (currently six) of automated UI smoke j
 - **THEN** it SHALL assert the Schemas section renders with the built-in schema row
 
 #### Scenario: Editor validator-parity journey
-- **WHEN** the smoke suite opens the seeded lowercase-header spec and a seeded keyword-in-header-only spec in the editor
-- **THEN** it SHALL assert via the highlighting daemon that the lowercase header draws no requirement-recognition complaint and that the keyword-in-header spec draws the targeted move-the-keyword diagnostic
+- **WHEN** the smoke suite opens the seeded lowercase-header spec, a seeded keyword-in-header-only spec, and a seeded spec whose only keyword sits inside a fenced code block
+- **THEN** it SHALL assert via the highlighting daemon that the lowercase header draws no requirement-recognition complaint, that the keyword-in-header spec draws the targeted move-the-keyword diagnostic, and that the fenced-keyword spec draws the missing-keyword diagnostic (CLI 1.6 fence masking)
 
 #### Scenario: Archive guard journey
 - **WHEN** the smoke suite invokes Archive on the seeded incomplete change
