@@ -1,0 +1,127 @@
+{
+  "items": [
+    {
+      "id": "clean-spec",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 2
+    },
+    {
+      "id": "fenced-keyword",
+      "type": "spec",
+      "valid": false,
+      "issues": [
+        {
+          "level": "ERROR",
+          "path": "requirements[0]",
+          "message": "Requirement \"Fenced\" must contain SHALL or MUST"
+        }
+      ],
+      "durationMs": 1
+    },
+    {
+      "id": "fenced-scenario",
+      "type": "spec",
+      "valid": false,
+      "issues": [
+        {
+          "level": "ERROR",
+          "path": "requirements.0.scenarios",
+          "message": "Requirement must have at least one scenario"
+        },
+        {
+          "level": "WARNING",
+          "path": "requirements[0].scenarios",
+          "message": "Requirement must have at least one scenario. Scenarios must use level-4 headers. Convert bullet lists into:\n#### Scenario: Short name\n- **WHEN** ...\n- **THEN** ...\n- **AND** ..."
+        }
+      ],
+      "durationMs": 0
+    },
+    {
+      "id": "header-only-keyword",
+      "type": "spec",
+      "valid": false,
+      "issues": [
+        {
+          "level": "ERROR",
+          "path": "requirements[0]",
+          "message": "Requirement \"It SHALL work\" must contain SHALL or MUST in the requirement body, not only in the header. Move the SHALL/MUST statement to the line immediately after the \"### Requirement: ...\" header."
+        }
+      ],
+      "durationMs": 0
+    },
+    {
+      "id": "info-change",
+      "type": "change",
+      "valid": true,
+      "issues": [
+        {
+          "level": "INFO",
+          "path": "demo/spec.md",
+          "line": 10,
+          "message": "Header \"### Implementation notes\" in ADDED Requirements is not a \"### Requirement:\" header and is ignored by validation. Use \"### Requirement: Implementation notes\" if it should be validated as a requirement."
+        }
+      ],
+      "durationMs": 4
+    },
+    {
+      "id": "nameless-change",
+      "type": "change",
+      "valid": true,
+      "issues": [
+        {
+          "level": "INFO",
+          "path": "demo/spec.md",
+          "line": 3,
+          "message": "Header \"### Requirement:\" in MODIFIED Requirements is missing a requirement name and is ignored by validation. Add a name, e.g. \"### Requirement: <name>\"."
+        }
+      ],
+      "durationMs": 3
+    },
+    {
+      "id": "second-line-keyword",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 0
+    },
+    {
+      "id": "should-only",
+      "type": "spec",
+      "valid": false,
+      "issues": [
+        {
+          "level": "ERROR",
+          "path": "requirements[0]",
+          "message": "Requirement \"Soft\" must contain SHALL or MUST"
+        }
+      ],
+      "durationMs": 0
+    }
+  ],
+  "summary": {
+    "totals": {
+      "items": 8,
+      "passed": 4,
+      "failed": 4
+    },
+    "byType": {
+      "change": {
+        "items": 2,
+        "passed": 2,
+        "failed": 0
+      },
+      "spec": {
+        "items": 6,
+        "passed": 2,
+        "failed": 4
+      }
+    }
+  },
+  "version": "1.0",
+  "root": {
+    "path": "/fixture/parity-corpus",
+    "source": "nearest"
+  }
+}

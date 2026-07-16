@@ -261,6 +261,76 @@ public class BuiltInValidatorTest extends OpenSpecIntegrationTestBase {
     }
 
     // ---------------------------------------------------------------
+    // ---------------------------------------------------------------
+    // CLI 1.6 parity semantics (fence masking, SHALL/MUST-only, INFO tier)
+    // ---------------------------------------------------------------
+
+    public void testShouldOnlyRequirementTriggersError() {
+        // SHOULD/MAY never satisfied `openspec validate` on any generation.
+        myFixture.addFileToProject("openspec/specs/should-kw/spec.md",
+                "# Should Spec\n\n### Requirement: Soft wording\n\nThe system SHOULD work and MAY retry.\n\n#### Scenario: T\n- **WHEN** x\n- **THEN** y\n");
+        refreshVfs();
+
+        assertTrue("SHOULD-only requirement must be flagged (CLI accepts only SHALL/MUST)",
+                validator.validateSpecs().issues().stream().anyMatch(i ->
+                        "spec-rfc-keywords".equals(i.rule()) && i.filePath().contains("should-kw")));
+    }
+
+    public void testKeywordOnlyInsideFenceTriggersError() {
+        myFixture.addFileToProject("openspec/specs/fenced-kw/spec.md",
+                "# Fenced Spec\n\n### Requirement: Fenced keyword\n\nBody without the magic word.\n\n```\nThe system SHALL work.\n```\n\n#### Scenario: T\n- **WHEN** x\n- **THEN** y\n");
+        refreshVfs();
+
+        assertTrue("keyword only inside a code fence must not satisfy the check (1.6 fence masking)",
+                validator.validateSpecs().issues().stream().anyMatch(i ->
+                        "spec-rfc-keywords".equals(i.rule()) && i.filePath().contains("fenced-kw")));
+    }
+
+    public void testScenarioOnlyInsideFenceTriggersError() {
+        myFixture.addFileToProject("openspec/specs/fenced-scen/spec.md",
+                "# Fenced Scenario Spec\n\n### Requirement: Fenced scenario\n\nThe system SHALL work.\n\n```\n#### Scenario: only an example\n- **WHEN** x\n- **THEN** y\n```\n");
+        refreshVfs();
+
+        assertTrue("scenario only inside a code fence must not count (1.6 fence-aware counting)",
+                validator.validateSpecs().issues().stream().anyMatch(i ->
+                        "spec-scenario-required".equals(i.rule()) && i.filePath().contains("fenced-scen")));
+    }
+
+    public void testSkippedDeltaHeaderEmitsInfoWithoutFlippingVerdict() {
+        myFixture.addFileToProject("openspec/changes/info-change/proposal.md", "## Why\n\nBecause.\n");
+        myFixture.addFileToProject("openspec/changes/info-change/specs/demo/spec.md",
+                "## ADDED Requirements\n\n### Requirement: Real one\nThe system SHALL work.\n\n#### Scenario: T\n- **WHEN** x\n- **THEN** y\n\n### Implementation notes\n\nProse the parser skips.\n");
+        refreshVfs();
+
+        ValidationResult result = validator.validateChanges();
+        ValidationIssue info = result.issues().stream()
+                .filter(i -> "delta-skipped-header".equals(i.rule())
+                        && i.filePath().contains("info-change"))
+                .findFirst().orElse(null);
+        assertNotNull("non-canonical level-3 header in ADDED must emit the INFO hint", info);
+        assertEquals(ValidationIssue.Severity.INFO, info.severity());
+        assertTrue("INFO message names the skipped header",
+                info.message().contains("Implementation notes"));
+        assertTrue("INFO anchors to the header line", info.line() > 1);
+        assertTrue("INFO must never flip the verdict",
+                result.issues().stream()
+                        .filter(i -> i.filePath().contains("info-change"))
+                        .noneMatch(i -> i.severity() == ValidationIssue.Severity.ERROR));
+    }
+
+    public void testNamelessRequirementHeaderEmitsNamingHint() {
+        myFixture.addFileToProject("openspec/changes/nameless-change/proposal.md", "## Why\n\nBecause.\n");
+        myFixture.addFileToProject("openspec/changes/nameless-change/specs/demo/spec.md",
+                "## MODIFIED Requirements\n\n### Requirement:\nThe system SHALL work.\n\n#### Scenario: T\n- **WHEN** x\n- **THEN** y\n");
+        refreshVfs();
+
+        assertTrue("nameless '### Requirement:' must emit the add-a-name INFO variant",
+                validator.validateChanges().issues().stream().anyMatch(i ->
+                        "delta-skipped-header".equals(i.rule())
+                                && i.severity() == ValidationIssue.Severity.INFO
+                                && i.message().contains("missing a requirement name")));
+    }
+
     // Helpers
     // ---------------------------------------------------------------
 

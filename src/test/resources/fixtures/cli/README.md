@@ -61,6 +61,13 @@ of what this generation changed:
   regenerates them without adding `opsx-sync.md` (the migrated "custom profile" preserves
   the old workflow set). The `update-clean.txt` capture uses `--tools claude` (skills-only
   delivery, no migration block).
+- `validate-parity-corpus.json` + `parity-corpus/` — verdict-parity pair: the corpus
+  (committed markdown, exercising keyword/fence/scenario/skipped-header rule classes) is
+  materialized into a test project and judged by the plugin's built-in validator, while the
+  fixture is the real 1.6.0 CLI's `validate --all --json` over the same corpus (isolated
+  env, minimal proposals present so both sides see identical content). Re-capture: re-run
+  `validate --all --json` over `parity-corpus/` seeded into a fresh `openspec init` project.
+  See `ValidatorVerdictParityTest`.
 - Store family: fresh/config-only roots register successfully and doctor reports
   `healthy: true` with per-directory `present: false`; new refusal codes
   `invalid_store_pointer`, `store_root_pointer_declared`; new

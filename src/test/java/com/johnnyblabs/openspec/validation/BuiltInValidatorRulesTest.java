@@ -18,7 +18,7 @@ class BuiltInValidatorRulesTest {
 
     // Patterns matching BuiltInValidator
     private static final Pattern REQUIREMENT_PATTERN = com.johnnyblabs.openspec.util.SpecPatterns.REQUIREMENT_HEADER;
-    private static final Pattern RFC_KEYWORD_PATTERN = Pattern.compile("\\b(SHALL NOT|SHOULD NOT|SHALL|SHOULD|MAY|MUST)\\b");
+    private static final Pattern RFC_KEYWORD_PATTERN = Pattern.compile("\\b(SHALL|MUST)\\b");
     private static final Pattern SCENARIO_PATTERN = Pattern.compile("^#{4} Scenario:.+", Pattern.MULTILINE);
     private static final Pattern DELTA_SECTION_PATTERN = Pattern.compile("^## (ADDED|MODIFIED|REMOVED|RENAMED) Requirements", Pattern.MULTILINE);
     private static final Pattern RENAMED_ENTRY_PATTERN = Pattern.compile(
@@ -548,7 +548,7 @@ class BuiltInValidatorRulesTest {
                                     + "move the keyword onto the requirement body line", "spec-rfc-keyword-in-header"));
                 } else {
                     issues.add(new ValidationIssue(ValidationIssue.Severity.ERROR, path, reqLine,
-                            "Requirement '" + reqHeader + "' must contain RFC 2119 keywords (SHALL, MUST, SHOULD, MAY)", "spec-rfc-keywords"));
+                            "Requirement '" + reqHeader + "' must contain SHALL or MUST", "spec-rfc-keywords"));
                 }
             }
 
