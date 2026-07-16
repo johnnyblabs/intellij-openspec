@@ -99,14 +99,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Cache Gradle dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: gradle-verify-${{ hashFiles('**/*.gradle.kts', 'gradle/wrapper/gradle-wrapper.properties') }}
-          restore-keys: gradle-verify-
-
+      # DELIBERATELY NO actions/cache ON THIS JOB — do not re-add it (third time's the charm).
+      # The verify job's ~/.gradle/caches includes the Plugin Verifier's downloaded IDE
+      # distributions: ~19.5 GB restored AND re-saved per run, all on the runner host's
+      # single NVMe pool shared with other services. Measured twice (2026-07-04 #280,
+      # 2026-07-16 #319): verify runs FASTER with no cache (6.7-10 min) than the cache
+      # restore alone took (~12 min), and the write storm stalls the host's shared
+      # database. The build job's small dependency-only cache above is fine; IDE
+      # archives must never enter actions/cache.
       - name: Run Plugin Verifier
         run: gradle verifyPlugin

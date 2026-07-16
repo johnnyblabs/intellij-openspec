@@ -10,13 +10,22 @@ set -e
 OUTPUT_DIR="docs/screenshots"
 mkdir -p "$OUTPUT_DIR"
 
+# v0.4.0 set (designed 2026-07-16). Carousel narrative: daily loop → catches
+# mistakes → 1.5/1.6 stores → safe upgrades. Capture 06 LAST — the cleanup flow
+# stops re-raising once resolved.
 SHOTS=(
-    "01-tree-view:Show the tool window with Specs, Changes, and Archive expanded"
-    "02-workflow-panel:Show the workflow panel with pipeline chips and Generate button"
-    "03-setup-wizard:Show the setup wizard welcome step with brand icon"
-    "04-gutter-markers:Show a Java file with @spec gutter icons and Coverage tab"
-    "05-getting-started:Show the getting started panel with brand icon and tagline"
+    "01-spec-browser:Hero — Browse tab with Specs+Changes tree expanded, greeting spec.md open in the editor"
+    "02-change-workflow:Browse tab with demo-add-farewell selected — workflow chips showing done/ready/blocked and the Generate button"
+    "03-validation-quickfix:keyword-in-header spec.md with the keyword-placement inspection + Alt+Enter quick-fix, Console tab showing validate results"
+    "04-coordination-stores:Coordination tab — Stores with store-doctor health, Worksets with members, health strip, Full-tier toolbar actions"
+    "05-schema-authoring:Settings > Tools > OpenSpec, Schemas section — provenance tags, inline Validate result, Open Templates"
+    "06-update-legacy-cleanup:OpenSpec Legacy File Cleanup dialog listing CLI-reported opsx files with checkboxes"
 )
+
+# Shots where a popup/dialog is the frontmost window: window-id capture would
+# snap only the popup, so capture the fixed screen region of the IDE frame
+# (positioned at 50,50 sized 1280x800 by the resize step above) instead.
+REGION_SHOTS="03-validation-quickfix 06-update-legacy-cleanup"
 
 echo "=== OpenSpec Screenshot Capture ==="
 echo "Make sure IntelliJ IDEA is running with the OpenSpec plugin loaded."
@@ -59,21 +68,25 @@ for shot in "${SHOTS[@]}"; do
         continue
     fi
 
-    # Capture the frontmost window
-    # Get window ID of frontmost app
-    WINDOW_ID=$(osascript -e '
-    tell application "System Events"
-        set frontApp to name of first application process whose frontmost is true
-        tell process frontApp
-            set winId to id of window 1
+    if [[ " $REGION_SHOTS " == *" $name "* ]]; then
+        # Popup/dialog shot: capture the IDE frame's screen region so the
+        # frame AND the floating popup both land in the shot.
+        screencapture -o -R 50,50,1280,800 "$filepath"
+    else
+        # Capture the frontmost window by window id
+        WINDOW_ID=$(osascript -e '
+        tell application "System Events"
+            set frontApp to name of first application process whose frontmost is true
+            tell process frontApp
+                set winId to id of window 1
+            end tell
         end tell
-    end tell
-    return winId
-    ' 2>/dev/null)
+        return winId
+        ' 2>/dev/null)
 
-    # Use screencapture with window selection
-    screencapture -o -l "$WINDOW_ID" "$filepath" 2>/dev/null || \
-    screencapture -o -w "$filepath"
+        screencapture -o -l "$WINDOW_ID" "$filepath" 2>/dev/null || \
+        screencapture -o -w "$filepath"
+    fi
 
     if [ -f "$filepath" ]; then
         # Resize to exactly 1280x800 if sips is available
