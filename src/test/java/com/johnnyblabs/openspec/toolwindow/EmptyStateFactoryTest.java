@@ -1,5 +1,7 @@
 package com.johnnyblabs.openspec.toolwindow;
 
+import com.intellij.ui.scale.JBUIScale;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import javax.swing.*;
@@ -8,6 +10,16 @@ import java.awt.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 class EmptyStateFactoryTest {
+
+    @BeforeAll
+    static void precomputeUiScale() {
+        // The factory uses JBUI.insets/scale, whose lazy system-scale init on the
+        // Windows CI runner logs "Must be precomputed" (an error the test logger
+        // converts into failures) when nothing precomputed the scale — the IDE does
+        // this at startup; plain JUnit tests must pre-seed it themselves.
+        JBUIScale.setSystemScaleFactor(1f);
+        JBUIScale.setUserScaleFactor(1f);
+    }
 
     @Test
     void createsPanelWithAllComponents() {
