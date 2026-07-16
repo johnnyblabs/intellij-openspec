@@ -20,6 +20,11 @@ public final class ExplorePromptService {
      * Skill file paths to search, in priority order.
      */
     private static final String[] SKILL_FILE_PATHS = {
+            // Skills-era location first — the CLI's tracked skill surface since its 1.5.0
+            // skills-only migration (1.6 stamps allowed-tools/generatedBy frontmatter,
+            // which the frontmatter stripping below removes).
+            ".claude/skills/openspec-explore/SKILL.md",
+            // Legacy pre-1.5 command paths, kept for still-supported 1.3/1.4 projects.
             ".claude/commands/opsx/explore.md",
             ".augment/commands/opsx-explore.md",
             ".github/prompts/opsx-explore.prompt.md"
