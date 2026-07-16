@@ -428,4 +428,63 @@ class OpenSpecUiSmokeTest {
             }
         }
     }
+
+    // ---- Journey 7 — Validate results render CLI-reported errors -------------------
+
+    /**
+     * Journey 7 — Validate-results: a CLI-reported validate error survives the
+     * action → CLI run → JSON parse → merge path and reaches the rendered validation
+     * notification. The assertion targets the CLI-PARSED line specifically — the
+     * `type/id` path form (`spec/missing-shall`) only the CLI parser produces — so the
+     * built-in validator's duplicate diagnostic cannot satisfy it. This is the exact
+     * surface where the 1.6 bracket-path parsing bug silently dropped errors.
+     * Requires a 1.6+ host CLI (skipped otherwise).
+     */
+    @Test
+    fun validateResultsRenderCliReportedErrors() {
+        val cliVersion = hostCliVersion()
+        org.junit.jupiter.api.Assumptions.assumeTrue(
+            cliVersion != null && Regex("""^(\d+)\.(\d+)""").find(cliVersion)?.destructured
+                ?.let { (maj, min) -> maj.toInt() > 1 || (maj.toInt() == 1 && min.toInt() >= 6) } == true
+        ) { "validate-results journey needs OpenSpec CLI 1.6+ on the host (found: $cliVersion)" }
+
+        val projectPath = freshDemoProject()
+        // Seed a spec whose requirement lacks SHALL/MUST: on 1.6 the CLI reports it at
+        // the bracketed path (requirements[0]) — the shape that used to truncate the parse.
+        Files.createDirectories(projectPath.resolve("openspec/specs/missing-shall"))
+        Files.writeString(
+            projectPath.resolve("openspec/specs/missing-shall/spec.md"),
+            "# Missing Shall\n\n## Purpose\nExercises the CLI-reported missing-keyword error end to end.\n\n" +
+                "## Requirements\n\n### Requirement: Records are kept\nRecords are kept somewhere safe.\n\n" +
+                "#### Scenario: Persist\n- **WHEN** a record is created\n- **THEN** it can be read back later\n",
+        )
+        newContext(projectPath).runIdeWithDriver().useDriverAndCloseIde {
+            waitForIndicators(5.minutes)
+
+            // The full report renders in the OpenSpec Console tab, whose panel registers
+            // when the tool window contents are built — show the tool window first so the
+            // report has its real surface (otherwise the action falls into a summary-only
+            // notification fallback).
+            withContext(OnDispatcher.EDT) { getToolWindow("OpenSpec").show() }
+            ideFrame { waitUntil("OpenSpec tool window renders") { hasText("Specs") } }
+
+            invokeAction("OpenSpec.Validate", now = true)
+
+            // Stop 1: the summary notification reports the failure (arrives after the
+            // background CLI run + merge completes).
+            waitUntil("validation summary notification raised", timeout = 3.minutes) {
+                notificationContents(this).any { it.contains("Validation failed (") }
+            }
+
+            // Stop 2: the Console tab renders the CLI-PARSED error line — the type/id
+            // path form (spec/missing-shall) only the CLI parser produces, so the
+            // built-in validator's duplicate cannot satisfy this. getAndActivate has
+            // already selected the Console tab.
+            ideFrame {
+                waitUntil("console renders the CLI-parsed missing-SHALL line", timeout = 2.minutes) {
+                    hasSubtext("spec/missing-shall")
+                }
+            }
+        }
+    }
 }
