@@ -67,8 +67,9 @@ class CoordinationContractTest {
         InitiativeEntry init =
                 CoordinationService.parseInitiatives(fixture("coordination-initiative-list.json")).get(0);
         // Regression guard: must be <root>/tasks.md, NOT <root>/<id>/tasks.md.
-        assertEquals("/fixture/context-stores/teststore/initiatives/test-init/tasks.md",
-                InitiativeArtifact.TASKS.resolvePath(init).toString());
+        // Compare Path to Path — Path.toString() is separator-dependent (backslashes on Windows).
+        assertEquals(java.nio.file.Path.of("/fixture/context-stores/teststore/initiatives/test-init", "tasks.md"),
+                InitiativeArtifact.TASKS.resolvePath(init));
     }
 
     @Test

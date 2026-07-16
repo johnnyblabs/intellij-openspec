@@ -157,11 +157,13 @@ class StoreWorksetServiceTest {
     }
 
     @Test
-    void canonicalizeFallsBackForNonExistentPath() {
+    void canonicalizeFallsBackForNonExistentPath(@TempDir Path tmp) {
         // toRealPath throws for a non-existent path → fall back to toAbsolutePath().normalize().
-        Path missing = Path.of("/no/such/dir/./x/..");
+        // Anchor under a real absolute base: a bare "/no/such/dir" is not absolute on
+        // Windows (no drive), so toAbsolutePath() would prepend the drive and diverge.
+        Path missing = tmp.resolve("no/such/dir/./x/..");
         Path canon = CoordinationService.canonicalize(missing);
-        assertEquals(Path.of("/no/such/dir"), canon);
+        assertEquals(tmp.resolve("no/such/dir").toAbsolutePath().normalize(), canon);
     }
 
     // ---- T.9: legacy demotion (no migration) --------------------------------
