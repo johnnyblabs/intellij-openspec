@@ -205,15 +205,35 @@ class OpenSpecUiSmokeTest {
     }
 
     /**
-     * Journey 4 — editor validator parity (of 5): the lowercase-header spec draws no
+     * Journey 4 — editor validator parity: the lowercase-header spec draws no
      * requirement-recognition complaint; the keyword-in-header spec draws the
-     * targeted diagnostic. Asserted through the Problems view's rendered text.
+     * targeted diagnostic; a keyword hidden inside a fenced code block draws the
+     * missing-keyword diagnostic (CLI 1.6 fence masking). Asserted through the
+     * Problems view's rendered text.
      */
     @Test
     fun editorShowsValidatorParityDiagnostics() {
-        newContext(freshDemoProject()).runIdeWithDriver().useDriverAndCloseIde {
+        val projectPath = freshDemoProject()
+        // 1.6 fence-masking seed: the only SHALL sits inside a fence, so the
+        // inspection must flag the requirement as missing its keyword.
+        Files.createDirectories(projectPath.resolve("openspec/specs/fenced-keyword"))
+        Files.writeString(
+            projectPath.resolve("openspec/specs/fenced-keyword/spec.md"),
+            "# Fenced Keyword\n\n## Purpose\nShows that fenced code cannot satisfy the keyword rule.\n\n" +
+                "## Requirements\n\n### Requirement: Fenced\nBody without the word.\n\n" +
+                "```\nThe system SHALL work.\n```\n\n#### Scenario: T\n- **WHEN** x\n- **THEN** y\n",
+        )
+        newContext(projectPath).runIdeWithDriver().useDriverAndCloseIde {
             waitForIndicators(5.minutes)
             val project = singleProject()
+
+            openFile("openspec/specs/fenced-keyword/spec.md", project)
+            withContext(OnDispatcher.EDT) { getToolWindow("Problems View").show() }
+            ideFrame {
+                waitUntil("fence-masked missing-keyword diagnostic in Problems view", timeout = 2.minutes) {
+                    hasText("Requirement must contain SHALL or MUST")
+                }
+            }
 
             openFile("openspec/specs/keyword-in-header/spec.md", project)
             withContext(OnDispatcher.EDT) { getToolWindow("Problems View").show() }

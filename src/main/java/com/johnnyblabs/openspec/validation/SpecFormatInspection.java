@@ -17,7 +17,8 @@ import java.util.regex.Pattern;
 public class SpecFormatInspection extends LocalInspectionTool {
 
     private static final Pattern REQUIREMENT_PATTERN = SpecPatterns.REQUIREMENT_HEADER;
-    private static final Pattern RFC_2119_PATTERN = Pattern.compile("\\b(SHALL NOT|SHOULD NOT|SHALL|SHOULD|MAY)\\b");
+    // CLI parity (all generations): only SHALL/MUST satisfy the requirement-keyword rule.
+    private static final Pattern RFC_2119_PATTERN = Pattern.compile("\\b(SHALL|MUST)\\b");
 
     @Override
     public ProblemDescriptor @NotNull [] checkFile(@NotNull PsiFile file,
@@ -27,7 +28,8 @@ public class SpecFormatInspection extends LocalInspectionTool {
             return ProblemDescriptor.EMPTY_ARRAY;
         }
 
-        String text = file.getText();
+        // Fence-masked (offset-preserving) so fenced code never satisfies or triggers rules — CLI 1.6 parity.
+        String text = BuiltInValidator.maskFences(file.getText());
         java.util.List<ProblemDescriptor> problems = new java.util.ArrayList<>();
 
         if (!REQUIREMENT_PATTERN.matcher(text).find()) {
@@ -70,7 +72,7 @@ public class SpecFormatInspection extends LocalInspectionTool {
             } else {
                 problems.add(manager.createProblemDescriptor(
                         element,
-                        "Requirement should contain an RFC 2119 keyword (SHALL, SHOULD, MAY)",
+                        "Requirement must contain SHALL or MUST",
                         (LocalQuickFix) null,
                         ProblemHighlightType.WEAK_WARNING,
                         isOnTheFly));

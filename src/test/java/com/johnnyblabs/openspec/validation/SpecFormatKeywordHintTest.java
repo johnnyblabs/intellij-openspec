@@ -62,7 +62,7 @@ public class SpecFormatKeywordHintTest extends OpenSpecIntegrationTestBase {
             assertFalse("Hint must be resolved after the fix",
                     p.getDescriptionTemplate().contains("move the keyword onto the requirement body line"));
             assertFalse("Generic keyword warning must not appear after the fix",
-                    p.getDescriptionTemplate().contains("should contain an RFC 2119 keyword"));
+                    p.getDescriptionTemplate().contains("must contain SHALL or MUST"));
         }
     }
 
@@ -87,7 +87,7 @@ public class SpecFormatKeywordHintTest extends OpenSpecIntegrationTestBase {
         for (ProblemDescriptor p : problems) {
             assertFalse("No targeted hint without a keyword in the header",
                     p.getDescriptionTemplate().contains("move the keyword onto the requirement body line"));
-            if (p.getDescriptionTemplate().contains("should contain an RFC 2119 keyword")) {
+            if (p.getDescriptionTemplate().contains("must contain SHALL or MUST")) {
                 generic = true;
             }
         }

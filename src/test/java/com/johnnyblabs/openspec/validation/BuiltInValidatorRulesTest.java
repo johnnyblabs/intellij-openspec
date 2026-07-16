@@ -649,4 +649,50 @@ class BuiltInValidatorRulesTest {
         }
         return content.length();
     }
+
+    // --- maskFences (the real production utility, not a mirror) ---
+
+    @Test
+    void maskFencesMasksBacktickFenceContentAndMarkers() {
+        String in = "before\n```\nThe system SHALL work.\n```\nafter\n";
+        String out = BuiltInValidator.maskFences(in);
+        assertEquals(in.length(), out.length(), "offset preservation");
+        assertFalse(out.contains("SHALL"));
+        assertFalse(out.contains("```"), "fence marker lines are masked too");
+        assertTrue(out.contains("before") && out.contains("after"));
+        assertEquals(countNewlines(in), countNewlines(out), "line preservation");
+    }
+
+    @Test
+    void maskFencesHandlesTildeFences() {
+        String out = BuiltInValidator.maskFences("~~~\n#### Scenario: hidden\n~~~\nvisible\n");
+        assertFalse(out.contains("Scenario"));
+        assertTrue(out.contains("visible"));
+    }
+
+    @Test
+    void maskFencesUnclosedFenceMasksToEndOfContent() {
+        String out = BuiltInValidator.maskFences("ok\n```\nSHALL forever\nno close");
+        assertTrue(out.contains("ok"));
+        assertFalse(out.contains("SHALL"));
+        assertFalse(out.contains("no close"));
+    }
+
+    @Test
+    void maskFencesBacktickInsideTildeFenceDoesNotClose() {
+        String out = BuiltInValidator.maskFences("~~~\n```\nstill fenced SHALL\n~~~\nvisible SHALL\n");
+        assertFalse(out.contains("still fenced"));
+        assertTrue(out.contains("visible SHALL"));
+    }
+
+    @Test
+    void maskFencesIndentedFenceRecognized() {
+        String out = BuiltInValidator.maskFences("  ```\n  fenced MUST\n  ```\nplain MUST\n");
+        assertFalse(out.contains("fenced MUST"));
+        assertTrue(out.contains("plain MUST"));
+    }
+
+    private static long countNewlines(String s) {
+        return s.chars().filter(c -> c == '\n').count();
+    }
 }

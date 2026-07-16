@@ -23,6 +23,7 @@ None.
 - `validation`: spec-format and delta-validation requirements gain 1.6 semantics — SHALL/MUST-only keyword rule, fence-aware keyword/scenario evaluation, and the INFO-tier non-canonical-header hint in delta sections (never verdict-affecting).
 - `plugin-core`: the supported-CLI-versions set becomes `1.3.x`–`1.6.x` (floor unchanged at `1.3.0`).
 - `coordination-surfaces`: the CLI-version behavior contract gains the `1.6.x` row.
+- `ui-smoke-journeys`: the editor validator-parity journey gains a fence-masking stop (a seeded spec whose only keyword sits inside a fenced code block draws the missing-keyword diagnostic in the sandbox IDE).
 
 ## Impact
 

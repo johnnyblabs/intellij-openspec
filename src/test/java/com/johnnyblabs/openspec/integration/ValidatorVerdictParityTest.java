@@ -79,9 +79,15 @@ public class ValidatorVerdictParityTest extends OpenSpecIntegrationTestBase {
 
         for (Map.Entry<String, Boolean> e : cliVerdicts.entrySet()) {
             String id = e.getKey();
+            // Corpus-drift guard: every fixture item must have a materialized file.
+            assertTrue("fixture item '" + id + "' has no corpus file — CORPUS_FILES is stale",
+                    CORPUS_FILES.stream().anyMatch(f -> f.contains("/" + id + "/")));
+            // Change-level issues carry the change DIRECTORY as filePath (no trailing
+            // slash), so match both forms — a dir-level ERROR must break parity too.
             String marker = "/" + id + "/";
             boolean pluginValid = issues.stream().noneMatch(i ->
-                    i.severity() == ValidationIssue.Severity.ERROR && i.filePath().contains(marker));
+                    i.severity() == ValidationIssue.Severity.ERROR
+                            && (i.filePath().contains(marker) || i.filePath().endsWith("/" + id)));
             assertEquals("verdict parity for '" + id + "' (CLI says " + e.getValue() + ")",
                     (boolean) e.getValue(), pluginValid);
         }

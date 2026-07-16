@@ -46,7 +46,7 @@ public class SpecFormatInspectionTest extends OpenSpecIntegrationTestBase {
         assertTrue("Should detect missing RFC 2119 keyword", problems.length > 0);
         boolean hasKeywordWarning = false;
         for (ProblemDescriptor p : problems) {
-            if (p.getDescriptionTemplate().contains("RFC 2119")) {
+            if (p.getDescriptionTemplate().contains("must contain SHALL or MUST")) {
                 hasKeywordWarning = true;
                 break;
             }
