@@ -245,7 +245,13 @@ class MarketplaceScreenshotTour {
                 browseTree.clickPath(
                     "OpenSpec", "Specs", "greeting", "Requirement: Friendly greeting", fullMatch = false
                 )
-                waitUntil("preview pane renders the selected spec") { hasText("greet the user by name") }
+                // The preview pane renders HTML in a JEditorPane, whose text the UI driver cannot
+                // read via hasText. Instead the pane's accessible name flips to "rendered" only after
+                // a successful selection→read→render, so waiting on it is a reliable render-complete
+                // signal (and the on-screen pane shows the spec — see the shot).
+                waitUntil("preview pane renders the selected spec") {
+                    x { byAccessibleName("OpenSpec preview rendered") }.present()
+                }
             }
             snap("07-spec-preview")
 

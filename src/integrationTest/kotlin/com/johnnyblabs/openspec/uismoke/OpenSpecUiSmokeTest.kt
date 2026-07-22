@@ -519,10 +519,12 @@ class OpenSpecUiSmokeTest {
                     "OpenSpec", "Specs", "greeting", "Requirement: Friendly greeting", fullMatch = false
                 )
 
-                // The preview pane renders the greeting spec's source markdown. This prose lives
-                // only in the requirement body — proof the file was read and rendered on selection.
-                waitUntil("preview pane renders the selected spec's requirement prose", timeout = 2.minutes) {
-                    hasText("greet the user by name")
+                // The preview renders HTML into a JEditorPane, whose content the driver cannot read
+                // via hasText. The pane's accessible name flips to "rendered" only after a successful
+                // selection→pooled-read→render→setText, so waiting on it proves that exact wiring
+                // fired (and distinguishes it from the "empty" state the pane shows before selection).
+                waitUntil("preview pane renders on selection", timeout = 2.minutes) {
+                    x { byAccessibleName("OpenSpec preview rendered") }.present()
                 }
             }
         }

@@ -184,6 +184,11 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider {
         refreshAsync();
     }
 
+    // Accessible name of the preview pane, flipped between these on empty/render so assistive
+    // tech (and UI-driver tests) can observe that a selection actually produced a rendered preview.
+    static final String PREVIEW_RENDERED_NAME = "OpenSpec preview rendered";
+    static final String PREVIEW_EMPTY_NAME = "OpenSpec preview empty";
+
     // Bumped on the EDT for every selection; a completed off-EDT render only applies if its
     // token is still current, so a slow render of an earlier selection can't overwrite a newer one.
     private int previewGeneration = 0;
@@ -244,6 +249,7 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider {
             if (selection.requirementName() != null) {
                 previewPane.scrollToReference(RequirementAnchors.anchorId(selection.requirementName()));
             }
+            previewPane.getAccessibleContext().setAccessibleName(PREVIEW_RENDERED_NAME);
         });
     }
 
@@ -251,6 +257,7 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider {
         String css = MarkdownHtmlRenderer.buildThemeStylesheet() + DeltaBadgeDecorator.badgeCss();
         previewPane.setText(MarkdownHtmlRenderer.wrapInHtml(css, SpecPreviewRenderer.emptyState()));
         previewPane.setCaretPosition(0);
+        previewPane.getAccessibleContext().setAccessibleName(PREVIEW_EMPTY_NAME);
     }
 
     private void refreshAsync() {
