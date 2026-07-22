@@ -184,11 +184,23 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider {
         refreshAsync();
     }
 
+    // Bumped on the EDT for every selection; a completed off-EDT render only applies if its
+    // token is still current, so a slow render of an earlier selection can't overwrite a newer one.
+    private int previewGeneration = 0;
+
     private void schedulePreview() {
         // Snapshot the selection on the EDT; the file read + render then runs off-EDT.
         PreviewSelection selection = snapshotSelection(tree.getSelectionPath());
+        final int generation = ++previewGeneration;
         previewAlarm.cancelAllRequests();
-        previewAlarm.addRequest(() -> renderPreview(selection), 120);
+        previewAlarm.addRequest(() -> renderPreview(selection, generation), 120);
+    }
+
+    /** Applies a preview mutation on the EDT only if no newer selection has superseded it. */
+    private void applyIfCurrent(int generation, Runnable action) {
+        ApplicationManager.getApplication().invokeLater(() -> {
+            if (generation == previewGeneration) action.run();
+        });
     }
 
     private PreviewSelection snapshotSelection(TreePath path) {
@@ -205,27 +217,27 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider {
         return new PreviewSelection(data.filePath(), kind, requirementName);
     }
 
-    private void renderPreview(PreviewSelection selection) {
+    private void renderPreview(PreviewSelection selection, int generation) {
         if (selection == null || selection.kind() == SpecPreviewRenderer.PreviewKind.NONE) {
-            ApplicationManager.getApplication().invokeLater(this::showPreviewEmptyState);
+            applyIfCurrent(generation, this::showPreviewEmptyState);
             return;
         }
         String fragment;
         try {
             VirtualFile file = LocalFileSystem.getInstance().findFileByPath(selection.filePath());
-            if (file == null || file.isDirectory()) {
-                ApplicationManager.getApplication().invokeLater(this::showPreviewEmptyState);
+            if (file == null || !file.isValid() || file.isDirectory()) {
+                applyIfCurrent(generation, this::showPreviewEmptyState);
                 return;
             }
             String markdown = VfsUtilCore.loadText(file);
             fragment = SpecPreviewRenderer.renderMarkdown(selection.kind(), markdown);
         } catch (Exception ex) {
             LOG.debug("Failed to render preview for " + selection.filePath(), ex);
-            ApplicationManager.getApplication().invokeLater(this::showPreviewEmptyState);
+            applyIfCurrent(generation, this::showPreviewEmptyState);
             return;
         }
         final String renderedFragment = fragment;
-        ApplicationManager.getApplication().invokeLater(() -> {
+        applyIfCurrent(generation, () -> {
             String css = MarkdownHtmlRenderer.buildThemeStylesheet() + DeltaBadgeDecorator.badgeCss();
             previewPane.setText(MarkdownHtmlRenderer.wrapInHtml(css, renderedFragment));
             previewPane.setCaretPosition(0);
