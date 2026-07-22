@@ -10,6 +10,7 @@ import com.intellij.driver.sdk.openFile
 import com.intellij.driver.sdk.invokeAction
 import com.intellij.driver.sdk.singleProject
 import com.intellij.driver.sdk.ui.components.ideFrame
+import com.intellij.driver.sdk.ui.components.tree
 import com.intellij.driver.sdk.ui.ui
 import com.intellij.driver.sdk.waitForIndicators
 import com.intellij.ide.starter.driver.engine.runIdeWithDriver
@@ -483,6 +484,45 @@ class OpenSpecUiSmokeTest {
             ideFrame {
                 waitUntil("console renders the CLI-parsed missing-SHALL line", timeout = 2.minutes) {
                     hasSubtext("spec/missing-shall")
+                }
+            }
+        }
+    }
+
+    // ---- Journey 8 — Browse preview renders the selected spec ----------------------
+
+    /**
+     * Journey 8 — searchable spec-and-change viewer: selecting a spec node in the Browse tree
+     * renders its markdown in the preview pane. The node is selected through the platform tree
+     * MODEL API (JTreeUiComponent.clickPath resolves TreePathToRow), NOT a byVisibleText row click —
+     * tree rows are cell-renderer paint and invisible to text queries. The assertion targets the
+     * requirement BODY prose ("greet the user by name"), which appears ONLY in the rendered preview
+     * (never in a tree label), so it can only be satisfied by the selection→pooled-read→render→
+     * setText wiring this journey exists to catch.
+     */
+    @Test
+    fun previewPaneRendersSelectedSpec() {
+        newContext(freshDemoProject()).runIdeWithDriver().useDriverAndCloseIde {
+            waitForIndicators(5.minutes)
+
+            withContext(OnDispatcher.EDT) { getToolWindow("OpenSpec").show() }
+
+            ideFrame {
+                waitUntil("Browse tree renders its Specs group") { hasText("Specs") }
+
+                // Drive the tree via its model: expand Specs → greeting, then select the seeded
+                // requirement node. Path segments are the node labels (TreeNodeData.label()).
+                val browseTree = tree("//div[@class='Tree']")
+                browseTree.expandPath("OpenSpec", "Specs", fullMatch = false)
+                browseTree.expandPath("OpenSpec", "Specs", "greeting", fullMatch = false)
+                browseTree.clickPath(
+                    "OpenSpec", "Specs", "greeting", "Requirement: Friendly greeting", fullMatch = false
+                )
+
+                // The preview pane renders the greeting spec's source markdown. This prose lives
+                // only in the requirement body — proof the file was read and rendered on selection.
+                waitUntil("preview pane renders the selected spec's requirement prose", timeout = 2.minutes) {
+                    hasText("greet the user by name")
                 }
             }
         }

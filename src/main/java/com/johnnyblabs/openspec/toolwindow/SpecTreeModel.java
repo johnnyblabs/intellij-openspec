@@ -75,10 +75,12 @@ public class SpecTreeModel {
         return new DefaultTreeModel(root);
     }
 
-    private DefaultMutableTreeNode filterNode(DefaultMutableTreeNode node, String query) {
+    static DefaultMutableTreeNode filterNode(DefaultMutableTreeNode node, String query) {
         Object userObj = node.getUserObject();
         String label = (userObj instanceof TreeNodeData data) ? data.label() : node.toString();
-        boolean selfMatches = label.toLowerCase().contains(query);
+        String searchText = (userObj instanceof TreeNodeData data) ? data.searchText() : null;
+        boolean selfMatches = label.toLowerCase().contains(query)
+                || (searchText != null && searchText.toLowerCase().contains(query));
 
         // Collect filtered children
         java.util.List<DefaultMutableTreeNode> matchingChildren = new java.util.ArrayList<>();
@@ -109,7 +111,7 @@ public class SpecTreeModel {
         return clone;
     }
 
-    private DefaultMutableTreeNode cloneSubtree(DefaultMutableTreeNode node) {
+    private static DefaultMutableTreeNode cloneSubtree(DefaultMutableTreeNode node) {
         DefaultMutableTreeNode clone = new DefaultMutableTreeNode(node.getUserObject());
         for (int i = 0; i < node.getChildCount(); i++) {
             clone.add(cloneSubtree((DefaultMutableTreeNode) node.getChildAt(i)));
@@ -118,11 +120,18 @@ public class SpecTreeModel {
     }
 
     private DefaultMutableTreeNode buildSpecsNode() {
+        SpecParsingService parsingService = project.getService(SpecParsingService.class);
+        return buildSpecsNode(parsingService.parseAllSpecs());
+    }
+
+    /**
+     * Builds the Specs subtree from parsed spec files. Pure of the project/service so it is
+     * unit-testable headlessly. Each requirement node carries {@code searchText} (name + body +
+     * scenario text) so {@link #filterNode} can match content, not just labels.
+     */
+    static DefaultMutableTreeNode buildSpecsNode(List<SpecFile> specs) {
         DefaultMutableTreeNode specsNode = new DefaultMutableTreeNode(
                 new TreeNodeData("Specs", TreeNodeType.SPECS, null, null, null, "Capability specifications"));
-
-        SpecParsingService parsingService = project.getService(SpecParsingService.class);
-        List<SpecFile> specs = parsingService.parseAllSpecs();
 
         if (specs.isEmpty()) {
             String hint = "No specs found yet.";
@@ -140,7 +149,7 @@ public class SpecTreeModel {
             for (Requirement req : spec.getRequirements()) {
                 domainNode.add(new DefaultMutableTreeNode(
                         new TreeNodeData("Requirement: " + req.getName(), TreeNodeType.REQUIREMENT, spec.getFilePath(),
-                                null, null, req.getName())));
+                                null, null, req.getName(), SpecContentMatcher.searchableText(req))));
             }
 
             specsNode.add(domainNode);
@@ -375,13 +384,18 @@ public class SpecTreeModel {
         DELTA_SPEC, ARCHIVE, CONFIG, CONFIG_ENTRY, HINT
     }
 
-    public record TreeNodeData(String label, TreeNodeType type, String filePath, String changeName, String artifactId, String tooltip) {
+    public record TreeNodeData(String label, TreeNodeType type, String filePath, String changeName, String artifactId,
+                               String tooltip, String searchText) {
+        public TreeNodeData(String label, TreeNodeType type, String filePath, String changeName, String artifactId, String tooltip) {
+            this(label, type, filePath, changeName, artifactId, tooltip, null);
+        }
+
         public TreeNodeData(String label, TreeNodeType type, String filePath, String changeName, String artifactId) {
-            this(label, type, filePath, changeName, artifactId, null);
+            this(label, type, filePath, changeName, artifactId, null, null);
         }
 
         public TreeNodeData(String label, TreeNodeType type, String filePath) {
-            this(label, type, filePath, null, null, null);
+            this(label, type, filePath, null, null, null, null);
         }
 
         @Override
