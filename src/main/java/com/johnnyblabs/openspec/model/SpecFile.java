@@ -2,6 +2,7 @@ package com.johnnyblabs.openspec.model;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class SpecFile {
     private final String domain;
@@ -37,5 +38,20 @@ public class SpecFile {
 
     public String getFilePath() {
         return filePath;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof SpecFile other)) return false;
+        return Objects.equals(domain, other.domain)
+                && Objects.equals(title, other.title)
+                && Objects.equals(filePath, other.filePath)
+                && requirements.equals(other.requirements);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(domain, title, filePath, requirements);
     }
 }

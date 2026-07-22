@@ -2,6 +2,7 @@ package com.johnnyblabs.openspec.model;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class Requirement {
     private final String name;
@@ -41,5 +42,25 @@ public class Requirement {
 
     public void addScenario(Scenario scenario) {
         scenarios.add(scenario);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Requirement other)) return false;
+        return Objects.equals(name, other.name)
+                && Objects.equals(body, other.body)
+                && Objects.equals(keyword, other.keyword)
+                && scenarios.equals(other.scenarios);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(name, body, keyword, scenarios);
+    }
+
+    @Override
+    public String toString() {
+        return "Requirement{name='" + name + "', keyword='" + keyword + "', scenarios=" + scenarios + '}';
     }
 }
