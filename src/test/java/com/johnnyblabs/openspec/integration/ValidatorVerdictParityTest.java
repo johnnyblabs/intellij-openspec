@@ -39,6 +39,12 @@ public class ValidatorVerdictParityTest extends OpenSpecIntegrationTestBase {
             "openspec/specs/second-line-keyword/spec.md",
             "openspec/specs/header-only-keyword/spec.md",
             "openspec/specs/fenced-scenario/spec.md",
+            // align-spec-parser-with-cli: adversarial specs added to the parity corpus.
+            "openspec/specs/indented-code/spec.md",
+            "openspec/specs/setext-header/spec.md",
+            "openspec/specs/table-keyword/spec.md",
+            "openspec/specs/html-comment-req/spec.md",
+            "openspec/specs/nested-list-scenario/spec.md",
             "openspec/changes/info-change/proposal.md",
             "openspec/changes/info-change/specs/demo/spec.md",
             "openspec/changes/nameless-change/proposal.md",
@@ -74,8 +80,8 @@ public class ValidatorVerdictParityTest extends OpenSpecIntegrationTestBase {
             JsonObject item = el.getAsJsonObject();
             cliVerdicts.put(item.get("id").getAsString(), item.get("valid").getAsBoolean());
         }
-        assertTrue("corpus drift: expected 8 fixture items, got " + cliVerdicts.size(),
-                cliVerdicts.size() == 8);
+        assertTrue("corpus drift: expected 13 fixture items, got " + cliVerdicts.size(),
+                cliVerdicts.size() == 13);
 
         for (Map.Entry<String, Boolean> e : cliVerdicts.entrySet()) {
             String id = e.getKey();

@@ -1,0 +1,24 @@
+{
+  "id": "clean-spec",
+  "title": "clean-spec",
+  "overview": "A perfectly ordinary capability description long enough to avoid warnings.",
+  "requirementCount": 1,
+  "requirements": [
+    {
+      "text": "The system SHALL work.",
+      "scenarios": [
+        {
+          "rawText": "- **WHEN** x\n- **THEN** y"
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "version": "1.0.0",
+    "format": "openspec"
+  },
+  "root": {
+    "path": "/fixture",
+    "source": "nearest"
+  }
+}

@@ -4,6 +4,10 @@
 
 ## Unreleased
 
+### Fixed
+
+- **Spec tree and list counts now match `openspec show` / `openspec validate`.** The Browse tab's per-spec requirement and scenario counts are recovered by a line-oriented scanner that mirrors the OpenSpec CLI's own parser instead of fence-blind regexes, so the tree no longer disagrees with the CLI. Concretely: requirement headers, scenario headers, and normative keywords inside fenced code blocks (` ``` ` / `~~~`) are no longer counted as structure; **any** level-4 `####` header under a requirement is recognized as a scenario (not only a `#### Scenario:`-labelled one), while the bold `**Scenario:**` form is not; and a requirement's normative state is the whole-word `SHALL`/`MUST` read from its body (adding `MUST`, which was previously missed, and no longer treating `SHOULD`/`MAY` as normative). Existing specs may therefore show corrected counts — this brings the tree into agreement with the CLI. Parity is enforced against captured real CLI output.
+
 ## v0.4.0
 
 ### Added

@@ -45,7 +45,9 @@ class SpecParsingServiceTest {
 
         Requirement second = spec.getRequirements().get(1);
         assertEquals("Optional Feature", second.getName());
-        assertEquals("MAY", second.getKeyword());
+        // align-spec-parser-with-cli: MAY is not a normative keyword to the CLI, so it is not
+        // reported as a keyword (only SHALL/MUST are). Previously the parser surfaced "MAY".
+        assertNull(second.getKeyword());
     }
 
     @Test
@@ -125,12 +127,24 @@ class SpecParsingServiceTest {
     }
 
     @Test
-    void parseSpecContent_extractsShouldNotKeyword() {
+    void parseSpecContent_shouldNotIsNotNormative() {
         String content = "# Spec\n\n### Requirement: Advisory\n\nThe system SHOULD NOT block the UI thread.\n";
         SpecParsingService service = new SpecParsingService(null);
         SpecFile spec = service.parseSpecContent(content, "test", "/test.md");
 
-        assertEquals("SHOULD NOT", spec.getRequirements().getFirst().getKeyword());
+        // align-spec-parser-with-cli: the CLI's normative set is exactly SHALL/MUST, so a
+        // requirement whose only modal is SHOULD (NOT) has no normative keyword.
+        assertNull(spec.getRequirements().getFirst().getKeyword());
+    }
+
+    @Test
+    void parseSpecContent_extractsMustKeyword() {
+        String content = "# Spec\n\n### Requirement: Mandatory\n\nThe system MUST persist the record.\n";
+        SpecParsingService service = new SpecParsingService(null);
+        SpecFile spec = service.parseSpecContent(content, "test", "/test.md");
+
+        // align-spec-parser-with-cli: MUST is normative to the CLI; the old parser omitted it.
+        assertEquals("MUST", spec.getRequirements().getFirst().getKeyword());
     }
 
     @Test
@@ -142,12 +156,12 @@ class SpecParsingServiceTest {
 
                 The system SHALL handle multiple scenarios.
 
-                **Scenario: Happy path**
+                #### Scenario: Happy path
                 - GIVEN valid input
                 - WHEN processed
                 - THEN success
 
-                **Scenario: Error path**
+                #### Scenario: Error path
                 - GIVEN invalid input
                 - WHEN processed
                 - THEN error is reported
@@ -172,7 +186,7 @@ class SpecParsingServiceTest {
 
                 The system SHALL validate inputs.
 
-                **Scenario: Full validation**
+                #### Scenario: Full validation
                 - GIVEN valid credentials
                 - AND the account is active
                 - WHEN login is attempted
@@ -220,7 +234,7 @@ class SpecParsingServiceTest {
                 The system SHALL parse body text correctly.
                 This is additional body content.
 
-                **Scenario: Check body**
+                #### Scenario: Check body
                 - GIVEN a requirement
                 - WHEN parsed
                 - THEN body is extracted
@@ -259,9 +273,93 @@ class SpecParsingServiceTest {
         SpecFile spec = service.parseSpecContent(content, "test", "/test.md");
 
         assertEquals(4, spec.getRequirements().size());
+        // align-spec-parser-with-cli: only SHALL/MUST are normative to the CLI. SHOULD and MAY
+        // therefore report no keyword; SHALL NOT keeps its negated display (it contains SHALL).
         assertEquals("SHALL", spec.getRequirements().get(0).getKeyword());
-        assertEquals("SHOULD", spec.getRequirements().get(1).getKeyword());
-        assertEquals("MAY", spec.getRequirements().get(2).getKeyword());
+        assertNull(spec.getRequirements().get(1).getKeyword());
+        assertNull(spec.getRequirements().get(2).getKeyword());
         assertEquals("SHALL NOT", spec.getRequirements().get(3).getKeyword());
+    }
+
+    @Test
+    void parseSpecContent_ignoresMarkersInsideCodeFence() {
+        String content = """
+                # Fenced
+
+                ### Requirement: Hidden
+                The system SHALL work.
+
+                ```
+                #### Scenario: only an example
+                - **WHEN** x
+                - **THEN** y
+                ```
+                """;
+        SpecParsingService service = new SpecParsingService(null);
+        SpecFile spec = service.parseSpecContent(content, "test", "/test.md");
+
+        // align-spec-parser-with-cli: a scenario header inside a fence is not a scenario.
+        assertEquals(1, spec.getRequirements().size());
+        assertTrue(spec.getRequirements().getFirst().getScenarios().isEmpty());
+    }
+
+    @Test
+    void parseSpecContent_keywordInsideFenceIsNotNormative() {
+        String content = """
+                # Fenced Keyword
+
+                ### Requirement: Example only
+                This requirement only shows an example.
+
+                ```
+                The system SHALL do the thing.
+                ```
+                """;
+        SpecParsingService service = new SpecParsingService(null);
+        SpecFile spec = service.parseSpecContent(content, "test", "/test.md");
+
+        // align-spec-parser-with-cli: SHALL only inside a fence does not make the requirement normative.
+        assertNull(spec.getRequirements().getFirst().getKeyword());
+    }
+
+    @Test
+    void parseSpecContent_anyLevel4HeaderIsAScenario() {
+        String content = """
+                # Any Header
+
+                ### Requirement: Given form
+                The system SHALL support given/when/then headers.
+
+                #### Given a running system
+                - **WHEN** invoked
+                - **THEN** it responds
+                """;
+        SpecParsingService service = new SpecParsingService(null);
+        SpecFile spec = service.parseSpecContent(content, "test", "/test.md");
+
+        // align-spec-parser-with-cli: the CLI counts ANY level-4 header as a scenario, not only
+        // "Scenario:"-labelled ones.
+        assertEquals(1, spec.getRequirements().getFirst().getScenarios().size());
+        assertEquals("Given a running system",
+                spec.getRequirements().getFirst().getScenarios().getFirst().getName());
+    }
+
+    @Test
+    void parseSpecContent_boldScenarioFormIsNotAScenario() {
+        String content = """
+                # Bold Form
+
+                ### Requirement: Bold scenarios
+                The system SHALL not count bold scenario lines.
+
+                **Scenario: Not counted**
+                - **WHEN** invoked
+                - **THEN** nothing
+                """;
+        SpecParsingService service = new SpecParsingService(null);
+        SpecFile spec = service.parseSpecContent(content, "test", "/test.md");
+
+        // align-spec-parser-with-cli: the bold **Scenario:** form is not recognized by the CLI.
+        assertTrue(spec.getRequirements().getFirst().getScenarios().isEmpty());
     }
 }

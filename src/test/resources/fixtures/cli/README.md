@@ -67,7 +67,19 @@ of what this generation changed:
   fixture is the real 1.6.0 CLI's `validate --all --json` over the same corpus (isolated
   env, minimal proposals present so both sides see identical content). Re-capture: re-run
   `validate --all --json` over `parity-corpus/` seeded into a fresh `openspec init` project.
-  See `ValidatorVerdictParityTest`.
+  See `ValidatorVerdictParityTest`. The `align-spec-parser-with-cli` change grew the corpus
+  with five adversarial specs (`indented-code`, `setext-header`, `table-keyword`,
+  `html-comment-req`, `nested-list-scenario`) — each a valid spec plus a structural distractor
+  (an indented/fenced/tabulated/commented/setext marker the CLI does not treat as structure) —
+  so the corpus is now 13 items (11 specs + 2 changes).
+- `spec-structure/<id>.show.json` — structure-parity captures: the real 1.6.0 CLI's
+  `openspec show <id> --json --type spec` for every spec in `parity-corpus/openspec/specs/`,
+  one file per spec. `SpecParserCliStructureContractTest` asserts the plugin's
+  `SpecParsingService` recovers the same `requirementCount` and per-requirement scenario count.
+  `root.path` is the only sanitized field (→ `/fixture`); note the CLI's `title` field is the
+  spec **id**, not the markdown H1. Re-capture (per CLI generation): seed `parity-corpus`'s
+  specs into a fresh `openspec init --tools claude` project under an isolated
+  `HOME`/`XDG_*` env, run `show` per spec id, and `sed` the project root path to `/fixture`.
 - Store family: fresh/config-only roots register successfully and doctor reports
   `healthy: true` with per-directory `present: false`; new refusal codes
   `invalid_store_pointer`, `store_root_pointer_declared`; new

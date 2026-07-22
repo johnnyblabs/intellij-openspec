@@ -1,0 +1,24 @@
+{
+  "id": "should-only",
+  "title": "should-only",
+  "overview": "Uses only soft RFC wording to show the keyword rule difference clearly.",
+  "requirementCount": 1,
+  "requirements": [
+    {
+      "text": "The system SHOULD work and MAY retry.",
+      "scenarios": [
+        {
+          "rawText": "- **WHEN** x\n- **THEN** y"
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "version": "1.0.0",
+    "format": "openspec"
+  },
+  "root": {
+    "path": "/fixture",
+    "source": "nearest"
+  }
+}

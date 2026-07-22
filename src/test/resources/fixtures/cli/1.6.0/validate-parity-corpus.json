@@ -5,7 +5,7 @@
       "type": "spec",
       "valid": true,
       "issues": [],
-      "durationMs": 2
+      "durationMs": 3
     },
     {
       "id": "fenced-keyword",
@@ -36,7 +36,7 @@
           "message": "Requirement must have at least one scenario. Scenarios must use level-4 headers. Convert bullet lists into:\n#### Scenario: Short name\n- **WHEN** ...\n- **THEN** ...\n- **AND** ..."
         }
       ],
-      "durationMs": 0
+      "durationMs": 1
     },
     {
       "id": "header-only-keyword",
@@ -52,6 +52,20 @@
       "durationMs": 0
     },
     {
+      "id": "html-comment-req",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 1
+    },
+    {
+      "id": "indented-code",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 1
+    },
+    {
       "id": "info-change",
       "type": "change",
       "valid": true,
@@ -63,7 +77,7 @@
           "message": "Header \"### Implementation notes\" in ADDED Requirements is not a \"### Requirement:\" header and is ignored by validation. Use \"### Requirement: Implementation notes\" if it should be validated as a requirement."
         }
       ],
-      "durationMs": 4
+      "durationMs": 5
     },
     {
       "id": "nameless-change",
@@ -77,10 +91,24 @@
           "message": "Header \"### Requirement:\" in MODIFIED Requirements is missing a requirement name and is ignored by validation. Add a name, e.g. \"### Requirement: <name>\"."
         }
       ],
-      "durationMs": 3
+      "durationMs": 5
+    },
+    {
+      "id": "nested-list-scenario",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 1
     },
     {
       "id": "second-line-keyword",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 1
+    },
+    {
+      "id": "setext-header",
       "type": "spec",
       "valid": true,
       "issues": [],
@@ -98,12 +126,19 @@
         }
       ],
       "durationMs": 0
+    },
+    {
+      "id": "table-keyword",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 0
     }
   ],
   "summary": {
     "totals": {
-      "items": 8,
-      "passed": 4,
+      "items": 13,
+      "passed": 9,
       "failed": 4
     },
     "byType": {
@@ -113,8 +148,8 @@
         "failed": 0
       },
       "spec": {
-        "items": 6,
-        "passed": 2,
+        "items": 11,
+        "passed": 7,
         "failed": 4
       }
     }

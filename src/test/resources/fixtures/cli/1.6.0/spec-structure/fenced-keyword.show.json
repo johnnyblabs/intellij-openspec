@@ -1,0 +1,24 @@
+{
+  "id": "fenced-keyword",
+  "title": "fenced-keyword",
+  "overview": "Keyword only inside a fenced code block, which the validator must ignore.",
+  "requirementCount": 1,
+  "requirements": [
+    {
+      "text": "Body without the word.",
+      "scenarios": [
+        {
+          "rawText": "- **WHEN** x\n- **THEN** y"
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "version": "1.0.0",
+    "format": "openspec"
+  },
+  "root": {
+    "path": "/fixture",
+    "source": "nearest"
+  }
+}

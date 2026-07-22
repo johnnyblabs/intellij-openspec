@@ -1,0 +1,24 @@
+{
+  "id": "header-only-keyword",
+  "title": "header-only-keyword",
+  "overview": "Keyword present only in the requirement header, which no generation accepts.",
+  "requirementCount": 1,
+  "requirements": [
+    {
+      "text": "Prose without the word on any body line.",
+      "scenarios": [
+        {
+          "rawText": "- **WHEN** x\n- **THEN** y"
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "version": "1.0.0",
+    "format": "openspec"
+  },
+  "root": {
+    "path": "/fixture",
+    "source": "nearest"
+  }
+}

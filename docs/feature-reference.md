@@ -86,6 +86,21 @@ OpenSpec
     └── 2026-03-01-initial-setup
 ```
 
+The requirement and scenario counts under **Specs** are recovered by a line-oriented scanner that
+mirrors the OpenSpec CLI's own parsing, so the tree agrees with `openspec show` / `openspec validate`.
+The recognition rules:
+
+- **Code fences are excluded.** Requirement headers, scenario headers, and normative keywords that
+  appear only inside a fenced code block (` ``` ` or `~~~`) are not counted — they are examples, not
+  structure.
+- **Any level-4 header is a scenario.** Every non-fenced `####` header under a requirement counts as a
+  scenario, not only a `#### Scenario:`-labelled one; the bold `**Scenario:**` form is not a scenario.
+- **Normative keyword is `SHALL`/`MUST` on the body.** The requirement's normative state is the
+  whole-word, case-sensitive keyword `SHALL` or `MUST`, evaluated on the requirement **body** (the lines
+  between the header and the first scenario) — not on the header line and not inside fences. `SHOULD` and
+  `MAY` are not normative.
+- **Requirement headers stay case-insensitive** (see the Spec Format inspection below).
+
 ---
 
 ## Workflow Orchestration

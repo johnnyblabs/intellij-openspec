@@ -1,0 +1,24 @@
+{
+  "id": "html-comment-req",
+  "title": "html-comment-req",
+  "overview": "A capability with a requirement header buried in an inline HTML comment the parser ignores.",
+  "requirementCount": 1,
+  "requirements": [
+    {
+      "text": "The system SHALL stay active.\n<!-- ### Requirement: Commented out -->",
+      "scenarios": [
+        {
+          "rawText": "- **WHEN** x\n- **THEN** y"
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "version": "1.0.0",
+    "format": "openspec"
+  },
+  "root": {
+    "path": "/fixture",
+    "source": "nearest"
+  }
+}

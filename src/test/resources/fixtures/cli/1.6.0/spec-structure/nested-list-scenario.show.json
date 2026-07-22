@@ -1,0 +1,24 @@
+{
+  "id": "nested-list-scenario",
+  "title": "nested-list-scenario",
+  "overview": "A capability whose single scenario uses nested bullet lists under its clauses.",
+  "requirementCount": 1,
+  "requirements": [
+    {
+      "text": "The system SHALL handle nested lists.",
+      "scenarios": [
+        {
+          "rawText": "- **WHEN** a request arrives\n  - with a nested detail\n  - and another nested detail\n- **THEN** it is handled\n  - producing a nested outcome"
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "version": "1.0.0",
+    "format": "openspec"
+  },
+  "root": {
+    "path": "/fixture",
+    "source": "nearest"
+  }
+}

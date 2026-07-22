@@ -34,7 +34,7 @@ All services are registered as `@Service(Service.Level.PROJECT)` and accessed vi
 
 ## SpecParsingService
 
-**Role:** Parses `spec.md` files into `SpecFile` objects using regex patterns.
+**Role:** Parses `spec.md` files into `SpecFile` objects with a line-oriented scanner that mirrors the OpenSpec CLI's own parser (not a general markdown/AST parser).
 
 **Dependencies:** VirtualFile API
 
@@ -44,7 +44,9 @@ All services are registered as `@Service(Service.Level.PROJECT)` and accessed vi
 | `parseSpec(VirtualFile)` | Parses a single spec file |
 | `parseSpecContent(String, String)` | Parses raw markdown content |
 
-**Parsing extracts:** domain (from directory name), title (first `#` heading), requirements (`##` sections), RFC 2119 keywords, scenarios (GIVEN/WHEN/THEN blocks).
+**Parsing extracts:** domain (from directory name), title (first level-1 `#` heading), requirements (non-fenced `### Requirement:` headers, case-insensitive token), scenarios (any non-fenced level-4 `####` header), and the normative keyword.
+
+**CLI-parity recognition rules** (`align-spec-parser-with-cli`): a per-line code-fence mask is built first and applied before every structural match, so markers inside ` ``` `/`~~~` fences are ignored; **any** level-4 header is a scenario (the bold `**Scenario:**` form is not); the normative keyword is the whole-word, case-sensitive `SHALL`/`MUST` evaluated on the requirement **body** only (`SHOULD`/`MAY` are not normative). Parity is proven against captured CLI output (`SpecParserCliStructureContractTest` vs `fixtures/cli/1.6.0/spec-structure/`) and against the retired regex parser (`SpecParserRegressionParityTest`). Note: this is a separate parse path from `BuiltInValidator`'s own fence mask; unifying them is a tracked follow-up.
 
 ## ChangeService
 
