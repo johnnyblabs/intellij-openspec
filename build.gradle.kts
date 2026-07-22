@@ -118,9 +118,11 @@ tasks.jacocoTestReport {
 // just below current coverage. New-code test quality is governed by the OpenSpec `tasks`
 // rule ("tests SHALL verify real behavior") and the CLAUDE.md contract-test convention.
 //
-// BASELINE (measured 2026-07-22): INSTRUCTION 35.6%, LINE 33.6%, BRANCH 32.8%, METHOD 38.5%.
-// (Raised from the 2026-07-03 baseline — INSTRUCTION 32.6%, LINE 30.7%, BRANCH 29.1% — by the
-// align-spec-parser-with-cli parser rewrite and its contract/differential/CRLF/VFS harnesses.)
+// BASELINE (measured 2026-07-22, add-searchable-spec-viewer): INSTRUCTION 36.18%, LINE 34.18%,
+// BRANCH 33.62%, METHOD 39.10%. (Raised from the earlier 2026-07-22 baseline — INSTRUCTION 35.6%,
+// LINE 33.6%, BRANCH 32.8% — by the searchable spec-viewer's pure classes and their unit tests;
+// the uncovered Swing wiring in OpenSpecToolWindowPanel dilutes but net coverage still rose.
+// Before that, the 2026-07-03 baseline was INSTRUCTION 32.6%, LINE 30.7%, BRANCH 29.1%.)
 // Floors are set just below the baseline so any regression fails `check`. Ratchet the
 // minimums upward as coverage improves; never lower a floor without recorded justification.
 tasks.jacocoTestCoverageVerification {
@@ -137,21 +139,21 @@ tasks.jacocoTestCoverageVerification {
             limit {
                 counter = "INSTRUCTION"
                 value = "COVEREDRATIO"
-                minimum = "0.35".toBigDecimal()
+                minimum = "0.36".toBigDecimal()
             }
         }
         rule {
             limit {
                 counter = "LINE"
                 value = "COVEREDRATIO"
-                minimum = "0.33".toBigDecimal()
+                minimum = "0.34".toBigDecimal()
             }
         }
         rule {
             limit {
                 counter = "BRANCH"
                 value = "COVEREDRATIO"
-                minimum = "0.32".toBigDecimal()
+                minimum = "0.33".toBigDecimal()
             }
         }
     }

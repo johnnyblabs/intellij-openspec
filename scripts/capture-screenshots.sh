@@ -23,6 +23,7 @@ SHOTS=(
     "04-coordination-stores:Coordination tab — Stores with store-doctor health, Worksets with members, health strip, Full-tier toolbar actions"
     "05-schema-authoring:Settings > Tools > OpenSpec, Schemas section — provenance tags, inline Validate result, Open Templates"
     "06-update-legacy-cleanup:OpenSpec Legacy File Cleanup dialog listing CLI-reported opsx files with checkboxes"
+    "07-spec-preview:Browse tab master/detail — a spec selected in the tree with its rendered markdown in the preview pane beside it"
 )
 
 # Shots where a popup/dialog is the frontmost window: window-id capture would

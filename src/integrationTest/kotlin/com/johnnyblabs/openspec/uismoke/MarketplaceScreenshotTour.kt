@@ -12,6 +12,7 @@ import com.intellij.ide.starter.driver.execute
 import com.intellij.tools.ide.performanceTesting.commands.CommandChain
 import com.intellij.tools.ide.performanceTesting.commands.takeScreenshot
 import com.intellij.driver.sdk.ui.components.ideFrame
+import com.intellij.driver.sdk.ui.components.tree
 import com.intellij.driver.sdk.waitForIndicators
 import com.intellij.ide.starter.driver.engine.runIdeWithDriver
 import com.intellij.ide.starter.ide.IdeProductProvider
@@ -235,6 +236,19 @@ class MarketplaceScreenshotTour {
             withContext(OnDispatcher.EDT) { getToolWindow("OpenSpec").show() }
             ideFrame { waitUntil("Browse tree renders") { hasText("Specs") } }
 
+            // 07 — master/detail: select a spec node through the tree MODEL API so the Browse
+            // preview pane renders the spec's markdown beside the tree (the headline viewer visual).
+            ideFrame {
+                val browseTree = tree("//div[@class='Tree']")
+                browseTree.expandPath("OpenSpec", "Specs", fullMatch = false)
+                browseTree.expandPath("OpenSpec", "Specs", "greeting", fullMatch = false)
+                browseTree.clickPath(
+                    "OpenSpec", "Specs", "greeting", "Requirement: Friendly greeting", fullMatch = false
+                )
+                waitUntil("preview pane renders the selected spec") { hasText("greet the user by name") }
+            }
+            snap("07-spec-preview")
+
             // 01 — hero: tree + workflow chips + a spec in the editor.
             openFile("openspec/specs/greeting/spec.md", project)
             waitUntil("editor settles") { !isCodeAnalysisRunning(project) }
@@ -285,7 +299,7 @@ class MarketplaceScreenshotTour {
         // Screen Recording permission, AWT Robot returns the bare desktop wallpaper —
         // large enough to pass a size check but byte-identical across all shots.
         val emitted = listOf("01-spec-browser", "02-change-workflow", "03-validation-quickfix",
-            "04-coordination-stores", "06-update-legacy-cleanup")
+            "04-coordination-stores", "06-update-legacy-cleanup", "07-spec-preview")
         val small = emitted.filter { Files.size(outputDir.resolve("$it.png")) < 50_000 }
         check(small.isEmpty()) { "suspiciously small captures (blank?): $small" }
         val distinctSizes = emitted.map { Files.size(outputDir.resolve("$it.png")) }.distinct()

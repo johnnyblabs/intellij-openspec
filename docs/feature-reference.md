@@ -14,7 +14,7 @@ The OpenSpec tool window (right sidebar, or **View > Tool Windows > OpenSpec**) 
 
 | Tab | Purpose |
 |-----|---------|
-| **Browse** | Tree view of specs, changes, and archives. Double-click to open files. Right-click for context menu actions. |
+| **Browse** | Master/detail view of specs, changes, and archives: a tree beside a read-only rendered-markdown preview pane. Single-click to preview, double-click to open the file, right-click for context menu actions. Search matches requirement/scenario content, not just labels. |
 | **Console** | Output panel for CLI commands (init, validate, update, etc.). |
 | **Explore** | *(Only when Direct API is configured)* Thinking-space panel with inline topic input, markdown-rendered AI responses, and Copy/Clear toolbar. Appears automatically when you configure a Direct API provider in Settings. |
 | **Coordination** | *(Only when OpenSpec 1.4 coordination state or a coordination mode is detected)* Lists workspaces, context stores, and initiatives. See [Coordination Tab](#coordination-tab) below. |
@@ -100,6 +100,37 @@ The recognition rules:
   between the header and the first scenario) — not on the header line and not inside fences. `SHOULD` and
   `MAY` are not normative.
 - **Requirement headers stay case-insensitive** (see the Spec Format inspection below).
+
+### Rendered Preview Pane (master/detail)
+
+The Browse tab is a **master/detail** view: the tree on the left, a read-only rendered-markdown
+**preview pane** on the right, in a horizontal splitter whose width is remembered and whose preview
+can be collapsed.
+
+- **Single-click** a node to render its document in the pane; **double-click** still opens the real
+  file in the editor. The pane is always read-only — editing stays in the editor.
+- **Per node type.** The preview renders a **main capability spec** (`specs/<capability>/spec.md`), a
+  change's **proposal / design / tasks**, or a change's **delta spec**
+  (`changes/<change>/specs/<capability>/spec.md`). A main spec and a delta spec are interpreted
+  according to their own structure and never conflated.
+- **Delta operation badges.** In a delta-spec preview, the `ADDED` / `MODIFIED` / `REMOVED` /
+  `RENAMED` operation headers are visually badged so a change's proposed deltas read at a glance.
+- **Requirement anchoring.** Selecting a **Requirement** node scrolls the preview to that
+  requirement's section rather than resetting to the top.
+- **On-model.** The preview renders the source markdown of your own files. It does not synthesize,
+  score, or show per-spec status/coverage; change-owned state (delta assembly, task progress) is
+  sourced from the OpenSpec CLI, never recomputed from files.
+
+Rendering runs off the UI thread (the file is read and rendered on a background thread, then the pane
+is updated on the UI thread), so selection stays responsive.
+
+### Full-Text Search
+
+The Browse **search box** (Ctrl/Cmd+F to focus) filters the tree in real time, auto-expanding
+matches and restoring the tree when cleared. Matching reaches beyond node labels into **requirement
+body text and scenario text**, so a term that appears only inside a requirement's prose — "find where
+rate-limiting is specified" — surfaces that requirement and its spec. Content matching happens during
+the off-UI-thread model build over your local `openspec/` files; nothing is indexed or persisted.
 
 ---
 

@@ -8,14 +8,19 @@ import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.vfs.LocalFileSystem;
+import com.intellij.openapi.vfs.VfsUtilCore;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.vfs.VirtualFileManager;
 import com.intellij.openapi.vfs.newvfs.BulkFileListener;
 import com.intellij.openapi.vfs.newvfs.events.VFileEvent;
+import com.intellij.ui.OnePixelSplitter;
 import com.intellij.ui.SearchTextField;
+import com.intellij.ui.components.JBScrollPane;
+import com.intellij.util.ui.HTMLEditorKitBuilder;
 import com.intellij.util.ui.JBUI;
 import com.intellij.ui.treeStructure.Tree;
 import com.intellij.util.Alarm;
+import com.johnnyblabs.openspec.util.MarkdownHtmlRenderer;
 import com.johnnyblabs.openspec.actions.CreateDeltaSpecAction;
 import com.johnnyblabs.openspec.actions.OpenSpecDataKeys;
 import com.johnnyblabs.openspec.services.AiToolDetectionService;
@@ -49,15 +54,21 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider {
     private final JLabel statusLabel;
     private final JLabel aiStatusLabel;
     private final WorkflowActionPanel workflowPanel;
+    private final JEditorPane previewPane;
     private final Alarm refreshAlarm;
     private final Alarm filterAlarm;
+    private final Alarm previewAlarm;
     private Set<String> preFilterExpansionState;
+
+    /** What the preview render path needs, snapshotted on the EDT at selection time. */
+    private record PreviewSelection(String filePath, SpecPreviewRenderer.PreviewKind kind, String requirementName) {}
 
     public OpenSpecToolWindowPanel(Project project) {
         super(new BorderLayout());
         this.project = project;
         this.refreshAlarm = new Alarm(Alarm.ThreadToUse.POOLED_THREAD, project);
         this.filterAlarm = new Alarm(Alarm.ThreadToUse.POOLED_THREAD, project);
+        this.previewAlarm = new Alarm(Alarm.ThreadToUse.POOLED_THREAD, project);
 
         // Build tree with placeholder; real model loads async
         DefaultMutableTreeNode placeholder = new DefaultMutableTreeNode("Loading...");
@@ -144,11 +155,90 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider {
         // Minimum must fit: header row + pipeline chips + icon bar + status strip
         bottomPanel.setMinimumSize(new Dimension(0, JBUI.scale(140)));
 
+        // Read-only rendered-markdown preview pane (right side of a horizontal splitter). Uses the
+        // modern HTMLEditorKitBuilder (LAF/HiDPI-correct) rather than the raw HTMLEditorKit.
+        previewPane = new JEditorPane();
+        previewPane.setEditorKit(new HTMLEditorKitBuilder().build());
+        previewPane.setEditable(false);
+        previewPane.setContentType("text/html");
+        previewPane.putClientProperty(JEditorPane.HONOR_DISPLAY_PROPERTIES, Boolean.TRUE);
+        JBScrollPane previewScroll = new JBScrollPane(previewPane);
+        previewScroll.setBorder(JBUI.Borders.empty());
+        showPreviewEmptyState();
+
+        // Debounced single-click preview: selection snapshot on EDT → pooled read+render → EDT setText.
+        tree.addTreeSelectionListener(e -> schedulePreview());
+
+        // Master (tree + workflow) on the left, preview on the right. Proportion persisted by key;
+        // the right pane can be dragged shut to reclaim width in a side-anchored tool window.
+        OnePixelSplitter browseSplitter =
+                new OnePixelSplitter(false, "OpenSpec.BrowsePreview.proportion", 0.6f);
+        browseSplitter.setFirstComponent(splitPane);
+        browseSplitter.setSecondComponent(previewScroll);
+        browseSplitter.setHonorComponentsMinimumSize(false);
+
         add(topPanel, BorderLayout.NORTH);
-        add(splitPane, BorderLayout.CENTER);
+        add(browseSplitter, BorderLayout.CENTER);
 
         registerFileListener();
         refreshAsync();
+    }
+
+    private void schedulePreview() {
+        // Snapshot the selection on the EDT; the file read + render then runs off-EDT.
+        PreviewSelection selection = snapshotSelection(tree.getSelectionPath());
+        previewAlarm.cancelAllRequests();
+        previewAlarm.addRequest(() -> renderPreview(selection), 120);
+    }
+
+    private PreviewSelection snapshotSelection(TreePath path) {
+        if (path == null) return null;
+        Object last = path.getLastPathComponent();
+        if (!(last instanceof DefaultMutableTreeNode node)) return null;
+        if (!(node.getUserObject() instanceof SpecTreeModel.TreeNodeData data)) return null;
+
+        SpecPreviewRenderer.PreviewKind kind = SpecPreviewRenderer.classify(data.type(), data.filePath());
+        // For a Requirement node, the node's tooltip carries the plain requirement name (its file
+        // path is the parent spec) — anchor the scroll to that requirement's section.
+        String requirementName =
+                data.type() == SpecTreeModel.TreeNodeType.REQUIREMENT ? data.tooltip() : null;
+        return new PreviewSelection(data.filePath(), kind, requirementName);
+    }
+
+    private void renderPreview(PreviewSelection selection) {
+        if (selection == null || selection.kind() == SpecPreviewRenderer.PreviewKind.NONE) {
+            ApplicationManager.getApplication().invokeLater(this::showPreviewEmptyState);
+            return;
+        }
+        String fragment;
+        try {
+            VirtualFile file = LocalFileSystem.getInstance().findFileByPath(selection.filePath());
+            if (file == null || file.isDirectory()) {
+                ApplicationManager.getApplication().invokeLater(this::showPreviewEmptyState);
+                return;
+            }
+            String markdown = VfsUtilCore.loadText(file);
+            fragment = SpecPreviewRenderer.renderMarkdown(selection.kind(), markdown);
+        } catch (Exception ex) {
+            LOG.debug("Failed to render preview for " + selection.filePath(), ex);
+            ApplicationManager.getApplication().invokeLater(this::showPreviewEmptyState);
+            return;
+        }
+        final String renderedFragment = fragment;
+        ApplicationManager.getApplication().invokeLater(() -> {
+            String css = MarkdownHtmlRenderer.buildThemeStylesheet() + DeltaBadgeDecorator.badgeCss();
+            previewPane.setText(MarkdownHtmlRenderer.wrapInHtml(css, renderedFragment));
+            previewPane.setCaretPosition(0);
+            if (selection.requirementName() != null) {
+                previewPane.scrollToReference(RequirementAnchors.anchorId(selection.requirementName()));
+            }
+        });
+    }
+
+    private void showPreviewEmptyState() {
+        String css = MarkdownHtmlRenderer.buildThemeStylesheet() + DeltaBadgeDecorator.badgeCss();
+        previewPane.setText(MarkdownHtmlRenderer.wrapInHtml(css, SpecPreviewRenderer.emptyState()));
+        previewPane.setCaretPosition(0);
     }
 
     private void refreshAsync() {
