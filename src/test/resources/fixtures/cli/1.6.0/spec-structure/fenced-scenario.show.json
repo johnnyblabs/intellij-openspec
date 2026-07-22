@@ -1,0 +1,20 @@
+{
+  "id": "fenced-scenario",
+  "title": "fenced-scenario",
+  "overview": "Scenario header exists only inside a fence so it must not be counted.",
+  "requirementCount": 1,
+  "requirements": [
+    {
+      "text": "The system SHALL work.",
+      "scenarios": []
+    }
+  ],
+  "metadata": {
+    "version": "1.0.0",
+    "format": "openspec"
+  },
+  "root": {
+    "path": "/fixture",
+    "source": "nearest"
+  }
+}

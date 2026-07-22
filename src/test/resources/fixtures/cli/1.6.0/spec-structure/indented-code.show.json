@@ -1,0 +1,24 @@
+{
+  "id": "indented-code",
+  "title": "indented-code",
+  "overview": "A capability whose body sits beside a four-space indented code sample the parser must ignore.",
+  "requirementCount": 1,
+  "requirements": [
+    {
+      "text": "The system SHALL process the input.\n#### Scenario: only an indented example\nThe system SHALL never actually do this.",
+      "scenarios": [
+        {
+          "rawText": "- **WHEN** x\n- **THEN** y"
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "version": "1.0.0",
+    "format": "openspec"
+  },
+  "root": {
+    "path": "/fixture",
+    "source": "nearest"
+  }
+}

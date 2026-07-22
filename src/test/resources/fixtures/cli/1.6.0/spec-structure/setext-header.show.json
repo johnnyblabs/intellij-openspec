@@ -1,0 +1,24 @@
+{
+  "id": "setext-header",
+  "title": "setext-header",
+  "overview": "A capability with a setext-underlined requirement-like line that is not an ATX header.",
+  "requirementCount": 1,
+  "requirements": [
+    {
+      "text": "The system SHALL respond.",
+      "scenarios": [
+        {
+          "rawText": "- **WHEN** x\n- **THEN** y\n\nRequirement: Setext form\n========================\n\nProse under a setext heading that the parser must not treat as a requirement."
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "version": "1.0.0",
+    "format": "openspec"
+  },
+  "root": {
+    "path": "/fixture",
+    "source": "nearest"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "id": "second-line-keyword",
+  "title": "second-line-keyword",
+  "overview": "Keyword on the second body line, accepted by fence-aware multi-line reading.",
+  "requirementCount": 1,
+  "requirements": [
+    {
+      "text": "First line of prose.\nThe system SHALL work.",
+      "scenarios": [
+        {
+          "rawText": "- **WHEN** x\n- **THEN** y"
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "version": "1.0.0",
+    "format": "openspec"
+  },
+  "root": {
+    "path": "/fixture",
+    "source": "nearest"
+  }
+}

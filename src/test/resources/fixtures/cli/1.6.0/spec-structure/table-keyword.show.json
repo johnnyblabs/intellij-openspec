@@ -1,0 +1,24 @@
+{
+  "id": "table-keyword",
+  "title": "table-keyword",
+  "overview": "A capability whose requirement carries a glossary table with keyword-like and scenario-like cells.",
+  "requirementCount": 1,
+  "requirements": [
+    {
+      "text": "The system SHALL enforce the terms below.\n| Term | Meaning |\n|------|---------|\n| SHALL | a normative obligation |\n| #### Scenario: tabulated | not a real scenario header |",
+      "scenarios": [
+        {
+          "rawText": "- **WHEN** x\n- **THEN** y"
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "version": "1.0.0",
+    "format": "openspec"
+  },
+  "root": {
+    "path": "/fixture",
+    "source": "nearest"
+  }
+}

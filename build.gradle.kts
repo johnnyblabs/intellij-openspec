@@ -118,7 +118,9 @@ tasks.jacocoTestReport {
 // just below current coverage. New-code test quality is governed by the OpenSpec `tasks`
 // rule ("tests SHALL verify real behavior") and the CLAUDE.md contract-test convention.
 //
-// BASELINE (measured 2026-07-03): INSTRUCTION 32.6%, LINE 30.7%, BRANCH 29.1%, METHOD 37.0%.
+// BASELINE (measured 2026-07-22): INSTRUCTION 35.6%, LINE 33.6%, BRANCH 32.8%, METHOD 38.5%.
+// (Raised from the 2026-07-03 baseline — INSTRUCTION 32.6%, LINE 30.7%, BRANCH 29.1% — by the
+// align-spec-parser-with-cli parser rewrite and its contract/differential/CRLF/VFS harnesses.)
 // Floors are set just below the baseline so any regression fails `check`. Ratchet the
 // minimums upward as coverage improves; never lower a floor without recorded justification.
 tasks.jacocoTestCoverageVerification {
@@ -135,21 +137,21 @@ tasks.jacocoTestCoverageVerification {
             limit {
                 counter = "INSTRUCTION"
                 value = "COVEREDRATIO"
-                minimum = "0.33".toBigDecimal()
+                minimum = "0.35".toBigDecimal()
             }
         }
         rule {
             limit {
                 counter = "LINE"
                 value = "COVEREDRATIO"
-                minimum = "0.31".toBigDecimal()
+                minimum = "0.33".toBigDecimal()
             }
         }
         rule {
             limit {
                 counter = "BRANCH"
                 value = "COVEREDRATIO"
-                minimum = "0.29".toBigDecimal()
+                minimum = "0.32".toBigDecimal()
             }
         }
     }
