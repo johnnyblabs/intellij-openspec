@@ -74,6 +74,11 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider {
     private final java.util.concurrent.ConcurrentHashMap<String, String> changeDeltasCache =
             new java.util.concurrent.ConcurrentHashMap<>();
 
+    // Bumped whenever the deltas cache is invalidated (VFS change). An off-EDT CLI render captures
+    // this before its slow call and only writes the cache if it's unchanged afterward — so a render
+    // that completes after an invalidation cannot repopulate the just-cleared cache with stale deltas.
+    private volatile int cacheEpoch = 0;
+
     // The change DIRECTORY currently rendered in the deltas view, read by the diff cross-link
     // HyperlinkListener to build the delta-spec path for a capability. Volatile: written on the EDT
     // when a deltas render applies, read on the EDT when a link fires.
@@ -327,6 +332,7 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider {
             return;
         }
 
+        int epochAtStart = cacheEpoch;
         String cached = changeDeltasCache.get(name);
         if (cached != null) {
             applyChangeDeltas(generation, cached, changeDir);
@@ -357,7 +363,11 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider {
             return;
         }
 
-        changeDeltasCache.put(name, fragment);
+        // Only cache if no invalidation raced in during the CLI call — otherwise this now-stale
+        // fragment would repopulate a just-cleared cache and be served on the next re-selection.
+        if (cacheEpoch == epochAtStart) {
+            changeDeltasCache.put(name, fragment);
+        }
         applyChangeDeltas(generation, fragment, changeDir);
     }
 
@@ -745,6 +755,8 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider {
                     VirtualFile file = event.getFile();
                     if (file != null && OpenSpecFileUtil.isUnderOpenSpec(file, project)) {
                         // Invalidate cached delta renders — a change's specs/** may have changed.
+                        // Bump the epoch first so an in-flight render can't repopulate after this clear.
+                        cacheEpoch++;
                         changeDeltasCache.clear();
                         debouncedRefresh();
                         break;
