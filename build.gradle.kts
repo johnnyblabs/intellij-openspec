@@ -118,8 +118,13 @@ tasks.jacocoTestReport {
 // just below current coverage. New-code test quality is governed by the OpenSpec `tasks`
 // rule ("tests SHALL verify real behavior") and the CLAUDE.md contract-test convention.
 //
-// BASELINE (measured 2026-07-22, add-tree-status-badges): INSTRUCTION 37.53%, LINE 35.28%,
-// BRANCH 34.52%. (Raised from the add-change-deltas-view baseline — INSTRUCTION 37.03%,
+// BASELINE (measured 2026-07-23, add-validate-project-view-menu): INSTRUCTION 37.96%,
+// LINE 35.68%, BRANCH 34.94%. (Raised from the add-tree-status-badges baseline — INSTRUCTION
+// 37.53%, LINE 35.28%, BRANCH 34.52% — by the Project-View scoped Validate work: the pure
+// ValidateTarget/resolveTarget resolver, the scoped builtInValidate routing, the single-item
+// CLI contract tests, and the resolveTarget/update()/routing integration tests.)
+// (Previous 2026-07-22 add-tree-status-badges baseline: INSTRUCTION 37.53%, LINE 35.28%,
+// BRANCH 34.52%. Raised from the add-change-deltas-view baseline — INSTRUCTION 37.03%,
 // LINE 34.89%, BRANCH 34.22%, METHOD 39.89% — by the tree status-badge work: the pure
 // SpecTreeCellRenderer.iconForType map, the SpecTreeModel label/type helpers
 // (buildChangeLabel/changeNodeType/buildArtifactLabel), and their headless renderer/label
@@ -155,21 +160,21 @@ tasks.jacocoTestCoverageVerification {
             limit {
                 counter = "INSTRUCTION"
                 value = "COVEREDRATIO"
-                minimum = "0.368".toBigDecimal()
+                minimum = "0.373".toBigDecimal()
             }
         }
         rule {
             limit {
                 counter = "LINE"
                 value = "COVEREDRATIO"
-                minimum = "0.346".toBigDecimal()
+                minimum = "0.350".toBigDecimal()
             }
         }
         rule {
             limit {
                 counter = "BRANCH"
                 value = "COVEREDRATIO"
-                minimum = "0.339".toBigDecimal()
+                minimum = "0.343".toBigDecimal()
             }
         }
     }

@@ -497,4 +497,64 @@ class CliContractTest {
                     "the 1.6 INFO issue rides a valid:true item and must be skipped");
         }
     }
+
+    /**
+     * Single-item validate contract — {@code openspec validate <id> --type spec|change --json}.
+     * The single-item envelope ({@code {items:[{id,type,valid,issues,durationMs}], summary,
+     * version, root}}) differs from the bulk {@code --all} shape: it carries top-level
+     * {@code summary} and {@code root} objects and a one-element {@code items} array. The
+     * Project-View scoped Validate parses this shape with the same {@link CliOutputParser#parseJsonOutput}.
+     * Captures are real 1.6.0 output (isolated env, {@code root.path} sanitized to {@code /fixture}).
+     */
+    @Nested
+    class SingleItemValidateContractV16 {
+
+        @Test
+        void parsesValidSpecEnvelope() {
+            // A valid spec whose only issue is a WARNING (Purpose too brief) — valid:true,
+            // so parseJsonOutput extracts nothing and the result passes.
+            ValidationResult result = CliOutputParser.parseJsonOutput(fixture16("validate-single-spec.json"));
+
+            assertNotNull(result);
+            assertTrue(result.passed(), "a valid spec's single-item envelope must parse as passed");
+            assertEquals(0, result.warningCount(),
+                    "the WARNING rides a valid:true item and must be skipped");
+            assertTrue(result.issues().isEmpty(), "no issues extracted from a valid item");
+        }
+
+        @Test
+        void parsesValidChangeEnvelope() {
+            ValidationResult result = CliOutputParser.parseJsonOutput(fixture16("validate-single-change.json"));
+
+            assertNotNull(result);
+            assertTrue(result.passed(), "a valid change's single-item envelope must parse as passed");
+            assertTrue(result.issues().isEmpty());
+        }
+
+        @Test
+        void extractsErrorFromInvalidChangeEnvelope() {
+            // A delta-less change: valid:false with one ERROR issue.
+            ValidationResult result = CliOutputParser.parseJsonOutput(
+                    fixture16("validate-single-change-invalid.json"));
+
+            assertNotNull(result);
+            assertFalse(result.passed(), "an invalid change must parse as failed");
+            assertEquals(1, result.errorCount(), "the single delta-missing ERROR must surface");
+            assertTrue(result.issues().stream().anyMatch(i ->
+                            i.severity() == ValidationIssue.Severity.ERROR
+                                    && i.message().contains("at least one delta")),
+                    "the no-deltas error message must surface from the single-item shape");
+        }
+
+        @Test
+        void tagsIssueWithTypeAndId() {
+            // The parser labels each extracted issue "<type>/<id>" — here "change/broken-change".
+            ValidationResult result = CliOutputParser.parseJsonOutput(
+                    fixture16("validate-single-change-invalid.json"));
+
+            assertTrue(result.issues().stream()
+                            .anyMatch(i -> "change/broken-change".equals(i.filePath())),
+                    "single-item issue must carry its type/id path from the envelope");
+        }
+    }
 }

@@ -205,5 +205,15 @@
             <reference ref="OpenSpec.ManageTools"/>
             <reference ref="OpenSpec.SetupWizard"/>
         </group>
+
+        <!-- Project View context-menu Validate, scoped to the clicked change/spec.
+             anchor="last" (never a relative anchor) for multi-IDE menu safety. -->
+        <action id="OpenSpec.ValidateFromProjectView"
+                class="com.johnnyblabs.openspec.actions.OpenSpecValidateFromProjectViewAction"
+                text="Validate OpenSpec"
+                description="Validate the OpenSpec change or spec that owns the selected file"
+                icon="/icons/requirement.svg">
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
+        </action>
     </actions>
 </idea-plugin>

@@ -53,6 +53,16 @@ of what this generation changed:
 - `validate --all --json`: new top-level `root`/`summary`/`version` keys; missing-SHALL issue
   path is `requirements[0]` with reworded message; new INFO-level issue (with a `line` field)
   for non-canonical level-3 headers inside change deltas, emitted on `valid: true` items.
+- `validate-single-{spec,change,change-invalid}.json` — real single-item
+  `openspec validate <id> --type spec|change --json` (the Project-View scoped Validate's CLI call).
+  The single-item envelope carries the same `items[]` element shape as `--all` but a one-element
+  array plus top-level `summary`/`version`/`root`; `parseJsonOutput` handles it unchanged.
+  `-spec` is a valid spec whose only issue is a WARNING (skipped on a `valid:true` item);
+  `-change` is a clean change (no issues); `-change-invalid` is a delta-less change (one ERROR).
+  Consumed by `CliContractTest.SingleItemValidateContractV16`. `root.path` sanitized to `/fixture`.
+  Re-capture (per CLI generation): under an isolated `HOME`/`XDG_*` env, `openspec init`, author a
+  spec under `openspec/specs/<cap>/spec.md`, a valid change and a delta-less change under
+  `openspec/changes/`, then run `validate <id> --type spec|change --json` and `sed` the root path.
 - `status --json` / `instructions --json`: additive `planningHome`/`changeRoot`/
   `artifactPaths`/`nextSteps` keys; existing keys unchanged.
 - `update`: legacy-migration block unchanged but gains a `Migrated: custom profile ...`

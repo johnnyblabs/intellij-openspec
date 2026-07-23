@@ -297,6 +297,8 @@ Validates all specs, changes, and config files. Results appear as IDE notificati
 | **Built-in** | Always available. Validates spec format, delta spec structure, and config. |
 | **CLI-enhanced** | When CLI is installed: runs `openspec validate --all` for full validation including schema rules. |
 
+**Project View context menu > Validate OpenSpec.** Right-click a file under `openspec/` in the standard Project view to validate *its* item in place, scoped to what you clicked: a file under `openspec/specs/<capability>/` validates that spec; a file under an active `openspec/changes/<name>/` validates that change; a file under `openspec/changes/archive/`, the `openspec/` root, or `config.yaml` (and any selection spanning multiple items) falls back to validating the whole project. The menu item appears only when the selection is under `openspec/`. It reuses the same built-in-plus-CLI pipeline (the CLI call is scoped, e.g. `openspec validate <id> --type change|spec`) and reports to the same console — no per-file valid/invalid verdict is invented.
+
 Validation also runs automatically at phase transitions (e.g., before archive).
 
 ---
