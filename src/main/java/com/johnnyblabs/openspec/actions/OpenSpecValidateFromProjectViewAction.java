@@ -38,8 +38,14 @@ public class OpenSpecValidateFromProjectViewAction extends OpenSpecValidateActio
         boolean show = false;
         if (project != null && files != null) {
             for (VirtualFile file : files) {
-                // Cheap path check; short-circuit on the first openspec/ file.
-                if (OpenSpecFileUtil.isUnderOpenSpec(file, project)) {
+                // Cheap string pre-filter FIRST: this update() runs on every Project View
+                // right-click in every project, and isUnderOpenSpec -> getOpenSpecRoot can fall
+                // through to a synchronous VFS refresh when no openspec/ dir is cached (i.e. in
+                // non-OpenSpec projects). A path that doesn't even mention an openspec/ dir can't
+                // be under one, so reject it without that lookup. For real openspec files the dir
+                // IS cached (a child is selected), so isUnderOpenSpec never triggers the refresh.
+                if (file.getPath().contains("/openspec/")
+                        && OpenSpecFileUtil.isUnderOpenSpec(file, project)) {
                     show = true;
                     break;
                 }
