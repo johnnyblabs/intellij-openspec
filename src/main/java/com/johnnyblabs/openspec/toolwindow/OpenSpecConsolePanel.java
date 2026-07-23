@@ -133,11 +133,20 @@ public class OpenSpecConsolePanel extends JPanel {
             return null;
         }
         LocalFileSystem lfs = LocalFileSystem.getInstance();
-        VirtualFile file = lfs.findFileByPath(filePath);
-        if (file == null && basePath != null && !filePath.startsWith("/")) {
-            file = lfs.findFileByPath(basePath + "/" + filePath);
+        // Absolute paths (POSIX "/…" or a Windows drive "C:/…", as the built-in validator emits
+        // from VirtualFile.getPath()) resolve directly. A relative issue path must resolve ONLY
+        // against the project base — never via a bare findFileByPath, which would resolve against
+        // the JVM's working directory (meaningless for an issue path, and in the test sandbox it
+        // escapes the allowed VFS roots).
+        if (isAbsolutePath(filePath)) {
+            return lfs.findFileByPath(filePath);
         }
-        return file;
+        return basePath == null ? null : lfs.findFileByPath(basePath + "/" + filePath);
+    }
+
+    /** True for a POSIX-absolute ({@code /…}) or Windows drive-letter ({@code C:/…}, {@code C:\…}) path. */
+    private static boolean isAbsolutePath(String filePath) {
+        return filePath.startsWith("/") || filePath.matches("^[A-Za-z]:[/\\\\].*");
     }
 
     /**
