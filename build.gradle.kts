@@ -126,8 +126,17 @@ tasks.jacocoTestReport {
 // dilutes but net coverage still rose on all counters. Before the spec-viewer baseline, the
 // earlier 2026-07-22 baseline was INSTRUCTION 35.6%, LINE 33.6%, BRANCH 32.8%; the 2026-07-03
 // baseline was INSTRUCTION 32.6%, LINE 30.7%, BRANCH 29.1%.)
-// Floors are set just below the baseline so any regression fails `check`. Ratchet the
+// Floors are set below the baseline WITH MARGIN so any regression fails `check`. Ratchet the
 // minimums upward as coverage improves; never lower a floor without recorded justification.
+//
+// MARGIN (recorded justification, 2026-07-23): the add-change-deltas-view ratchet set the
+// floors to the measured max (~0.369/0.349/0.342) with near-zero headroom. The self-hosted
+// runner's line coverage wobbles run-to-run — some runs don't cover the CLI-integration
+// branches (they only cover when CliDetectionService finds openspec via a *login shell*,
+// which is non-deterministic on that runner) — so LINE dipped to 0.347 and reddened main on a
+// markdown-only archive commit whose code was byte-identical to a passing run. Floors are now
+// held ~0.005–0.006 below the measured baseline to absorb that wobble while staying well above
+// the pre-deltas viewer floors (0.36/0.34/0.33). Do not re-ratchet to the measured max.
 tasks.jacocoTestCoverageVerification {
     dependsOn(tasks.test)
     // Match the report: instrumented classes + the test JVM's execution data.
@@ -142,21 +151,21 @@ tasks.jacocoTestCoverageVerification {
             limit {
                 counter = "INSTRUCTION"
                 value = "COVEREDRATIO"
-                minimum = "0.369".toBigDecimal()
+                minimum = "0.364".toBigDecimal()
             }
         }
         rule {
             limit {
                 counter = "LINE"
                 value = "COVEREDRATIO"
-                minimum = "0.348".toBigDecimal()
+                minimum = "0.343".toBigDecimal()
             }
         }
         rule {
             limit {
                 counter = "BRANCH"
                 value = "COVEREDRATIO"
-                minimum = "0.341".toBigDecimal()
+                minimum = "0.336".toBigDecimal()
             }
         }
     }
