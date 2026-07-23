@@ -2,9 +2,7 @@
 
 ## Purpose
 Built-in validation of OpenSpec project structure, spec format, config integrity, delta spec correctness, and artifact completeness — with real-time IDE inspections and file watching.
-
 ## Requirements
-
 ### Requirement: Config validation
 
 The plugin SHALL validate `openspec/config.yaml` for structural correctness when the file exists, applying only the rules that mirror upstream OpenSpec's own contract. The file itself SHALL be optional — matching upstream's `readProjectConfig() → null // No config is OK` semantics — so a project initialized with `openspec init` and never customized SHALL produce zero config-related validation issues. When the file does exist, validation SHALL enforce only the fields upstream defines in its Zod `ProjectConfigSchema` (`schema`, `context`, `rules`); fields the plugin reads as internal-only extensions (`version`, `profile`) SHALL NOT fire required-field issues when absent. Schema-name recognition SHALL be CLI-runtime-driven: the validator SHALL consider a schema name "recognized" when it appears in the union of (a) the built-in fallback set (`VersionSupport.V1_2.getValidSchemas()`) and (b) the CLI-runtime set from `SchemaService.listSchemas()` when CLI is available and supports schema management. Config parsing SHALL be lenient — unrecognized fields and type mismatches SHALL be silently ignored rather than raising parse errors. The config validation inspection SHALL guard against zero-length PSI elements before creating problem descriptors.
@@ -231,3 +229,24 @@ The plugin SHALL auto-detect artifact file changes via VFS listeners and refresh
 #### Scenario: File save triggers refresh
 - **WHEN** a user saves an artifact file after pasting AI-generated content
 - **THEN** the plugin SHALL detect the VFS change and update the artifact's pipeline status
+
+### Requirement: Validate from the Project View context menu
+
+The plugin SHALL offer a Validate action in the IDE's Project View context menu, visible only when the current selection is under an `openspec/` directory. Invoking it SHALL validate the change or spec that owns the clicked file, resolved by mapping the file's path up to its owning directory: a selection under `openspec/specs/<capability>/` SHALL validate that spec; a selection under `openspec/changes/<name>/` for an active (non-archived) change SHALL validate that change; a selection under `openspec/changes/archive/`, at the `openspec/` root, or on a non-item file such as `config.yaml` SHALL fall back to validating the whole project. The action SHALL reuse the existing validation pipeline (built-in validator always, CLI enhancement when available) scoped to the resolved target, SHALL NOT fabricate a per-file valid/invalid verdict, and its visibility check SHALL be inexpensive (a path check, no blocking I/O or CLI call).
+
+#### Scenario: Menu item hidden outside openspec
+- **WHEN** the user right-clicks a file that is not under an `openspec/` directory
+- **THEN** the Validate OpenSpec menu item SHALL NOT be shown
+
+#### Scenario: Validating a spec from the tree
+- **WHEN** the user right-clicks a file under `openspec/specs/<capability>/` and invokes Validate
+- **THEN** the plugin SHALL validate that spec (not the whole project) and report the result to the console
+
+#### Scenario: Validating a change from the tree
+- **WHEN** the user right-clicks a file under an active change's `openspec/changes/<name>/` and invokes Validate
+- **THEN** the plugin SHALL validate that change and report the result
+
+#### Scenario: Non-item selection falls back to whole-project
+- **WHEN** the user invokes Validate on a selection under `openspec/changes/archive/`, at the `openspec/` root, or on `config.yaml`
+- **THEN** the plugin SHALL validate the whole project rather than fabricating a single-item verdict for a non-validatable target
+
