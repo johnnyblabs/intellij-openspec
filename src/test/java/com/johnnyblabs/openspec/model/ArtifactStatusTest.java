@@ -37,25 +37,6 @@ class ArtifactStatusTest {
     }
 
     @Test
-    void toIcon_returnsNonEmptyForAllStatuses() {
-        for (ArtifactStatus status : ArtifactStatus.values()) {
-            String icon = status.toIcon();
-            assertNotNull(icon, status.name() + " icon should not be null");
-            assertFalse(icon.isEmpty(), status.name() + " icon should not be empty");
-        }
-    }
-
-    @Test
-    void toIcon_returnsExpectedSymbols() {
-        assertEquals("\u2713", ArtifactStatus.DONE.toIcon());       // ✓
-        assertEquals("\u25CB", ArtifactStatus.READY.toIcon());      // ○
-        assertEquals("\u2212", ArtifactStatus.BLOCKED.toIcon());    // −
-        assertEquals("\u25CF", ArtifactStatus.GENERATING.toIcon()); // ●
-        assertEquals("\u2717", ArtifactStatus.ERROR.toIcon());      // ✗
-        assertEquals("?", ArtifactStatus.UNKNOWN.toIcon());
-    }
-
-    @Test
     void allSixStatusesExist() {
         assertEquals(6, ArtifactStatus.values().length);
     }

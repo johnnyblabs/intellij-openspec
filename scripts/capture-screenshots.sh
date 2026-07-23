@@ -25,6 +25,7 @@ SHOTS=(
     "06-update-legacy-cleanup:OpenSpec Legacy File Cleanup dialog listing CLI-reported opsx files with checkboxes"
     "07-spec-preview:Browse tab master/detail — a spec selected in the tree with its rendered markdown in the preview pane beside it"
     "08-change-deltas:Browse tab — a change selected in the tree with its consolidated, badged spec deltas (ADDED/MODIFIED/REMOVED/RENAMED) in the preview pane, grouped by capability"
+    "09-tree-badges:Browse tab — a change expanded in the tree showing corner status badges on the artifact icons (done/ready/blocked/not-created) plus the change node's apply-ready badge and X/Y task count"
 )
 
 # Shots where a popup/dialog is the frontmost window: window-id capture would

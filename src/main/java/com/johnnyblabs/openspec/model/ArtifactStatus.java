@@ -11,15 +11,4 @@ public enum ArtifactStatus {
             return UNKNOWN;
         }
     }
-
-    public String toIcon() {
-        return switch (this) {
-            case DONE -> "\u2713";
-            case READY -> "\u25CB";
-            case BLOCKED -> "\u2212";
-            case GENERATING -> "\u25CF";
-            case ERROR -> "\u2717";
-            case UNKNOWN -> "?";
-        };
-    }
 }

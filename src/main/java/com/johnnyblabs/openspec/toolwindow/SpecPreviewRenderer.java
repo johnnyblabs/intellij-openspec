@@ -74,7 +74,8 @@ public final class SpecPreviewRenderer {
      */
     public static PreviewKind classify(TreeNodeType type, String filePath) {
         // A change node backs a directory, not a .md file — route it before the markdown-file guard.
-        if (type == TreeNodeType.CHANGE && filePath != null) {
+        // CHANGE_DONE is a change node too (apply-ready rollup badge), so it previews identically.
+        if ((type == TreeNodeType.CHANGE || type == TreeNodeType.CHANGE_DONE) && filePath != null) {
             return PreviewKind.CHANGE_DELTAS;
         }
         if (type == null || filePath == null || !filePath.endsWith(".md")) {

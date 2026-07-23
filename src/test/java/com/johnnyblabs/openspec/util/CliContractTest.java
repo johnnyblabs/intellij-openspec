@@ -348,6 +348,27 @@ class CliContractTest {
             assertEquals(List.of("/fixture/demo-project"), ac.getAllowedEditRoots());
             assertFalse(ac.isRequiresAffectedAreaSelection());
         }
+
+        /**
+         * The apply-ready path: a captured status from a change whose proposal/design/specs/tasks
+         * are all done, so {@code isComplete} is true. The other status fixtures only carry
+         * {@code isComplete:false}, leaving the done rollup ({@link ChangeArtifactDag#isComplete()},
+         * which drives the CHANGE_DONE tree badge) otherwise unproven against real CLI output.
+         */
+        @Test
+        void parsesCompleteStatusWithIsCompleteTrue() {
+            ChangeArtifactDag dag = CliOutputParser.parseChangeStatus(fixture16("status-complete.json"));
+
+            assertNotNull(dag);
+            assertEquals("demo-change", dag.getChangeName());
+            assertTrue(dag.isComplete(), "a fully-complete change must report isComplete=true");
+
+            assertEquals(4, dag.getArtifacts().size());
+            dag.getArtifacts().forEach(a ->
+                    assertEquals(ArtifactStatus.DONE, a.status(),
+                            "every artifact in a complete change is done: " + a.id()));
+            assertTrue(dag.getReadyArtifacts().isEmpty(), "nothing is merely ready when all are done");
+        }
     }
 
     /** 1.6-generation instructions contract (staged DAG states of the same seed). */
