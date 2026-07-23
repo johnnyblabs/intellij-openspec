@@ -62,6 +62,13 @@ class MarketplaceScreenshotTour {
     @Remote("com.intellij.openapi.wm.ToolWindow")
     interface RichToolWindowRef {
         fun getContentManager(): ContentManagerRef
+        fun hide()
+    }
+
+    @Remote("com.intellij.openapi.wm.ex.ToolWindowManagerEx")
+    interface ToolWindowManagerExRef {
+        fun getInstanceEx(project: Project): ToolWindowManagerExRef
+        fun setMaximized(window: RichToolWindowRef, maximized: Boolean)
     }
 
     @Remote("com.intellij.ui.content.ContentManager")
@@ -233,8 +240,34 @@ class MarketplaceScreenshotTour {
                 }
             }
 
+            fun setOpenSpecMaximized(maximized: Boolean) {
+                runCatching {
+                    withContext(OnDispatcher.EDT) {
+                        val toolWindow = utility(ToolWindowManagerRef::class).getInstance(project)
+                            .getToolWindow("OpenSpec")
+                        if (toolWindow != null) {
+                            utility(ToolWindowManagerExRef::class).getInstanceEx(project)
+                                .setMaximized(toolWindow, maximized)
+                        }
+                    }
+                }
+            }
+
             withContext(OnDispatcher.EDT) { getToolWindow("OpenSpec").show() }
+            // The Project tree isn't the subject of any shot — hide it so the editor + OpenSpec
+            // tool window get the width back (this is what un-cramps the editor's markdown preview).
+            withContext(OnDispatcher.EDT) {
+                runCatching {
+                    utility(ToolWindowManagerRef::class).getInstance(project)
+                        .getToolWindow("Project")?.hide()
+                }
+            }
             ideFrame { waitUntil("Browse tree renders") { hasText("Specs") } }
+
+            // Maximize the OpenSpec tool window for the headline shot so the master/detail (tree +
+            // rendered preview) fills the frame instead of being crammed into the side dock.
+            // Best-effort: if the platform API differs, fall back to the default docked layout.
+            setOpenSpecMaximized(true)
 
             // 07 — master/detail: select a spec node through the tree MODEL API so the Browse
             // preview pane renders the spec's markdown beside the tree (the headline viewer visual).
@@ -254,6 +287,8 @@ class MarketplaceScreenshotTour {
                 }
             }
             snap("07-spec-preview")
+            // Restore the normal docked layout so the remaining shots frame the editor + tool window.
+            setOpenSpecMaximized(false)
 
             // 01 — hero: tree + workflow chips + a spec in the editor.
             openFile("openspec/specs/greeting/spec.md", project)
@@ -280,6 +315,9 @@ class MarketplaceScreenshotTour {
             snap("04-coordination-stores")
 
             // 03 — validation: Console filled by Validate, inspection-highlighted spec open.
+            // Clear the startup "add settings to Git" notification (it appears after VCS detection,
+            // so an early expire misses it) right before firing Validate, mirroring shot 06.
+            expireNotifications()
             invokeAction("OpenSpec.Validate", now = false)
             waitUntil("validation summary notification", timeout = 3.minutes) {
                 utility(ActionCenterRef::class).getNotifications(project)
@@ -287,6 +325,15 @@ class MarketplaceScreenshotTour {
             }
             openFile("openspec/specs/keyword-in-header/spec.md", project)
             waitUntil("editor settles") { !isCodeAnalysisRunning(project) }
+            // openFile re-raises the "add settings to Git" balloon (VCS mapping re-check), so clear
+            // just that one here — after the file is open — while leaving the Validate notification.
+            withContext(OnDispatcher.EDT) {
+                runCatching {
+                    utility(ActionCenterRef::class).getNotifications(project)
+                        .filter { it.getContent().contains("Git") }
+                        .forEach { it.expire() }
+                }
+            }
             snap("03-validation-quickfix")
 
             // 06 — update cleanup: sticky notification over the IDE (captured LAST; the

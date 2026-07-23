@@ -169,10 +169,12 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider {
         // Debounced single-click preview: selection snapshot on EDT → pooled read+render → EDT setText.
         tree.addTreeSelectionListener(e -> schedulePreview());
 
-        // Master (tree + workflow) on the left, preview on the right. Proportion persisted by key;
-        // the right pane can be dragged shut to reclaim width in a side-anchored tool window.
+        // Master (tree + workflow) on the left, preview on the right. The preview gets an even
+        // share by default so it's readable on first open (this is a viewing feature); the
+        // proportion is then persisted per key, and the right pane can be dragged shut to reclaim
+        // width in a side-anchored tool window.
         OnePixelSplitter browseSplitter =
-                new OnePixelSplitter(false, "OpenSpec.BrowsePreview.proportion", 0.6f);
+                new OnePixelSplitter(false, "OpenSpec.BrowsePreview.proportion", 0.5f);
         browseSplitter.setFirstComponent(splitPane);
         browseSplitter.setSecondComponent(previewScroll);
         browseSplitter.setHonorComponentsMinimumSize(false);
