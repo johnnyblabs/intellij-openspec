@@ -154,31 +154,9 @@ public class OpenSpecValidateAction extends OpenSpecBaseAction {
     }
 
     private void showValidationResults(Project project, ValidationResult result, ValidateTarget target) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("Target: ").append(describeTarget(target)).append("\n");
-        sb.append("Validation ").append(result.passed() ? "PASSED" : "FAILED");
-        sb.append(" (source: ").append(result.source()).append(")\n");
-        sb.append("Errors: ").append(result.errorCount());
-        sb.append(", Warnings: ").append(result.warningCount()).append("\n\n");
-
-        for (ValidationIssue issue : result.issues()) {
-            sb.append("[").append(issue.severity()).append("] ");
-            if (issue.filePath() != null && !issue.filePath().isEmpty()) {
-                String shortPath = issue.filePath();
-                int idx = shortPath.indexOf("openspec/");
-                if (idx >= 0) shortPath = shortPath.substring(idx);
-                sb.append(shortPath);
-                if (issue.line() > 0) sb.append(":").append(issue.line());
-                sb.append(" — ");
-            }
-            sb.append(issue.message());
-            if (issue.rule() != null && !issue.rule().isEmpty()) {
-                sb.append(" [").append(issue.rule()).append("]");
-            }
-            sb.append("\n");
-        }
-
         String scope = describeTarget(target);
+
+        // The at-a-glance balloon stays the summary surface — it never enumerates issues.
         if (result.passed()) {
             OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_VALIDATION, "Validate",
                     scope + " passed (" + result.warningCount() + " warnings)",
@@ -189,26 +167,49 @@ public class OpenSpecValidateAction extends OpenSpecBaseAction {
                     com.intellij.notification.NotificationType.ERROR);
         }
 
-        showInConsole(project, sb.toString(), result.passed(), target);
+        // The console is the detailed, navigable surface: grouped by file, per-severity
+        // colored, with clickable file:line links for resolvable paths.
+        renderToConsole(project, ValidationConsoleFormatter.format(result, scope), target);
     }
 
-    private void showInConsole(Project project, String text, boolean success, ValidateTarget target) {
+    /**
+     * Walks the pure {@link ValidationConsoleFormatter.RenderPlan} onto the console, printing
+     * each segment through the panel's typed helpers. Runs on the EDT (the caller's
+     * {@code invokeLater} continuation); file resolution inside {@code printFileHyperlink} is a
+     * VFS cache lookup, so no off-EDT pre-resolve is needed.
+     */
+    private void renderToConsole(Project project, ValidationConsoleFormatter.RenderPlan plan,
+                                 ValidateTarget target) {
         OpenSpecConsoleService consoleService = project.getService(OpenSpecConsoleService.class);
         OpenSpecConsolePanel console = consoleService != null ? consoleService.getAndActivate() : null;
 
         if (console == null) {
             OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_VALIDATION, "Validate",
-                    "Validation " + (success ? "passed" : "failed"),
-                    success ? com.intellij.notification.NotificationType.INFORMATION : com.intellij.notification.NotificationType.ERROR);
+                    "Validation " + (plan.passed() ? "passed" : "failed"),
+                    plan.passed() ? com.intellij.notification.NotificationType.INFORMATION
+                            : com.intellij.notification.NotificationType.ERROR);
             return;
         }
 
         console.clear();
         console.printCommand(commandLine(target));
-        if (success) {
-            console.printOutput(text);
-        } else {
-            console.printError(text);
+
+        // Thin executor: the link-vs-plain and severity-color decisions live in the pure,
+        // headless-testable ValidationConsoleFormatter.toRenderOps; here we only emit each op.
+        for (ValidationConsoleFormatter.RenderOp op : ValidationConsoleFormatter.toRenderOps(plan)) {
+            if (op.hyperlink()) {
+                if (op.severity() != null) {
+                    console.printFileHyperlink(project, op.path(), op.oneBasedLine(),
+                            op.text(), op.severity());
+                } else {
+                    console.printFileHyperlink(project, op.path(), op.oneBasedLine(),
+                            op.text(), com.intellij.execution.ui.ConsoleViewContentType.NORMAL_OUTPUT);
+                }
+            } else if (op.severity() != null) {
+                console.printSeverity(op.severity(), op.text());
+            } else {
+                console.printOutput(op.text());
+            }
         }
     }
 }

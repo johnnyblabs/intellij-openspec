@@ -183,6 +183,25 @@ class MarketplaceScreenshotTour {
             - **WHEN** the user ends the session
             - **THEN** a farewell message is shown
             """.trimIndent() + "\n")
+        // Deliberate issues so shot 10 (grouped validation console) shows both severities with
+        // clickable file:line links: a main spec whose requirement lacks SHALL/MUST (built-in
+        // ERROR) and a REMOVED delta missing its Reason/Migration fields (built-in WARNING).
+        Files.createDirectories(projectPath.resolve("openspec/specs/formatting-demo"))
+        Files.writeString(
+            projectPath.resolve("openspec/specs/formatting-demo/spec.md"),
+            "# Formatting Demo\n\n## Purpose\nExercises the grouped, colored validation console report end to end.\n\n" +
+                "## Requirements\n\n### Requirement: Records are kept\nRecords are kept somewhere safe.\n\n" +
+                "#### Scenario: Persist\n- **WHEN** a record is created\n- **THEN** it can be read back later\n",
+        )
+        val removedDelta = projectPath.resolve("openspec/changes/demo-add-farewell/specs/legacy-widget/spec.md")
+        Files.createDirectories(removedDelta.parent)
+        Files.writeString(removedDelta,
+            """
+            ## REMOVED Requirements
+
+            ### Requirement: Legacy widget
+            The legacy widget is retired.
+            """.trimIndent() + "\n")
         git(projectPath, "init", "-q")
         git(projectPath, "-c", "user.email=demo@example.com", "-c", "user.name=Demo", "add", "-A")
         git(projectPath, "-c", "user.email=demo@example.com", "-c", "user.name=Demo",
@@ -379,6 +398,18 @@ class MarketplaceScreenshotTour {
             }
             snap("03-validation-quickfix")
 
+            // 10 — grouped validation console: the Validate run above already filled the OpenSpec
+            // Console with the structured report — select that tab and capture it showing the
+            // FAILED verdict, the error/warning/info count line, per-file group headers, per-severity
+            // coloring, and the clickable file:line links (the seeded ERROR + WARNING both resolve).
+            selectToolWindowContent("Console")
+            ideFrame {
+                waitUntil("validation console renders the grouped report", timeout = 2.minutes) {
+                    hasSubtext("Validation FAILED")
+                }
+            }
+            snap("10-validation-console")
+
             // 06 — update cleanup: sticky notification over the IDE (captured LAST; the
             // flow stops re-raising once resolved). Shot 05 (Settings) is manual-only.
             selectToolWindowContent("Browse")
@@ -396,7 +427,7 @@ class MarketplaceScreenshotTour {
         // large enough to pass a size check but byte-identical across all shots.
         val emitted = listOf("01-spec-browser", "02-change-workflow", "03-validation-quickfix",
             "04-coordination-stores", "06-update-legacy-cleanup", "07-spec-preview", "08-change-deltas",
-            "09-tree-badges")
+            "09-tree-badges", "10-validation-console")
         val small = emitted.filter { Files.size(outputDir.resolve("$it.png")) < 50_000 }
         check(small.isEmpty()) { "suspiciously small captures (blank?): $small" }
         val distinctSizes = emitted.map { Files.size(outputDir.resolve("$it.png")) }.distinct()

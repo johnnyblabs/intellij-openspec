@@ -588,4 +588,68 @@ class OpenSpecUiSmokeTest {
             }
         }
     }
+
+    // ---- Journey 10 — Validate results render the grouped, formatted report --------
+
+    /**
+     * Journey 10 — grouped validation console: a project with a deliberate spec ERROR is
+     * validated, and the OpenSpec Console renders the structured report — the FAILED verdict
+     * line naming the target, the error/warning/info count line, and at least one grouped,
+     * severity-tagged issue row. The assertion targets rendered CONTENT (verdict, count,
+     * issue row), NOT click-navigation: opening the file at the caret line is a headless-
+     * untestable editor behavior, so the wiring is covered by unit tests instead.
+     *
+     * Uses the built-in validator's ERROR (a requirement missing SHALL/MUST), so no host CLI
+     * is required — unlike journey 7, which specifically asserts the CLI-parsed line.
+     */
+    @Test
+    fun validateResultsRenderGroupedFormattedReport() {
+        val projectPath = freshDemoProject()
+        // A spec whose requirement lacks SHALL/MUST — the built-in validator flags it as an
+        // ERROR, so the whole-project result fails and the console renders a grouped report.
+        Files.createDirectories(projectPath.resolve("openspec/specs/formatting-demo"))
+        Files.writeString(
+            projectPath.resolve("openspec/specs/formatting-demo/spec.md"),
+            "# Formatting Demo\n\n## Purpose\nExercises the grouped validation console report.\n\n" +
+                "## Requirements\n\n### Requirement: Records are kept\nRecords are kept somewhere safe.\n\n" +
+                "#### Scenario: Persist\n- **WHEN** a record is created\n- **THEN** it can be read back later\n",
+        )
+        newContext(projectPath).runIdeWithDriver().useDriverAndCloseIde {
+            waitForIndicators(5.minutes)
+
+            // Show the tool window so the Console panel is registered — otherwise Validate falls
+            // back to a summary-only notification with no console surface for the report.
+            withContext(OnDispatcher.EDT) { getToolWindow("OpenSpec").show() }
+            ideFrame { waitUntil("OpenSpec tool window renders") { hasText("Specs") } }
+
+            invokeAction("OpenSpec.Validate", now = true)
+
+            // getAndActivate selects the Console tab; assert the rendered report's STRUCTURE
+            // (content, never click-navigation): verdict, count line, the file-group header, the
+            // severity label on a row, and the clickable L<line> token — so the grouped /
+            // per-severity / hyperlinked format is exercised end to end, not just the verdict.
+            ideFrame {
+                waitUntil("console renders the FAILED verdict line", timeout = 3.minutes) {
+                    hasSubtext("Validation FAILED")
+                }
+                // The count line is always present and carries the (possibly zero) warning tally.
+                waitUntil("console renders the error/warning/info count line") {
+                    hasSubtext("warning")
+                }
+                // The seeded spec's issues group under its file-path header (grouping rendered).
+                waitUntil("console renders the file-group header for the seeded spec") {
+                    hasSubtext("formatting-demo/spec.md")
+                }
+                // The missing-SHALL row renders with its ERROR severity label (per-severity format).
+                waitUntil("console renders the ERROR severity label on a grouped row") {
+                    hasSubtext("ERROR")
+                }
+                // ...and its clickable L<line> token. The requirement sits at line 8 of the fixed
+                // seed, so the built-in validator reports the error at line 8 → an "L8" token.
+                waitUntil("console renders the clickable L<line> token for the seeded error") {
+                    hasSubtext("L8")
+                }
+            }
+        }
+    }
 }
