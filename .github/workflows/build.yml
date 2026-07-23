@@ -46,6 +46,21 @@ jobs:
           key: gradle-v2-${{ hashFiles('**/*.gradle.kts', 'gradle/wrapper/gradle-wrapper.properties') }}
           restore-keys: gradle-v2-
 
+      # The self-hosted runner has openspec on PATH globally; the GitHub hosted runner does
+      # not, so the CLI-gated Linux tests skip there and drop the JaCoCo coverage ~1% below
+      # the floor (which is ratcheted against the CLI-present environment). Provision the CLI
+      # on the mirror ONLY — same pattern as the cross-platform job — so the self-hosted
+      # runner's global install is never mutated.
+      - name: Set up Node (mirror only)
+        if: ${{ contains(github.server_url, 'github.com') }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Provision the OpenSpec CLI (mirror only)
+        if: ${{ contains(github.server_url, 'github.com') }}
+        run: npm install -g @fission-ai/openspec@latest
+
       - name: Build and Test
         run: ./gradlew build
 
