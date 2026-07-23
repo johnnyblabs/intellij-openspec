@@ -71,6 +71,11 @@ class SpecPreviewRenderTest {
         assertEquals(PreviewKind.DELTA_SPEC, SpecPreviewRenderer.classify(TreeNodeType.DELTA_SPEC, "/c/specs/s/spec.md"));
         assertEquals(PreviewKind.CHANGE_ARTIFACT, SpecPreviewRenderer.classify(TreeNodeType.ARTIFACT, "/c/proposal.md"));
         assertEquals(PreviewKind.CHANGE_ARTIFACT, SpecPreviewRenderer.classify(TreeNodeType.ARTIFACT_DONE, "/c/design.md"));
+        // A change node backs a DIRECTORY (not a .md file) — it routes to the consolidated deltas
+        // view, recognized before the markdown-file guard would collapse it to NONE.
+        assertEquals(PreviewKind.CHANGE_DELTAS,
+                SpecPreviewRenderer.classify(TreeNodeType.CHANGE, "/proj/openspec/changes/my-change"));
+        assertEquals(PreviewKind.NONE, SpecPreviewRenderer.classify(TreeNodeType.CHANGE, null));
         // Non-markdown, absent path, and non-previewable types collapse to NONE.
         assertEquals(PreviewKind.NONE, SpecPreviewRenderer.classify(TreeNodeType.CONFIG, "/openspec/config.yaml"));
         assertEquals(PreviewKind.NONE, SpecPreviewRenderer.classify(TreeNodeType.SPEC_DOMAIN, null));

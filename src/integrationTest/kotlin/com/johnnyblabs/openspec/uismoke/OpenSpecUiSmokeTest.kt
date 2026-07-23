@@ -529,4 +529,63 @@ class OpenSpecUiSmokeTest {
             }
         }
     }
+
+    // ---- Journey 9 — Browse preview renders a change's consolidated deltas ----------
+
+    /**
+     * Journey 9 — consolidated change-deltas view: selecting a CHANGE node (whose path is the change
+     * directory, not a .md file) renders the CLI-sourced deltas grouped by capability with operation
+     * badges. Requires a 1.6+ host CLI (the plugin spawns `openspec show <change> --type change
+     * --json`), so it is skipped otherwise — like the store-health journey.
+     *
+     * The demo change carries no spec deltas out of the box, so this journey seeds one ADDED delta
+     * into its fresh temp copy before boot. The pane's accessible name flips to
+     * "OpenSpec preview change deltas badged" ONLY after a successful CLI→parse→render whose fragment
+     * contains an `openspec-op-badge` span — so waiting on that single marker proves BOTH that the
+     * deltas render fired AND that a badge is present, which is the assertion the JEditorPane's
+     * unreadable HTML body otherwise can't give us.
+     */
+    @Test
+    fun previewPaneRendersChangeDeltas() {
+        val cliVersion = hostCliVersion()
+        org.junit.jupiter.api.Assumptions.assumeTrue(
+            cliVersion != null && Regex("""^(\d+)\.(\d+)""").find(cliVersion)?.destructured
+                ?.let { (maj, min) -> maj.toInt() > 1 || (maj.toInt() == 1 && min.toInt() >= 6) } == true
+        ) { "change-deltas journey needs OpenSpec CLI 1.6+ on the host (found: $cliVersion)" }
+
+        val projectPath = freshDemoProject()
+        // Seed a spec-level delta so the change has deltas the consolidated view can badge; the
+        // `greeting` main spec already exists in the demo project.
+        val delta = projectPath.resolve("openspec/changes/demo-add-farewell/specs/greeting/spec.md")
+        Files.createDirectories(delta.parent)
+        Files.writeString(delta,
+            """
+            ## ADDED Requirements
+
+            ### Requirement: Farewell message
+            The system SHALL bid the user farewell when the session ends.
+
+            #### Scenario: Session ends
+            - **WHEN** the user ends the session
+            - **THEN** a farewell message is shown
+            """.trimIndent() + "\n")
+
+        newContext(projectPath).runIdeWithDriver().useDriverAndCloseIde {
+            waitForIndicators(5.minutes)
+
+            withContext(OnDispatcher.EDT) { getToolWindow("OpenSpec").show() }
+
+            ideFrame {
+                waitUntil("Browse tree renders its Changes group") { hasText("Changes") }
+
+                val browseTree = tree("//div[@class='Tree']")
+                browseTree.expandPath("OpenSpec", "Changes", fullMatch = false)
+                browseTree.clickPath("OpenSpec", "Changes", "demo-add-farewell", fullMatch = false)
+
+                waitUntil("preview pane renders the change's badged deltas", timeout = 2.minutes) {
+                    x { byAccessibleName("OpenSpec preview change deltas badged") }.present()
+                }
+            }
+        }
+    }
 }

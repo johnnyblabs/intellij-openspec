@@ -118,11 +118,14 @@ tasks.jacocoTestReport {
 // just below current coverage. New-code test quality is governed by the OpenSpec `tasks`
 // rule ("tests SHALL verify real behavior") and the CLAUDE.md contract-test convention.
 //
-// BASELINE (measured 2026-07-22, add-searchable-spec-viewer): INSTRUCTION 36.18%, LINE 34.18%,
-// BRANCH 33.62%, METHOD 39.10%. (Raised from the earlier 2026-07-22 baseline — INSTRUCTION 35.6%,
-// LINE 33.6%, BRANCH 32.8% — by the searchable spec-viewer's pure classes and their unit tests;
-// the uncovered Swing wiring in OpenSpecToolWindowPanel dilutes but net coverage still rose.
-// Before that, the 2026-07-03 baseline was INSTRUCTION 32.6%, LINE 30.7%, BRANCH 29.1%.)
+// BASELINE (measured 2026-07-22, add-change-deltas-view): INSTRUCTION 37.03%, LINE 34.89%,
+// BRANCH 34.22%, METHOD 39.89%. (Raised from the add-searchable-spec-viewer baseline —
+// INSTRUCTION 36.18%, LINE 34.18%, BRANCH 33.62%, METHOD 39.10% — by the consolidated
+// change-deltas view's pure classes (ChangeDeltaModel, DeltaDiffAnchor, renderChangeDeltas)
+// and their contract/render/anchor tests; the new Swing/CLI wiring in OpenSpecToolWindowPanel
+// dilutes but net coverage still rose on all counters. Before the spec-viewer baseline, the
+// earlier 2026-07-22 baseline was INSTRUCTION 35.6%, LINE 33.6%, BRANCH 32.8%; the 2026-07-03
+// baseline was INSTRUCTION 32.6%, LINE 30.7%, BRANCH 29.1%.)
 // Floors are set just below the baseline so any regression fails `check`. Ratchet the
 // minimums upward as coverage improves; never lower a floor without recorded justification.
 tasks.jacocoTestCoverageVerification {
@@ -139,21 +142,21 @@ tasks.jacocoTestCoverageVerification {
             limit {
                 counter = "INSTRUCTION"
                 value = "COVEREDRATIO"
-                minimum = "0.36".toBigDecimal()
+                minimum = "0.369".toBigDecimal()
             }
         }
         rule {
             limit {
                 counter = "LINE"
                 value = "COVEREDRATIO"
-                minimum = "0.34".toBigDecimal()
+                minimum = "0.348".toBigDecimal()
             }
         }
         rule {
             limit {
                 counter = "BRANCH"
                 value = "COVEREDRATIO"
-                minimum = "0.33".toBigDecimal()
+                minimum = "0.341".toBigDecimal()
             }
         }
     }

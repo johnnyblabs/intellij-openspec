@@ -1,0 +1,10 @@
+{
+  "id": "empty-change",
+  "title": "empty-change",
+  "deltaCount": 0,
+  "deltas": [],
+  "root": {
+    "path": "/fixture",
+    "source": "nearest"
+  }
+}

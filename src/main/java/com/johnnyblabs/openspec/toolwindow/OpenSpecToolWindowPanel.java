@@ -20,8 +20,12 @@ import com.intellij.util.ui.HTMLEditorKitBuilder;
 import com.intellij.util.ui.JBUI;
 import com.intellij.ui.treeStructure.Tree;
 import com.intellij.util.Alarm;
+import com.johnnyblabs.openspec.model.ChangeDeltaModel;
+import com.johnnyblabs.openspec.util.CliJson;
+import com.johnnyblabs.openspec.util.CliRunner;
 import com.johnnyblabs.openspec.util.MarkdownHtmlRenderer;
 import com.johnnyblabs.openspec.actions.CreateDeltaSpecAction;
+import com.johnnyblabs.openspec.actions.DeltaSpecDiffAction;
 import com.johnnyblabs.openspec.actions.OpenSpecDataKeys;
 import com.johnnyblabs.openspec.services.AiToolDetectionService;
 import com.johnnyblabs.openspec.services.CliDetectionService;
@@ -31,6 +35,7 @@ import com.johnnyblabs.openspec.util.OpenSpecFileUtil;
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+import javax.swing.event.HyperlinkEvent;
 import javax.swing.event.TreeSelectionEvent;
 import javax.swing.event.TreeSelectionListener;
 import javax.swing.tree.DefaultMutableTreeNode;
@@ -61,7 +66,23 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider {
     private Set<String> preFilterExpansionState;
 
     /** What the preview render path needs, snapshotted on the EDT at selection time. */
-    private record PreviewSelection(String filePath, SpecPreviewRenderer.PreviewKind kind, String requirementName) {}
+    private record PreviewSelection(String filePath, SpecPreviewRenderer.PreviewKind kind,
+                                    String requirementName, String changeName) {}
+
+    // Per-change rendered-deltas cache, keyed on change name. Avoids re-spawning the CLI on
+    // re-selection of the same change; cleared by the VFS listener when OpenSpec files change.
+    private final java.util.concurrent.ConcurrentHashMap<String, String> changeDeltasCache =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    // Bumped whenever the deltas cache is invalidated (VFS change). An off-EDT CLI render captures
+    // this before its slow call and only writes the cache if it's unchanged afterward — so a render
+    // that completes after an invalidation cannot repopulate the just-cleared cache with stale deltas.
+    private volatile int cacheEpoch = 0;
+
+    // The change DIRECTORY currently rendered in the deltas view, read by the diff cross-link
+    // HyperlinkListener to build the delta-spec path for a capability. Volatile: written on the EDT
+    // when a deltas render applies, read on the EDT when a link fires.
+    private volatile String deltasChangeDir;
 
     public OpenSpecToolWindowPanel(Project project) {
         super(new BorderLayout());
@@ -164,6 +185,22 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider {
         previewPane.putClientProperty(JEditorPane.HONOR_DISPLAY_PROPERTIES, Boolean.TRUE);
         JBScrollPane previewScroll = new JBScrollPane(previewPane);
         previewScroll.setBorder(JBUI.Borders.empty());
+
+        // Diff cross-link: a capability section in the consolidated deltas view emits an
+        // openspec-diff:<capability> anchor; resolve an activated one to DeltaSpecDiffAction for that
+        // capability. Non-diff links (e.g. a real http link) resolve to null and are left untouched.
+        previewPane.addHyperlinkListener(e -> {
+            if (e.getEventType() != HyperlinkEvent.EventType.ACTIVATED) return;
+            String capability = DeltaDiffAnchor.capabilityFromHref(e.getDescription());
+            if (capability == null) return;
+            String changeDir = deltasChangeDir;
+            if (changeDir == null) return;
+            String deltaSpecPath = changeDir + "/specs/" + capability + "/spec.md";
+            DeltaSpecDiffAction action = new DeltaSpecDiffAction(deltaSpecPath);
+            DataContext context = dataId -> CommonDataKeys.PROJECT.is(dataId) ? project : null;
+            com.intellij.openapi.actionSystem.ex.ActionUtil.invokeAction(action, context, "OpenSpecPreview", null, null);
+        });
+
         showPreviewEmptyState();
 
         // Debounced single-click preview: selection snapshot on EDT → pooled read+render → EDT setText.
@@ -190,6 +227,12 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider {
     // tech (and UI-driver tests) can observe that a selection actually produced a rendered preview.
     static final String PREVIEW_RENDERED_NAME = "OpenSpec preview rendered";
     static final String PREVIEW_EMPTY_NAME = "OpenSpec preview empty";
+    // A successful consolidated change-deltas render flips to one of these. The "badged" variant is
+    // set only when the rendered fragment actually carries an operation badge span — the uiSmoke
+    // journey waits on it to prove, in one observable the driver can read, both that the deltas
+    // render fired AND that a badge is present (the JEditorPane's HTML body is not readable via hasText).
+    static final String PREVIEW_CHANGE_DELTAS_NAME = "OpenSpec preview change deltas";
+    static final String PREVIEW_CHANGE_DELTAS_BADGED_NAME = "OpenSpec preview change deltas badged";
 
     // Bumped on the EDT for every selection; a completed off-EDT render only applies if its
     // token is still current, so a slow render of an earlier selection can't overwrite a newer one.
@@ -221,12 +264,23 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider {
         // path is the parent spec) — anchor the scroll to that requirement's section.
         String requirementName =
                 data.type() == SpecTreeModel.TreeNodeType.REQUIREMENT ? data.tooltip() : null;
-        return new PreviewSelection(data.filePath(), kind, requirementName);
+        // For a Change node the CLI is keyed by change name; the node's filePath is the change dir,
+        // whose basename is the name (robust across both CHANGE-node constructions in SpecTreeModel).
+        String changeName = null;
+        if (kind == SpecPreviewRenderer.PreviewKind.CHANGE_DELTAS) {
+            changeName = data.changeName() != null ? data.changeName()
+                    : (data.filePath() != null ? new java.io.File(data.filePath()).getName() : null);
+        }
+        return new PreviewSelection(data.filePath(), kind, requirementName, changeName);
     }
 
     private void renderPreview(PreviewSelection selection, int generation) {
         if (selection == null || selection.kind() == SpecPreviewRenderer.PreviewKind.NONE) {
             applyIfCurrent(generation, this::showPreviewEmptyState);
+            return;
+        }
+        if (selection.kind() == SpecPreviewRenderer.PreviewKind.CHANGE_DELTAS) {
+            renderChangeDeltasPreview(selection, generation);
             return;
         }
         String fragment;
@@ -260,6 +314,83 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider {
         previewPane.setText(MarkdownHtmlRenderer.wrapInHtml(css, SpecPreviewRenderer.emptyState()));
         previewPane.setCaretPosition(0);
         previewPane.getAccessibleContext().setAccessibleName(PREVIEW_EMPTY_NAME);
+    }
+
+    /**
+     * Renders the consolidated deltas for a change node. Runs off the EDT (this method is invoked on
+     * the {@code previewAlarm} pooled thread), generation-guarded like every preview path. Serves a
+     * per-change cache first; otherwise spawns {@code openspec show <name> --type change --json},
+     * parses stdout only (stderr carries a spurious flag warning on success), and renders. A missing
+     * CLI or a failed/thrown call yields the DISTINCT cli-unavailable placeholder, never the
+     * no-deltas empty state.
+     */
+    private void renderChangeDeltasPreview(PreviewSelection selection, int generation) {
+        String name = selection.changeName();
+        String changeDir = selection.filePath();
+        if (name == null || name.isBlank()) {
+            applyIfCurrent(generation, this::showPreviewEmptyState);
+            return;
+        }
+
+        int epochAtStart = cacheEpoch;
+        String cached = changeDeltasCache.get(name);
+        if (cached != null) {
+            applyChangeDeltas(generation, cached, changeDir);
+            return;
+        }
+
+        CliDetectionService detection = project.getService(CliDetectionService.class);
+        if (detection == null || !detection.isAvailable()) {
+            applyCliUnavailable(generation, changeDir);
+            return;
+        }
+
+        String fragment;
+        try {
+            CliRunner.CliResult result = CliRunner.run(project, ChangeDeltaModel.changeShowArgs(name));
+            if (!result.isSuccess()) {
+                LOG.debug("openspec show failed for change " + name + ": exit " + result.exitCode());
+                applyCliUnavailable(generation, changeDir);
+                return;
+            }
+            // stdout ONLY — a successful change-show still prints "Ignoring flags not applicable to
+            // change: scenarios" to stderr; that is not a failure and must not blank the pane.
+            ChangeDeltaModel model = ChangeDeltaModel.parse(CliJson.extractJsonPayload(result.stdout()));
+            fragment = SpecPreviewRenderer.renderChangeDeltas(model);
+        } catch (Exception ex) {
+            LOG.debug("Failed to render change deltas for " + name, ex);
+            applyCliUnavailable(generation, changeDir);
+            return;
+        }
+
+        // Only cache if no invalidation raced in during the CLI call — otherwise this now-stale
+        // fragment would repopulate a just-cleared cache and be served on the next re-selection.
+        if (cacheEpoch == epochAtStart) {
+            changeDeltasCache.put(name, fragment);
+        }
+        applyChangeDeltas(generation, fragment, changeDir);
+    }
+
+    private void applyChangeDeltas(int generation, String fragment, String changeDir) {
+        applyIfCurrent(generation, () -> {
+            String css = MarkdownHtmlRenderer.buildThemeStylesheet() + DeltaBadgeDecorator.badgeCss();
+            previewPane.setText(MarkdownHtmlRenderer.wrapInHtml(css, fragment));
+            previewPane.setCaretPosition(0);
+            deltasChangeDir = changeDir;
+            boolean badged = fragment.contains(DeltaBadgeDecorator.BADGE_CLASS);
+            previewPane.getAccessibleContext().setAccessibleName(
+                    badged ? PREVIEW_CHANGE_DELTAS_BADGED_NAME : PREVIEW_CHANGE_DELTAS_NAME);
+        });
+    }
+
+    private void applyCliUnavailable(int generation, String changeDir) {
+        applyIfCurrent(generation, () -> {
+            String css = MarkdownHtmlRenderer.buildThemeStylesheet() + DeltaBadgeDecorator.badgeCss();
+            previewPane.setText(MarkdownHtmlRenderer.wrapInHtml(css, SpecPreviewRenderer.cliUnavailablePlaceholder()));
+            previewPane.setCaretPosition(0);
+            deltasChangeDir = changeDir;
+            previewPane.getAccessibleContext().setAccessibleName(PREVIEW_EMPTY_NAME);
+        });
     }
 
     private void refreshAsync() {
@@ -623,6 +754,10 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider {
                 for (VFileEvent event : events) {
                     VirtualFile file = event.getFile();
                     if (file != null && OpenSpecFileUtil.isUnderOpenSpec(file, project)) {
+                        // Invalidate cached delta renders — a change's specs/** may have changed.
+                        // Bump the epoch first so an in-flight render can't repopulate after this clear.
+                        cacheEpoch++;
+                        changeDeltasCache.clear();
                         debouncedRefresh();
                         break;
                     }
