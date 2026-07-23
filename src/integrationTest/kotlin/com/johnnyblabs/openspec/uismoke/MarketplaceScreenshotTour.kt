@@ -317,6 +317,19 @@ class MarketplaceScreenshotTour {
             }
             snap("08-change-deltas")
 
+            // 09 — tree status badges: expand the change to reveal its artifact nodes, each carrying
+            // a corner status badge on the icon (done / ready / blocked / not-created) instead of a
+            // label glyph, plus the change node's apply-ready done badge and X/Y task-count suffix.
+            // The visual IS the badged tree, so the shot just needs the artifacts expanded.
+            ideFrame {
+                val browseTree = tree("//div[@class='Tree']")
+                browseTree.expandPath("OpenSpec", "Changes", "demo-add-farewell", fullMatch = false)
+                waitUntil("the change's artifact nodes render (badged) under the change node") {
+                    hasText("proposal")
+                }
+            }
+            snap("09-tree-badges")
+
             // Restore the normal docked layout so the remaining shots frame the editor + tool window.
             setOpenSpecMaximized(false)
 
@@ -382,7 +395,8 @@ class MarketplaceScreenshotTour {
         // Screen Recording permission, AWT Robot returns the bare desktop wallpaper —
         // large enough to pass a size check but byte-identical across all shots.
         val emitted = listOf("01-spec-browser", "02-change-workflow", "03-validation-quickfix",
-            "04-coordination-stores", "06-update-legacy-cleanup", "07-spec-preview", "08-change-deltas")
+            "04-coordination-stores", "06-update-legacy-cleanup", "07-spec-preview", "08-change-deltas",
+            "09-tree-badges")
         val small = emitted.filter { Files.size(outputDir.resolve("$it.png")) < 50_000 }
         check(small.isEmpty()) { "suspiciously small captures (blank?): $small" }
         val distinctSizes = emitted.map { Files.size(outputDir.resolve("$it.png")) }.distinct()

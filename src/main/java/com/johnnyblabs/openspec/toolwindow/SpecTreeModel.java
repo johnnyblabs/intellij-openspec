@@ -9,12 +9,17 @@ import com.johnnyblabs.openspec.services.CliDetectionService;
 import com.johnnyblabs.openspec.services.ConfigService;
 import com.johnnyblabs.openspec.services.SpecParsingService;
 import com.johnnyblabs.openspec.settings.OpenSpecSettings;
+import com.johnnyblabs.openspec.util.ApplyPromptBuilder;
 import com.johnnyblabs.openspec.util.OpenSpecFileUtil;
 import com.johnnyblabs.openspec.version.VersionSupport;
 
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreePath;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -175,22 +180,23 @@ public class SpecTreeModel {
         boolean cliAvailable = isCliAvailable();
 
         for (Change change : changes) {
-            // Add status label to change name
             ChangeStatus status = changeService.getStatus(change);
-            String label = change.getName();
-            if (status != ChangeStatus.UNKNOWN) {
-                label += " " + status.toLabel();
-            }
-            DefaultMutableTreeNode changeNode = new DefaultMutableTreeNode(
-                    new TreeNodeData(label, TreeNodeType.CHANGE, change.getPath(), change.getName(), null, change.getPath()));
 
-            // Try CLI-based artifact DAG first
-            if (cliAvailable) {
-                boolean dagLoaded = addDagArtifactNodes(changeNode, change);
-                if (!dagLoaded) {
-                    addFallbackArtifactNodes(changeNode, change, changeService);
-                }
-            } else {
+            // Resolve the artifact DAG once: it drives both the artifact child nodes and the
+            // change-node apply-ready rollup badge.
+            ChangeArtifactDag dag = cliAvailable ? loadArtifactDag(change) : null;
+            int[] taskCounts = readTaskCounts(change);
+
+            String label = buildChangeLabel(change.getName(), status, taskCounts);
+            TreeNodeType changeType = changeNodeType(dag);
+            String changeTooltip = buildChangeTooltip(change, dag, taskCounts);
+
+            DefaultMutableTreeNode changeNode = new DefaultMutableTreeNode(
+                    new TreeNodeData(label, changeType, change.getPath(), change.getName(), null, changeTooltip));
+
+            // Try CLI-based artifact DAG first; fall back to on-disk artifact listing otherwise.
+            boolean dagLoaded = addDagArtifactNodes(changeNode, change, dag);
+            if (!dagLoaded) {
                 addFallbackArtifactNodes(changeNode, change, changeService);
             }
 
@@ -209,12 +215,72 @@ public class SpecTreeModel {
         return changesNode;
     }
 
-    private boolean addDagArtifactNodes(DefaultMutableTreeNode changeNode, Change change) {
+    /**
+     * Loads the CLI artifact DAG for a change, or null if unavailable/failed.
+     */
+    private ChangeArtifactDag loadArtifactDag(Change change) {
         try {
             ArtifactOrchestrationService orchestration = project.getService(ArtifactOrchestrationService.class);
-            if (orchestration == null) return false;
+            if (orchestration == null) return null;
+            return orchestration.getArtifactStatus(change.getName());
+        } catch (Exception e) {
+            LOG.debug("Failed to load DAG for change: " + change.getName(), e);
+            return null;
+        }
+    }
 
-            ChangeArtifactDag dag = orchestration.getArtifactStatus(change.getName());
+    /**
+     * Builds the change node's label: {@code name [status] X/Y}. The status suffix is
+     * omitted for {@link ChangeStatus#UNKNOWN}; the {@code X/Y} task progress suffix is
+     * omitted when {@code taskCounts} is null (no tasks artifact) or has zero tasks.
+     */
+    static String buildChangeLabel(String name, ChangeStatus status, int[] taskCounts) {
+        StringBuilder sb = new StringBuilder(name);
+        if (status != null && status != ChangeStatus.UNKNOWN) {
+            sb.append(" ").append(status.toLabel());
+        }
+        if (taskCounts != null && taskCounts.length == 2 && taskCounts[1] > 0) {
+            sb.append(" ").append(taskCounts[0]).append("/").append(taskCounts[1]);
+        }
+        return sb.toString();
+    }
+
+    /**
+     * Routes a change node to {@link TreeNodeType#CHANGE_DONE} (apply-ready done badge)
+     * when the CLI reports every artifact complete, else plain {@link TreeNodeType#CHANGE}.
+     */
+    static TreeNodeType changeNodeType(ChangeArtifactDag dag) {
+        return (dag != null && dag.isComplete()) ? TreeNodeType.CHANGE_DONE : TreeNodeType.CHANGE;
+    }
+
+    private String buildChangeTooltip(Change change, ChangeArtifactDag dag, int[] taskCounts) {
+        List<String> parts = new ArrayList<>();
+        if (dag != null && dag.isComplete()) {
+            parts.add("Apply-ready — all artifacts complete");
+        }
+        if (taskCounts != null && taskCounts.length == 2 && taskCounts[1] > 0) {
+            parts.add(taskCounts[0] + "/" + taskCounts[1] + " tasks");
+        }
+        return parts.isEmpty() ? change.getPath() : String.join(" — ", parts) + " — " + change.getPath();
+    }
+
+    /**
+     * Reads {@code tasks.md} for the change and returns {@code [complete, total]} checkbox
+     * counts, or null when no tasks artifact exists (or it has no checkboxes).
+     */
+    private int[] readTaskCounts(Change change) {
+        Path tasksPath = Path.of(change.getPath(), "tasks.md");
+        if (!Files.isRegularFile(tasksPath)) return null;
+        try {
+            int[] counts = ApplyPromptBuilder.countTasks(Files.readString(tasksPath));
+            return counts[1] > 0 ? counts : null;
+        } catch (IOException e) {
+            return null;
+        }
+    }
+
+    private boolean addDagArtifactNodes(DefaultMutableTreeNode changeNode, Change change, ChangeArtifactDag dag) {
+        try {
             if (dag == null || dag.getArtifacts().isEmpty()) return false;
 
             for (ArtifactInfo artifact : dag.getArtifacts()) {
@@ -263,9 +329,14 @@ public class SpecTreeModel {
         };
     }
 
-    private String buildArtifactLabel(ArtifactInfo artifact) {
-        String icon = artifact.status().toIcon();
-        String label = icon + " " + artifact.id();
+    /**
+     * Builds a change-artifact node label. Status is now conveyed by the node's icon badge
+     * (see {@link SpecTreeCellRenderer}), so the label is just the artifact id — the former
+     * {@code ✓/○/−} glyph prefix is retired. The {@code (needs: …)} suffix is kept for a
+     * blocked artifact because it names the specific unmet dependencies, which a badge cannot.
+     */
+    static String buildArtifactLabel(ArtifactInfo artifact) {
+        String label = artifact.id();
         if (artifact.status() == ArtifactStatus.BLOCKED && !artifact.missingDeps().isEmpty()) {
             label += " (needs: " + String.join(", ", artifact.missingDeps()) + ")";
         }
@@ -369,7 +440,7 @@ public class SpecTreeModel {
             if (node instanceof DefaultMutableTreeNode treeNode) {
                 Object userObject = treeNode.getUserObject();
                 if (userObject instanceof TreeNodeData data
-                        && data.type() == TreeNodeType.CHANGE
+                        && (data.type() == TreeNodeType.CHANGE || data.type() == TreeNodeType.CHANGE_DONE)
                         && data.changeName() != null) {
                     return data.changeName();
                 }
@@ -379,7 +450,7 @@ public class SpecTreeModel {
     }
 
     public enum TreeNodeType {
-        SPECS, SPEC_DOMAIN, REQUIREMENT, CHANGES, CHANGE, ARTIFACT, MISSING_ARTIFACT,
+        SPECS, SPEC_DOMAIN, REQUIREMENT, CHANGES, CHANGE, CHANGE_DONE, ARTIFACT, MISSING_ARTIFACT,
         ARTIFACT_DONE, ARTIFACT_READY, ARTIFACT_BLOCKED,
         DELTA_SPEC, ARCHIVE, CONFIG, CONFIG_ENTRY, HINT
     }

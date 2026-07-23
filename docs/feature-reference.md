@@ -77,14 +77,29 @@ OpenSpec
 │   └── data-export
 │       └── Requirement: csv-format
 ├── Changes
-│   └── add-greeting [proposed]
-│       ├── ✓ proposal       ← done (green)
-│       ├── ○ design         ← ready to generate (blue)
-│       ├── − specs          ← blocked (gray)
-│       └── − tasks
+│   └── add-greeting [proposed] 2/4     ← task progress X/Y
+│       ├── proposal        ● done badge
+│       ├── design          ● ready badge
+│       ├── specs (needs: design)  ✕ blocked badge
+│       └── tasks           ▲ not-created badge
 └── Archive
     └── 2026-03-01-initial-setup
 ```
+
+**Artifact status badges.** A change artifact's status is shown as a small badge overlaid on the
+node's icon — **done**, **ready**, **blocked**, or **not-created** — rather than as a glyph glued to
+the label (labels are now the plain artifact id, keeping a subtle foreground tint as reinforcement).
+Badges use distinct shapes, are theme- and HiDPI-correct, and each badged node names its status in
+its tooltip. A blocked artifact keeps a `(needs: …)` suffix naming the unmet dependencies. When the
+OpenSpec CLI is unavailable, badges degrade honestly to done-versus-not-done (the ready/blocked split
+needs the CLI's dependency graph). A **change** node itself carries a **done** badge when all of its
+artifacts are complete (it is apply-ready), and shows its task progress as an `X/Y` count in the
+label when a tasks artifact exists.
+
+**On-model boundary.** Only **change**, **change-artifact**, and **missing-artifact** nodes carry a
+status badge — these are the nodes with client-owned status (apply-readiness, task progress). **Spec,
+requirement, delta-spec, and config nodes are never badged**, because the OpenSpec model attaches no
+status to a spec or requirement; a badge there would repeat the removed `@spec` coverage scorecard.
 
 The requirement and scenario counts under **Specs** are recovered by a line-oriented scanner that
 mirrors the OpenSpec CLI's own parsing, so the tree agrees with `openspec show` / `openspec validate`.

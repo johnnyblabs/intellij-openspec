@@ -118,8 +118,12 @@ tasks.jacocoTestReport {
 // just below current coverage. New-code test quality is governed by the OpenSpec `tasks`
 // rule ("tests SHALL verify real behavior") and the CLAUDE.md contract-test convention.
 //
-// BASELINE (measured 2026-07-22, add-change-deltas-view): INSTRUCTION 37.03%, LINE 34.89%,
-// BRANCH 34.22%, METHOD 39.89%. (Raised from the add-searchable-spec-viewer baseline —
+// BASELINE (measured 2026-07-22, add-tree-status-badges): INSTRUCTION 37.53%, LINE 35.28%,
+// BRANCH 34.52%. (Raised from the add-change-deltas-view baseline — INSTRUCTION 37.03%,
+// LINE 34.89%, BRANCH 34.22%, METHOD 39.89% — by the tree status-badge work: the pure
+// SpecTreeCellRenderer.iconForType map, the SpecTreeModel label/type helpers
+// (buildChangeLabel/changeNodeType/buildArtifactLabel), and their headless renderer/label
+// tests plus the status-complete CLI contract test.) (Earlier add-searchable-spec-viewer baseline —
 // INSTRUCTION 36.18%, LINE 34.18%, BRANCH 33.62%, METHOD 39.10% — by the consolidated
 // change-deltas view's pure classes (ChangeDeltaModel, DeltaDiffAnchor, renderChangeDeltas)
 // and their contract/render/anchor tests; the new Swing/CLI wiring in OpenSpecToolWindowPanel
@@ -151,21 +155,21 @@ tasks.jacocoTestCoverageVerification {
             limit {
                 counter = "INSTRUCTION"
                 value = "COVEREDRATIO"
-                minimum = "0.364".toBigDecimal()
+                minimum = "0.368".toBigDecimal()
             }
         }
         rule {
             limit {
                 counter = "LINE"
                 value = "COVEREDRATIO"
-                minimum = "0.343".toBigDecimal()
+                minimum = "0.346".toBigDecimal()
             }
         }
         rule {
             limit {
                 counter = "BRANCH"
                 value = "COVEREDRATIO"
-                minimum = "0.336".toBigDecimal()
+                minimum = "0.339".toBigDecimal()
             }
         }
     }
