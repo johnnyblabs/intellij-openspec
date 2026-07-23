@@ -5,11 +5,13 @@ import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.vfs.VirtualFile;
 import com.johnnyblabs.openspec.services.CliDetectionService;
 import com.johnnyblabs.openspec.toolwindow.OpenSpecConsolePanel;
 import com.johnnyblabs.openspec.toolwindow.OpenSpecConsoleService;
 import com.johnnyblabs.openspec.util.CliOutputParser;
 import com.johnnyblabs.openspec.util.CliRunner;
+import com.johnnyblabs.openspec.util.OpenSpecFileUtil;
 import com.johnnyblabs.openspec.util.OpenSpecNotifier;
 import com.johnnyblabs.openspec.validation.BuiltInValidator;
 import com.johnnyblabs.openspec.validation.ValidationIssue;
@@ -33,6 +35,11 @@ import java.util.List;
  * rules defined in {@code config.yaml}, validate against newer schema versions
  * before the plugin is updated, and check cross-references between specs and
  * changes that require full-graph analysis.</p>
+ *
+ * <p><b>Scoping.</b> The main-menu invocation always validates the whole project.
+ * {@link OpenSpecValidateFromProjectViewAction} reuses {@link #runValidation} with a
+ * {@link ValidateTarget} resolved from the Project-View selection, so the same
+ * built-in+CLI merge pipeline runs scoped to a single change or spec.</p>
  */
 public class OpenSpecValidateAction extends OpenSpecBaseAction {
 
@@ -40,26 +47,30 @@ public class OpenSpecValidateAction extends OpenSpecBaseAction {
     public void actionPerformed(@NotNull AnActionEvent e) {
         Project project = e.getProject();
         if (project == null) return;
+        runValidation(project, ValidateTarget.wholeProject());
+    }
 
-        new Task.Backgroundable(project, "Validating OpenSpec project", true) {
+    /**
+     * Runs the built-in-plus-CLI validate pipeline in a background task, scoped to
+     * {@code target}. {@link ValidateTarget.Kind#WHOLE_PROJECT} reproduces the classic
+     * whole-project behavior ({@code validateAll()} + {@code validate --all --json});
+     * {@code SPEC}/{@code CHANGE} run the built-in single-target validation always, plus
+     * the CLI's {@code validate <id> --type spec|change --json} when available, merged.
+     */
+    protected void runValidation(Project project, ValidateTarget target) {
+        new Task.Backgroundable(project, "Validating OpenSpec " + describeTarget(target), true) {
             @Override
             public void run(@NotNull ProgressIndicator indicator) {
-                // Always run built-in validation
+                // Always run built-in validation, scoped to the target.
                 BuiltInValidator validator = project.getService(BuiltInValidator.class);
-                ValidationResult builtInResult = validator.validateAll();
+                ValidationResult builtInResult = builtInValidate(project, validator, target);
 
-                // Also run CLI validation if available
+                // Also run CLI validation if available.
                 CliDetectionService detection = project.getService(CliDetectionService.class);
                 ValidationResult finalResult;
                 if (detection != null && detection.isAvailable()) {
                     try {
-                        // Use --json for structured output
-                        List<String> args = new ArrayList<>();
-                        args.add("validate");
-                        args.add("--all");
-                        args.add("--json");
-                        CliRunner.CliResult cliResult = CliRunner.run(project,
-                                args.toArray(new String[0]));
+                        CliRunner.CliResult cliResult = CliRunner.run(project, cliArgs(target));
                         ValidationResult cliValidation;
                         if (cliResult.stdout() != null && cliResult.stdout().trim().startsWith("{")) {
                             cliValidation = CliOutputParser.parseJsonOutput(cliResult.stdout());
@@ -68,7 +79,7 @@ public class OpenSpecValidateAction extends OpenSpecBaseAction {
                         }
                         finalResult = ValidationResult.merge(builtInResult, cliValidation);
                     } catch (Exception ex) {
-                        // CLI failed, use built-in only
+                        // CLI failed, use built-in only.
                         finalResult = builtInResult;
                     }
                 } else {
@@ -77,13 +88,74 @@ public class OpenSpecValidateAction extends OpenSpecBaseAction {
 
                 ValidationResult result = finalResult;
                 ApplicationManager.getApplication()
-                        .invokeLater(() -> showValidationResults(project, result));
+                        .invokeLater(() -> showValidationResults(project, result, target));
             }
         }.queue();
     }
 
-    private void showValidationResults(Project project, ValidationResult result) {
+    /** Built-in validation scoped to the target. Package-private for routing tests. */
+    static ValidationResult builtInValidate(Project project, BuiltInValidator validator,
+                                            ValidateTarget target) {
+        switch (target.kind()) {
+            case CHANGE:
+                return validator.validateChange(target.id());
+            case SPEC: {
+                List<ValidationIssue> issues = new ArrayList<>();
+                VirtualFile specsDir = OpenSpecFileUtil.getSpecsDir(project);
+                if (specsDir != null) {
+                    VirtualFile capDir = specsDir.findChild(target.id());
+                    if (capDir != null) {
+                        VirtualFile specFile = capDir.findChild("spec.md");
+                        if (specFile != null) {
+                            validator.validateSpecFilePublic(specFile, issues);
+                        }
+                    }
+                }
+                boolean passed = issues.stream()
+                        .noneMatch(i -> i.severity() == ValidationIssue.Severity.ERROR);
+                return new ValidationResult(passed, issues, "built-in");
+            }
+            case WHOLE_PROJECT:
+            default:
+                return validator.validateAll();
+        }
+    }
+
+    /** CLI argument vector for the target's validate invocation. */
+    private static String[] cliArgs(ValidateTarget target) {
+        List<String> args = new ArrayList<>();
+        args.add("validate");
+        if (target.isWholeProject()) {
+            args.add("--all");
+        } else {
+            args.add(target.id());
+            args.add("--type");
+            args.add(target.cliType());
+        }
+        args.add("--json");
+        return args.toArray(new String[0]);
+    }
+
+    /** The command string echoed to the console, mirroring {@link #cliArgs}. */
+    private static String commandLine(ValidateTarget target) {
+        if (target.isWholeProject()) {
+            return "openspec validate --all";
+        }
+        return "openspec validate " + target.id() + " --type " + target.cliType();
+    }
+
+    /** Human label for the scoped target, used in the task title and console/notification text. */
+    private static String describeTarget(ValidateTarget target) {
+        return switch (target.kind()) {
+            case SPEC -> "Spec `" + target.id() + "`";
+            case CHANGE -> "Change `" + target.id() + "`";
+            case WHOLE_PROJECT -> "whole project";
+        };
+    }
+
+    private void showValidationResults(Project project, ValidationResult result, ValidateTarget target) {
         StringBuilder sb = new StringBuilder();
+        sb.append("Target: ").append(describeTarget(target)).append("\n");
         sb.append("Validation ").append(result.passed() ? "PASSED" : "FAILED");
         sb.append(" (source: ").append(result.source()).append(")\n");
         sb.append("Errors: ").append(result.errorCount());
@@ -106,20 +178,21 @@ public class OpenSpecValidateAction extends OpenSpecBaseAction {
             sb.append("\n");
         }
 
+        String scope = describeTarget(target);
         if (result.passed()) {
             OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_VALIDATION, "Validate",
-                    "Validation passed (" + result.warningCount() + " warnings)",
+                    scope + " passed (" + result.warningCount() + " warnings)",
                     com.intellij.notification.NotificationType.INFORMATION);
         } else {
             OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_VALIDATION, "Validate",
-                    "Validation failed (" + result.errorCount() + " errors, " + result.warningCount() + " warnings)",
+                    scope + " failed (" + result.errorCount() + " errors, " + result.warningCount() + " warnings)",
                     com.intellij.notification.NotificationType.ERROR);
         }
 
-        showInConsole(project, sb.toString(), result.passed());
+        showInConsole(project, sb.toString(), result.passed(), target);
     }
 
-    private void showInConsole(Project project, String text, boolean success) {
+    private void showInConsole(Project project, String text, boolean success, ValidateTarget target) {
         OpenSpecConsoleService consoleService = project.getService(OpenSpecConsoleService.class);
         OpenSpecConsolePanel console = consoleService != null ? consoleService.getAndActivate() : null;
 
@@ -131,7 +204,7 @@ public class OpenSpecValidateAction extends OpenSpecBaseAction {
         }
 
         console.clear();
-        console.printCommand("openspec validate --all");
+        console.printCommand(commandLine(target));
         if (success) {
             console.printOutput(text);
         } else {
