@@ -3,6 +3,7 @@ package com.johnnyblabs.openspec.toolwindow;
 import com.intellij.execution.ui.ConsoleViewContentType;
 import com.intellij.openapi.util.io.FileUtil;
 import com.intellij.openapi.vfs.LocalFileSystem;
+import com.intellij.openapi.vfs.newvfs.impl.VfsRootAccess;
 import com.intellij.testFramework.fixtures.BasePlatformTestCase;
 import com.johnnyblabs.openspec.validation.ValidationIssue.Severity;
 
@@ -71,7 +72,14 @@ public class OpenSpecConsolePanelTest extends BasePlatformTestCase {
         assertTrue(nested.mkdirs());
         File config = new File(nested, "config.yaml");
         FileUtil.writeToFile(config, "schema: spec-driven\n");
-        LocalFileSystem.getInstance().refreshAndFindFileByPath(base.getCanonicalPath());
+        // resolveFile uses the non-refreshing findFileByPath (as production does — the validated
+        // file is already in VFS). Whitelist the temp root and prime the EXACT nested file into the
+        // VFS cache (like the sibling temp-file tests) so findFileByPath hits the cache instead of
+        // walking persistence and tripping the test VfsRootAccess guard: on CI the temp dir lands
+        // outside the default allowed roots. Refreshing only the base dir (not the nested file) was
+        // the gap that let this fail on Linux while passing on the author's macOS temp layout.
+        VfsRootAccess.allowRootAccess(getTestRootDisposable(), base.getCanonicalPath());
+        LocalFileSystem.getInstance().refreshAndFindFileByPath(config.getCanonicalPath());
 
         assertNotNull("openspec/config.yaml must resolve against the project base",
                 OpenSpecConsolePanel.resolveFile("openspec/config.yaml", base.getCanonicalPath()));
