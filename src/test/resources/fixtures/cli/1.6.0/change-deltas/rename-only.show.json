@@ -1,0 +1,20 @@
+{
+  "id": "rename-only",
+  "title": "rename-only",
+  "deltaCount": 1,
+  "deltas": [
+    {
+      "spec": "billing",
+      "operation": "RENAMED",
+      "description": "Rename requirement from \"Old charge name\" to \"Card charge\"",
+      "rename": {
+        "from": "Old charge name",
+        "to": "Card charge"
+      }
+    }
+  ],
+  "root": {
+    "path": "/fixture",
+    "source": "nearest"
+  }
+}

@@ -110,16 +110,31 @@ can be collapsed.
 - **Single-click** a node to render its document in the pane; **double-click** still opens the real
   file in the editor. The pane is always read-only — editing stays in the editor.
 - **Per node type.** The preview renders a **main capability spec** (`specs/<capability>/spec.md`), a
-  change's **proposal / design / tasks**, or a change's **delta spec**
-  (`changes/<change>/specs/<capability>/spec.md`). A main spec and a delta spec are interpreted
-  according to their own structure and never conflated.
-- **Delta operation badges.** In a delta-spec preview, the `ADDED` / `MODIFIED` / `REMOVED` /
-  `RENAMED` operation headers are visually badged so a change's proposed deltas read at a glance.
+  change's **proposal / design / tasks**, a change's **delta spec**
+  (`changes/<change>/specs/<capability>/spec.md`), or — for a **change** node — a **consolidated
+  deltas view** (below). A main spec and a delta spec are interpreted according to their own
+  structure and never conflated.
+- **Consolidated change-deltas view.** Selecting a **change** node renders a read-only, at-a-glance
+  view of everything that change modifies at the spec level: a header and a one-line summary
+  (capabilities touched · counts per operation), then each capability grouped together, then each
+  operation (`ADDED` / `MODIFIED` / `REMOVED` / `RENAMED`) with the same badges as a delta-spec
+  preview, then each requirement's text and scenarios. The assembled delta set is sourced from the
+  **OpenSpec CLI** (`openspec show <change>`) — never hand-assembled from files — and capability
+  groups are shown in a stable alphabetical order. A `RENAMED` delta shows its from→to without a
+  requirement body. Each capability section offers a **Preview diff** link that opens that
+  capability's delta-vs-current-main diff, so the consolidated *reading* view and the per-capability
+  *machine diff* complement each other. A change with no spec deltas shows an informative empty
+  state; when the CLI is unavailable the view shows a placeholder (individual delta-spec files still
+  preview without the CLI).
+- **Delta operation badges.** In a delta-spec preview — and in the consolidated deltas view — the
+  `ADDED` / `MODIFIED` / `REMOVED` / `RENAMED` operation headers are visually badged so a change's
+  proposed deltas read at a glance.
 - **Requirement anchoring.** Selecting a **Requirement** node scrolls the preview to that
   requirement's section rather than resetting to the top.
-- **On-model.** The preview renders the source markdown of your own files. It does not synthesize,
-  score, or show per-spec status/coverage; change-owned state (delta assembly, task progress) is
-  sourced from the OpenSpec CLI, never recomputed from files.
+- **On-model.** The preview renders the source markdown of your own files, or (for the deltas view)
+  the delta set the CLI reports. It does not synthesize a post-apply "effective" spec, and it does
+  not score or show per-spec/per-delta status, progress, or coverage; change-owned state (delta
+  assembly, task progress) is sourced from the OpenSpec CLI, never recomputed from files.
 
 Rendering runs off the UI thread (the file is read and rendered on a background thread, then the pane
 is updated on the UI thread), so selection stays responsive.

@@ -84,3 +84,17 @@ of what this generation changed:
   `healthy: true` with per-directory `present: false`; new refusal codes
   `invalid_store_pointer`, `store_root_pointer_declared`; new
   `store_register_identity_confirmation_required` envelope.
+- `change-deltas/{mixed,rename-only,empty}.show.json` — the real 1.6.0 CLI's
+  `openspec show <change> --type change --json` (stdout only; the command also prints a
+  spurious `Warning: Ignoring flags not applicable to change: scenarios` to stderr on
+  success, which is discarded). Consumed by `ChangeDeltasContractTest`. `mixed` spans two
+  capabilities (`auth`, `billing`) with all four operations — ADDED+MODIFIED under `auth`,
+  REMOVED+RENAMED under `billing` (`deltaCount: 4`); `rename-only` isolates the
+  requirement-less RENAMED branch; `empty` is `deltaCount: 0`. Verified shape: every
+  non-RENAMED delta carries BOTH a singular `requirement{text,scenarios[].rawText}` and a
+  one-element `requirements[]` mirror (so `requirement == requirements[0]`); REMOVED carries
+  `requirement.text` with `scenarios: []`; only RENAMED is requirement-less (`rename{from,to}`).
+  Re-capture (per CLI generation): under an isolated `HOME`/`XDG_*` env, `openspec init`, seed
+  main specs for the MODIFY/REMOVE/RENAME targets under `openspec/specs/<cap>/spec.md`, author a
+  change with the four delta operations across two capabilities, then run `show` per change id
+  and `sed` the project root path to `/fixture` (`root.path` is the only sanitized field).

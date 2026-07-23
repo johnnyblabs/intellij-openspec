@@ -1,0 +1,81 @@
+{
+  "id": "mixed-change",
+  "title": "mixed-change",
+  "deltaCount": 4,
+  "deltas": [
+    {
+      "spec": "auth",
+      "operation": "ADDED",
+      "description": "Add requirement: The system SHALL require a second authentication factor after a successful password check.",
+      "requirement": {
+        "text": "The system SHALL require a second authentication factor after a successful password check.",
+        "scenarios": [
+          {
+            "rawText": "- **WHEN** a user passes the password check\n- **THEN** a one-time code is required before access is granted"
+          }
+        ]
+      },
+      "requirements": [
+        {
+          "text": "The system SHALL require a second authentication factor after a successful password check.",
+          "scenarios": [
+            {
+              "rawText": "- **WHEN** a user passes the password check\n- **THEN** a one-time code is required before access is granted"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "spec": "auth",
+      "operation": "MODIFIED",
+      "description": "Modify requirement: Users SHALL log in with a username and password, subject to rate limiting.",
+      "requirement": {
+        "text": "Users SHALL log in with a username and password, subject to rate limiting.",
+        "scenarios": [
+          {
+            "rawText": "- **WHEN** a user submits valid credentials within the rate limit\n- **THEN** access is granted"
+          }
+        ]
+      },
+      "requirements": [
+        {
+          "text": "Users SHALL log in with a username and password, subject to rate limiting.",
+          "scenarios": [
+            {
+              "rawText": "- **WHEN** a user submits valid credentials within the rate limit\n- **THEN** access is granted"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "spec": "billing",
+      "operation": "REMOVED",
+      "description": "Remove requirement: The system SHALL retain legacy invoice records.",
+      "requirement": {
+        "text": "The system SHALL retain legacy invoice records.",
+        "scenarios": []
+      },
+      "requirements": [
+        {
+          "text": "The system SHALL retain legacy invoice records.",
+          "scenarios": []
+        }
+      ]
+    },
+    {
+      "spec": "billing",
+      "operation": "RENAMED",
+      "description": "Rename requirement from \"Old charge name\" to \"Card charge\"",
+      "rename": {
+        "from": "Old charge name",
+        "to": "Card charge"
+      }
+    }
+  ],
+  "root": {
+    "path": "/fixture",
+    "source": "nearest"
+  }
+}

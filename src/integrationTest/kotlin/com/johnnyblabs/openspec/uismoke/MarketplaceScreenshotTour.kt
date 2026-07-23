@@ -168,6 +168,21 @@ class MarketplaceScreenshotTour {
 
         // 1.6 register needs: a config.yaml, a git history, and --yes on a never-a-store root.
         Files.writeString(projectPath.resolve("openspec/config.yaml"), "schema: spec-driven\n")
+        // Give the demo change a spec-level delta so shot 08 (consolidated deltas view) has an
+        // ADDED requirement to badge. The `greeting` main spec already exists in the demo project.
+        val demoDelta = projectPath.resolve("openspec/changes/demo-add-farewell/specs/greeting/spec.md")
+        Files.createDirectories(demoDelta.parent)
+        Files.writeString(demoDelta,
+            """
+            ## ADDED Requirements
+
+            ### Requirement: Farewell message
+            The system SHALL bid the user farewell when the session ends.
+
+            #### Scenario: Session ends
+            - **WHEN** the user ends the session
+            - **THEN** a farewell message is shown
+            """.trimIndent() + "\n")
         git(projectPath, "init", "-q")
         git(projectPath, "-c", "user.email=demo@example.com", "-c", "user.name=Demo", "add", "-A")
         git(projectPath, "-c", "user.email=demo@example.com", "-c", "user.name=Demo",
@@ -287,6 +302,21 @@ class MarketplaceScreenshotTour {
                 }
             }
             snap("07-spec-preview")
+
+            // 08 — consolidated change deltas: select the change NODE (its path is the change dir,
+            // not a .md file), which renders the CLI-sourced deltas grouped by capability with the
+            // operation badges. The pane's accessible name flips to the badged change-deltas marker
+            // only after a successful CLI→parse→render with an op badge present.
+            ideFrame {
+                val browseTree = tree("//div[@class='Tree']")
+                browseTree.expandPath("OpenSpec", "Changes", fullMatch = false)
+                browseTree.clickPath("OpenSpec", "Changes", "demo-add-farewell", fullMatch = false)
+                waitUntil("preview pane renders the change's consolidated deltas") {
+                    x { byAccessibleName("OpenSpec preview change deltas badged") }.present()
+                }
+            }
+            snap("08-change-deltas")
+
             // Restore the normal docked layout so the remaining shots frame the editor + tool window.
             setOpenSpecMaximized(false)
 
@@ -352,7 +382,7 @@ class MarketplaceScreenshotTour {
         // Screen Recording permission, AWT Robot returns the bare desktop wallpaper —
         // large enough to pass a size check but byte-identical across all shots.
         val emitted = listOf("01-spec-browser", "02-change-workflow", "03-validation-quickfix",
-            "04-coordination-stores", "06-update-legacy-cleanup", "07-spec-preview")
+            "04-coordination-stores", "06-update-legacy-cleanup", "07-spec-preview", "08-change-deltas")
         val small = emitted.filter { Files.size(outputDir.resolve("$it.png")) < 50_000 }
         check(small.isEmpty()) { "suspiciously small captures (blank?): $small" }
         val distinctSizes = emitted.map { Files.size(outputDir.resolve("$it.png")) }.distinct()
