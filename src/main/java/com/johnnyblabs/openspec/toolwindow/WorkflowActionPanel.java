@@ -23,6 +23,9 @@ import com.intellij.ui.components.JBTextArea;
 import com.intellij.ui.components.JBTextField;
 import com.intellij.util.ui.JBUI;
 import com.johnnyblabs.openspec.ai.AiApiException;
+import com.johnnyblabs.openspec.ai.AiCredentialStore;
+import com.johnnyblabs.openspec.ai.AiModelOptions;
+import com.johnnyblabs.openspec.ai.AiProvider;
 import com.johnnyblabs.openspec.ai.DeliveryMode;
 import com.johnnyblabs.openspec.ai.DirectApiService;
 import com.johnnyblabs.openspec.validation.BuiltInValidator;
@@ -105,6 +108,8 @@ public class WorkflowActionPanel extends JPanel {
     // Tool selector
     private final JComboBox<String> toolSelector;
     private final JBLabel noToolsLabel;
+    // Model selector (Direct-API-only; mirrors the tool/delivery selector)
+    private final JComboBox<String> modelSelector;
 
     // Icon action bar
     private final JButton applyIconButton;
@@ -155,6 +160,11 @@ public class WorkflowActionPanel extends JPanel {
     private Runnable onRefreshRequested;
     private boolean updatingCombo;
     private boolean updatingToolSelector;
+    private boolean updatingModelSelector;
+    // Providers whose live model list we've already tried to fetch this session (EDT-only). Dedups the
+    // fetch to once-per-provider even when it fails or returns empty (which don't warm the shared cache),
+    // so a blocked/erroring models endpoint doesn't re-hit the network on every DAG refresh.
+    private final java.util.Set<AiProvider> modelFetchTriggered = java.util.EnumSet.noneOf(AiProvider.class);
     private ArtifactFileWatcher activeWatcher;
     private Component lastClickedChip;
     private JBPopup activeGuidancePopup;
@@ -270,6 +280,9 @@ public class WorkflowActionPanel extends JPanel {
         // Tool selector
         toolSelector = new JComboBox<>();
         toolSelector.addActionListener(e -> onToolSelectionChanged());
+        modelSelector = new JComboBox<>();
+        modelSelector.setEditable(true);
+        modelSelector.addActionListener(e -> onModelSelectionChanged());
 
         noToolsLabel = new JBLabel(
                 "<html><small>Configure an AI tool or API key to get started.</small></html>");
@@ -332,10 +345,13 @@ public class WorkflowActionPanel extends JPanel {
 
         toolSelector.setMaximumRowCount(10);
         toolSelector.setPrototypeDisplayValue("Direct API  [API]xx");
+        modelSelector.setMaximumRowCount(12);
+        modelSelector.setPrototypeDisplayValue("gemini-3.5-flash-lite-xx");
 
         JPanel toolRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, JBUI.scale(4), 0));
         toolRow.setOpaque(false);
         toolRow.add(noToolsLabel);
+        toolRow.add(modelSelector);
         toolRow.add(toolSelector);
         headerRow.add(toolRow, BorderLayout.EAST);
 
@@ -382,6 +398,8 @@ public class WorkflowActionPanel extends JPanel {
 
         // Populate tool selector
         populateToolSelector();
+        populateModelSelector();
+        updateModelSelectorVisibility();
         updateDeliveryModeLabel();
     }
 
@@ -552,6 +570,8 @@ public class WorkflowActionPanel extends JPanel {
         settings.setPreferredTool(ts.toolName);
         settings.setPreferredDeliveryMethod(ts.mode.name());
 
+        // The model selector is Direct-API-only, so its visibility follows the delivery mode.
+        updateModelSelectorVisibility();
         // Update status strip delivery mode
         updateDeliveryModeLabel();
     }
@@ -586,18 +606,112 @@ public class WorkflowActionPanel extends JPanel {
         return parseToolSelection(selected).toolName;
     }
 
-    private String getDeliveryModeLabel() {
-        String selected = (String) toolSelector.getSelectedItem();
-        ToolSelection ts = parseToolSelection(selected);
-        return switch (ts.mode) {
+    /**
+     * The status-strip fragment for the current delivery mode, including the model when Direct API is
+     * active (e.g. {@code " \u00B7 gemini-3.5-flash \u00B7 Direct API"}). Pure + static so it is unit-testable as
+     * production code \u2014 not a test-local reimplementation.
+     */
+    static String deliveryModeStatusText(DeliveryMode mode, String toolName, String model) {
+        String label = switch (mode) {
             case DIRECT_API -> "Direct API";
             case EDITOR_TAB -> "Editor Tab";
-            case CLIPBOARD -> ts.toolName.isBlank() ? "Clipboard" : "Clipboard: " + ts.toolName;
+            case CLIPBOARD -> (toolName == null || toolName.isBlank()) ? "Clipboard" : "Clipboard: " + toolName;
         };
+        // Model is meaningful only for Direct API; show it before the mode when present.
+        if (mode == DeliveryMode.DIRECT_API && model != null && !model.isBlank()) {
+            return " \u00B7 " + model + " \u00B7 " + label;
+        }
+        return " \u00B7 " + label;
     }
 
     private void updateDeliveryModeLabel() {
-        deliveryModeStatusLabel.setText(" \u00B7 " + getDeliveryModeLabel());
+        deliveryModeStatusLabel.setText(
+                deliveryModeStatusText(getSelectedDeliveryMode(), getSelectedToolName(), getSelectedModel()));
+    }
+
+    // --- Model selector (Direct-API-only; mirrors the tool/delivery selector) ---
+
+    private String getSelectedModel() {
+        Object selected = modelSelector.getSelectedItem();
+        return selected != null ? selected.toString().trim() : "";
+    }
+
+    private void onModelSelectionChanged() {
+        if (updatingModelSelector) return;
+        // The model persists to the same setting operations resolve through (DirectApiService.getModel),
+        // so no operation signature changes \u2014 the selection here is what generate/FF/Continue/Explore use.
+        OpenSpecSettings.getInstance(project).setAiModel(getSelectedModel());
+        updateDeliveryModeLabel();
+    }
+
+    private void updateModelSelectorVisibility() {
+        DirectApiService apiService = project.getService(DirectApiService.class);
+        boolean directApi = getSelectedDeliveryMode() == DeliveryMode.DIRECT_API
+                && apiService != null && apiService.isConfigured();
+        modelSelector.setVisible(directApi);
+        modelSelector.setEnabled(directApi);
+    }
+
+    /**
+     * Fills the model selector: an immediate, no-network fill from the per-session discovered cache
+     * (warm) or the static default list (cold), always preserving the current selection via
+     * {@link AiModelOptions#resolve}; then, when Direct API is configured and the cache is cold, a single
+     * off-EDT list-models fetch that repopulates on the EDT.
+     */
+    private void populateModelSelector() {
+        OpenSpecSettings settings = OpenSpecSettings.getInstance(project);
+        AiProvider provider = AiProvider.fromString(settings.getAiProvider());
+        String current = settings.getAiModel();
+
+        DirectApiService apiService = project.getService(DirectApiService.class);
+        boolean configured = apiService != null && apiService.isConfigured();
+
+        // Immediate fill from the session cache (warm) or the static fallback (cold). No network.
+        List<String> cached = apiService != null ? apiService.getDiscoveredModels(provider) : null;
+        boolean warm = cached != null && !cached.isEmpty();
+        applyModelSelectorOptions(AiModelOptions.resolve(cached, warm, provider.getModels(), current));
+
+        // Cold + Direct API configured + not already attempted this session: fetch the live list off the
+        // EDT, then repopulate on the EDT. modelFetchTriggered.add(...) returns true only the first time,
+        // so a failed/empty fetch (which never warms the cache) is not retried on every refresh.
+        if (configured && !warm && provider != AiProvider.NONE && modelFetchTriggered.add(provider)) {
+            com.intellij.openapi.application.ModalityState modality =
+                    com.intellij.openapi.application.ModalityState.stateForComponent(this);
+            ApplicationManager.getApplication().executeOnPooledThread(() -> {
+                String key = AiCredentialStore.getApiKey(provider);
+                List<String> fetched = null;
+                boolean ok = false;
+                try {
+                    fetched = apiService.listModels(provider, key);
+                    ok = true;
+                } catch (Exception ignored) {
+                    // Fetch failed \u2014 keep the static fill already shown.
+                }
+                List<String> result = fetched;
+                boolean fetchOk = ok;
+                ApplicationManager.getApplication().invokeLater(() -> {
+                    OpenSpecSettings s = OpenSpecSettings.getInstance(project);
+                    // Guard against a provider switch while the fetch was in flight.
+                    if (AiProvider.fromString(s.getAiProvider()) == provider) {
+                        applyModelSelectorOptions(
+                                AiModelOptions.resolve(result, fetchOk, provider.getModels(), s.getAiModel()));
+                    }
+                }, modality);
+            });
+        }
+    }
+
+    private void applyModelSelectorOptions(AiModelOptions.Resolution resolution) {
+        updatingModelSelector = true;
+        try {
+            modelSelector.removeAllItems();
+            for (String model : resolution.options()) {
+                modelSelector.addItem(model);
+            }
+            modelSelector.setSelectedItem(resolution.selection());
+        } finally {
+            updatingModelSelector = false;
+        }
     }
 
     // --- Change selector ---
@@ -712,6 +826,8 @@ public class WorkflowActionPanel extends JPanel {
             // Update icon bar and status strip
             updateIconBarState();
             checkDeltaSpecs();
+            populateModelSelector();
+            updateModelSelectorVisibility();
             updateDeliveryModeLabel();
             updateSchemaModeLabel(ctx);
 
@@ -1998,7 +2114,8 @@ public class WorkflowActionPanel extends JPanel {
         // Status strip is already being updated by the listener callbacks
         // Just update the elapsed time portion
         long elapsed = (System.nanoTime() - generateAllStartNanos) / 1_000_000_000L;
-        deliveryModeStatusLabel.setText(" \u00B7 " + formatElapsed(elapsed) + " \u00B7 Direct API");
+        deliveryModeStatusLabel.setText(" \u00B7 " + formatElapsed(elapsed)
+                + deliveryModeStatusText(DeliveryMode.DIRECT_API, "", getSelectedModel()));
     }
 
     private void updateGenerateAllStatusText(int completed, int total) {
@@ -2006,7 +2123,8 @@ public class WorkflowActionPanel extends JPanel {
         verifyStatusLabel.setText("Generating " + (completed + 1) + "/" + total + "...");
         verifyStatusLabel.setForeground(COLOR_GENERATING);
         taskProgressStatusLabel.setVisible(false);
-        deliveryModeStatusLabel.setText(" \u00B7 " + formatElapsed(elapsed) + " \u00B7 Direct API");
+        deliveryModeStatusLabel.setText(" \u00B7 " + formatElapsed(elapsed)
+                + deliveryModeStatusText(DeliveryMode.DIRECT_API, "", getSelectedModel()));
     }
 
     private String formatElapsed(long seconds) {
