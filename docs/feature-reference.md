@@ -254,6 +254,8 @@ Detected tools appear in bold in the settings panel and are available as clipboa
 
 API keys are stored securely in your operating system's keychain via IntelliJ's PasswordSafe — never saved in project files.
 
+**Model discovery.** The Model dropdown is populated from your provider account, not a hardcoded list. Clicking **Test** fetches your account's available models with your key — a free request that costs no tokens — and fills the dropdown with the models you can actually use; it also validates the key (a `401` means "check your API key"). If you're offline or haven't entered a key, the dropdown falls back to a built-in default list, and it stays editable so you can type any model name manually.
+
 ---
 
 ## Editor Integration

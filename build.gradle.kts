@@ -188,6 +188,12 @@ tasks.jacocoTestReport {
 // BuiltInValidatorTest cases. Measured 0.3977/0.3764/0.3762; INSTRUCTION ~0.006 below, LINE/BRANCH keep
 // extra headroom. (Note: the `required.contains("specs")` arm of the no-deltas gate is constant-true —
 // the single V1_2 baseline always requires specs — so its false branch is intentionally uncovered.)
+// RAISED 2026-09-09 (fetch-provider-models-dynamically): 0.391/0.369/0.368 → 0.398/0.378/0.373. The three
+// list-models parsers (parseOpenAi/Anthropic/GeminiModels), buildListModelsRequest, and the pure
+// AiModelOptions.resolve helper are all deterministically covered by DirectApiModelsContractTest /
+// DirectApiModelSelectionTest / the BuildListModelsRequest cases — blocks previously reachable only via a
+// live HTTP call. Measured 0.4044/0.3849/0.3808; INSTRUCTION ~0.006 below, LINE/BRANCH keep extra headroom
+// (BRANCH the volatile counter keeps the most).
 tasks.jacocoTestCoverageVerification {
     dependsOn(tasks.test)
     // Match the report: instrumented classes + the test JVM's execution data.
@@ -202,21 +208,21 @@ tasks.jacocoTestCoverageVerification {
             limit {
                 counter = "INSTRUCTION"
                 value = "COVEREDRATIO"
-                minimum = "0.391".toBigDecimal()
+                minimum = "0.398".toBigDecimal()
             }
         }
         rule {
             limit {
                 counter = "LINE"
                 value = "COVEREDRATIO"
-                minimum = "0.369".toBigDecimal()
+                minimum = "0.378".toBigDecimal()
             }
         }
         rule {
             limit {
                 counter = "BRANCH"
                 value = "COVEREDRATIO"
-                minimum = "0.368".toBigDecimal()
+                minimum = "0.373".toBigDecimal()
             }
         }
     }

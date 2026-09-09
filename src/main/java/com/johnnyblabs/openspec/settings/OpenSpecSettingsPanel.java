@@ -15,7 +15,9 @@ import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBList;
 import com.intellij.util.ui.FormBuilder;
 import com.intellij.util.ui.JBUI;
+import com.johnnyblabs.openspec.ai.AiApiException;
 import com.johnnyblabs.openspec.ai.AiCredentialStore;
+import com.johnnyblabs.openspec.ai.AiModelOptions;
 import com.johnnyblabs.openspec.ai.AiProvider;
 import com.johnnyblabs.openspec.ai.DirectApiService;
 import com.johnnyblabs.openspec.dialogs.NewSchemaDialog;
@@ -807,7 +809,6 @@ public class OpenSpecSettingsPanel {
         aiTestResultLabel.setForeground(JBColor.GRAY);
 
         AiProvider provider = getSelectedProvider();
-        String model = getAiModel();
         // Read the UI field on the EDT; the blocking PasswordSafe store/get happens in the worker below.
         final String uiKey = getApiKey();
 
@@ -818,11 +819,9 @@ public class OpenSpecSettingsPanel {
             return;
         }
 
-        // Pass current UI values directly — don't rely on persisted settings
-        final String apiModel = model;
-        new SwingWorker<String, Void>() {
+        new SwingWorker<List<String>, Void>() {
             @Override
-            protected String doInBackground() throws Exception {
+            protected List<String> doInBackground() throws Exception {
                 // Credential store I/O is blocking (@RequiresBackgroundThread) — do it here, off the EDT.
                 String key = uiKey;
                 if (key != null && !key.isBlank() && !key.equals(API_KEY_MASK)) {
@@ -831,22 +830,50 @@ public class OpenSpecSettingsPanel {
                     // Masked key means use the already-stored one
                     key = AiCredentialStore.getApiKey(provider);
                 }
-                return apiService.testConnection(provider, key, apiModel);
+                // Validate the key by listing the account's models — a free GET, no token cost — and
+                // return them to populate the selector. Network I/O runs here, off the EDT.
+                return apiService.listModels(provider, key);
             }
 
             @Override
             protected void done() {
+                // done() runs on the EDT, so the combo mutation below is EDT-safe.
                 try {
-                    String result = get();
-                    aiTestResultLabel.setText(result);
+                    List<String> models = get();
+                    applyModelOptions(provider, models, true);
+                    // A 200 with no models means the key is valid but nothing was returned — applyModelOptions
+                    // shows the static defaults, so say that rather than the misleading "0 models".
+                    aiTestResultLabel.setText(models.isEmpty()
+                            ? "Connected — no models returned; showing defaults"
+                            : "Connected — " + models.size() + " models");
                     aiTestResultLabel.setForeground(new JBColor(new Color(0, 128, 0), new Color(100, 210, 100)));
                 } catch (Exception e) {
-                    String msg = e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
+                    Throwable cause = e.getCause() != null ? e.getCause() : e;
+                    int status = (cause instanceof AiApiException aae) ? aae.getStatusCode() : 0;
+                    String msg = (status == 401 || status == 403)
+                            ? "Check your API key"
+                            : (cause.getMessage() != null ? cause.getMessage() : "Connection failed");
                     aiTestResultLabel.setText("Failed: " + msg);
                     aiTestResultLabel.setForeground(JBColor.RED);
+                    // Never leave the selector empty — fall back to the static list, keeping the selection.
+                    applyModelOptions(provider, null, false);
                 }
             }
         }.execute();
+    }
+
+    /**
+     * Applies a resolved model list to the editable Model selector, preserving the user's current
+     * selection (see {@link AiModelOptions}). Call on the EDT — it mutates the combo.
+     */
+    private void applyModelOptions(AiProvider provider, List<String> fetched, boolean fetchOk) {
+        AiModelOptions.Resolution resolution =
+                AiModelOptions.resolve(fetched, fetchOk, provider.getModels(), getAiModel());
+        aiModelCombo.removeAllItems();
+        for (String model : resolution.options()) {
+            aiModelCombo.addItem(model);
+        }
+        aiModelCombo.setSelectedItem(resolution.selection());
     }
 
     // --- Public accessors ---

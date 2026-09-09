@@ -27,3 +27,30 @@ Transcribed 2026-08-02 for change `fix-direct-api-provider-compliance`. Structur
 nesting and the read paths above) is what the contract tests assert; the exact text strings are read
 from these files, so refreshing a fixture to a newer documented example is safe as long as the shape
 is preserved.
+
+## List-models fixtures — provenance
+
+These back the list-models parser contract tests in `DirectApiModelsContractTest` (change
+`fetch-provider-models-dynamically`). Unlike the response fixtures above, the Gemini one is a **live
+capture** — the maintainer holds a free Google AI Studio key, so its list-models `GET` is exercisable
+for real. OpenAI and Anthropic remain doc-sourced (no paid keys); re-capture them from a live key when
+one is available, diff, and fix the parser on any mismatch.
+
+| File | Provider | Provenance | Key path the parser reads |
+|------|----------|-----------|---------------------------|
+| `openai/models-list.json` | OpenAI | **DOCS** — models/list example (`platform.openai.com/docs/api-reference/models/list`); the page is 403 to automated fetch, so the example was corroborated field-for-field via web search 2026-09-09 | `data[].id` (show-all — see note) |
+| `claude/models-list.json` | Anthropic | **DOCS** — List Models 200 example (`platform.claude.com/docs/en/api/models-list`), fetched verbatim 2026-09-09 (single `claude-opus-5` entry with the full `capabilities` object) | `data[].id` (never `display_name`) |
+| `gemini/models-list.json` | Google Gemini | **LIVE** — captured from a free AI Studio key via `GET /v1beta/models?pageSize=1000` on 2026-09-09; `nextPageToken` dropped, trimmed to a representative set that **keeps at least one non-`generateContent` (embedding) entry** | `models[]` filtered to `supportedGenerationMethods` ∋ `generateContent`, `models/` prefix stripped |
+
+**Gemini is the first *live* fixture in this dir** — do not "re-capture it away" to a documented
+example; it is the stronger artifact. The embedding entry is **load-bearing**: it is what exercises
+the `generateContent` filter's negative branch. Do not remove it when refreshing.
+
+**OpenAI filter deferred (show-all):** `parseOpenAiModels` returns every `data[].id` — OpenAI's list
+has no per-model chat-capability flag, and the only OpenAI fixture available is the verbatim docs
+example, which contains no non-chat models to honestly test a filter against. Injecting a synthetic
+embedding id into a docs fixture to test a drop would degrade it to a hand-authored shape (the exact
+anti-pattern this dir exists to prevent). A prefix/capability filter is revisited only once a live
+OpenAI key yields a real fixture containing non-chat models. The editable selector covers the noise
+in the meantime. (Gemini keeps its filter precisely because its live fixture *does* carry the
+non-`generateContent` entry.)

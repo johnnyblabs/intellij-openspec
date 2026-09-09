@@ -289,4 +289,73 @@ class DirectApiServiceTest {
             assertTrue(AiProvider.NONE.getModels().isEmpty());
         }
     }
+
+    @Nested
+    class BuildListModelsRequest {
+
+        @Test
+        void openAiListRequestHitsModelsEndpointWithBearerAuth() {
+            var request = DirectApiService.buildListModelsRequest(AiProvider.OPENAI, "test-secret-key");
+            assertEquals("GET", request.method());
+            assertTrue(request.uri().toString().endsWith("/v1/models"),
+                    "OpenAI list endpoint must be /v1/models: " + request.uri());
+            assertEquals("Bearer test-secret-key",
+                    request.headers().firstValue("Authorization").orElse(null));
+            assertFalse(request.uri().toString().contains("test-secret-key"),
+                    "URL must not contain the API key: " + request.uri());
+        }
+
+        @Test
+        void anthropicListRequestSendsKeyAndVersionHeaders() {
+            var request = DirectApiService.buildListModelsRequest(AiProvider.CLAUDE, "test-secret-key");
+            assertEquals("GET", request.method());
+            assertTrue(request.uri().toString().endsWith("/v1/models"),
+                    "Anthropic list endpoint must be /v1/models: " + request.uri());
+            assertEquals("test-secret-key", request.headers().firstValue("x-api-key").orElse(null));
+            assertEquals("2023-06-01", request.headers().firstValue("anthropic-version").orElse(null));
+            assertFalse(request.uri().toString().contains("test-secret-key"),
+                    "URL must not contain the API key: " + request.uri());
+        }
+
+        @Test
+        void geminiListRequestSendsKeyHeaderNotInUrl() {
+            var request = DirectApiService.buildListModelsRequest(AiProvider.GEMINI, "test-secret-key");
+            assertEquals("GET", request.method());
+            String url = request.uri().toString();
+            assertTrue(url.startsWith("https://generativelanguage.googleapis.com/v1beta/models"),
+                    "Gemini list endpoint must be the v1beta models collection: " + url);
+            assertEquals("test-secret-key", request.headers().firstValue("x-goog-api-key").orElse(null));
+            assertFalse(url.contains("test-secret-key"), "URL must not contain the API key: " + url);
+        }
+
+        @Test
+        void noneProviderIsRejected() {
+            assertThrows(IllegalArgumentException.class,
+                    () -> DirectApiService.buildListModelsRequest(AiProvider.NONE, "k"));
+        }
+    }
+
+    @Nested
+    class ListModels {
+        // The guard clauses throw before any network call, so they are cheaply testable off-network.
+
+        @Test
+        void noneProviderThrows() {
+            AiApiException ex = assertThrows(AiApiException.class,
+                    () -> service.listModels(AiProvider.NONE, "k"));
+            assertTrue(ex.getMessage().contains("No AI provider"));
+        }
+
+        @Test
+        void nullKeyThrows() {
+            AiApiException ex = assertThrows(AiApiException.class,
+                    () -> service.listModels(AiProvider.CLAUDE, null));
+            assertTrue(ex.getMessage().contains("No API key"));
+        }
+
+        @Test
+        void blankKeyThrows() {
+            assertThrows(AiApiException.class, () -> service.listModels(AiProvider.CLAUDE, "   "));
+        }
+    }
 }

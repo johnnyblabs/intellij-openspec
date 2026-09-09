@@ -29,6 +29,13 @@ public final class DirectApiService {
     private static final String OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
     private static final String GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/";
 
+    // List-models endpoints (the free GET used to validate the key and discover the account's models).
+    private static final String CLAUDE_MODELS_URL = "https://api.anthropic.com/v1/models";
+    private static final String OPENAI_MODELS_URL = "https://api.openai.com/v1/models";
+    // pageSize=1000 returns every model in one page (the default page is ~50). The key rides the
+    // x-goog-api-key header, never the URL, matching buildGeminiRequest.
+    private static final String GEMINI_MODELS_URL = "https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000";
+
     private final Project project;
 
     public DirectApiService(Project project) {
@@ -348,6 +355,121 @@ public final class DirectApiService {
             throw e;
         } catch (Exception e) {
             throw new AiApiException("Gemini API call failed: " + e.getMessage(), e);
+        }
+    }
+
+    // --- Model discovery (list-models) ---
+
+    /**
+     * Builds the list-models {@code GET} for a provider, reusing the same auth headers as generation.
+     * Extracted (mirroring {@link #buildGeminiRequest}) so the endpoint/headers are assertable and so
+     * the key is verified this can never be embedded in the URL.
+     */
+    static HttpRequest buildListModelsRequest(AiProvider provider, String apiKey) {
+        HttpRequest.Builder builder = HttpRequest.newBuilder().timeout(TIMEOUT).GET();
+        switch (provider) {
+            case OPENAI -> builder.uri(URI.create(OPENAI_MODELS_URL))
+                    .header("Authorization", "Bearer " + apiKey);
+            case CLAUDE -> builder.uri(URI.create(CLAUDE_MODELS_URL))
+                    .header("x-api-key", apiKey)
+                    .header("anthropic-version", ANTHROPIC_VERSION);
+            case GEMINI -> builder.uri(URI.create(GEMINI_MODELS_URL))
+                    .header("x-goog-api-key", apiKey);
+            case NONE -> throw new IllegalArgumentException("No AI provider selected");
+        }
+        return builder.build();
+    }
+
+    /** OpenAI list-models shape: {@code {data:[{id}]}}. Extracted for contract-testing. */
+    static java.util.List<String> parseOpenAiModels(String body) {
+        return parseDataArrayIds(body);
+    }
+
+    /**
+     * Anthropic list-models shape: {@code {data:[{id,display_name}]}} — all entries are
+     * Messages-compatible, so the {@code id} is used directly (never {@code display_name}).
+     */
+    static java.util.List<String> parseAnthropicModels(String body) {
+        return parseDataArrayIds(body);
+    }
+
+    private static java.util.List<String> parseDataArrayIds(String body) {
+        java.util.List<String> ids = new java.util.ArrayList<>();
+        JsonArray data = JsonParser.parseString(body).getAsJsonObject().getAsJsonArray("data");
+        if (data != null) {
+            for (var el : data) {
+                JsonObject m = el.getAsJsonObject();
+                if (m.has("id")) {
+                    ids.add(m.get("id").getAsString());
+                }
+            }
+        }
+        return ids;
+    }
+
+    /**
+     * Gemini list-models shape: {@code {models:[{name:"models/…",supportedGenerationMethods:[…]}]}}.
+     * Keeps only models whose {@code supportedGenerationMethods} contains {@code generateContent}
+     * (drops embedding/answer-only models) and strips the {@code models/} name prefix. Extracted for
+     * contract-testing — the filter's negative branch is exercised by a real embedding entry in the fixture.
+     */
+    static java.util.List<String> parseGeminiModels(String body) {
+        java.util.List<String> ids = new java.util.ArrayList<>();
+        JsonArray models = JsonParser.parseString(body).getAsJsonObject().getAsJsonArray("models");
+        if (models != null) {
+            for (var el : models) {
+                JsonObject m = el.getAsJsonObject();
+                if (!m.has("name")) {
+                    continue;
+                }
+                JsonArray methods = m.getAsJsonArray("supportedGenerationMethods");
+                boolean supportsGenerate = false;
+                if (methods != null) {
+                    for (var method : methods) {
+                        if ("generateContent".equals(method.getAsString())) {
+                            supportsGenerate = true;
+                            break;
+                        }
+                    }
+                }
+                if (supportsGenerate) {
+                    String name = m.get("name").getAsString();
+                    ids.add(name.startsWith("models/") ? name.substring("models/".length()) : name);
+                }
+            }
+        }
+        return ids;
+    }
+
+    /**
+     * Fetches the account's available models for the given provider using the configured key — a free
+     * {@code GET}, no token cost, which doubles as key validation. Blocking (network I/O) — call off
+     * the EDT. Non-200 throws {@link AiApiException} via {@link #buildApiError}. Callers treat any
+     * failure (or an empty list) as a signal to fall back to the static model list.
+     */
+    public java.util.List<String> listModels(AiProvider provider, String apiKey) throws AiApiException {
+        if (provider == null || provider == AiProvider.NONE) {
+            throw new AiApiException("No AI provider selected");
+        }
+        if (apiKey == null || apiKey.isBlank()) {
+            throw new AiApiException("No API key provided for " + provider.getDisplayName());
+        }
+        try {
+            HttpRequest request = buildListModelsRequest(provider, apiKey);
+            HttpResponse<String> response = createHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() != 200) {
+                throw buildApiError(provider.getDisplayName(), response.statusCode(), response.body());
+            }
+            return switch (provider) {
+                case OPENAI -> parseOpenAiModels(response.body());
+                case CLAUDE -> parseAnthropicModels(response.body());
+                case GEMINI -> parseGeminiModels(response.body());
+                case NONE -> java.util.List.of();
+            };
+        } catch (AiApiException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new AiApiException(provider.getDisplayName() + " model list failed: " + e.getMessage(), e);
         }
     }
 
