@@ -134,6 +134,29 @@ class DirectApiFlowStructuralGuardTest {
     }
 
     @Test
+    void settingsTest_validatesByListingModelsOffTheEdt_notATokenCostingPrompt() throws IOException {
+        String content = read(SETTINGS);
+        String body = methodBody(content, "private void testApiConnection()");
+        int worker = body.indexOf("new SwingWorker");
+        assertTrue(worker >= 0, "testApiConnection must run its work in a SwingWorker");
+        // Test now validates the key by listing models — and the fetch runs in the worker, not on the
+        // EDT before it. The old token-costing test-prompt (testConnection) must be gone.
+        assertTrue(body.contains("apiService.listModels("), "Test must validate by listing models");
+        assertFalse(body.substring(0, worker).contains("listModels("),
+                "the models fetch must not run on the EDT before the worker");
+        assertFalse(body.contains(".testConnection("),
+                "the token-costing test-prompt must be replaced by the free list-models GET");
+        // Combo population is factored into applyModelOptions (called from done(), on the EDT); the
+        // combo is never mutated inline inside testApiConnection/doInBackground.
+        assertTrue(body.contains("applyModelOptions("), "done() must populate via applyModelOptions");
+        assertFalse(body.contains("aiModelCombo"),
+                "testApiConnection must not mutate the combo inline — that lives in applyModelOptions");
+        String apply = methodBody(content, "private void applyModelOptions(");
+        assertTrue(apply.contains("aiModelCombo.removeAllItems()") && apply.contains("aiModelCombo.addItem("),
+                "applyModelOptions owns the combo mutation");
+    }
+
+    @Test
     void wizardTestConnection_writesKeyInsideTheWorker() throws IOException {
         String body = methodBody(read(WIZARD_DIALOG), "private void testApiConnection()");
         int worker = body.indexOf("new SwingWorker");
