@@ -345,35 +345,39 @@ class WorkflowActionPanelTest {
 
     // --- 7.4: Status strip content in different states ---
 
-    @Test
-    void statusStrip_steady_showsVerifyStatusAndDeliveryMode() {
-        String compliance = "Not verified";
-        String deliveryMode = "Clipboard: Claude Code";
-        int taskComplete = 0;
-        int taskTotal = 0;
+    // These drive the PRODUCTION helper WorkflowActionPanel.deliveryModeStatusText (not a test-local
+    // reimplementation), so a regression in the status fragment fails the build.
 
-        String strip = buildStatusStripText(compliance, taskComplete, taskTotal, deliveryMode, false, 0, 0);
-        assertEquals("Not verified · Clipboard: Claude Code", strip);
+    @Test
+    void deliveryStatus_directApi_showsModelBeforeMode() {
+        assertEquals(" \u00B7 gemini-3.5-flash \u00B7 Direct API",
+                WorkflowActionPanel.deliveryModeStatusText(DeliveryMode.DIRECT_API, "", "gemini-3.5-flash"));
     }
 
     @Test
-    void statusStrip_withTasks_showsTaskProgress() {
-        String compliance = "\u2713 Ready to archive";
-        String deliveryMode = "Direct API";
-        int taskComplete = 3;
-        int taskTotal = 5;
-
-        String strip = buildStatusStripText(compliance, taskComplete, taskTotal, deliveryMode, false, 0, 0);
-        assertEquals("\u2713 Ready to archive · 3/5 tasks · Direct API", strip);
+    void deliveryStatus_directApi_noModel_showsModeOnly() {
+        assertEquals(" \u00B7 Direct API",
+                WorkflowActionPanel.deliveryModeStatusText(DeliveryMode.DIRECT_API, "", ""));
+        assertEquals(" \u00B7 Direct API",
+                WorkflowActionPanel.deliveryModeStatusText(DeliveryMode.DIRECT_API, "", null));
     }
 
     @Test
-    void statusStrip_generating_showsProgress() {
-        String compliance = "Not verified";
-        String deliveryMode = "Direct API";
+    void deliveryStatus_clipboard_showsToolAndOmitsModel() {
+        assertEquals(" \u00B7 Clipboard: Claude Code",
+                WorkflowActionPanel.deliveryModeStatusText(DeliveryMode.CLIPBOARD, "Claude Code", "gemini-3.5-flash"));
+        assertEquals(" \u00B7 Clipboard",
+                WorkflowActionPanel.deliveryModeStatusText(DeliveryMode.CLIPBOARD, "", null));
+        // Null tool name (not just blank) also yields the bare label.
+        assertEquals(" \u00B7 Clipboard",
+                WorkflowActionPanel.deliveryModeStatusText(DeliveryMode.CLIPBOARD, null, null));
+    }
 
-        String strip = buildStatusStripText(compliance, 0, 0, deliveryMode, true, 2, 4);
-        assertEquals("Generating 2/4... · Direct API", strip);
+    @Test
+    void deliveryStatus_editorTab_omitsModel() {
+        // Model is meaningful only for Direct API, so it must not appear for Editor Tab even if set.
+        assertEquals(" \u00B7 Editor Tab",
+                WorkflowActionPanel.deliveryModeStatusText(DeliveryMode.EDITOR_TAB, "", "gemini-3.5-flash"));
     }
 
     // --- Helpers ---
@@ -398,19 +402,6 @@ class WorkflowActionPanelTest {
             case GENERATING -> List.of("Cancel");
             default -> List.of();
         };
-    }
-
-    private String buildStatusStripText(String compliance, int taskComplete, int taskTotal,
-                                         String deliveryMode, boolean generating, int genCurrent, int genTotal) {
-        if (generating) {
-            return "Generating " + genCurrent + "/" + genTotal + "... · " + deliveryMode;
-        }
-        StringBuilder sb = new StringBuilder(compliance);
-        if (taskTotal > 0) {
-            sb.append(" · ").append(taskComplete).append("/").append(taskTotal).append(" tasks");
-        }
-        sb.append(" · ").append(deliveryMode);
-        return sb.toString();
     }
 
     private JPanel createCardPanel(CardLayout layout) {

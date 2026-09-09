@@ -44,6 +44,8 @@ class DirectApiFlowStructuralGuardTest {
             "src/main/java/com/johnnyblabs/openspec/settings/OpenSpecSettingsPanel.java";
     private static final String WORKFLOW =
             "src/main/java/com/johnnyblabs/openspec/toolwindow/WorkflowActionPanel.java";
+    private static final String SERVICE =
+            "src/main/java/com/johnnyblabs/openspec/ai/DirectApiService.java";
     private static final String FACTORY =
             "src/main/java/com/johnnyblabs/openspec/toolwindow/OpenSpecToolWindowFactory.java";
     private static final String TW_PANEL =
@@ -203,6 +205,76 @@ class DirectApiFlowStructuralGuardTest {
                 "the factory must detect state via the static GettingStartedPanel.detectState(project)");
         assertFalse(content.contains(".detectState()"),
                 "the factory must NOT call the no-arg instance detectState() — that means it built a throwaway panel");
+    }
+
+    // --- operation-time model selector guards ---
+
+    @Test
+    void modelSelectorFetch_runsOffTheEdt_warmFirst() throws IOException {
+        String body = methodBody(read(WORKFLOW), "private void populateModelSelector()");
+        int pooled = body.indexOf("executeOnPooledThread(");
+        assertTrue(pooled >= 0, "populateModelSelector must hop to a pooled thread for the network fetch");
+        // Warm-first: the per-session cache is consulted before any fetch (one fetch per session).
+        int cacheRead = body.indexOf("getDiscoveredModels(");
+        assertTrue(cacheRead >= 0 && cacheRead < pooled,
+                "the session cache must be read before the pooled fetch (warm-first)");
+        // The fetch is deduped per provider per session so a failed/empty fetch isn't retried every refresh.
+        assertTrue(body.substring(0, pooled).contains("modelFetchTriggered.add("),
+                "the fetch must be gated on a once-per-session attempt guard, not just a non-empty cache");
+        // The blocking listModels runs INSIDE the pooled lambda, never before it on the EDT.
+        assertFalse(body.substring(0, pooled).contains("listModels("),
+                "listModels must not run on the EDT before the pooled hop");
+        assertTrue(body.substring(pooled).contains("listModels("),
+                "listModels must run inside the pooled lambda");
+        // The post-fetch repopulate is posted back to the EDT via invokeLater with an explicit ModalityState.
+        String afterPooled = body.substring(pooled);
+        int later = afterPooled.indexOf("invokeLater(");
+        assertTrue(later >= 0, "the fetch result must repopulate via invokeLater");
+        assertTrue(afterPooled.substring(later).contains("applyModelSelectorOptions("),
+                "the repopulate must run inside invokeLater");
+        // The repopulate must re-check the provider — a switch while the fetch was in flight must not
+        // repopulate the selector with the stale provider's models.
+        assertTrue(afterPooled.substring(later).contains("getAiProvider()"),
+                "the invokeLater repopulate must re-check the current provider (in-flight switch guard)");
+        // The explicit ModalityState is computed for this component and passed into the invokeLater
+        // (so the repopulate is not deferred behind a modal dialog).
+        assertTrue(body.contains("ModalityState.stateForComponent("),
+                "an explicit ModalityState must be computed for the repopulate");
+        assertTrue(afterPooled.substring(later).contains("modality"),
+                "the invokeLater repopulate must be posted with the explicit ModalityState");
+    }
+
+    @Test
+    void modelSelection_persistsToAiModel_andOperationsReadIt() throws IOException {
+        String changed = methodBody(read(WORKFLOW), "private void onModelSelectionChanged()");
+        assertTrue(changed.contains("setAiModel(") && changed.contains("getSelectedModel()"),
+                "selecting a model must persist getSelectedModel() via settings.setAiModel(...)");
+        // The funnel the persistence relies on: operations still resolve the model from the setting,
+        // which is why no service signature needed to change.
+        String getModel = methodBody(read(SERVICE), "private String getModel(");
+        assertTrue(getModel.contains("getAiModel()"),
+                "operations must resolve the model via settings.getAiModel() (the funnel the combo writes)");
+    }
+
+    @Test
+    void modelSelector_gatedOnDirectApi() throws IOException {
+        String body = methodBody(read(WORKFLOW), "private void updateModelSelectorVisibility()");
+        assertTrue(body.contains("DeliveryMode.DIRECT_API"),
+                "the model selector's visibility must be gated on Direct API");
+        assertTrue(body.contains("isConfigured()"),
+                "visibility must also require a configured provider, not Direct API alone");
+        assertTrue(body.contains("modelSelector.setVisible(") || body.contains("modelSelector.setEnabled("),
+                "the visibility method must toggle the model selector");
+    }
+
+    @Test
+    void listModels_warmsSessionCacheOnSuccess() throws IOException {
+        String body = methodBody(read(SERVICE), "public java.util.List<String> listModels(");
+        int okCheck = body.indexOf("statusCode() != 200");
+        int cacheWrite = body.indexOf("discoveredModels.put(");
+        assertTrue(cacheWrite >= 0, "listModels must warm the session cache");
+        assertTrue(okCheck >= 0 && cacheWrite > okCheck,
+                "the cache write must be on the success path (after the non-200 throw)");
     }
 
     private static int countOccurrences(String haystack, String needle) {

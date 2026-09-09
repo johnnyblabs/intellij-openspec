@@ -2,6 +2,11 @@ package com.johnnyblabs.openspec.ai;
 
 import com.intellij.openapi.project.Project;
 import com.johnnyblabs.openspec.settings.OpenSpecSettings;
+import java.io.InputStream;
+import java.net.http.HttpClient;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -356,6 +361,45 @@ class DirectApiServiceTest {
         @Test
         void blankKeyThrows() {
             assertThrows(AiApiException.class, () -> service.listModels(AiProvider.CLAUDE, "   "));
+        }
+    }
+
+    @Nested
+    class SessionModelCache {
+        private String loadFixture(String path) {
+            try (InputStream in = getClass().getResourceAsStream("/fixtures/ai/" + path)) {
+                assertNotNull(in, "fixture not found: " + path);
+                return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        @Test
+        @SuppressWarnings("unchecked")
+        void listModelsWarmsCache_andAccessorDoesNotRefetch() throws Exception {
+            DirectApiService spy = spy(new DirectApiService(project));
+            HttpClient mockClient = mock(HttpClient.class);
+            doReturn(mockClient).when(spy).createHttpClient();
+
+            HttpResponse<String> resp = mock(HttpResponse.class);
+            when(resp.statusCode()).thenReturn(200);
+            // Body from the committed fixture — never a hand-written shape (parser is a contract boundary).
+            when(resp.body()).thenReturn(loadFixture("openai/models-list.json"));
+            // doReturn (untyped) avoids the HttpResponse<Object> vs <String> generic-inference mismatch.
+            doReturn(resp).when(mockClient).send(any(), any());
+
+            // Cold: nothing cached before the first fetch.
+            assertNull(spy.getDiscoveredModels(AiProvider.OPENAI));
+
+            List<String> models = spy.listModels(AiProvider.OPENAI, "k");
+            assertEquals(List.of("model-id-0", "model-id-1", "model-id-2"), models);
+
+            // Warm: the accessor returns the fetched list (write-on-success)...
+            assertEquals(models, spy.getDiscoveredModels(AiProvider.OPENAI));
+            // ...and does NOT trigger a second network call (anti-tautology: reverting the write fails the
+            // line above; making the accessor re-fetch makes this times(1) become 2).
+            verify(mockClient, times(1)).send(any(), any());
         }
     }
 }

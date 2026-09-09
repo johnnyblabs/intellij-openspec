@@ -54,7 +54,9 @@ public final class DirectApiService {
         }
     }
 
-    private HttpClient createHttpClient() {
+    // Package-private (not private) so a test can spy the service and stub the client, exercising the
+    // list-models success path + session cache without real network. Returns a JDK type — no platform API.
+    HttpClient createHttpClient() {
         return HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(30))
                 .build();
@@ -460,17 +462,34 @@ public final class DirectApiService {
             if (response.statusCode() != 200) {
                 throw buildApiError(provider.getDisplayName(), response.statusCode(), response.body());
             }
-            return switch (provider) {
+            java.util.List<String> models = switch (provider) {
                 case OPENAI -> parseOpenAiModels(response.body());
                 case CLAUDE -> parseAnthropicModels(response.body());
                 case GEMINI -> parseGeminiModels(response.body());
                 case NONE -> java.util.List.of();
             };
+            // Warm the per-session cache so the tool-window model selector and the Settings "Test"
+            // share one fetch per provider per session (in-memory only — never persisted across sessions).
+            discoveredModels.put(provider, java.util.List.copyOf(models));
+            return models;
         } catch (AiApiException e) {
             throw e;
         } catch (Exception e) {
             throw new AiApiException(provider.getDisplayName() + " model list failed: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * Per-session, in-memory cache of the last successfully fetched model list per provider (warmed by
+     * {@link #listModels}). NOT persisted — honors the {@code fetch-provider-models-dynamically} non-goal
+     * of no cross-session model-list caching.
+     */
+    private final java.util.Map<AiProvider, java.util.List<String>> discoveredModels =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** The cached model list for a provider from this session, or {@code null} if none has been fetched. */
+    public java.util.List<String> getDiscoveredModels(AiProvider provider) {
+        return provider == null ? null : discoveredModels.get(provider);
     }
 
     private AiApiException buildApiError(String providerName, int statusCode, String responseBody) {
