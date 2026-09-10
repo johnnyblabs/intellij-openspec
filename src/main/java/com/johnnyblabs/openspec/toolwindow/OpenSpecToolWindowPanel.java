@@ -20,6 +20,7 @@ import com.intellij.util.ui.JBUI;
 import com.intellij.ui.treeStructure.Tree;
 import com.intellij.openapi.Disposable;
 import com.intellij.util.Alarm;
+import com.johnnyblabs.openspec.ai.AiConfigListener;
 import com.johnnyblabs.openspec.model.ChangeDeltaModel;
 import com.johnnyblabs.openspec.util.CliJson;
 import com.johnnyblabs.openspec.util.CliRunner;
@@ -695,6 +696,13 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
                 }
             }
         });
+
+        // AI config changed at runtime (Settings applied / Setup Wizard finished): re-offer or
+        // withdraw the Direct API delivery option immediately, without waiting for an unrelated
+        // refresh. Connected via connect(this) so the subscription is released on panel dispose.
+        project.getMessageBus().connect(this).subscribe(AiConfigListener.TOPIC,
+                () -> ApplicationManager.getApplication().invokeLater(
+                        workflowPanel::refreshDeliveryOptions));
     }
 
     private void debouncedRefresh() {

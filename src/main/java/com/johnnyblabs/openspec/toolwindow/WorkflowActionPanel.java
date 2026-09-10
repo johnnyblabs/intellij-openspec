@@ -161,6 +161,10 @@ public class WorkflowActionPanel extends JPanel {
     private boolean updatingCombo;
     private boolean updatingToolSelector;
     private boolean updatingModelSelector;
+    // Last-seen "is a Direct API provider configured" state, so a mid-session transition (a key added
+    // or removed in Settings / the Setup Wizard after this panel was built) can re-run the
+    // constructor-only populateToolSelector() to add or withdraw the "Direct API" delivery item.
+    private boolean lastHasApi;
     // Providers whose live model list we've already tried to fetch this session (EDT-only). Dedups the
     // fetch to once-per-provider even when it fails or returns empty (which don't warm the shared cache),
     // so a blocked/erroring models endpoint doesn't re-hit the network on every DAG refresh.
@@ -283,6 +287,10 @@ public class WorkflowActionPanel extends JPanel {
         modelSelector = new JComboBox<>();
         modelSelector.setEditable(true);
         modelSelector.addActionListener(e -> onModelSelectionChanged());
+        // Combos are invisible to screen readers and hard to locate in headful (Driver SDK) tests
+        // without a stable accessible name — same rationale as the icon buttons below.
+        toolSelector.getAccessibleContext().setAccessibleName("OpenSpec delivery selector");
+        modelSelector.getAccessibleContext().setAccessibleName("OpenSpec model selector");
 
         noToolsLabel = new JBLabel(
                 "<html><small>Configure an AI tool or API key to get started.</small></html>");
@@ -398,6 +406,10 @@ public class WorkflowActionPanel extends JPanel {
 
         // Populate tool selector
         populateToolSelector();
+        // Seed the transition baseline so the first refresh only rebuilds the tool selector if the
+        // configured state actually changed since construction (avoids a redundant detect()/rebuild).
+        DirectApiService apiAtInit = project.getService(DirectApiService.class);
+        lastHasApi = apiAtInit != null && apiAtInit.isConfigured();
         populateModelSelector();
         updateModelSelectorVisibility();
         updateDeliveryModeLabel();
@@ -653,6 +665,23 @@ public class WorkflowActionPanel extends JPanel {
     }
 
     /**
+     * Re-evaluates the delivery options + model selector after a runtime AI-config change (Settings
+     * applied / Setup Wizard finished), delivered via {@link com.johnnyblabs.openspec.ai.AiConfigListener}.
+     * Rebuilds the delivery selector so a newly configured Direct API provider is offered immediately
+     * (or a removed one withdrawn); {@link #restoreToolSelection()} preserves the user's persisted
+     * delivery/tool choice, so this never hijacks their current selection. EDT-only (mutates combos) —
+     * the message-bus subscriber routes it through invokeLater.
+     */
+    public void refreshDeliveryOptions() {
+        populateToolSelector();
+        DirectApiService apiService = project.getService(DirectApiService.class);
+        lastHasApi = apiService != null && apiService.isConfigured();
+        populateModelSelector();
+        updateModelSelectorVisibility();
+        updateDeliveryModeLabel();
+    }
+
+    /**
      * Fills the model selector: an immediate, no-network fill from the per-session discovered cache
      * (warm) or the static default list (cold), always preserving the current selection via
      * {@link AiModelOptions#resolve}; then, when Direct API is configured and the cache is cold, a single
@@ -781,6 +810,19 @@ public class WorkflowActionPanel extends JPanel {
     private void updatePipelineAndButton(ChangeArtifactDag dag, WorkflowSchemaContext ctx) {
         ApplicationManager.getApplication().invokeLater(() -> {
             pipelinePanel.removeAll();
+
+            // Mid-session API-config transition: populateToolSelector() runs only in the constructor,
+            // so a key added (or removed) in Settings / the Setup Wizard after this panel was built
+            // never adds (or withdraws) the "Direct API" delivery item — and thus its model selector —
+            // until the panel is reconstructed. Re-run it here only on an actual transition, so the
+            // one-time detect()/rebuild cost is not paid on every DAG refresh. Runs on the EDT (this
+            // invokeLater body) and isConfigured() is an EDT-safe cached read.
+            DirectApiService apiForSelector = project.getService(DirectApiService.class);
+            boolean hasApiNow = apiForSelector != null && apiForSelector.isConfigured();
+            if (hasApiNow != lastHasApi) {
+                populateToolSelector();
+                lastHasApi = hasApiNow;
+            }
 
             if (dag == null) {
                 activeChangeName = null;

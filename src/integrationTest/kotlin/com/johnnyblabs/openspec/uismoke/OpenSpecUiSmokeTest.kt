@@ -15,6 +15,9 @@ import com.intellij.driver.sdk.ui.components.tree
 import com.intellij.driver.sdk.ui.ui
 import com.intellij.driver.sdk.waitForIndicators
 import com.intellij.ide.starter.driver.engine.runIdeWithDriver
+import com.intellij.ide.starter.driver.execute
+import com.intellij.tools.ide.performanceTesting.commands.CommandChain
+import com.intellij.tools.ide.performanceTesting.commands.takeScreenshot
 import com.intellij.ide.starter.ide.IdeProductProvider
 import com.intellij.ide.starter.junit5.hyphenateWithClass
 import com.intellij.ide.starter.models.TestCase
@@ -801,6 +804,135 @@ class OpenSpecUiSmokeTest {
                     hasSubtext("--strict")
                 }
             }
+        }
+    }
+
+    // ---- Journeys 8 & 9 — operation-time model selector ----------------------------
+    // Stubs to drive the plugin's own settings + credential gate from the test. markHasApiKey
+    // flips isConfigured()'s cache without a PasswordSafe write (no macOS Keychain touch); no key
+    // is stored, so the model selector's off-EDT listModels fetch short-circuits on the null key
+    // (no network) and the static provider list fills the combo. Mirrors the ToolWindowManagerRef
+    // static-getInstance pattern above.
+
+    @Remote("com.johnnyblabs.openspec.settings.OpenSpecSettings", plugin = "com.johnnyblabs.openspec")
+    interface OpenSpecSettingsRef {
+        fun getInstance(project: Project): OpenSpecSettingsRef
+        fun setAiProvider(provider: String)
+        fun setAiModel(model: String)
+        fun setPreferredDeliveryMethod(method: String)
+        fun setPreferredTool(tool: String)
+    }
+
+    @Remote("com.johnnyblabs.openspec.ai.AiProvider", plugin = "com.johnnyblabs.openspec")
+    interface AiProviderRef {
+        fun fromString(name: String): AiProviderRef
+    }
+
+    @Remote("com.johnnyblabs.openspec.ai.AiCredentialStore", plugin = "com.johnnyblabs.openspec")
+    interface AiCredentialStoreRef {
+        fun markHasApiKey(provider: AiProviderRef, present: Boolean)
+    }
+
+    @Remote("javax.swing.JComboBox")
+    interface JComboBoxRef {
+        fun getItemCount(): Int
+    }
+
+    /**
+     * Configure a Direct API provider through the plugin's own settings + has-key gate (no network, no
+     * keychain). Order matters: markHasApiKey — the call that flips isConfigured() true — runs LAST, after
+     * the delivery method + provider are committed. isConfigured() gates the tool-selector rebuild, so if
+     * the has-key flip landed first, a background refresh could fire the one-shot transition guard before
+     * preferredDeliveryMethod committed, leaving restoreToolSelection to default to the detected CLI tool
+     * and latch. Committing the settings first makes any transition-fire read DIRECT_API deterministically.
+     */
+    private fun com.intellij.driver.client.Driver.configureDirectApiGemini() {
+        val project = singleProject()
+        val settings = utility(OpenSpecSettingsRef::class).getInstance(project)
+        settings.setPreferredDeliveryMethod("DIRECT_API")
+        settings.setPreferredTool("")
+        settings.setAiProvider("Gemini")
+        settings.setAiModel("gemini-3.5-flash")
+        val providerRef = utility(AiProviderRef::class).fromString("Gemini")
+        utility(AiCredentialStoreRef::class).markHasApiKey(providerRef, true)
+    }
+
+    /**
+     * Journey 8 — model selector (happy path): a Direct API provider configured BEFORE the tool
+     * window is first shown surfaces the "Direct API" delivery option, restores it as the selection,
+     * and shows the model selector populated from the static provider list; the status strip renders
+     * the model + mode. Green on current code — gates the shipped happy path headfully (the EDT combo
+     * wiring is not unit-coverable).
+     */
+    @Test
+    fun modelSelectorVisibleWhenDirectApiConfiguredAtConstruction() {
+        newContext(freshDemoProject()).runIdeWithDriver().useDriverAndCloseIde {
+            waitForIndicators(5.minutes)
+
+            // Configure BEFORE first show, so the panel constructs already-configured.
+            configureDirectApiGemini()
+
+            withContext(OnDispatcher.EDT) { getToolWindow("OpenSpec").show() }
+
+            ideFrame {
+                waitUntil("workflow panel renders the seeded change") { hasText("demo-add-farewell") }
+                // Selection wired into the status strip proves getSelectedModel() reads the model combo
+                // AND that Direct API is the active delivery (deliveryModeStatusText renders both).
+                waitUntil("status strip shows the model + Direct API", timeout = 2.minutes) {
+                    hasText("gemini-3.5-flash") && hasSubtext("Direct API")
+                }
+            }
+            // The model selector combo is present + populated (static Gemini list = 3).
+            val modelCombo = ui.x { byAccessibleName("OpenSpec model selector") }
+            waitUntil("model selector visible for Direct API") { modelCombo.present() }
+            val itemCount = withContext(OnDispatcher.EDT) {
+                cast(modelCombo.component, JComboBoxRef::class).getItemCount()
+            }
+            check(itemCount > 0) { "model selector present but empty — populateModelSelector did not fill the static list" }
+
+            runCatching { execute(CommandChain().takeScreenshot("model-selector/A-configured-at-construction")) }
+        }
+    }
+
+    /**
+     * Journey 9 — model selector refreshes on MID-SESSION Direct API config (regression test for the
+     * mid-session-refresh fix). With nothing configured at show, the delivery selector offers no Direct
+     * API option and the model selector is absent. After configuring Direct API mid-session and firing
+     * OpenSpec.Refresh, the fix re-runs populateToolSelector so Direct API is offered + restored and the
+     * model selector appears. RED before the fix (refresh never rebuilt the delivery selector, so Direct
+     * API could never be selected). In-product this also fires instantly via the AiConfigListener topic
+     * on Settings Apply; the driver can't apply the Settings dialog, so the refresh action exercises the
+     * same populateToolSelector re-run sink.
+     */
+    @Test
+    fun modelSelectorAppearsAfterMidSessionDirectApiConfig() {
+        newContext(freshDemoProject()).runIdeWithDriver().useDriverAndCloseIde {
+            waitForIndicators(5.minutes)
+
+            withContext(OnDispatcher.EDT) { getToolWindow("OpenSpec").show() }
+            ideFrame {
+                waitUntil("workflow panel renders the seeded change") { hasText("demo-add-farewell") }
+                // Precondition (renderer-based, reliable): unconfigured → the status strip shows a
+                // non-Direct-API delivery, never Direct API.
+                check(!hasSubtext("Direct API")) { "Direct API shown before any config — precondition violated" }
+            }
+
+            // Configure Direct API AFTER the panel was built — the bug scenario.
+            configureDirectApiGemini()
+
+            // Fire a refresh: the exact sink the transition-guard fix hooks.
+            invokeAction("OpenSpec.Refresh", now = false)
+
+            ideFrame {
+                waitUntil("model + Direct API surface after mid-session config + refresh", timeout = 2.minutes) {
+                    hasText("gemini-3.5-flash") && hasSubtext("Direct API")
+                }
+            }
+            check(ui.x { byAccessibleName("OpenSpec model selector") }.present()) {
+                "status strip shows Direct API but the model selector combo is not visible"
+            }
+
+            runCatching { execute(CommandChain().takeScreenshot("model-selector/B-after-mid-session-refresh")) }
         }
     }
 }
