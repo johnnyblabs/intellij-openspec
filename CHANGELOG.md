@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+## v0.12.0
+
 ### Added
 
 - **Pick your AI model from the tool window.** A model dropdown now sits in the OpenSpec tool-window header, next to the delivery selector, so you can switch models at generation time without opening Settings. It appears only when Direct API is the active delivery mode, is populated from your account's live models (with the built-in list as a fallback), stays editable for manual entry, and shows the active model in the status strip. Your choice is what generate / Fast-Forward / Continue / Explore use.
@@ -12,7 +14,7 @@
 
 ### Fixed
 
-- **Direct API: refreshed the built-in Gemini and Claude model lists to current identifiers.** The bundled Gemini models were `gemini-2.5-*`, which Google is retiring (2.5 Flash already deprecated), so a fresh Google AI Studio key failed with a model-not-found error on the first generation. Gemini now defaults to a current stable Flash model (`gemini-3.5-flash`) and the Claude list was refreshed to current dateless aliases; the Direct API output cap was also raised so large specs/designs don't truncate. The request contract, auth headers, and response parsing are unchanged. (OpenAI's list is unchanged this release, pending verification against its current models endpoint.)
+- **Direct API: refreshed the built-in Gemini and Claude model lists to current identifiers.** The bundled Gemini models were `gemini-2.5-*`, which Google is retiring (2.5 Flash already deprecated), so a fresh Google AI Studio key failed with a model-not-found error on the first generation. Gemini now defaults to a current stable Flash model (`gemini-3.5-flash`) and the Claude list was refreshed to current dateless aliases; the Direct API output cap was also raised so large specs/designs don't truncate. The request contract, auth headers, and response parsing are unchanged. (OpenAI's built-in fallback list is unchanged; with live model discovery, clicking **Test** fills in your account's current OpenAI models.)
 - **Settings no longer freezes when you pick a Direct API provider, click Test, or save.** Storing and reading the API key from the OS credential store is a blocking operation (on macOS it can even wait on a Keychain prompt) and was running on the UI thread, so the Settings dialog and the Setup Wizard could briefly stall; "is a provider configured?" checks that gate the tool window ran the same blocking read. All of that now runs off the UI thread, so the interface stays responsive.
 - **Cancelling a single artifact's generation now actually stops it.** The per-artifact Cancel is honored the moment the in-flight request returns: a cancelled generation writes no file and is no longer reported as a failed generation.
 - **The OpenSpec tool window releases its resources when closed.** The console view, background timers, and file-change subscriptions are now torn down with the tool window instead of accumulating for the life of the project.
