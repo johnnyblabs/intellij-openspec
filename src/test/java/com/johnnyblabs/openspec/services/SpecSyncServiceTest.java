@@ -267,6 +267,121 @@ class SpecSyncServiceTest {
             assertEquals("Old requirement", ops.getFirst().fromName());
             assertEquals("New requirement", ops.getFirst().toName());
         }
+
+        @Test
+        void parsesRenamedCanonicalFormToBareNames_anyBullet() {
+            String content = """
+                    ## RENAMED Requirements
+
+                    * FROM: `### Requirement: Works`
+                    * TO: `### Requirement: Works well`
+                    """;
+
+            List<DeltaSpecOperation> ops = service.parseDeltaSpecContent("demo", content);
+
+            assertEquals(1, ops.size());
+            assertEquals("Works", ops.getFirst().fromName());
+            assertEquals("Works well", ops.getFirst().toName());
+        }
+
+        @Test
+        void bareRequirementName_stripsBackticksAndHeaderToken_keepsBareNames() {
+            assertEquals("Old", SpecSyncService.bareRequirementName("`### Requirement: Old`"));
+            assertEquals("Old", SpecSyncService.bareRequirementName("### requirement: Old"));
+            assertEquals("Old name", SpecSyncService.bareRequirementName("Old name"));
+            assertEquals("Old name", SpecSyncService.bareRequirementName("  `Old name`  "));
+        }
+
+        @Test
+        void capturedCanonicalRename_appliesLikeTheClientsArchive() throws Exception {
+            // Contract: 1.13.2 renamed-star. show-change.json gives the client's rename names; archived-spec.md is
+            // the main spec after a real `openspec archive`. Both line endings, since Windows checks out CRLF.
+            String base = "/fixtures/cli/1.13.2/renamed-star/";
+            var rename = com.google.gson.JsonParser.parseString(fixture(base + "show-change.json")).getAsJsonObject()
+                    .getAsJsonArray("deltas").get(0).getAsJsonObject().getAsJsonObject("rename");
+            for (String eol : List.of("\n", "\r\n")) {
+                String delta = fixture(base + "openspec/changes/c/specs/demo/spec.md").replace("\n", eol);
+                String main = fixture(base + "openspec/specs/demo/spec.md");
+
+                List<DeltaSpecOperation> ops = service.parseDeltaSpecContent("demo", delta);
+                assertEquals(1, ops.size(), "the *-bulleted canonical pair must parse (eol=" + eol.length() + "): " + ops);
+                assertEquals(rename.get("from").getAsString(), ops.getFirst().fromName());
+                assertEquals(rename.get("to").getAsString(), ops.getFirst().toName());
+
+                List<String> warnings = new ArrayList<>();
+                String renamed = service.applyRenamed(main, ops.getFirst(), warnings);
+                assertTrue(warnings.isEmpty(), "rename must find its target: " + warnings);
+                assertEquals(requirementHeaders(fixture(base + "archived-spec.md")), requirementHeaders(renamed));
+            }
+        }
+
+        @Test
+        void capturedBulletRemoved_parsesToTheClientsRemovals_andApplies() throws Exception {
+            // Contract: the 1.13.2 removed-star control. show-change.json is the client's own reading of the delta.
+            String base = "/fixtures/cli/1.13.2/removed-star/";
+            String delta = fixture(base + "openspec/changes/c/specs/demo/spec.md");
+            String main = fixture(base + "openspec/specs/demo/spec.md");
+            com.google.gson.JsonArray deltas = com.google.gson.JsonParser.parseString(
+                    fixture(base + "show-change.json")).getAsJsonObject().getAsJsonArray("deltas");
+            List<String> clientRemovals = new ArrayList<>();
+            for (var d : deltas) {
+                var o = d.getAsJsonObject();
+                if ("REMOVED".equals(o.get("operation").getAsString())) {
+                    // Upstream quirk: a bullet-form REMOVED reports text "Requirement: <name>".
+                    clientRemovals.add(o.getAsJsonObject("requirement").get("text").getAsString()
+                            .replaceFirst("^Requirement:\\s*", ""));
+                }
+            }
+            assertFalse(clientRemovals.isEmpty(), "capture must contain the client's REMOVED delta");
+
+            List<DeltaSpecOperation> ops = service.parseDeltaSpecContent("demo", delta);
+            assertEquals(clientRemovals, ops.stream()
+                    .filter(op -> op.type() == OperationType.REMOVED)
+                    .map(DeltaSpecOperation::requirementName).toList(),
+                    "bullet REMOVED entries must parse to the removals the client applies");
+
+            List<String> warnings = new ArrayList<>();
+            String after = service.applyRemoved(main, ops.getFirst(), warnings);
+            assertTrue(warnings.isEmpty(), "removal must find its target: " + warnings);
+            assertEquals(requirementHeaders(fixture(base + "archived-spec.md")), requirementHeaders(after),
+                    "the applied main spec must keep exactly the requirements the client's archive kept");
+
+            List<DeltaSpecOperation> crlfOps = service.parseDeltaSpecContent("demo", delta.replace("\n", "\r\n"));
+            assertEquals(clientRemovals, crlfOps.stream().filter(op -> op.type() == OperationType.REMOVED)
+                    .map(DeltaSpecOperation::requirementName).toList(), "CRLF delta must parse the same removals");
+        }
+
+        private List<String> requirementHeaders(String spec) {
+            return spec.lines().map(String::strip).filter(l -> l.startsWith("### Requirement:")).toList();
+        }
+
+        @Test
+        void removedSection_mixesBlockAndBulletEntriesInDocumentOrder() {
+            String content = """
+                    ## REMOVED Requirements
+
+                    - `### Requirement: First`
+
+                    ### Requirement: Second
+                    **Reason**: Replaced
+                    **Migration**: None
+
+                    + ### Requirement: Third
+                    """;
+
+            List<DeltaSpecOperation> ops = service.parseDeltaSpecContent("demo", content);
+
+            assertEquals(List.of("First", "Second", "Third"),
+                    ops.stream().map(DeltaSpecOperation::requirementName).toList());
+            assertTrue(ops.stream().allMatch(op -> op.type() == OperationType.REMOVED));
+        }
+
+        private String fixture(String path) throws java.io.IOException {
+            try (java.io.InputStream in = getClass().getResourceAsStream(path)) {
+                assertNotNull(in, "missing fixture " + path);
+                return new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8).replace("\r\n", "\n");
+            }
+        }
     }
 
     @Nested

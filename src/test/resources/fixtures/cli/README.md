@@ -529,3 +529,29 @@ Per-item INFO totals: `info-change` 1, `nameless-change` 2. `nameless-change` st
   OPENSPEC_TELEMETRY=0 openspec validate c --type change --json [--strict]` with a throwaway `$T`. Then
   sanitize `root.path` to `/fixture`. Not named `validate-parity-corpus.json`, so the version-stability guard
   ignores this directory.
+
+## `1.13.2/` — parity corpus (identical to 1.12) + positive controls for the 1.13 behaviors
+
+Real CLI **1.13.2** captures, each run in an isolated environment (`HOME`/`XDG_CONFIG_HOME`/`XDG_DATA_HOME`/`XDG_STATE_HOME` set to a throwaway directory, `OPENSPEC_TELEMETRY=0`) with project roots sanitized to `/fixture`. `1.13.2` is in `ValidatorVerdictVersionStabilityTest.FLOOR` and is the `openspecTargetVersion`.
+
+- `validate-parity-corpus.json` / `validate-parity-corpus-strict.json`: real `validate --all --json`, default and `--strict`, over `1.6.0/parity-corpus` (`root.path` sanitized to `/fixture/parity-corpus`). Default is 12/13 valid and strict is 9/13. **Capture-time check:** with `del(.durationMs, .items[].durationMs, .root.path)`, both twins are **identical to the `1.12.0` twins**. 1.13's new rules fire on nothing in the corpus.
+- `version.txt`: bare `1.13.2`.
+- `renamed-star/`, `renamed-plus/`, `renamed-star-unpaired/`: RENAMED written with `*` and `+` bullets, which the client parses since 1.13.0. Each holds a project tree plus `validate-change.json`, from `validate c --type change --json`.
+  - The star and plus pairs are `valid:true`. The unpaired lone `* FROM:` is `valid:false`; it is the **liveness anchor** that proves the built-in RENAMED rule actually fires on `*` input.
+  - `renamed-star/show-change.json` gives the client's rename names.
+  - `renamed-star/archived-spec.md` is the main spec after a real `openspec archive c --yes` on a scratch copy.
+  - Consumed by `BuiltInValidatorRulesTest`, `DeltaSpecQuickFixTest` and `SpecSyncServiceTest`.
+- `removed-star/`: a bullet-form REMOVED (``* `### Requirement: Works` ``) against a main spec with a second, surviving requirement. The archive would otherwise refuse to empty the spec without `retire_capabilities`.
+  - `validate-change.json` is `valid:true`.
+  - `show-change.json` is the client's own reading of the delta. Upstream quirk: its REMOVED `text` keeps the `Requirement: ` prefix.
+  - `archived-spec.md` is the main spec after a real archive.
+  - Consumed by `SpecSyncServiceTest`.
+- `task-markers/` and `task-grammar/`: task-progress contract. Each change's `tasks.md` plus one `list --json` per project (`completedTasks`/`totalTasks`).
+  - `task-markers` (1/6) covers `-`, `1.`, `+`, `[~]`, `[]` and `*`.
+  - `task-grammar` covers ordered markers (`t-ordered`), box variants (`t-boxes`), link look-alikes (`t-links`), fenced, commented and indented lines (`t-fenced`), CRLF (`t-crlf`), a UTF-8 BOM (`t-bom`) and lone-CR endings (`t-cr-only`, one line to the client).
+  - **`task-grammar/**` is `-text` in `.gitattributes`.** Its line endings and BOM are the test input and must survive Windows checkouts.
+  - Consumed by `TaskLinesContractTest` (all controls, plus a CRLF arm) and `VerificationServiceTest`.
+  - Expected counts are read from `list.json`, never typed into tests.
+- `validate-invalid-item.json`: the item-less error response from `validate a/b --type change --json` (exit 1, `{"status":[{"severity":"error","code":"invalid_item",…}]}`). Consumed by `CliContractTest.ItemlessErrorResponseContractV1_13` and `OpenSpecValidateCliErrorFallbackTest`. The warning-only and items-plus-error edge cases are derived from this capture in-test, not authored.
+
+To re-capture, regenerate in the same isolated way. Never hand-edit a capture; if the CLI's output changes, re-capture and fix the tests.

@@ -1,0 +1,15 @@
+{
+  "changes": [
+    {
+      "name": "c",
+      "completedTasks": 1,
+      "totalTasks": 6,
+      "lastModified": "2026-10-17T04:04:36.561Z",
+      "status": "in-progress"
+    }
+  ],
+  "root": {
+    "path": "/fixture",
+    "source": "nearest"
+  }
+}

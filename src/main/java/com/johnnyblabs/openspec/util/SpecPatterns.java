@@ -29,6 +29,16 @@ public final class SpecPatterns {
             Pattern.compile(REQUIREMENT_HEADER_PREFIX_REGEX + "(.+)$", Pattern.MULTILINE);
 
     /**
+     * Matches one RENAMED {@code FROM:}/{@code TO:} pair: a {@code FROM:} line immediately followed by a
+     * {@code TO:} line, each optionally prefixed by any one CommonMark bullet marker ({@code -}, {@code *},
+     * {@code +}) — the OpenSpec client accepts all three since 1.13.0. Group 1 is the old name, group 2 the
+     * new name, each as written (the client's canonical form carries a {@code ### Requirement:} header).
+     * Validator, inspection and sync share this one pattern so they cannot drift from each other again.
+     */
+    public static final Pattern RENAMED_PAIR = Pattern.compile(
+            "(?m)^\\s*(?:[-*+]\\s*)?FROM:\\s*(.+)$\\s*^\\s*(?:[-*+]\\s*)?TO:\\s*(.+)$");
+
+    /**
      * Matches any line that starts a RENAMED {@code FROM:} or {@code TO:} entry, bulleted or not.
      * A RENAMED section with no such line is empty — the OpenSpec client accepts it beside other
      * parsed deltas — so "no well-formed pair" is only an error when entry lines are present.

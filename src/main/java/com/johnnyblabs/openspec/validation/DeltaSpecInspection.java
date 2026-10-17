@@ -25,8 +25,7 @@ public class DeltaSpecInspection extends LocalInspectionTool {
             com.johnnyblabs.openspec.util.SpecPatterns.REQUIREMENT_HEADER;
     private static final Pattern SCENARIO_PATTERN = Pattern.compile(
             "^#{4} Scenario:.+", Pattern.MULTILINE);
-    private static final Pattern RENAMED_ENTRY_PATTERN = Pattern.compile(
-            "(?m)^\\s*(?:-\\s*)?FROM:\\s*(.+)$\\s*^\\s*(?:-\\s*)?TO:\\s*(.+)$");
+    private static final Pattern RENAMED_ENTRY_PATTERN = com.johnnyblabs.openspec.util.SpecPatterns.RENAMED_PAIR;
     // REMOVED metadata markers, tolerant of both bold forms: **Reason:** (colon inside) and **Reason**: (colon outside).
     private static final Pattern REMOVED_REASON_PATTERN = Pattern.compile("\\*\\*\\s*Reason\\s*:?\\s*\\*\\*", Pattern.CASE_INSENSITIVE);
     private static final Pattern REMOVED_MIGRATION_PATTERN = Pattern.compile("\\*\\*\\s*Migration\\s*:?\\s*\\*\\*", Pattern.CASE_INSENSITIVE);

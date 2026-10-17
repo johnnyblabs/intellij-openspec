@@ -4,7 +4,16 @@
 
 ## Unreleased
 
+### Added
+
+- **OpenSpec CLI 1.13.x is now a supported line.** Its validation verdicts over the shared parity corpus are unchanged from 1.12. Where 1.13 made the CLI more permissive, the plugin now follows it (see the fixes below). 1.13's new, stricter checks are deliberately not copied into the built-in validator, so it never rejects a change that an older supported CLI would accept. The plugin targets CLI 1.13.2 (minimum CLI remains 1.3.0).
+
 ### Fixed
+
+- **Renames written with `*` or `+` bullets are no longer reported as errors.** OpenSpec CLI 1.13 accepts any list bullet in `## RENAMED Requirements`, but the built-in validator and the delta spec inspection only accepted `-`, so a valid rename was flagged in the editor and failed validation when the CLI wasn't installed.
+- **Spec sync now applies every removal and rename the CLI applies.** Bullet-form removals (``* `### Requirement: Name` ``) were silently skipped. Renames written in the CLI's own format (``FROM: `### Requirement: Old` ``) never found their target.
+- **Task progress now matches the CLI's counts.** Tasks written with `*`, `+` or numbered markers (`1.`, `1)`), or with boxes like `[]` or `[ x ]`, were not counted. The tree's `X/Y`, the workflow panel, Apply and Verify could show a change as finished while the CLI still listed open tasks, and Verify could allow archiving with work left.
+- **Validating with a rejected item name no longer reports a pass.** OpenSpec CLI 1.13 answers some invalid requests with an error instead of a result; the plugin read that as "passed". It now falls back to the built-in validator.
 
 - **Create Delta Spec now scaffolds a delta the OpenSpec CLI can read.** The scaffold used `## ADDED`, `## MODIFIED` and `## REMOVED` headings, but the CLI only recognizes `## ADDED Requirements` and its siblings. So a delta you wrote into the scaffold was invisible to it, and validation failed with "No deltas found". The scaffold now uses the CLI's headings, and its rename guidance shows the CLI's ``FROM: `### Requirement: Old` `` / ``TO: `### Requirement: New` `` format.
 - **An empty `## RENAMED Requirements` section is no longer reported as an error** by the built-in validator or the delta spec inspection. The CLI accepts an empty RENAMED section, so a correctly filled-in scaffold no longer shows a red error in the editor or fails validation when the CLI isn't installed. A RENAMED section with `FROM:`/`TO:` lines that don't form a pair is still an error.

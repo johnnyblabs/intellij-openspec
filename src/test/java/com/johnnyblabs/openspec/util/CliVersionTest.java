@@ -81,5 +81,11 @@ class CliVersionTest {
         assertTrue(CliVersion.compare("1.9.0", "1.12.0") < 0, "1.9.0 must sort below 1.12.0");
         assertTrue(CliVersion.compare("1.12.0", "1.11.0") > 0, "1.12.0 sorts above 1.11.0 (monotonic across two-digit minors)");
         assertFalse(CliVersion.atLeast("1.11.0", "1.12.0"), "1.11.0 is not at least 1.12.0");
+        // 1.13: the same anti-lexical pair against single-digit 1.9.0, plus monotonicity and patch.
+        assertTrue(CliVersion.compare("1.13.0", "1.9.0") > 0, "1.13.0 must sort above 1.9.0 (numeric, not lexical)");
+        assertTrue(CliVersion.compare("1.9.0", "1.13.0") < 0, "1.9.0 must sort below 1.13.0");
+        assertTrue(CliVersion.compare("1.13.0", "1.12.0") > 0, "1.13.0 sorts above 1.12.0");
+        assertFalse(CliVersion.atLeast("1.12.0", "1.13.0"), "1.12.0 is not at least 1.13.0");
+        assertTrue(CliVersion.atLeast("1.13.2", "1.13.0"), "1.13.2 is at least 1.13.0");
     }
 }

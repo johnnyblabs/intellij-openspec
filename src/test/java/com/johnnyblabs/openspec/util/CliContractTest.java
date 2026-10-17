@@ -60,6 +60,10 @@ class CliContractTest {
         return loadFixture("1.12.0/" + name);
     }
 
+    private static String fixture113(String name) {
+        return loadFixture("1.13.2/" + name);
+    }
+
     /** Look an artifact up by id — 1.7 reorders {@code artifacts[]} to schema order, so index-based
      * status assertions would be fragile; keying by id makes the reorder inert. */
     private static ArtifactInfo byId(ChangeArtifactDag dag, String id) {
@@ -1305,6 +1309,67 @@ class CliContractTest {
             assertEquals(2, r.issues().size(), "ERROR + INFO, nothing invented or dropped");
             assertEquals("change/archive-blocker", infos.get(0).filePath(),
                     "parseJsonOutput overwrites the issue path with type/id — assert delta paths off the raw JSON only");
+        }
+    }
+
+    /**
+     * CLI 1.13.1+ answers a rejected item id with an item-less error response
+     * ({@code {"status":[{"severity":"error","code":"invalid_item",...}]}}, exit 1). Captured from real 1.13.2.
+     * The parser must surface it as a failed run (so the caller falls back to the built-in validator),
+     * never as a pass with zero items.
+     */
+    @Nested
+    class ItemlessErrorResponseContractV1_13 {
+
+        @Test
+        void invalidItemResponseIsAFailedRun_notAPass() {
+            String captured = fixture113("validate-invalid-item.json");
+            com.google.gson.JsonObject raw = com.google.gson.JsonParser.parseString(captured).getAsJsonObject();
+            assertFalse(raw.has("items"), "capture must be the item-less shape");
+            String expectedMessage = raw.getAsJsonArray("status").get(0).getAsJsonObject().get("message").getAsString();
+
+            CliOutputParser.CliErrorResponseException e = assertThrows(CliOutputParser.CliErrorResponseException.class,
+                    () -> CliOutputParser.parseJsonOutput(captured));
+            assertEquals(expectedMessage, e.getMessage());
+        }
+
+        @Test
+        void anItemsResponseStillParses_withItsVerdictFromTheItems() {
+            String twin = fixture113("validate-parity-corpus.json");
+            com.google.gson.JsonObject raw = com.google.gson.JsonParser.parseString(twin).getAsJsonObject();
+            boolean anyInvalid = false;
+            for (var item : raw.getAsJsonArray("items")) {
+                anyInvalid |= !item.getAsJsonObject().get("valid").getAsBoolean();
+            }
+
+            ValidationResult r = CliOutputParser.parseJsonOutput(twin);
+
+            assertEquals(!anyInvalid, r.passed(), "verdict must come from the items' valid flags");
+        }
+
+        @Test
+        void aWarningOnlyStatusIsNotTreatedAsAnError() {
+            // Derived from the capture (severity mutated), not authored: only error-severity entries fail the run.
+            com.google.gson.JsonObject raw = com.google.gson.JsonParser
+                    .parseString(fixture113("validate-invalid-item.json")).getAsJsonObject();
+            raw.getAsJsonArray("status").get(0).getAsJsonObject().addProperty("severity", "warning");
+
+            assertDoesNotThrow(() -> CliOutputParser.parseJsonOutput(raw.toString()));
+        }
+
+        @Test
+        void anErrorStatusBesideItemsDoesNotOverrideTheItemsVerdict() {
+            // Derived: the captured error status grafted onto the captured parity twin. The spec keeps the
+            // items' valid flags authoritative regardless of any top-level status.
+            com.google.gson.JsonObject twin = com.google.gson.JsonParser
+                    .parseString(fixture113("validate-parity-corpus.json")).getAsJsonObject();
+            twin.add("status", com.google.gson.JsonParser
+                    .parseString(fixture113("validate-invalid-item.json")).getAsJsonObject().get("status"));
+
+            ValidationResult grafted = CliOutputParser.parseJsonOutput(twin.toString());
+
+            assertEquals(CliOutputParser.parseJsonOutput(fixture113("validate-parity-corpus.json")).passed(),
+                    grafted.passed());
         }
     }
 }

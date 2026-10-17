@@ -66,23 +66,8 @@ public class OpenSpecValidateAction extends OpenSpecBaseAction {
                 CliDetectionService detection = project.getService(CliDetectionService.class);
                 ValidationResult finalResult;
                 if (detection != null && detection.isAvailable()) {
-                    try {
-                        CliRunner.CliResult cliResult = CliRunner.run(project, cliArgs(target));
-                        ValidationResult cliValidation;
-                        if (cliResult.stdout() != null && cliResult.stdout().trim().startsWith("{")) {
-                            cliValidation = CliOutputParser.parseJsonOutput(cliResult.stdout());
-                        } else {
-                            cliValidation = CliOutputParser.parseTextOutput(cliResult);
-                        }
-                        // The CLI verdict is already strict-aware (cliArgs passed --strict when the
-                        // run is strict); config stays non-failing, so no fallback flip is needed here.
-                        finalResult = combineWithCli(validator, target, cliValidation);
-                    } catch (Exception ex) {
-                        // CLI failed to run — fall back to the full built-in validator, never a
-                        // blind pass. Apply the per-run strict verdict flip to the fallback.
-                        finalResult = applyStrictFallbackVerdict(
-                                builtInValidate(project, validator, target), target.strict());
-                    }
+                    finalResult = cliOrFallback(project, validator, target,
+                            () -> CliRunner.run(project, cliArgs(target)));
                 } else {
                     // No CLI available — the built-in validator is the full fallback verdict.
                     finalResult = applyStrictFallbackVerdict(
@@ -94,6 +79,32 @@ public class OpenSpecValidateAction extends OpenSpecBaseAction {
                         .invokeLater(() -> showValidationResults(project, result, target));
             }
         }.queue();
+    }
+
+    /**
+     * Runs the CLI validation and merges it with the built-in result, or falls back to the full built-in
+     * validator (with the per-run strict flip) when the CLI run throws, exits abnormally, or answers with an
+     * error response instead of a verdict ({@link CliOutputParser.CliErrorResponseException}) — never a blind pass.
+     * Package-private so tests can drive the routing with a captured CLI result.
+     */
+    static ValidationResult cliOrFallback(Project project, BuiltInValidator validator, ValidateTarget target,
+                                          java.util.concurrent.Callable<CliRunner.CliResult> cli) {
+        try {
+            CliRunner.CliResult cliResult = cli.call();
+            ValidationResult cliValidation;
+            if (cliResult.stdout() != null && cliResult.stdout().trim().startsWith("{")) {
+                cliValidation = CliOutputParser.parseJsonOutput(cliResult.stdout());
+            } else {
+                cliValidation = CliOutputParser.parseTextOutput(cliResult);
+            }
+            // The CLI verdict is already strict-aware (cliArgs passed --strict when the
+            // run is strict); config stays non-failing, so no fallback flip is needed here.
+            return combineWithCli(validator, target, cliValidation);
+        } catch (Exception ex) {
+            // CLI failed to run or rejected the run — fall back to the full built-in validator, never a
+            // blind pass. Apply the per-run strict verdict flip to the fallback.
+            return applyStrictFallbackVerdict(builtInValidate(project, validator, target), target.strict());
+        }
     }
 
     /**

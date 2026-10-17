@@ -1,0 +1,20 @@
+{
+  "id": "c",
+  "title": "C",
+  "deltaCount": 1,
+  "deltas": [
+    {
+      "spec": "demo",
+      "operation": "RENAMED",
+      "description": "Rename requirement from \"Works\" to \"Works well\"",
+      "rename": {
+        "from": "Works",
+        "to": "Works well"
+      }
+    }
+  ],
+  "root": {
+    "path": "/fixture",
+    "source": "nearest"
+  }
+}

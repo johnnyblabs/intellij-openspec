@@ -89,7 +89,9 @@ its tooltip. A blocked artifact keeps a `(needs: …)` suffix naming the unmet d
 OpenSpec CLI is unavailable, badges degrade honestly to done-versus-not-done (the ready/blocked split
 needs the CLI's dependency graph). A **change** node itself carries a **done** badge when all of its
 artifacts are complete (it is apply-ready), and shows its task progress as an `X/Y` count in the
-label when a tasks artifact exists.
+label when a tasks artifact exists. Tasks are counted exactly as the OpenSpec CLI counts them: any bullet
+or numbered marker (`-`, `*`, `+`, `1.`, `1)`), empty or padded boxes (`[]`, `[ x ]`), and done only
+when the box holds `x`. The same counts drive the workflow panel, Apply, and Verify.
 
 **On-model boundary.** Only **change**, **change-artifact**, and **missing-artifact** nodes carry a
 status badge — these are the nodes with client-owned status (apply-readiness, task progress). **Spec,
@@ -143,8 +145,9 @@ can be collapsed.
   proposed deltas read at a glance.
 - **On-model.** The preview renders the source markdown of your own files, or (for the deltas view)
   the delta set the CLI reports. It does not synthesize a post-apply "effective" spec, and it does
-  not score or show per-spec/per-delta status, progress, or coverage; change-owned state (delta
-  assembly, task progress) is sourced from the OpenSpec CLI, never recomputed from files.
+  not score or show per-spec/per-delta status, progress, or coverage; change-owned state follows the
+  OpenSpec CLI: delta assembly comes from the CLI, and task progress is counted with the CLI's own
+  task-line grammar, so it matches `openspec list --json`.
 
 Rendering runs off the UI thread (the file is read and rendered on a background thread, then the pane
 is updated on the UI thread), so selection stays responsive.
