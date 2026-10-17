@@ -105,15 +105,15 @@ class TemplateProviderTest {
     @Test
     void deltaSpecTemplate_hasAllFourSections() {
         String result = TemplateProvider.deltaSpecTemplate("auth");
-        assertTrue(result.contains("## ADDED"),
-                "Delta spec must have ## ADDED section");
-        assertTrue(result.contains("## MODIFIED"),
-                "Delta spec must have ## MODIFIED section");
-        assertTrue(result.contains("## REMOVED"),
-                "Delta spec must have ## REMOVED section");
-        assertTrue(result.contains("## RENAMED Requirements"),
-                "Delta spec must emit ## RENAMED Requirements with the full suffix — the validator's "
-                        + "structural regex (^## ... Requirements) only engages when the suffix is present");
+        // Each heading must carry the full "Requirements" suffix: the OpenSpec CLI only parses
+        // "## ADDED Requirements" etc., so a bare "## ADDED" scaffold is invisible to it ("No deltas found").
+        for (String heading : new String[]{"ADDED", "MODIFIED", "REMOVED", "RENAMED"}) {
+            assertTrue(result.contains("\n## " + heading + " Requirements\n"),
+                    "Delta spec must emit '## " + heading + " Requirements': " + result);
+            assertFalse(java.util.regex.Pattern.compile("^## " + heading + "\\s*$", java.util.regex.Pattern.MULTILINE)
+                            .matcher(result).find(),
+                    "Delta spec must not emit a bare '## " + heading + "' heading");
+        }
     }
 
     // --- .openspec.yaml template ---

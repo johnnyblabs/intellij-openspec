@@ -374,15 +374,7 @@ public final class BuiltInValidator {
         if (specFile != null && !specFile.isDirectory()) {
             String raw = readFile(specFile);
             if (raw != null) {
-                // All structural matching runs on the fence-masked form (offsets preserved).
-                String content = maskFences(raw);
-                // Skip full specs (## Requirements / ## Purpose) — only delta specs need
-                // ADDED/MODIFIED/REMOVED/RENAMED.
-                if (!DELTA_SECTION_PATTERN.matcher(content).find() && !FULL_SPEC_PATTERN.matcher(content).find()) {
-                    issues.add(new ValidationIssue(ValidationIssue.Severity.WARNING, specFile.getPath(), 1,
-                            "Delta spec should have ADDED, MODIFIED, REMOVED, or RENAMED sections", "delta-spec-sections"));
-                }
-                validateDeltaSpecStructure(content, specFile.getPath(), issues);
+                validateDeltaContent(raw, specFile.getPath(), issues);
             }
             found++;
         }
@@ -606,7 +598,7 @@ public final class BuiltInValidator {
 
     private static final Pattern LEVEL3_HEADER_PATTERN = Pattern.compile("^###\\s+(.*)$", Pattern.MULTILINE);
 
-    private void emitSkippedHeaderHints(String content, int sectionStart, String sectionContent,
+    private static void emitSkippedHeaderHints(String content, int sectionStart, String sectionContent,
                                         String sectionType, String path, List<ValidationIssue> issues) {
         Matcher h3 = LEVEL3_HEADER_PATTERN.matcher(sectionContent);
         while (h3.find()) {
@@ -625,7 +617,24 @@ public final class BuiltInValidator {
         }
     }
 
-    private void validateDeltaSpecStructure(String content, String path, List<ValidationIssue> issues) {
+    /**
+     * Validates one delta spec's raw content — the same rules {@link #validateChange} applies to each
+     * delta file. Static + package-private so rule tests drive production logic rather than a mirror.
+     * Fence-masks internally; {@code path} is used only for issue locations.
+     */
+    static void validateDeltaContent(String raw, String path, List<ValidationIssue> issues) {
+        // All structural matching runs on the fence-masked form (offsets preserved).
+        String content = maskFences(raw);
+        // Skip full specs (## Requirements / ## Purpose) — only delta specs need
+        // ADDED/MODIFIED/REMOVED/RENAMED.
+        if (!DELTA_SECTION_PATTERN.matcher(content).find() && !FULL_SPEC_PATTERN.matcher(content).find()) {
+            issues.add(new ValidationIssue(ValidationIssue.Severity.WARNING, path, 1,
+                    "Delta spec should have ADDED, MODIFIED, REMOVED, or RENAMED sections", "delta-spec-sections"));
+        }
+        validateDeltaSpecStructure(content, path, issues);
+    }
+
+    private static void validateDeltaSpecStructure(String content, String path, List<ValidationIssue> issues) {
         // Find each delta section and validate requirement blocks within
         Pattern deltaSectionStart = Pattern.compile("^## (ADDED|MODIFIED|REMOVED|RENAMED) Requirements", Pattern.MULTILINE);
         Matcher sectionMatcher = deltaSectionStart.matcher(content);
@@ -651,8 +660,10 @@ public final class BuiltInValidator {
 
             if ("RENAMED".equals(sectionType)) {
                 // RENAMED sections carry FROM:/TO: pairs (bullet or plain form), not requirement blocks.
-                // Require at least one well-formed pair; mirrors SpecSyncService.RENAMED_ENTRY.
-                if (!RENAMED_ENTRY_PATTERN.matcher(sectionContent).find()) {
+                // Entry lines without a well-formed pair are an error; mirrors SpecSyncService.RENAMED_ENTRY.
+                // An empty section (no FROM:/TO: lines, e.g. a fresh scaffold) is not: the CLI accepts it.
+                if (com.johnnyblabs.openspec.util.SpecPatterns.RENAMED_ENTRY_LINE.matcher(sectionContent).find()
+                        && !RENAMED_ENTRY_PATTERN.matcher(sectionContent).find()) {
                     issues.add(new ValidationIssue(ValidationIssue.Severity.ERROR, path, sectionHeaderLine,
                             "RENAMED section must contain at least one FROM:/TO: pair",
                             "delta-renamed-fields"));

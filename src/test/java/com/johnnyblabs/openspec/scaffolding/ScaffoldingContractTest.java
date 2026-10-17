@@ -167,23 +167,93 @@ class ScaffoldingContractTest {
                 "Proposal must have a '## Why' section per OpenSpec 1.2.0");
     }
 
-    // --- Delta spec template passes validation ---
+    // --- Delta spec template: the client's canonical delta grammar ---
+    // Contract: fixtures/cli/1.12.0/scaffold-delta/ — the real template, filled with one requirement, captured
+    // through the real CLI. new-template is valid:true; old-template (a frozen negative control of the pre-fix
+    // template, never re-captured from current code) is valid:false "No deltas found".
 
-    @Test
-    void deltaSpecTemplate_hasSections_passesValidation() {
-        // BuiltInValidator checks for: "^## (ADDED|MODIFIED|REMOVED)"
-        String deltaSpec = TemplateProvider.deltaSpecTemplate("authentication");
-        Pattern sectionPattern = Pattern.compile("^## (ADDED|MODIFIED|REMOVED)", Pattern.MULTILINE);
-        assertTrue(sectionPattern.matcher(deltaSpec).find(),
-                "Delta spec must have ADDED/MODIFIED/REMOVED sections to pass validation");
+    private static final String SCAFFOLD_FIXTURE = "/fixtures/cli/1.12.0/scaffold-delta/";
+    private static final String INSERTION_ANCHOR = "## MODIFIED Requirements";
+    private static final Pattern DELTA_HEADING_LINE =
+            Pattern.compile("^## (ADDED|MODIFIED|REMOVED|RENAMED)\\b.*$", Pattern.MULTILINE);
+    private static final Set<String> CANONICAL_DELTA_HEADINGS = Set.of(
+            "## ADDED Requirements", "## MODIFIED Requirements",
+            "## REMOVED Requirements", "## RENAMED Requirements");
+
+    private static String scaffoldFixture(String name) throws java.io.IOException {
+        try (java.io.InputStream in = ScaffoldingContractTest.class.getResourceAsStream(SCAFFOLD_FIXTURE + name)) {
+            assertNotNull(in, "missing fixture " + SCAFFOLD_FIXTURE + name);
+            // Windows checkouts may convert to CRLF; the template is a LF text block.
+            return new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8).replace("\r\n", "\n");
+        }
     }
 
     @Test
-    void deltaSpecTemplate_hasAllThreeSections() {
+    void deltaSpecTemplate_headingsAreExactlyTheCanonicalFour() {
         String deltaSpec = TemplateProvider.deltaSpecTemplate("auth");
-        assertTrue(deltaSpec.contains("## ADDED"));
-        assertTrue(deltaSpec.contains("## MODIFIED"));
-        assertTrue(deltaSpec.contains("## REMOVED"));
+        java.util.List<String> headings = new java.util.ArrayList<>();
+        java.util.regex.Matcher m = DELTA_HEADING_LINE.matcher(deltaSpec);
+        while (m.find()) {
+            headings.add(m.group().strip());
+        }
+        assertEquals(java.util.List.of("## ADDED Requirements", "## MODIFIED Requirements",
+                "## REMOVED Requirements", "## RENAMED Requirements"), headings,
+                "every delta heading must be one the CLI parses (bare '## ADDED' is invisible to it)");
+        assertTrue(CANONICAL_DELTA_HEADINGS.containsAll(headings));
+        assertFalse(deltaSpec.contains("%s"), "domain placeholder must be substituted");
+    }
+
+    @Test
+    void deltaSpecTemplate_renamedGuidanceUsesTheClientsFromToForm() {
+        String deltaSpec = TemplateProvider.deltaSpecTemplate("auth");
+        String renamed = deltaSpec.substring(deltaSpec.indexOf("## RENAMED Requirements"));
+        assertTrue(renamed.contains("FROM: `### Requirement:") && renamed.contains("TO: `### Requirement:"),
+                "RENAMED guidance must show the requirement header the CLI requires: " + renamed);
+    }
+
+    @Test
+    void deltaSpecTemplate_guidanceNeverMatchesThePluginsLineAnchoredPatterns() {
+        // Guidance lives mid-line inside HTML comments. If a reflow ever puts "### Requirement:" or
+        // "- FROM:" at line start, sync would apply a phantom op and the validator count a phantom requirement.
+        String deltaSpec = TemplateProvider.deltaSpecTemplate("auth");
+        assertFalse(com.johnnyblabs.openspec.util.SpecPatterns.REQUIREMENT_HEADER.matcher(deltaSpec).find(),
+                "template must contain no line-anchored requirement header");
+        assertFalse(com.johnnyblabs.openspec.util.SpecPatterns.RENAMED_ENTRY_LINE.matcher(deltaSpec).find(),
+                "template must contain no line-anchored FROM:/TO: entry");
+    }
+
+    @Test
+    void filledTemplate_isExactlyTheInputTheCliValidated() throws Exception {
+        String template = TemplateProvider.deltaSpecTemplate("auth");
+        assertTrue(template.contains(INSERTION_ANCHOR), "insertion anchor missing from template");
+        String filled = template.replace(INSERTION_ANCHOR,
+                scaffoldFixture("added-requirement.md") + INSERTION_ANCHOR);
+        assertEquals(scaffoldFixture("new-template/openspec/changes/c/specs/auth/spec.md"), filled,
+                "the captured CLI input must be the real template output — re-capture if the template changed");
+    }
+
+    @Test
+    void cliAcceptsTheFilledTemplate_andRejectedTheOldOne() throws Exception {
+        for (String capture : new String[]{"validate-new.json", "validate-new-strict.json"}) {
+            var result = com.johnnyblabs.openspec.util.CliOutputParser.parseJsonOutput(scaffoldFixture(capture));
+            assertTrue(result.passed(), capture + " must be valid:true: " + result.issues());
+        }
+        for (String capture : new String[]{"validate-old.json", "validate-old-strict.json"}) {
+            var result = com.johnnyblabs.openspec.util.CliOutputParser.parseJsonOutput(scaffoldFixture(capture));
+            assertFalse(result.passed(), capture + " (pre-fix template) must be valid:false");
+            assertTrue(result.issues().stream().anyMatch(i -> i.message().contains("No deltas found")),
+                    capture + " must fail for having no deltas: " + result.issues());
+        }
+    }
+
+    @Test
+    void deltaSpecTemplate_isScaffoldingUntilFilled() throws Exception {
+        var detector = new com.johnnyblabs.openspec.services.ScaffoldingDetectionService(null);
+        assertTrue(detector.isScaffoldingContent(TemplateProvider.deltaSpecTemplate("auth")),
+                "an unfilled scaffold must not count as a completed artifact");
+        assertFalse(detector.isScaffoldingContent(
+                        scaffoldFixture("new-template/openspec/changes/c/specs/auth/spec.md")),
+                "a filled scaffold is real content");
     }
 
     // --- .openspec.yaml template ---

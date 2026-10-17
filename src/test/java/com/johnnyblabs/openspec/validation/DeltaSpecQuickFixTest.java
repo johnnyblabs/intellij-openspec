@@ -64,6 +64,44 @@ public class DeltaSpecQuickFixTest extends OpenSpecIntegrationTestBase {
                 block.contains("SHALL"));
     }
 
+    public void testFilledScaffoldWithEmptyRenamedSectionHasNoRenamedProblem() {
+        // The scaffolded RENAMED section is comment-only by design; the CLI accepts it beside a parsed
+        // ADDED requirement (fixtures/cli/1.12.0/scaffold-delta/validate-new.json), so the editor must not red it.
+        String filled = com.johnnyblabs.openspec.scaffolding.TemplateProvider.deltaSpecTemplate("actions")
+                .replace("## MODIFIED Requirements", """
+                        ### Requirement: Logout
+                        The system SHALL let a signed-in user log out.
+
+                        #### Scenario: Logging out ends the session
+                        - **WHEN** a signed-in user logs out
+                        - **THEN** their session ends
+
+                        ## MODIFIED Requirements""");
+        assertTrue("insertion anchor must exist in the template", filled.contains("### Requirement: Logout"));
+        assertFalse(renamedProblems(filled).iterator().hasNext());
+    }
+
+    public void testRenamedFromWithoutToIsStillAProblem() {
+        assertTrue("FROM: with no TO: must still be flagged",
+                renamedProblems("## RENAMED Requirements\n\n- FROM: `### Requirement: Init Action`\n")
+                        .iterator().hasNext());
+    }
+
+    private java.util.List<ProblemDescriptor> renamedProblems(String deltaContent) {
+        myFixture.addFileToProject("openspec/changes/fix-change/specs/actions/spec.md", deltaContent);
+        refreshVfs();
+        PsiFile deltaSpec = myFixture.configureByFile("openspec/changes/fix-change/specs/actions/spec.md");
+        ProblemDescriptor[] problems = new DeltaSpecInspection().checkFile(deltaSpec,
+                InspectionManager.getInstance(getProject()), false);
+        java.util.List<ProblemDescriptor> renamed = new java.util.ArrayList<>();
+        for (ProblemDescriptor p : problems) {
+            if (p.getDescriptionTemplate().contains("RENAMED section")) {
+                renamed.add(p);
+            }
+        }
+        return renamed;
+    }
+
     private void refreshVfs() {
         com.intellij.openapi.vfs.VirtualFile root = myFixture.findFileInTempDir("openspec");
         if (root != null) {

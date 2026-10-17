@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -17,15 +16,6 @@ import static org.junit.jupiter.api.Assertions.*;
  * rule, and delta spec structural validation.
  */
 class BuiltInValidatorRulesTest {
-
-    // Patterns matching BuiltInValidator
-    private static final Pattern REQUIREMENT_PATTERN = com.johnnyblabs.openspec.util.SpecPatterns.REQUIREMENT_HEADER;
-    private static final Pattern SCENARIO_PATTERN = Pattern.compile("^#{4} Scenario:.+", Pattern.MULTILINE);
-    private static final Pattern DELTA_SECTION_PATTERN = Pattern.compile("^## (ADDED|MODIFIED|REMOVED|RENAMED) Requirements", Pattern.MULTILINE);
-    private static final Pattern RENAMED_ENTRY_PATTERN = Pattern.compile(
-            "(?m)^\\s*(?:-\\s*)?FROM:\\s*(.+)$\\s*^\\s*(?:-\\s*)?TO:\\s*(.+)$");
-    private static final Pattern REMOVED_REASON_PATTERN = Pattern.compile("\\*\\*\\s*Reason\\s*:?\\s*\\*\\*", Pattern.CASE_INSENSITIVE);
-    private static final Pattern REMOVED_MIGRATION_PATTERN = Pattern.compile("\\*\\*\\s*Migration\\s*:?\\s*\\*\\*", Pattern.CASE_INSENSITIVE);
 
     // --- 1.8: RFC 2119 keyword rule is severity-conditional on the requirement having a body ---
 
@@ -651,17 +641,54 @@ class BuiltInValidatorRulesTest {
     }
 
     @Test
-    void deltaRenamed_missingFromTo_isError() {
+    void deltaRenamed_fromWithoutTo_isError() {
         String content = """
                 ## RENAMED Requirements
 
-                (no FROM/TO entries yet)
+                - FROM: `### Requirement: Login`
                 """;
         List<ValidationIssue> issues = validateDeltaStructure(content);
         assertTrue(issues.stream().anyMatch(i ->
                 i.severity() == ValidationIssue.Severity.ERROR
                         && i.rule().equals("delta-renamed-fields")),
-                "RENAMED section without FROM/TO should be ERROR");
+                "RENAMED entry lines with no well-formed FROM/TO pair should be ERROR: " + issues);
+    }
+
+    @Test
+    void capturedFilledScaffold_hasNoBuiltInError_matchingTheCli() throws Exception {
+        // Never-more-restrictive: the CLI reports this exact file valid:true (validate-new.json beside it).
+        String delta;
+        try (java.io.InputStream in = getClass().getResourceAsStream(
+                "/fixtures/cli/1.12.0/scaffold-delta/new-template/openspec/changes/c/specs/auth/spec.md")) {
+            assertNotNull(in, "missing scaffold-delta fixture");
+            delta = new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8).replace("\r\n", "\n");
+        }
+        List<ValidationIssue> issues = validateDeltaStructure(delta);
+        assertTrue(issues.stream().noneMatch(i -> i.severity() == ValidationIssue.Severity.ERROR),
+                "the built-in fallback must not ERROR on a scaffold the CLI accepts: " + issues);
+    }
+
+    @Test
+    void deltaRenamed_emptySection_isNotAnError() {
+        // The CLI accepts an empty RENAMED section beside other parsed deltas (captured in
+        // fixtures/cli/1.12.0/scaffold-delta/validate-new.json), and the scaffold leaves it empty by design.
+        String content = """
+                ## ADDED Requirements
+
+                ### Requirement: Logout
+                The system SHALL let a signed-in user log out.
+
+                #### Scenario: Logging out ends the session
+                - **WHEN** a signed-in user logs out
+                - **THEN** their session ends
+
+                ## RENAMED Requirements
+
+                <!-- Renamed requirements as FROM:/TO: pairs, e.g. - FROM: `### Requirement: Old name` then - TO: `### Requirement: New name` -->
+                """;
+        List<ValidationIssue> issues = validateDeltaStructure(content);
+        assertTrue(issues.stream().noneMatch(i -> i.rule().equals("delta-renamed-fields")),
+                "An empty (comment-only) RENAMED section must not be delta-renamed-fields: " + issues);
     }
 
     @Test
@@ -738,7 +765,7 @@ class BuiltInValidatorRulesTest {
 
                 Some prose mentioning ### Requirement: inline should not match.
                 """;
-        Matcher m = REQUIREMENT_PATTERN.matcher(content);
+        Matcher m = com.johnnyblabs.openspec.util.SpecPatterns.REQUIREMENT_HEADER.matcher(content);
         assertFalse(m.find(), "Header pattern must stay line-anchored");
     }
 
@@ -820,77 +847,15 @@ class BuiltInValidatorRulesTest {
         return issues;
     }
 
+    /**
+     * Drives the REAL {@link BuiltInValidator#validateDeltaContent} on a raw delta string — the same
+     * method {@code validateChange} applies to each delta file — so delta rule tests verify production
+     * behavior. The prior hand-copied mirror could not catch a production regression.
+     */
     private List<ValidationIssue> validateDeltaStructure(String content) {
         List<ValidationIssue> issues = new ArrayList<>();
-        String path = "test-delta.md";
-
-        Matcher sectionMatcher = DELTA_SECTION_PATTERN.matcher(content);
-        while (sectionMatcher.find()) {
-            String sectionType = sectionMatcher.group(1);
-            int sectionHeaderLine = lineNumberAt(content, sectionMatcher.start());
-            int sectionStart = sectionMatcher.end();
-            Pattern nextH2 = Pattern.compile("^## ", Pattern.MULTILINE);
-            Matcher nextH2Matcher = nextH2.matcher(content);
-            int sectionEnd = content.length();
-            if (nextH2Matcher.find(sectionStart)) {
-                sectionEnd = nextH2Matcher.start();
-            }
-            String sectionContent = content.substring(sectionStart, sectionEnd);
-
-            if ("RENAMED".equals(sectionType)) {
-                if (!RENAMED_ENTRY_PATTERN.matcher(sectionContent).find()) {
-                    issues.add(new ValidationIssue(ValidationIssue.Severity.ERROR, path, sectionHeaderLine,
-                            "RENAMED section must contain at least one FROM:/TO: pair",
-                            "delta-renamed-fields"));
-                }
-                continue;
-            }
-
-            Matcher reqMatcher = REQUIREMENT_PATTERN.matcher(sectionContent);
-            while (reqMatcher.find()) {
-                int reqLine = lineNumberAt(content, sectionStart + reqMatcher.start());
-                String reqHeader = reqMatcher.group(1).trim();
-                int nextReq = findNext(REQUIREMENT_PATTERN, sectionContent, reqMatcher.end());
-                String reqContent = sectionContent.substring(reqMatcher.end(), nextReq);
-
-                if ("REMOVED".equals(sectionType)) {
-                    boolean hasReason = REMOVED_REASON_PATTERN.matcher(reqContent).find();
-                    boolean hasMigration = REMOVED_MIGRATION_PATTERN.matcher(reqContent).find();
-                    if (!hasReason || !hasMigration) {
-                        String missing = !hasReason && !hasMigration ? "**Reason** and **Migration**"
-                                : !hasReason ? "**Reason**" : "**Migration**";
-                        issues.add(new ValidationIssue(ValidationIssue.Severity.WARNING, path, reqLine,
-                                "REMOVED requirement '" + reqHeader + "' should contain " + missing + " fields",
-                                "delta-removed-fields"));
-                    }
-                } else {
-                    if (!SCENARIO_PATTERN.matcher(reqContent).find()) {
-                        String detail = "MODIFIED".equals(sectionType)
-                                ? "MODIFIED requirement '" + reqHeader + "' must include full updated content with at least one scenario"
-                                : "ADDED requirement '" + reqHeader + "' must have at least one '#### Scenario:' block";
-                        issues.add(new ValidationIssue(ValidationIssue.Severity.ERROR, path, reqLine,
-                                detail, "delta-requirement-scenario"));
-                    }
-                }
-            }
-        }
+        BuiltInValidator.validateDeltaContent(content, "test-delta.md", issues);
         return issues;
-    }
-
-    private int lineNumberAt(String content, int offset) {
-        int line = 1;
-        for (int i = 0; i < offset && i < content.length(); i++) {
-            if (content.charAt(i) == '\n') line++;
-        }
-        return line;
-    }
-
-    private int findNext(Pattern pattern, String content, int from) {
-        Matcher m = pattern.matcher(content);
-        if (m.find(from)) {
-            return m.start();
-        }
-        return content.length();
     }
 
     // --- maskFences (the real production utility, not a mirror) ---
