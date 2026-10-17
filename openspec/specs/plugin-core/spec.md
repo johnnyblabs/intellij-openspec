@@ -353,3 +353,19 @@ Because the client's own surface differs across versions, the plugin's delivered
 - **AND** 1.14's new validation warnings — an unrecognized `.openspec.yaml` key (with lowercase `x-*` keys exempt from 1.14.2), an over-long requirement promoted from INFO to WARNING, and text that archiving would not carry into the main spec — SHALL NOT be adopted by the CLI-absent fallback, because each makes the client stricter and the fallback MAY remain laxer; when the CLI is present they SHALL surface at their own severity through the CLI's verdict
 - **AND** over the parity corpus the 1.14 default verdicts SHALL remain a subset of the default anchor, and its `--strict` verdicts — stricter than the strict anchor by exactly the corpus item whose pre-requirement text archiving would drop — SHALL remain a subset of the strict anchor (see the `validation` capability)
 - **AND** the plugin's version comparison SHALL order `1.14.0` above `1.13.0` and `1.9.0`; per-generation contract coverage against captured 1.14.3 CLI output SHALL exist — the parity-corpus twins, a positive-control capture for each new warning, and captures of the additive output shapes — and a version-floor/at-least assertion SHALL include `1.14.0`
+
+### Requirement: CLI status reflects the latest completed detection
+
+The plugin's CLI status SHALL always reflect the most recent completed CLI detection, whichever path triggered it (project open, tool-window activation, focus regain, Settings, or a manual refresh). A detection in progress SHALL NOT be observable as "CLI unavailable": readers SHALL see either the previous result or the new one. Before the first detection completes, the status SHALL show that detection is in progress rather than that the CLI is missing.
+
+#### Scenario: Tool window built while startup detection is running
+- **WHEN** the OpenSpec tool window is created while the project-open CLI detection is still running and the CLI is installed
+- **THEN** the status SHALL show detection in progress, then "CLI: available" when detection completes, without the user refreshing
+
+#### Scenario: Detection in progress never reads as unavailable
+- **WHEN** a CLI detection is re-run while a previous detection found the CLI
+- **THEN** any reader during the re-run SHALL still see the CLI as available until the new result is published
+
+#### Scenario: Any completed detection updates the status
+- **WHEN** a CLI detection completes from any trigger, including one the throttled tool-window re-check skipped
+- **THEN** the tool window's CLI status SHALL update to the new result
