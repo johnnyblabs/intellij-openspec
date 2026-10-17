@@ -18,6 +18,8 @@
 - **Artifact status now matches OpenSpec exactly.** The workflow panel, Apply, Verify, Archive and Generate All use each artifact's status as `openspec status` reports it. The plugin used to treat a short file as unwritten, which could leave Apply, Verify and Archive disabled for a change OpenSpec considered complete, with no explanation. A done file that still looks like an unfilled template now shows as `design · template` on its chip, with a tooltip pointing to Regenerate, and nothing is disabled.
 - **Propose creates what `openspec new change` creates.** Proposing a change without the CLI now writes the change's settings, the proposal you entered and an empty `specs` folder, but no template design or task files. Those are generated or written next, and the panel shows them as ready or waiting until they exist.
 
+- **Settings no longer shows a "Version override" field.** It only offered the one config format the plugin supports, so it had no effect. A value saved by an earlier version is ignored; the config format still comes from your `openspec/config.yaml`.
+
 ### Fixed
 
 - **The schema section of Settings now works while Settings is open.** The schema list was always empty, and Validate, Open Templates and the config/profile sections seemed to do nothing, because their results only arrived after you closed the Settings dialog. They now appear straight away.

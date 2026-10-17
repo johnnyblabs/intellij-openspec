@@ -65,7 +65,6 @@ The settings panel has sections stacked vertically: **CLI**, **General**, **Conf
 | **CLI path** | Path to the `openspec` executable. Usually auto-detected. Use the file browser button to select it manually if needed. |
 | **Detect** | Click to auto-detect the CLI. The plugin searches your PATH, login shell, and common locations (`/opt/homebrew/bin`, `/usr/local/bin`). On macOS, it resolves your login shell's PATH since GUI apps don't inherit terminal environment variables. |
 | **Status indicator** | Shows green "OpenSpec CLI v*X.Y.Z*" when found, or orange "OpenSpec CLI not found" when missing. |
-| **Version override** | Force a specific OpenSpec schema version (e.g., `1.2.0`). Leave blank to use the version from your project's `openspec/config.yaml`. Only needed if you want to override the project config. Suggestions: `1.0.0`, `1.1.0`, `1.2.0`. |
 
 > **Tip:** If the CLI isn't detected, make sure you've installed it globally with `npm install -g @fission-ai/openspec`, then click **Detect** again.
 

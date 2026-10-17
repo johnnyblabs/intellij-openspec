@@ -46,8 +46,7 @@ public class OpenSpecConfigurable implements Configurable {
         // orphan selected used to do nothing visible.
         if (panel.isWorkflowProfileOrphanSelected()) return false;
         OpenSpecSettings settings = OpenSpecSettings.getInstance(project);
-        return !panel.getVersionOverride().equals(safe(settings.getVersionOverride()))
-                || !panel.getCliPath().equals(safe(settings.getCliPath()))
+        return !panel.getCliPath().equals(safe(settings.getCliPath()))
                 || !panel.getProfile().equals(safe(settings.getProfile()))
                 || panel.isAutoRefresh() != settings.isAutoRefresh()
                 || panel.getCliTimeout() != settings.getCliTimeoutSeconds()
@@ -75,7 +74,6 @@ public class OpenSpecConfigurable implements Configurable {
             applyProfileChange(settings, newProfile, oldProfile);
         }
 
-        settings.setVersionOverride(panel.getVersionOverride());
         settings.setCliPath(panel.getCliPath());
         settings.setAutoRefresh(panel.isAutoRefresh());
         settings.setCliTimeoutSeconds(panel.getCliTimeout());
@@ -137,7 +135,6 @@ public class OpenSpecConfigurable implements Configurable {
     public void reset() {
         if (panel == null) return;
         OpenSpecSettings settings = OpenSpecSettings.getInstance(project);
-        panel.setVersionOverride(settings.getVersionOverride());
         panel.setCliPath(settings.getCliPath());
         panel.setProfile(settings.getProfile());
         panel.setAutoRefresh(settings.isAutoRefresh());

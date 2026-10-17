@@ -29,14 +29,6 @@ public final class OpenSpecSettings implements PersistentStateComponent<OpenSpec
         this.state = state;
     }
 
-    public String getVersionOverride() {
-        return state.versionOverride;
-    }
-
-    public void setVersionOverride(String version) {
-        state.versionOverride = version;
-    }
-
     public String getCliPath() {
         return state.cliPath;
     }
@@ -145,12 +137,12 @@ public final class OpenSpecSettings implements PersistentStateComponent<OpenSpec
     }
 
     /**
-     * Returns the effective version: settings override if set, else config.yaml version.
+     * The effective config-format version: {@code openspec/config.yaml}'s {@code version:}, or {@code null} (callers
+     * resolve that to the {@code 1.2.0} default through {@code VersionSupport}). A {@code versionOverride} saved by
+     * earlier plugin versions is ignored: its Settings control was removed because the plugin models one config
+     * format, and a value nobody can see or clear must not apply.
      */
     public String getEffectiveVersion(@NotNull Project project) {
-        if (state.versionOverride != null && !state.versionOverride.isEmpty()) {
-            return state.versionOverride;
-        }
         ConfigService configService = project.getService(ConfigService.class);
         if (configService != null && configService.getConfig() != null) {
             return configService.getConfig().getVersion();
@@ -221,6 +213,10 @@ public final class OpenSpecSettings implements PersistentStateComponent<OpenSpec
     }
 
     public static class State {
+        /**
+         * No longer read: kept so settings saved by earlier versions, which had a Version override control, still
+         * load. See {@link OpenSpecSettings#getEffectiveVersion}.
+         */
         public String versionOverride = "";
         public String cliPath = "";
         /** Workflow profile preset: {@code "core"}, {@code "custom"}, or {@code ""} (CLI default). See {@link OpenSpecSettings#getProfile()}. */

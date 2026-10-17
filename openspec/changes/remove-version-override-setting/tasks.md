@@ -1,0 +1,10 @@
+## 1. Settings
+
+- [x] 1.1 Remove the Version override combo, presets and accessors from `OpenSpecSettingsPanel`, and its `isModified`/`apply`/`reset` handling from `OpenSpecConfigurable`. Keep `State.versionOverride` with a comment saying it is no longer read; remove `OpenSpecSettings.get/setVersionOverride` if they have no callers (D1). Verify: grep shows no reader of the stored override outside persistence; the existing settings-panel tests still pass; a test asserts the panel exposes no version control. Update any test that used the override accessors deliberately.
+- [x] 1.2 `getEffectiveVersion` resolves from `config.yaml` `version:`, else `null` (which callers resolve to the 1.2.0 format), ignoring a stored override (D2). Verify: tests that with no config version it is `null` and resolves to `V1_2`, that it equals a legacy `version:` (1.1.0, so it can't match the default by accident), and that a stored `versionOverride` changes nothing, with or without a config. Mutation check: re-adding the override layer fails the last test.
+
+## 2. Docs and verify
+
+- [x] 2.1 CHANGELOG (`### Changed`: Settings no longer shows a "Version override" field; it only offered the one config format the plugin supports and had no effect), `docs/feature-reference.md` (remove the row), `docs/getting-started-copilot.md` (remove the row), `docs/feature-comparison-matrix.md` (remove "Schema version override"). Verify: no doc mentions the control; a leak grep over the diff is clean.
+- [x] 2.2 Run `./gradlew build`, `./gradlew verifyPlugin` and `openspec validate remove-version-override-setting --strict`; open Settings → Tools → OpenSpec in the sandbox and confirm the field is gone. Verify: all pass, and the field is gone.
+  - Recorded 2026-10-17: build passed (1859 tests) and the verifier reported Compatible on all five IDEs, with only the two documented deprecations. In the IDEA 2024.2 sandbox, Settings → Tools → OpenSpec shows CLI path, Detect and the CLI status with no Version override field.
