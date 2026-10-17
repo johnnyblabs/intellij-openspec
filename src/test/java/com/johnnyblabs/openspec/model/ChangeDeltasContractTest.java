@@ -207,4 +207,53 @@ class ChangeDeltasContractTest {
             assertEquals("billing", only.spec());
         }
     }
+
+    /**
+     * 1.14 added {@code name} to every requirement and scenario in {@code show <change> --type change --json}.
+     * The parser doesn't read {@code name}; this proves it still reads the operations, requirement text and
+     * scenario bodies it does read from a real 1.14.3 capture carrying the new key.
+     */
+    @Nested
+    class ChangeDeltasV1_14 {
+
+        private static final String SHOW = "/fixtures/cli/1.14.3/additive-shapes/show-change.json";
+
+        private String capture() {
+            try (InputStream is = ChangeDeltasContractTest.class.getResourceAsStream(SHOW)) {
+                assertNotNull(is, "Fixture not found: " + SHOW);
+                return new String(is.readAllBytes(), StandardCharsets.UTF_8);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        @Test
+        void parsesDeltasFromACaptureCarryingTheNewNameKeys() {
+            String json = capture();
+            com.google.gson.JsonObject raw = com.google.gson.JsonParser.parseString(json).getAsJsonObject();
+            com.google.gson.JsonArray rawDeltas = raw.getAsJsonArray("deltas");
+            // Anti-vacuity: the capture really carries the 1.14 additive keys.
+            com.google.gson.JsonObject rawReq0 = rawDeltas.get(0).getAsJsonObject().getAsJsonObject("requirement");
+            assertTrue(rawReq0.has("name"), "1.14 capture must carry requirement.name");
+            assertTrue(rawReq0.getAsJsonArray("scenarios").get(0).getAsJsonObject().has("name"),
+                    "1.14 capture must carry scenarios[].name");
+
+            ChangeDeltaModel model = ChangeDeltaModel.parse(json);
+
+            assertEquals(raw.get("id").getAsString(), model.id());
+            assertEquals(raw.get("deltaCount").getAsInt(), model.deltaCount());
+            assertEquals(rawDeltas.size(), model.deltas().size());
+            assertEquals(List.of(OperationType.ADDED, OperationType.MODIFIED),
+                    model.deltas().stream().map(Delta::operation).toList());
+            for (int i = 0; i < rawDeltas.size(); i++) {
+                com.google.gson.JsonObject rawReq = rawDeltas.get(i).getAsJsonObject().getAsJsonObject("requirement");
+                Delta d = model.deltas().get(i);
+                assertEquals(rawDeltas.get(i).getAsJsonObject().get("spec").getAsString(), d.spec());
+                assertEquals(rawReq.get("text").getAsString(), d.requirement().text());
+                assertEquals(rawReq.getAsJsonArray("scenarios").get(0).getAsJsonObject().get("rawText").getAsString(),
+                        d.requirement().scenarios().get(0).rawText());
+                assertEquals(d.requirement().text(), d.requirementsMirror().get(0).text());
+            }
+        }
+    }
 }

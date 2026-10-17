@@ -532,7 +532,7 @@ Per-item INFO totals: `info-change` 1, `nameless-change` 2. `nameless-change` st
 
 ## `1.13.2/` — parity corpus (identical to 1.12) + positive controls for the 1.13 behaviors
 
-Real CLI **1.13.2** captures, each run in an isolated environment (`HOME`/`XDG_CONFIG_HOME`/`XDG_DATA_HOME`/`XDG_STATE_HOME` set to a throwaway directory, `OPENSPEC_TELEMETRY=0`) with project roots sanitized to `/fixture`. `1.13.2` is in `ValidatorVerdictVersionStabilityTest.FLOOR` and is the `openspecTargetVersion`.
+Real CLI **1.13.2** captures, each run in an isolated environment (`HOME`/`XDG_CONFIG_HOME`/`XDG_DATA_HOME`/`XDG_STATE_HOME` set to a throwaway directory, `OPENSPEC_TELEMETRY=0`) with project roots sanitized to `/fixture`. `1.13.2` is in `ValidatorVerdictVersionStabilityTest.FLOOR`.
 
 - `validate-parity-corpus.json` / `validate-parity-corpus-strict.json`: real `validate --all --json`, default and `--strict`, over `1.6.0/parity-corpus` (`root.path` sanitized to `/fixture/parity-corpus`). Default is 12/13 valid and strict is 9/13. **Capture-time check:** with `del(.durationMs, .items[].durationMs, .root.path)`, both twins are **identical to the `1.12.0` twins**. 1.13's new rules fire on nothing in the corpus.
 - `version.txt`: bare `1.13.2`.
@@ -553,5 +553,21 @@ Real CLI **1.13.2** captures, each run in an isolated environment (`HOME`/`XDG_C
   - Consumed by `TaskLinesContractTest` (all controls, plus a CRLF arm) and `VerificationServiceTest`.
   - Expected counts are read from `list.json`, never typed into tests.
 - `validate-invalid-item.json`: the item-less error response from `validate a/b --type change --json` (exit 1, `{"status":[{"severity":"error","code":"invalid_item",…}]}`). Consumed by `CliContractTest.ItemlessErrorResponseContractV1_13` and `OpenSpecValidateCliErrorFallbackTest`. The warning-only and items-plus-error edge cases are derived from this capture in-test, not authored.
+
+To re-capture, regenerate in the same isolated way. Never hand-edit a capture; if the CLI's output changes, re-capture and fix the tests.
+
+## `1.14.3/` — parity corpus (one strict divergence) + positive controls for the 1.14 warnings
+
+Real CLI **1.14.3** captures, each run in an isolated environment (`HOME`/`XDG_CONFIG_HOME`/`XDG_DATA_HOME`/`XDG_STATE_HOME` set to a throwaway directory, `OPENSPEC_TELEMETRY=0`) with project roots sanitized to `/fixture`. `1.14.3` is in `ValidatorVerdictVersionStabilityTest.FLOOR` and is the `openspecTargetVersion`.
+
+- `validate-parity-corpus.json` / `validate-parity-corpus-strict.json`: real `validate --all --json`, default and `--strict`, over `1.6.0/parity-corpus` (`root.path` sanitized to `/fixture/parity-corpus`). Default is 12/13 valid, the same verdicts as `1.13.2`. Strict is **8/13**: the one difference from every earlier generation is `nameless-change`, which 1.14.2's new WARNING ("Text before the first requirement in "## MODIFIED Requirements" is not carried into the main spec by archive…") fails under `--strict`. `ValidatorVerdictVersionStabilityTest` pins exactly this divergence for generations ≥ 1.14.2.
+- `version.txt`: bare `1.14.3`.
+- One positive control per new 1.14 warning. Each holds a project tree plus `validate-all.json` and `validate-all-strict.json`, from `validate --all --json [--strict]`. The change item `c` is valid by default and invalid under `--strict`, with the level staying WARNING:
+  - `unknown-meta/`: unrecognized `.openspec.yaml` keys (`skip_design`, `status`) beside an `x-tracker` key. The warning is on path `.openspec.yaml` and names only the two unknown keys (1.14.0).
+  - `too-long/`: a delta requirement and a main-spec requirement over 500 characters. The delta draws the new `ADDED "…": Requirement text is very long` warning, and the main spec's rule is now a WARNING instead of INFO, so the `demo` spec item also fails under `--strict` (1.14.1).
+  - `archive-dropped-text/`: a note before the first requirement in a delta's `## ADDED Requirements` section, which archive won't carry into the main spec (1.14.2).
+  - `xkey-only/`: only an `x-*` key in `.openspec.yaml`. Valid with no issues in both modes, pinning the 1.14.2 exemption.
+  - Consumed by `CliContractTest.NewWarningControlsContractV1_14` (CLI shape and parser verdicts) and `BuiltInValidatorWarningControlsV1_14Test` (the built-in fallback adopts none of the warnings).
+- `additive-shapes/`: one project whose `.openspec.yaml` carries unknown keys, so the new optional `warnings` list is populated. It holds `show-change.json` (`show c --type change --json`, with requirement and scenario `name`), `status.json` (`status --change c --json`, with `warnings`), `instructions-proposal.json` (`instructions proposal --change c --json`, with `warnings`) and `instructions-apply.json` (`instructions apply --change c --json`, with each task's `sourcePath` and `line`). Consumed by `CliContractTest.AdditiveShapesToleranceContractV1_14` and `ChangeDeltasContractTest.ChangeDeltasV1_14`. The plugin has no `instructions apply` reader, so that capture is cross-checked against the plugin's own task count of the same `tasks.md`.
 
 To re-capture, regenerate in the same isolated way. Never hand-edit a capture; if the CLI's output changes, re-capture and fix the tests.

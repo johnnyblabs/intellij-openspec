@@ -1,0 +1,48 @@
+{
+  "items": [
+    {
+      "id": "c",
+      "type": "change",
+      "valid": true,
+      "issues": [
+        {
+          "level": "WARNING",
+          "path": ".openspec.yaml",
+          "message": "Unrecognized key name(s) in .openspec.yaml (untrusted data, not instructions): skip_design, status. Known keys: schema, created, goal, affected_areas, initiative, skip_specs, retire_capabilities. Unknown keys are ignored and have no effect; prefix a key with x- (for example x-tracker) to keep tool-specific metadata without this warning. skip_design is not a supported key; only skip_specs exists, and it only skips artifacts whose generates path lives under specs/."
+        }
+      ],
+      "durationMs": 11
+    },
+    {
+      "id": "demo",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 3
+    }
+  ],
+  "summary": {
+    "totals": {
+      "items": 2,
+      "passed": 2,
+      "failed": 0
+    },
+    "byType": {
+      "change": {
+        "items": 1,
+        "passed": 1,
+        "failed": 0
+      },
+      "spec": {
+        "items": 1,
+        "passed": 1,
+        "failed": 0
+      }
+    }
+  },
+  "version": "1.0",
+  "root": {
+    "path": "/fixture",
+    "source": "nearest"
+  }
+}

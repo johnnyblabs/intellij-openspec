@@ -1,0 +1,49 @@
+{
+  "items": [
+    {
+      "id": "c",
+      "type": "change",
+      "valid": false,
+      "issues": [
+        {
+          "level": "WARNING",
+          "path": "demo/spec.md",
+          "line": 3,
+          "message": "Text before the first requirement in \"## ADDED Requirements\" is not carried into the main spec by archive. Move it into a requirement, or into proposal.md or design.md."
+        }
+      ],
+      "durationMs": 12
+    },
+    {
+      "id": "demo",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 3
+    }
+  ],
+  "summary": {
+    "totals": {
+      "items": 2,
+      "passed": 1,
+      "failed": 1
+    },
+    "byType": {
+      "change": {
+        "items": 1,
+        "passed": 0,
+        "failed": 1
+      },
+      "spec": {
+        "items": 1,
+        "passed": 1,
+        "failed": 0
+      }
+    }
+  },
+  "version": "1.0",
+  "root": {
+    "path": "/fixture",
+    "source": "nearest"
+  }
+}
