@@ -51,11 +51,15 @@ The Update OpenSpec action SHALL be registered in plugin.xml within the OpenSpec
 
 ### Requirement: Legacy-cleanup outcome detection
 
-The plugin SHALL recognize when `openspec update` reports pending legacy-file cleanup (the skills-migration "Files to remove" block with `--force`/interactive guidance) even though the CLI exits 0, by parsing the command output. Parsing SHALL be covered by a contract test against captured real CLI output, and an output without the migration block SHALL change nothing about the existing Update flow.
+The plugin SHALL recognize when `openspec update` reports pending legacy-file cleanup (the skills-migration "Files to remove" block with `--force`/interactive guidance) even though the CLI exits 0, by parsing the command output. Recognition SHALL key on the "Files to remove" header and the bulleted file entries, accept whatever guidance line the CLI prints between them, and record that line. Parsing SHALL be covered by contract tests against captured real CLI output from every wording in the supported range, and an output without the migration block SHALL change nothing about the existing Update flow.
 
 #### Scenario: Legacy files pending
 - **WHEN** `openspec update` output contains the migration block listing files to remove
 - **THEN** the plugin SHALL treat the update as incomplete-with-pending-cleanup and offer the cleanup flow instead of reporting bare success
+
+#### Scenario: Guidance line reworded by the CLI
+- **WHEN** the migration block's guidance line is the 1.14+ "These files will be deleted entirely. Back up any custom content before proceeding:" rather than the earlier "No user content to preserve:"
+- **THEN** the plugin SHALL still recognize the block, offer the same files, and record the line it printed
 
 #### Scenario: No migration block
 - **WHEN** `openspec update` output contains no migration block
@@ -71,7 +75,7 @@ The plugin SHALL resolve pending legacy cleanup through explicit user consent, d
 
 #### Scenario: Review and remove
 - **WHEN** the user opens the cleanup review from the Update notification
-- **THEN** the dialog SHALL list each pending file as an openable link with a checkbox (all checked by default) and SHALL quote the CLI's no-user-content statement
+- **THEN** the dialog SHALL list each pending file as an openable link with a checkbox and SHALL quote the guidance line the CLI printed; files SHALL start checked only when the CLI certified they hold no user content, and unchecked when it warned to back up custom content
 
 #### Scenario: Surgical deletion
 - **WHEN** the user confirms Remove selected
