@@ -1,0 +1,22 @@
+{
+  "_comment": "Expected values for the hand-edited JetBrains Marketplace listing fields. scripts/check-marketplace-listing.py compares these (and getting-started.html) with the public listing. The Description is not here: it is generated from README.md on every release.",
+  "pluginId": 30678,
+  "preserveUIEdits": false,
+  "copyright": "Copyright 2026 JohnnyB Labs",
+  "tags": [
+    "AI",
+    "Code Tools",
+    "Productivity",
+    "Tools Integration"
+  ],
+  "urls": {
+    "url": "",
+    "forumUrl": "",
+    "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0",
+    "privacyPolicyUrl": "https://openspec.johnnyblabs.com/privacy",
+    "bugtrackerUrl": "https://github.com/johnnyblabs/intellij-openspec/issues",
+    "docUrl": "https://openspec.johnnyblabs.com",
+    "sourceCodeUrl": "https://github.com/johnnyblabs/intellij-openspec"
+  },
+  "screenshots": 13
+}

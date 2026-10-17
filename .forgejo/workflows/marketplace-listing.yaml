@@ -1,0 +1,60 @@
+name: Marketplace listing drift
+
+# Weekly check that the JetBrains Marketplace listing's hand-edited fields (Getting Started,
+# URLs, tags, copyright, screenshots) still match docs/marketplace/. The listing API is public,
+# so no Marketplace token is needed. On drift the job opens one issue (or comments on the open
+# one) with the fields to re-paste, then fails so the run shows red.
+on:
+  schedule:
+    - cron: "17 9 * * 1"
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compare the listing with docs/marketplace/
+        id: check
+        run: |
+          set +e
+          python3 scripts/check-marketplace-listing.py > drift.txt 2>&1
+          code=$?
+          cat drift.txt
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          # 2 = the listing could not be read: fail the run, but don't file a drift issue.
+          [ "$code" -eq 2 ] && exit 1
+          exit 0
+
+      - name: Open or update the drift issue
+        if: steps.check.outputs.code == '1'
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          API: ${{ github.server_url }}/api/v1/repos/${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_number }}
+        run: |
+          python3 - <<'EOF'
+          import json, os, urllib.parse, urllib.request
+          api, token = os.environ["API"], os.environ["TOKEN"]
+          title = "Marketplace listing drift"
+          body = ("The weekly Marketplace check found listing fields that differ from `docs/marketplace/`.\n\n"
+                  "```\n" + open("drift.txt").read().strip() + "\n```\n\nRun: " + os.environ["RUN_URL"])
+
+          def call(method, path, data=None):
+              req = urllib.request.Request(api + path, method=method,
+                                           data=json.dumps(data).encode() if data is not None else None,
+                                           headers={"Authorization": "token " + token,
+                                                    "Content-Type": "application/json"})
+              with urllib.request.urlopen(req, timeout=30) as resp:
+                  return json.load(resp)
+
+          q = urllib.parse.urlencode({"state": "open", "type": "issues", "q": title})
+          existing = [i for i in call("GET", "/issues?" + q) if i["title"] == title]
+          if existing:
+              call("POST", f"/issues/{existing[0]['number']}/comments", {"body": body})
+              print("Commented on issue", existing[0]["number"])
+          else:
+              print("Opened issue", call("POST", "/issues", {"title": title, "body": body})["number"])
+          EOF
+          exit 1
