@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+## v0.13.0
+
 ### Added
 
 - **Finished changes stand out in the Changes tree.** A change whose artifacts are all complete and whose tasks are all done now gets a check-mark badge in place of the apply-ready dot, plus an "all tasks done" cue after its task count, so you no longer have to read every `25/25` to find work that's ready to wrap up. It's a suggestion to archive, not a guarantee (the tooltip points you to Verify, which also checks validation). It shows when the OpenSpec CLI is available.
@@ -11,15 +13,14 @@
 
 ### Fixed
 
+- **Task progress now matches the CLI's counts.** Tasks written with `*`, `+` or numbered markers (`1.`, `1)`), or with boxes like `[]` or `[ x ]`, were not counted. The tree's `X/Y`, the workflow panel, Apply and Verify could show a change as finished while the CLI still listed open tasks, and Verify could allow archiving with work left.
+- **Create Delta Spec now scaffolds a delta the OpenSpec CLI can read.** The scaffold used `## ADDED`, `## MODIFIED` and `## REMOVED` headings, but the CLI only recognizes `## ADDED Requirements` and its siblings. So a delta you wrote into the scaffold was invisible to it, and validation failed with "No deltas found". The scaffold now uses the CLI's headings, and its rename guidance shows the CLI's ``FROM: `### Requirement: Old` `` / ``TO: `### Requirement: New` `` format.
 - **The plugin now notices an OpenSpec CLI you upgrade while the IDE is running.** When you switch back to the project's IDE window, the plugin re-checks the CLI (at most once every 30 seconds) and the tool window shows the new version. Before, it kept showing the version from when the project opened until you reopened the project or re-showed the tool window.
 - **Propose and the delta-spec diff links now also work while the IDE is indexing.** The "Propose a Change" button and links in the tool window, the workflow panel and the Setup Wizard, and the diff links in the deltas preview, now launch their action through the IDE's standard action pipeline. They keep working during indexing instead of showing a "not available while indexing" message.
 - **Renames written with `*` or `+` bullets are no longer reported as errors.** OpenSpec CLI 1.13 accepts any list bullet in `## RENAMED Requirements`, but the built-in validator and the delta spec inspection only accepted `-`, so a valid rename was flagged in the editor and failed validation when the CLI wasn't installed.
-- **Spec sync now applies every removal and rename the CLI applies.** Bullet-form removals (``* `### Requirement: Name` ``) were silently skipped. Renames written in the CLI's own format (``FROM: `### Requirement: Old` ``) never found their target.
-- **Task progress now matches the CLI's counts.** Tasks written with `*`, `+` or numbered markers (`1.`, `1)`), or with boxes like `[]` or `[ x ]`, were not counted. The tree's `X/Y`, the workflow panel, Apply and Verify could show a change as finished while the CLI still listed open tasks, and Verify could allow archiving with work left.
-- **Validating with a rejected item name no longer reports a pass.** OpenSpec CLI 1.13 answers some invalid requests with an error instead of a result; the plugin read that as "passed". It now falls back to the built-in validator.
-
-- **Create Delta Spec now scaffolds a delta the OpenSpec CLI can read.** The scaffold used `## ADDED`, `## MODIFIED` and `## REMOVED` headings, but the CLI only recognizes `## ADDED Requirements` and its siblings. So a delta you wrote into the scaffold was invisible to it, and validation failed with "No deltas found". The scaffold now uses the CLI's headings, and its rename guidance shows the CLI's ``FROM: `### Requirement: Old` `` / ``TO: `### Requirement: New` `` format.
 - **An empty `## RENAMED Requirements` section is no longer reported as an error** by the built-in validator or the delta spec inspection. The CLI accepts an empty RENAMED section, so a correctly filled-in scaffold no longer shows a red error in the editor or fails validation when the CLI isn't installed. A RENAMED section with `FROM:`/`TO:` lines that don't form a pair is still an error.
+- **Spec sync now applies every removal and rename the CLI applies.** Bullet-form removals (``* `### Requirement: Name` ``) were silently skipped. Renames written in the CLI's own format (``FROM: `### Requirement: Old` ``) never found their target.
+- **Validating with a rejected item name no longer reports a pass.** OpenSpec CLI 1.13 answers some invalid requests with an error instead of a result; the plugin read that as "passed". It now falls back to the built-in validator.
 
 ## v0.12.0
 
