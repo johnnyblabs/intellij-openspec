@@ -19,9 +19,11 @@
 # the project path).
 #
 # What the seeding deliberately triggers:
-#   * init by an OLD OpenSpec CLI (1.3.1) with the junie tool -> leaves legacy
-#     .junie/commands/opsx-*.md files, so the Update action's legacy-cleanup
-#     flow fires on a 1.4+ CLI
+#   * init by an OLD OpenSpec CLI (1.3.1) with the junie tool -> .junie/commands/opsx-*.md
+#     files (current CLIs regenerate these in place rather than reporting them)
+#   * legacy .cursor/commands/openspec-*.md command files -> current CLIs (1.13, 1.14, …)
+#     still report these in `openspec update`'s "Files to remove" block, so the Update
+#     action's legacy-cleanup flow fires
 #   * a main spec with a lowercase "### requirement:" header -> exercises the
 #     CLI-1.4 case-insensitive header parsing parity
 #   * a change with proposal done and design/specs/tasks pending -> the
@@ -52,6 +54,14 @@ export OPENSPEC_TELEMETRY=0
 
 # Old CLI on purpose: creates the legacy command files the cleanup flow detects.
 npx -y @fission-ai/openspec@1.3.1 init --tools junie . < /dev/null > /dev/null 2>&1
+
+# Legacy Cursor command files (pre-skills naming). `openspec update` on current CLIs lists these
+# under "Files to remove", which is what drives the legacy-cleanup flow in the walkthrough and uiSmoke.
+mkdir -p .cursor/commands
+for name in proposal apply archive; do
+    printf -- '---\nname: openspec-%s\n---\nLegacy OpenSpec command (pre-skills format).\n' "$name" \
+        > ".cursor/commands/openspec-$name.md"
+done
 
 mkdir -p openspec/specs/greeting
 cat > openspec/specs/greeting/spec.md << 'EOF'

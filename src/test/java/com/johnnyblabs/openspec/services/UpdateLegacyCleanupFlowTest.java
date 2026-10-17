@@ -115,4 +115,16 @@ public class UpdateLegacyCleanupFlowTest extends OpenSpecIntegrationTestBase {
 
         assertFalse("A set recorded as regenerating must never re-nag", cleanupNoticeRaised());
     }
+
+    public void test1_14RewordedBlockRaisesTheNoticeWithoutClaimingSafety() {
+        // CLI 1.14.0 reworded the guidance line; before this fix the notice never appeared on 1.14.x.
+        service().handleUpdateResult(loadFixture("1.14.3/update-legacy-pending.txt"));
+        assertTrue("1.14 cleanup block must raise the review notice", cleanupNoticeRaised());
+        Notification notice = raised.stream().filter(n -> n.getContent().contains("legacy file(s)"))
+                .findFirst().orElseThrow();
+        assertTrue(notice.getContent(), notice.getContent().contains("listed 3 legacy file(s)"));
+        assertFalse("the CLI no longer says the files are safe to remove",
+                notice.getContent().contains("safe to remove"));
+        assertTrue(notice.getContent().contains("never runs --force"));
+    }
 }
