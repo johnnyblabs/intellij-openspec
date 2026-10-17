@@ -201,6 +201,50 @@ class VerificationServiceTest {
         }
 
         @Test
+        void star_and_numbered_not_done_tasks_block_archive() throws IOException {
+            // Client 1.13.1 task grammar: any bullet or ordered marker. The legacy `-`-only regex saw these as clean.
+            Path changeDir = createChangeDir("my-change");
+            Files.writeString(changeDir.resolve("proposal.md"), "x");
+            Files.writeString(changeDir.resolve("design.md"), "x");
+            Files.writeString(changeDir.resolve("tasks.md"), "- [x] 1.1 Done\n* [ ] 1.2 Star\n1. [ ] 1.3 Numbered\n");
+
+            VerificationReport report = service.verify("my-change");
+
+            assertTrue(report.hasCritical(), "not-done * and 1. tasks must block archive");
+            assertTrue(report.getFindings(Dimension.COMPLETENESS).stream()
+                    .anyMatch(f -> f.description().contains("out of 3")), report.getFindings(Dimension.COMPLETENESS).toString());
+        }
+
+        @Test
+        void captured_task_markers_match_the_clients_counts() throws IOException {
+            // Contract: fixtures/cli/1.13.2/task-markers — the client's list --json reports these totals.
+            String base = "/fixtures/cli/1.13.2/task-markers/";
+            String tasks;
+            com.google.gson.JsonObject change;
+            try (var in = getClass().getResourceAsStream(base + "openspec/changes/c/tasks.md");
+                 var json = getClass().getResourceAsStream(base + "list.json")) {
+                assertNotNull(in);
+                assertNotNull(json);
+                tasks = new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+                change = com.google.gson.JsonParser.parseString(new String(json.readAllBytes(),
+                        java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject()
+                        .getAsJsonArray("changes").get(0).getAsJsonObject();
+            }
+            int total = change.get("totalTasks").getAsInt();
+            int notDone = total - change.get("completedTasks").getAsInt();
+            Path changeDir = createChangeDir("my-change");
+            Files.writeString(changeDir.resolve("proposal.md"), "x");
+            Files.writeString(changeDir.resolve("design.md"), "x");
+            Files.writeString(changeDir.resolve("tasks.md"), tasks);
+
+            VerificationReport report = service.verify("my-change");
+            VerificationFinding f = report.getFindings(Dimension.COMPLETENESS).stream()
+                    .filter(x -> x.description().contains("out of " + total)).findFirst()
+                    .orElseThrow(() -> new AssertionError(report.getFindings(Dimension.COMPLETENESS).toString()));
+            assertTrue(f.description().contains(notDone + " task(s) not done"), f.description());
+        }
+
+        @Test
         void mixed_checkbox_states_counted_correctly() throws IOException {
             Path changeDir = createChangeDir("my-change");
             Files.writeString(changeDir.resolve("proposal.md"), "x");

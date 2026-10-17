@@ -669,6 +669,49 @@ class BuiltInValidatorRulesTest {
     }
 
     @Test
+    void capturedStarBulletedRenamed_isAccepted_matchingCli113() throws Exception {
+        // CLI 1.13.0+ parses every CommonMark bullet in RENAMED; the capture beside this input is valid:true.
+        String base = "/fixtures/cli/1.13.2/renamed-star/";
+        String capture = fixtureText(base + "validate-change.json");
+        assertTrue(capture.contains("\"valid\": true"), "capture must record the CLI accepting the change");
+        String delta = fixtureText(base + "openspec/changes/c/specs/demo/spec.md");
+        assertTrue(delta.lines().anyMatch(l -> l.startsWith("* FROM:")), "control must use a * bullet: " + delta);
+        for (String input : List.of(delta, delta.replace("\n", "\r\n"))) {
+            List<ValidationIssue> issues = validateDeltaStructure(input);
+            assertTrue(issues.stream().noneMatch(i -> i.rule().equals("delta-renamed-fields")),
+                    "a *-bulleted RENAMED pair must not be delta-renamed-fields (CLI accepts it): " + issues);
+        }
+    }
+
+    @Test
+    void capturedUnpairedStarRenamed_isReported_soTheRuleIsLiveOnStarInput() throws Exception {
+        // Liveness anchor for the "*-bullet is accepted" tests: the CLI rejects this lone `* FROM:` (valid:false),
+        // and the built-in rule must see the `*` line too — otherwise "not reported" could pass on an unparsed section.
+        String base = "/fixtures/cli/1.13.2/renamed-star-unpaired/";
+        assertTrue(fixtureText(base + "validate-change.json").contains("\"valid\": false"));
+        List<ValidationIssue> issues = validateDeltaStructure(fixtureText(base + "openspec/changes/c/specs/demo/spec.md"));
+        assertTrue(issues.stream().anyMatch(i -> i.rule().equals("delta-renamed-fields")
+                        && i.severity() == ValidationIssue.Severity.ERROR),
+                "a lone * FROM: must be delta-renamed-fields: " + issues);
+    }
+
+    @Test
+    void capturedPlusBulletedRenamed_isAccepted_matchingCli113() throws Exception {
+        String base = "/fixtures/cli/1.13.2/renamed-plus/";
+        assertTrue(fixtureText(base + "validate-change.json").contains("\"valid\": true"));
+        List<ValidationIssue> issues = validateDeltaStructure(fixtureText(base + "openspec/changes/c/specs/demo/spec.md"));
+        assertTrue(issues.stream().noneMatch(i -> i.rule().equals("delta-renamed-fields")),
+                "a +-bulleted RENAMED pair must not be delta-renamed-fields: " + issues);
+    }
+
+    private String fixtureText(String path) throws java.io.IOException {
+        try (java.io.InputStream in = getClass().getResourceAsStream(path)) {
+            assertNotNull(in, "missing fixture " + path);
+            return new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8).replace("\r\n", "\n");
+        }
+    }
+
+    @Test
     void deltaRenamed_emptySection_isNotAnError() {
         // The CLI accepts an empty RENAMED section beside other parsed deltas (captured in
         // fixtures/cli/1.12.0/scaffold-delta/validate-new.json), and the scaffold leaves it empty by design.

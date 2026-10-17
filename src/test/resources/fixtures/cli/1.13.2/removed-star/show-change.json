@@ -1,0 +1,26 @@
+{
+  "id": "c",
+  "title": "C",
+  "deltaCount": 1,
+  "deltas": [
+    {
+      "spec": "demo",
+      "operation": "REMOVED",
+      "description": "Remove requirement: Requirement: Works",
+      "requirement": {
+        "text": "Requirement: Works",
+        "scenarios": []
+      },
+      "requirements": [
+        {
+          "text": "Requirement: Works",
+          "scenarios": []
+        }
+      ]
+    }
+  ],
+  "root": {
+    "path": "/fixture",
+    "source": "nearest"
+  }
+}

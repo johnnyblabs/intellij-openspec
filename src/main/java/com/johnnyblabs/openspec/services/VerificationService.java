@@ -31,11 +31,6 @@ import java.util.regex.Pattern;
 public final class VerificationService {
     private static final Logger LOG = Logger.getInstance(VerificationService.class);
 
-    private static final Pattern TASK_INCOMPLETE = Pattern.compile("^\\s*-\\s*\\[\\s*]", Pattern.MULTILINE);
-    private static final Pattern TASK_COMPLETE = Pattern.compile("^\\s*-\\s*\\[x]", Pattern.MULTILINE | Pattern.CASE_INSENSITIVE);
-    // `[~]` marks an in-progress task (OpenSpec 1.4). It is not-done for the "ready to archive?"
-    // question, so it counts toward the total and blocks archive like `[ ]` — never dropped.
-    private static final Pattern TASK_IN_PROGRESS = Pattern.compile("^\\s*-\\s*\\[~]", Pattern.MULTILINE);
     private static final Pattern REQUIREMENT_HEADER = com.johnnyblabs.openspec.util.SpecPatterns.REQUIREMENT_HEADER;
 
     private final Project project;
@@ -159,15 +154,17 @@ public final class VerificationService {
         if (Files.exists(tasksPath)) {
             try {
                 String content = Files.readString(tasksPath, StandardCharsets.UTF_8);
-                Matcher incomplete = TASK_INCOMPLETE.matcher(content);
-                Matcher complete = TASK_COMPLETE.matcher(content);
-                Matcher inProgress = TASK_IN_PROGRESS.matcher(content);
+                // The client's task-line grammar (any bullet or ordered marker). `[~]` is in progress; any
+                // other non-`x` mark is incomplete — both block archive.
                 int incompleteCount = 0;
                 int completeCount = 0;
                 int inProgressCount = 0;
-                while (incomplete.find()) incompleteCount++;
-                while (complete.find()) completeCount++;
-                while (inProgress.find()) inProgressCount++;
+                for (com.johnnyblabs.openspec.util.TaskLines.Task task
+                        : com.johnnyblabs.openspec.util.TaskLines.parse(content)) {
+                    if (task.done()) completeCount++;
+                    else if (task.inProgress()) inProgressCount++;
+                    else incompleteCount++;
+                }
 
                 int notDoneCount = incompleteCount + inProgressCount;
                 int totalCount = completeCount + notDoneCount;

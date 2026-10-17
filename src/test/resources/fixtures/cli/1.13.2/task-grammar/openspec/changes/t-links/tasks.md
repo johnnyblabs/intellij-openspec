@@ -1,0 +1,5 @@
+- [A](https://x)
+- [1][ref]
+- [ ](x)
+- [ ][y]
+- [Some doc](./d.md)

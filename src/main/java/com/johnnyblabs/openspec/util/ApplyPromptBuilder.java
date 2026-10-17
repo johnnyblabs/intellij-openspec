@@ -59,24 +59,11 @@ public final class ApplyPromptBuilder {
     }
 
     /**
-     * Parses tasks.md content and returns [complete, total] counts.
+     * Parses tasks.md content and returns [complete, total] counts, using the OpenSpec client's task-line
+     * grammar (see {@link TaskLines}) so the numbers match {@code openspec list --json}.
      */
     public static int[] countTasks(String tasksContent) {
-        if (tasksContent == null || tasksContent.isEmpty()) {
-            return new int[]{0, 0};
-        }
-        int total = 0;
-        int complete = 0;
-        for (String line : tasksContent.split("\n")) {
-            String trimmed = line.trim();
-            if (trimmed.startsWith("- [x]") || trimmed.startsWith("- [X]")) {
-                total++;
-                complete++;
-            } else if (trimmed.startsWith("- [ ]")) {
-                total++;
-            }
-        }
-        return new int[]{complete, total};
+        return TaskLines.count(tasksContent);
     }
 
     private static String readFile(String changeDir, String fileName) {

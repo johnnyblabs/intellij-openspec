@@ -81,6 +81,30 @@ public class DeltaSpecQuickFixTest extends OpenSpecIntegrationTestBase {
         assertFalse(renamedProblems(filled).iterator().hasNext());
     }
 
+    public void testStarBulletedRenamedPairIsNotAProblem() {
+        // CLI 1.13.0+ accepts * and + bullets in RENAMED (fixtures/cli/1.13.2/renamed-star, valid:true).
+        assertFalse("a *-bulleted pair must not be flagged",
+                renamedProblems("## RENAMED Requirements\n\n* FROM: `### Requirement: Init Action`\n"
+                        + "* TO: `### Requirement: Initialize`\n").iterator().hasNext());
+    }
+
+    public void testPlusBulletedRenamedPairIsNotAProblem() {
+        assertFalse("a +-bulleted pair must not be flagged",
+                renamedProblems("## RENAMED Requirements\n\n+ FROM: `### Requirement: Init Action`\n"
+                        + "+ TO: `### Requirement: Initialize`\n").iterator().hasNext());
+    }
+
+    public void testCapturedUnpairedStarRenamedIsAProblem() throws Exception {
+        // Liveness anchor: CLI 1.13.2 rejects this lone `* FROM:` (renamed-star-unpaired/validate-change.json).
+        String delta;
+        try (java.io.InputStream in = getClass().getResourceAsStream(
+                "/fixtures/cli/1.13.2/renamed-star-unpaired/openspec/changes/c/specs/demo/spec.md")) {
+            assertNotNull("missing fixture", in);
+            delta = new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8).replace("\r\n", "\n");
+        }
+        assertTrue("the inspection must flag a lone * FROM:", renamedProblems(delta).iterator().hasNext());
+    }
+
     public void testRenamedFromWithoutToIsStillAProblem() {
         assertTrue("FROM: with no TO: must still be flagged",
                 renamedProblems("## RENAMED Requirements\n\n- FROM: `### Requirement: Init Action`\n")

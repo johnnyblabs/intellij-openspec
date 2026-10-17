@@ -1,0 +1,57 @@
+{
+  "changes": [
+    {
+      "name": "t-ordered",
+      "completedTasks": 1,
+      "totalTasks": 3,
+      "lastModified": "2026-10-17T04:13:55.450Z",
+      "status": "in-progress"
+    },
+    {
+      "name": "t-links",
+      "completedTasks": 0,
+      "totalTasks": 2,
+      "lastModified": "2026-10-17T04:13:55.446Z",
+      "status": "in-progress"
+    },
+    {
+      "name": "t-fenced",
+      "completedTasks": 1,
+      "totalTasks": 2,
+      "lastModified": "2026-10-17T04:13:55.441Z",
+      "status": "in-progress"
+    },
+    {
+      "name": "t-crlf",
+      "completedTasks": 1,
+      "totalTasks": 6,
+      "lastModified": "2026-10-17T04:13:55.437Z",
+      "status": "in-progress"
+    },
+    {
+      "name": "t-cr-only",
+      "completedTasks": 1,
+      "totalTasks": 1,
+      "lastModified": "2026-10-17T04:13:55.434Z",
+      "status": "complete"
+    },
+    {
+      "name": "t-boxes",
+      "completedTasks": 3,
+      "totalTasks": 8,
+      "lastModified": "2026-10-17T04:13:55.430Z",
+      "status": "in-progress"
+    },
+    {
+      "name": "t-bom",
+      "completedTasks": 1,
+      "totalTasks": 2,
+      "lastModified": "2026-10-17T04:13:55.427Z",
+      "status": "in-progress"
+    }
+  ],
+  "root": {
+    "path": "/fixture",
+    "source": "nearest"
+  }
+}

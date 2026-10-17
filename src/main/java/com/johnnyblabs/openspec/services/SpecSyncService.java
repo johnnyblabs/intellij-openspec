@@ -37,8 +37,7 @@ public final class SpecSyncService {
             "^## (ADDED|MODIFIED|REMOVED|RENAMED) Requirements\\s*$", Pattern.MULTILINE);
     private static final Pattern REQUIREMENT_HEADER =
             com.johnnyblabs.openspec.util.SpecPatterns.REQUIREMENT_HEADER;
-    private static final Pattern RENAMED_ENTRY = Pattern.compile(
-            "(?m)^\\s*(?:-\\s*)?FROM:\\s*(.+)$\\s*^\\s*(?:-\\s*)?TO:\\s*(.+)$");
+    private static final Pattern RENAMED_ENTRY = com.johnnyblabs.openspec.util.SpecPatterns.RENAMED_PAIR;
 
     private final Project project;
 
@@ -114,6 +113,8 @@ public final class SpecSyncService {
 
             if (type == OperationType.RENAMED) {
                 operations.addAll(parseRenamedSection(capabilityName, sectionContent));
+            } else if (type == OperationType.REMOVED) {
+                operations.addAll(parseRemovedSection(capabilityName, sectionContent));
             } else {
                 operations.addAll(parseRequirementBlocks(capabilityName, type, sectionContent));
             }
@@ -148,16 +149,63 @@ public final class SpecSyncService {
         return ops;
     }
 
+    /** A bullet-form REMOVED entry: any CommonMark bullet carrying a (optionally backticked) requirement header. */
+    private static final Pattern REMOVED_BULLET_ENTRY = Pattern.compile(
+            "^\\s*[-*+]\\s*`?###\\s*(?i:requirement):\\s*(.+?)`?\\s*$", Pattern.MULTILINE);
+
+    /**
+     * REMOVED entries in document order, in both forms the client applies: a {@code ### Requirement:} block
+     * and a bullet carrying the header ({@code * `### Requirement: Name`}). A bullet entry is header-only, so
+     * its operation has no block content; {@link #applyRemoved} works by name.
+     */
+    private List<DeltaSpecOperation> parseRemovedSection(String capabilityName, String sectionContent) {
+        java.util.TreeMap<Integer, DeltaSpecOperation> byOffset = new java.util.TreeMap<>();
+        Matcher header = REQUIREMENT_HEADER.matcher(sectionContent);
+        List<Integer> starts = new ArrayList<>();
+        while (header.find()) {
+            starts.add(header.start());
+        }
+        for (int i = 0; i < starts.size(); i++) {
+            int end = i + 1 < starts.size() ? starts.get(i + 1) : sectionContent.length();
+            String block = sectionContent.substring(starts.get(i), end).trim();
+            Matcher name = REQUIREMENT_HEADER.matcher(block);
+            if (name.find()) {
+                byOffset.put(starts.get(i), new DeltaSpecOperation(OperationType.REMOVED, capabilityName,
+                        name.group(1).trim(), block, null, null));
+            }
+        }
+        Matcher bullet = REMOVED_BULLET_ENTRY.matcher(sectionContent);
+        while (bullet.find()) {
+            byOffset.put(bullet.start(), new DeltaSpecOperation(OperationType.REMOVED, capabilityName,
+                    bullet.group(1).trim(), null, null, null));
+        }
+        return new ArrayList<>(byOffset.values());
+    }
+
     private List<DeltaSpecOperation> parseRenamedSection(String capabilityName, String sectionContent) {
         List<DeltaSpecOperation> ops = new ArrayList<>();
         Matcher matcher = RENAMED_ENTRY.matcher(sectionContent);
         while (matcher.find()) {
-            String fromName = matcher.group(1).trim();
-            String toName = matcher.group(2).trim();
+            String fromName = bareRequirementName(matcher.group(1));
+            String toName = bareRequirementName(matcher.group(2));
             ops.add(new DeltaSpecOperation(OperationType.RENAMED, capabilityName, fromName,
                     null, fromName, toName));
         }
         return ops;
+    }
+
+    /** Optional surrounding backticks, then an optional {@code ### Requirement:} token (any casing). */
+    private static final Pattern RENAMED_NAME_WRAPPER = Pattern.compile(
+            "^`?\\s*(?:###\\s*(?i:requirement):\\s*)?(.*?)\\s*`?$");
+
+    /**
+     * Reduces a RENAMED entry's name to the bare requirement name. The client's canonical form carries the
+     * header ({@code FROM: `### Requirement: Old`}); the plugin also accepts bare names ({@code FROM: Old}).
+     * Both must resolve to {@code Old}, or the rename never finds its main-spec target.
+     */
+    static String bareRequirementName(String raw) {
+        Matcher m = RENAMED_NAME_WRAPPER.matcher(raw.trim());
+        return m.matches() ? m.group(1).trim() : raw.trim();
     }
 
     /**

@@ -55,6 +55,15 @@ public final class CliOutputParser {
             // regex behavior of finding nothing.
         }
 
+        if (root != null && !(root.has("items") && root.get("items").isJsonArray())) {
+            String error = firstErrorStatus(root);
+            if (error != null) {
+                // An item-less error response (CLI 1.13.1+ `invalid_item`, `unknown_item`): the CLI rejected the
+                // run itself, so there is no verdict to trust — never report it as a pass with zero items.
+                throw new CliErrorResponseException(error);
+            }
+        }
+
         boolean allValid = true;
         if (root != null && root.has("items") && root.get("items").isJsonArray()) {
             for (JsonElement element : root.getAsJsonArray("items")) {
@@ -88,6 +97,33 @@ public final class CliOutputParser {
         }
 
         return new ValidationResult(allValid, issues, "cli");
+    }
+
+    /** The message of the first {@code status} entry with severity {@code error}, or {@code null}. */
+    private static String firstErrorStatus(JsonObject root) {
+        if (!root.has("status") || !root.get("status").isJsonArray()) {
+            return null;
+        }
+        for (JsonElement element : root.getAsJsonArray("status")) {
+            if (!element.isJsonObject()) {
+                continue;
+            }
+            JsonObject entry = element.getAsJsonObject();
+            if (entry.has("severity") && "error".equalsIgnoreCase(entry.get("severity").getAsString())) {
+                return entry.has("message") ? entry.get("message").getAsString() : "CLI reported an error";
+            }
+        }
+        return null;
+    }
+
+    /**
+     * The CLI answered {@code validate --json} with an error response instead of a verdict. Callers fall back to
+     * the built-in validator, exactly as for a run that failed to execute.
+     */
+    public static final class CliErrorResponseException extends RuntimeException {
+        public CliErrorResponseException(String message) {
+            super(message);
+        }
     }
 
     /**

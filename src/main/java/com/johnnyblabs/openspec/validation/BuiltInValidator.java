@@ -38,8 +38,7 @@ public final class BuiltInValidator {
     private static final Pattern CLAUSE_PATTERN = Pattern.compile("^-\\s+\\*{0,2}(GIVEN|WHEN|THEN|AND)\\*{0,2}\\b", Pattern.MULTILINE);
     private static final Pattern DELTA_SECTION_PATTERN = Pattern.compile("^## (ADDED|MODIFIED|REMOVED|RENAMED)", Pattern.MULTILINE);
     private static final Pattern FULL_SPEC_PATTERN = Pattern.compile("^## (Requirements|Purpose)", Pattern.MULTILINE);
-    private static final Pattern RENAMED_ENTRY_PATTERN = Pattern.compile(
-            "(?m)^\\s*(?:-\\s*)?FROM:\\s*(.+)$\\s*^\\s*(?:-\\s*)?TO:\\s*(.+)$");
+    private static final Pattern RENAMED_ENTRY_PATTERN = com.johnnyblabs.openspec.util.SpecPatterns.RENAMED_PAIR;
     // REMOVED metadata markers, tolerant of both bold forms: **Reason:** (colon inside) and **Reason**: (colon outside).
     private static final Pattern REMOVED_REASON_PATTERN = Pattern.compile("\\*\\*\\s*Reason\\s*:?\\s*\\*\\*", Pattern.CASE_INSENSITIVE);
     private static final Pattern REMOVED_MIGRATION_PATTERN = Pattern.compile("\\*\\*\\s*Migration\\s*:?\\s*\\*\\*", Pattern.CASE_INSENSITIVE);

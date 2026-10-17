@@ -1,0 +1,2 @@
+# CRLF, BOM and lone-CR bytes in these fixtures are the test input; never normalize them on checkout.
+src/test/resources/fixtures/cli/1.13.2/task-grammar/** -text
