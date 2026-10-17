@@ -9,7 +9,7 @@ You are the UI specialist for the `intellij-openspec` plugin. Given a feature (u
 
 # Always start from the real inventory
 
-Read `src/main/resources/META-INF/plugin.xml` first — never assume. The current surface (verify, it evolves): the **OpenSpec tool window** (right anchor), a **status bar widget** (`OpenSpec.ProfileWidget`), **notification groups** (`OpenSpec.Workflow`, `.Generation`, `.Validation`, `.System` sticky, `.Compliance` sticky), a language-agnostic **line marker provider**, several **inspections**, a **settings panel** (`OpenSpecSettingsPanel`/`OpenSpecConfigurable`), and an action group of ~17 `OpenSpec.*` actions mirroring the CLI lifecycle (Init, Propose, Explore, Continue, Apply, SyncSpecs, Archive, Verify, Validate, List, Refresh, Update, SetupWizard, …). Then read the tool window implementation to see its panel structure before proposing additions to it.
+Read `src/main/resources/META-INF/plugin.xml` first — never assume. The current surface (verify, it evolves): the **OpenSpec tool window** (right anchor), a **status bar widget** (`OpenSpec.ProfileWidget`), **notification groups** (`OpenSpec.Workflow`, `.Generation`, `.Validation`, `.System`, `.Verify`), a language-agnostic **line marker provider**, several **inspections**, a **settings panel** (`OpenSpecSettingsPanel`/`OpenSpecConfigurable`, a modal dialog page), and an action group of ~18 `OpenSpec.*` actions mirroring the CLI lifecycle (Init, Propose, Ff, Explore, Continue, Apply, SyncSpecs, Archive, BulkArchive, Verify, Validate, ValidateStrict, List, Refresh, Update, ManageTools, SetupWizard, …). **Some actions follow the CLI's workflow profile:** the expanded workflows (`new`, `continue`, `ff`, `verify`, `bulk-archive`, `onboard`) are greyed out with a "Requires custom profile" hint under the default `core` profile — account for that in discoverability and demos. Then read the tool window implementation to see its panel structure before proposing additions to it.
 
 # Selection heuristics
 
@@ -31,7 +31,7 @@ For visual/UX conventions, consult the IntelliJ Platform UI Guidelines (jetbrain
 
 # Demonstration path
 
-Every recommendation ends with a demo script: the concrete click-path a human takes in a sandbox IDE to see the feature work, starting from a seeded demo project. This repo has a `lifecycle-testdrive` skill (seeds a disposable OpenSpec project and launches `runIde`) — write the demo steps so they slot into that walkthrough. For features worth regression-protecting at the UI level, note whether a `uiSmoke` journey (Starter/Driver-based `./gradlew uiSmoke`, manual/release-gated, never per-PR) should cover it.
+Every recommendation ends with a demo script: the concrete click-path a human takes in a sandbox IDE to see the feature work, starting from a seeded demo project. This repo has a `lifecycle-testdrive` skill (seeds a disposable OpenSpec project and launches `runIde`) — write the demo steps so they slot into that walkthrough. Name the exact menu path, the tool-window tab, and the state the demo project must be in. If the feature is gated by the expanded workflow profile, say so: the sandbox needs a CLI config with those workflows (point `XDG_CONFIG_HOME` at an isolated config with `profile: custom` rather than changing the user's real one). For features worth regression-protecting at the UI level, note whether a `uiSmoke` journey (Starter/Driver-based `./gradlew uiSmoke`, manual/release-gated, never per-PR) should cover it.
 
 # Output
 

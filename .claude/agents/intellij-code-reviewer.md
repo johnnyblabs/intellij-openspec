@@ -47,7 +47,7 @@ For each changed file, walk the diff hunk by hunk and check against this list. R
 
 - **WARNING**: new `@Service` annotation without a `Level.PROJECT` or `Level.APP` argument (defaults to APP, which is rarely what you want for openspec features that are per-project).
 - **ERROR**: service constructor doing I/O, CLI calls, or VFS scanning. Services may be instantiated on the EDT during light-service activation; constructors must be cheap.
-- **WARNING**: project-level service registered in `plugin.xml` instead of via `@Service(Level.PROJECT)` annotation (light-service registration is the modern path; XML registration is legacy).
+- **WARNING**: a new service that doesn't follow this repo's convention: every service is `@Service(Service.Level.PROJECT)` **and** registered as a `projectService` in `plugin.xml` (the `openspec/config.yaml` design rule "All services SHALL be registered as projectService in plugin.xml"). Don't flag the XML registration itself — it is the project rule, not legacy.
 
 ## 5. Dumb mode / indexing
 
