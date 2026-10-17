@@ -5,7 +5,7 @@ import com.intellij.notification.NotificationAction;
 import com.intellij.notification.NotificationGroupManager;
 import com.intellij.notification.NotificationType;
 import com.intellij.openapi.actionSystem.AnActionEvent;
-import com.intellij.openapi.fileEditor.FileEditorManager;
+import com.intellij.openapi.fileEditor.OpenFileDescriptor;
 import com.intellij.openapi.options.ShowSettingsUtil;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -109,7 +109,7 @@ public final class OpenSpecNotifier {
             public void actionPerformed(@NotNull AnActionEvent e, @NotNull Notification notification) {
                 Project project = e.getProject();
                 if (project != null) {
-                    FileEditorManager.getInstance(project).openFile(file, true);
+                    new OpenFileDescriptor(project, file).navigate(true);
                 }
                 notification.expire();
             }

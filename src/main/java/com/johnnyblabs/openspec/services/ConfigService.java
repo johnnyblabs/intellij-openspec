@@ -1,16 +1,17 @@
 package com.johnnyblabs.openspec.services;
 
 import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.components.Service;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.ThrowableComputable;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.johnnyblabs.openspec.model.OpenSpecConfig;
 import com.johnnyblabs.openspec.util.OpenSpecFileUtil;
 import org.yaml.snakeyaml.Yaml;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.Map;
 
@@ -62,7 +63,7 @@ public final class ConfigService {
                 }
             } else {
                 VirtualFile cfgFile = configFile;
-                raw = ReadAction.compute(() -> {
+                raw = ApplicationManager.getApplication().runReadAction((ThrowableComputable<Map<String, Object>, IOException>) () -> {
                     try (InputStream is = cfgFile.getInputStream()) {
                         return new Yaml().load(is);
                     }

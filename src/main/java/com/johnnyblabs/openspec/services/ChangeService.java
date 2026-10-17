@@ -1,11 +1,11 @@
 package com.johnnyblabs.openspec.services;
 
 import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.application.WriteAction;
 import com.intellij.openapi.components.Service;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.ThrowableComputable;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.johnnyblabs.openspec.model.Change;
 import com.johnnyblabs.openspec.model.ChangeMetadata;
@@ -127,7 +127,7 @@ public final class ChangeService {
                             content = new String(is.readAllBytes(), StandardCharsets.UTF_8);
                         }
                     } else {
-                        content = ReadAction.compute(() -> {
+                        content = ApplicationManager.getApplication().runReadAction((ThrowableComputable<String, IOException>) () -> {
                             try (InputStream is = metaFile.getInputStream()) {
                                 return new String(is.readAllBytes(), StandardCharsets.UTF_8);
                             }

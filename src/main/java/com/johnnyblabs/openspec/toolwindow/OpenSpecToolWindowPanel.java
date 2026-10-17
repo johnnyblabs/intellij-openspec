@@ -4,7 +4,7 @@ import com.intellij.openapi.actionSystem.*;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.WriteAction;
 import com.intellij.openapi.diagnostic.Logger;
-import com.intellij.openapi.fileEditor.FileEditorManager;
+import com.intellij.openapi.fileEditor.OpenFileDescriptor;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.vfs.LocalFileSystem;
@@ -475,7 +475,7 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
                 VirtualFile file = LocalFileSystem.getInstance().findFileByPath(data.filePath());
                 if (file != null && !file.isDirectory()) {
                     ApplicationManager.getApplication().invokeLater(
-                            () -> FileEditorManager.getInstance(project).openFile(file, true));
+                            () -> new OpenFileDescriptor(project, file).navigate(true));
                 }
             }
         }
@@ -546,7 +546,7 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
                         public void actionPerformed(@org.jetbrains.annotations.NotNull AnActionEvent ae) {
                             VirtualFile file = LocalFileSystem.getInstance().findFileByPath(data.filePath());
                             if (file != null) {
-                                FileEditorManager.getInstance(project).openFile(file, true);
+                                new OpenFileDescriptor(project, file).navigate(true);
                             }
                         }
                     });
@@ -562,7 +562,7 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
                         public void actionPerformed(@org.jetbrains.annotations.NotNull AnActionEvent ae) {
                             VirtualFile file = LocalFileSystem.getInstance().findFileByPath(data.filePath());
                             if (file != null) {
-                                FileEditorManager.getInstance(project).openFile(file, true);
+                                new OpenFileDescriptor(project, file).navigate(true);
                             }
                         }
                     });

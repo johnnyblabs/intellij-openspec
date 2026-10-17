@@ -148,8 +148,7 @@ public class ExploreContextAction extends OpenSpecBaseAction {
                         .refreshAndFindFileByNioFile(tmpFile);
                 if (vf != null) {
                     ApplicationManager.getApplication().invokeLater(() -> {
-                        com.intellij.openapi.fileEditor.FileEditorManager.getInstance(project)
-                                .openFile(vf, true);
+                        new com.intellij.openapi.fileEditor.OpenFileDescriptor(project, vf).navigate(true);
                     });
                 }
             } catch (IOException ex) {

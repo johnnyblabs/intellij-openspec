@@ -2,11 +2,12 @@ package com.johnnyblabs.openspec.search;
 
 import com.intellij.ide.actions.searcheverywhere.FoundItemDescriptor;
 import com.intellij.ide.actions.searcheverywhere.WeightedSearchEverywhereContributor;
-import com.intellij.openapi.application.ReadAction;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.fileEditor.OpenFileDescriptor;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.ThrowableComputable;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.SimpleListCellRenderer;
@@ -73,7 +74,8 @@ public class SpecSearchEverywhereContributor
         if (parsing == null) {
             return;
         }
-        List<SpecFile> specs = ReadAction.compute(parsing::parseAllSpecs);
+        List<SpecFile> specs = ApplicationManager.getApplication().runReadAction(
+                (ThrowableComputable<List<SpecFile>, RuntimeException>) parsing::parseAllSpecs);
         for (SpecRequirementMatch match : SpecRequirementSearch.find(specs, pattern)) {
             progressIndicator.checkCanceled();
             if (!consumer.process(new FoundItemDescriptor<>(match, 1))) {

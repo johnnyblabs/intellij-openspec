@@ -3,7 +3,7 @@ package com.johnnyblabs.openspec.toolwindow;
 import com.intellij.openapi.actionSystem.ActionManager;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.fileEditor.FileEditorManager;
+import com.intellij.openapi.fileEditor.OpenFileDescriptor;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.ProgressManager;
@@ -1052,7 +1052,7 @@ public class WorkflowActionPanel extends JPanel {
         String filePath = basePath + "/openspec/changes/" + activeChangeName + "/" + outputPath;
         VirtualFile file = LocalFileSystem.getInstance().refreshAndFindFileByPath(filePath);
         if (file != null) {
-            FileEditorManager.getInstance(project).openFile(file, true);
+            new OpenFileDescriptor(project, file).navigate(true);
         }
     }
 
@@ -1279,7 +1279,7 @@ public class WorkflowActionPanel extends JPanel {
                             return file;
                         });
                         if (scratch != null) {
-                            FileEditorManager.getInstance(project).openFile(scratch, true);
+                            new OpenFileDescriptor(project, scratch).navigate(true);
                         }
                         showGuidancePopover(archiveIconButton,
                                 "\u2713 Opened in editor tab",
@@ -1827,7 +1827,7 @@ public class WorkflowActionPanel extends JPanel {
                                     return file;
                                 });
                                 if (scratch != null) {
-                                    FileEditorManager.getInstance(project).openFile(scratch, true);
+                                    new OpenFileDescriptor(project, scratch).navigate(true);
                                 }
                                 String savePath = (instruction.changeDir() != null && lastOutputPath != null)
                                         ? instruction.changeDir() + "/" + lastOutputPath : lastOutputPath;
