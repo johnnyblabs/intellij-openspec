@@ -11,8 +11,11 @@ the change lifecycle end-to-end, and puts the walkthrough checklist **inside the
 
 The demo project is deliberately seeded to trigger real behavior:
 
-- Initialized by an **older OpenSpec CLI (1.3.1)** with the `junie` tool → leaves legacy
-  `.junie/commands/opsx-*.md` files, so the Update action's legacy-cleanup flow fires.
+- Initialized by an **older OpenSpec CLI (1.3.1)** with the `junie` tool → leaves
+  `.junie/commands/opsx-*.md` files. These count as legacy only for CLIs **before 1.8**, which
+  is when the Update action's legacy-cleanup flow fires. From 1.8, `openspec update` regenerates
+  them in place and reports no cleanup, so that walkthrough stop is skipped (as the uiSmoke
+  journey is).
 - A main spec written with a **lowercase `### requirement:` header** → exercises the
   CLI-1.4 case-insensitive parsing parity.
 - A change with **proposal done, design/specs ready, tasks blocked** → the workflow
@@ -48,20 +51,14 @@ The demo project is deliberately seeded to trigger real behavior:
    cp "<this skill's directory>/walkthrough-template.md" "$DEMO/WALKTHROUGH.md"
    ```
 
-4. **Apply the sandbox workaround (IDEA 2024.2 target only).** The bundled Gradle
-   plugin's startup activity downloads a Gradle↔JVM compatibility table that now contains
-   Java 25 entries; the 2024.2 parser throws `IllegalArgumentException: 25` as an error
-   balloon on every launch. It is platform noise, unrelated to this plugin (which depends
-   only on `platform` + `yaml`) — disable the Gradle plugins in the sandbox:
+4. **No sandbox workaround is needed.** The bundled Gradle plugins' Java 25 error balloon on
+   the 2024.2 target is handled by the build: `prepareSandbox` disables those plugins in the
+   `runIde` sandbox (`disabledPlugins` in `build.gradle.kts`). Don't hand-write
+   `disabled_plugins.txt`, because `prepareSandbox` overwrites it on every launch. If the
+   balloon still appears, the build setting has regressed; it's harmless platform noise either way.
 
-   ```bash
-   SANDBOX_CONFIG="<repo>/.intellijPlatform/sandbox/intellij-openspec/IC-2024.2/config"
-   mkdir -p "$SANDBOX_CONFIG"
-   printf 'com.intellij.gradle\norg.jetbrains.plugins.gradle\norg.jetbrains.plugins.gradle.maven\n' \
-     > "$SANDBOX_CONFIG/disabled_plugins.txt"
-   ```
-
-   Do this while the sandbox is NOT running (the IDE rewrites its config on exit).
+   Run only **one** sandbox at a time. A second `runIde` while one is open boots a second IDE
+   on the same sandbox. Quit the running sandbox, or stop its background task, before relaunching.
 
 5. **Launch, opening the demo project directly** (run in background; first boot takes a
    minute or two):

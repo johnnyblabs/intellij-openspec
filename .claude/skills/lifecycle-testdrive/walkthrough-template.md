@@ -1,12 +1,13 @@
 # OpenSpec Plugin — Lifecycle Test-Drive
 
 Keep this file open in a split editor and work through the stops in order.
-This project was initialized by OpenSpec CLI **1.3.1** on purpose — it carries
-legacy `.junie/commands/opsx-*.md` files so the new Update cleanup flow fires.
+This project was initialized by OpenSpec CLI **1.3.1** on purpose. It carries
+`.junie/commands/opsx-*.md` files that CLIs before 1.8 report as legacy, which is what makes
+the Update cleanup flow fire (Stop 3).
 
 > **Automated coverage** (`gradle uiSmoke`, same seeded fixture): presence/wiring of
 > Stops 1 (tree + panel), 2 (editor parity incl. the seeded `keyword-in-header` spec),
-> 3 (cleanup notice), 4 (Settings schemas), and the Stop 5 archive confirmation guard.
+> 3 (cleanup notice, on CLI < 1.8 only), 4 (Settings schemas), and the Stop 5 archive confirmation guard.
 > This manual walkthrough remains the judgment pass —
 > wording, layout, feel — not the only safety net.
 
@@ -33,31 +34,44 @@ written lowercase: `### requirement:`.
       Expect the targeted warning — *"move the keyword onto the requirement body line"* —
       with a quick-fix that inserts a body line. Undo when done.
 
-## Stop 3 — Update legacy cleanup (the flow you reported)
+## Stop 3 — Update legacy cleanup (CLI < 1.8 only)
 
 Run **OpenSpec ▸ Update** (menu or tool-window toolbar).
 
-- [ ] Console shows the CLI output as before (migration block, exit 0)
-- [ ] Instead of silent success: a **"Review legacy cleanup…"** notification appears
-- [ ] Open the dialog: 4 files, each with a checkbox + clickable link,
-      the CLI's *"No user content to preserve"* quote, and the
-      *"never runs --force"* note
+**On CLI 1.8 or later (including the current target):** `openspec update` regenerates the Junie
+files in place and reports no pending cleanup, so the plugin correctly shows **no** cleanup
+notice. Check only:
+
+- [ ] Console shows the CLI output (`Updated: Junie (vX.Y.Z)`), exit 0, and no cleanup notification
+
+**On a CLI before 1.8** (for example by pointing Settings ▸ CLI path at an older install), the full flow:
+
+- [ ] A **"Review legacy cleanup…"** notification appears
+- [ ] Open the dialog: 4 files, each with a checkbox and a clickable link (opens the file),
+      the CLI's *"No user content to preserve"* quote, and the *"never runs --force"* note
 - [ ] Click **Remove Selected** → files are deleted (one undo step), then a
       verification `openspec update` runs automatically
-- [ ] Expect the **regeneration-loop notice**: this CLI version's junie integration
-      re-creates the files it flags — the notice explains it and suppresses future nags
+- [ ] Expect the **regeneration-loop notice**: that CLI version's junie integration
+      re-creates the files it flags; the notice explains it and suppresses future nags
 - [ ] Run **Update** again → no re-nag (suppressed while the CLI reports the same set)
 
 ## Stop 4 — Schema tooling (Settings)
 
 Open **Settings ▸ Tools ▸ OpenSpec**, Schemas section.
 
-- [ ] `spec-driven` row carries an origin tag: `(built-in)  [package]`
-- [ ] Select it → **Validate** → inline "Schema 'spec-driven' is valid."
-- [ ] **Open Templates** → four template files open as editor tabs
-- [ ] (Optional) **Fork** it as `my-flow`, then Validate the fork ( `[project]` tag appears
-      after Refresh); delete one of its `templates/*.md` files and Validate again to see
-      the inline error list
+- [ ] The list shows `spec-driven` with its origin tag `(built-in)  [package]` straight away,
+      with no reopen needed; the default-schema dropdown is filled too
+- [ ] With nothing selected, **Fork**, **Validate** and **Open Templates** are greyed out
+      (hover: "Select a schema in the list first"); **New** and **Refresh** are enabled
+- [ ] Select `spec-driven` → **Validate** → inline "Schema 'spec-driven' is valid."
+- [ ] **Refresh** → the list reloads, the validation result disappears, and the selection clears
+- [ ] Select `spec-driven` → **Open Templates** → four template files open as editor tabs
+      (behind the modal Settings dialog; they show once you close it)
+- [ ] (Optional) **Fork** it as `my-flow` → `my-flow` appears with a `[project]` tag and its
+      `schema.yaml` opens; delete one of its `templates/*.md` files and Validate it to see the
+      inline error list
+- [ ] (Optional) **New...** with a description and two artifacts → its `schema.yaml` opens with
+      that description and only those artifacts
 
 ## Stop 5 — Finish the lifecycle
 
