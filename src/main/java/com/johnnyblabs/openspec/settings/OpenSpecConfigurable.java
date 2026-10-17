@@ -4,6 +4,7 @@ import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.project.Project;
+import com.johnnyblabs.openspec.ai.AiConfigListener;
 import com.johnnyblabs.openspec.ai.AiCredentialStore;
 import com.johnnyblabs.openspec.ai.AiProvider;
 import com.johnnyblabs.openspec.services.WorkflowProfileSwitchService;
@@ -90,6 +91,11 @@ public class OpenSpecConfigurable implements Configurable {
             ApplicationManager.getApplication().executeOnPooledThread(
                     () -> AiCredentialStore.storeApiKey(provider, apiKey));
         }
+
+        // The AI config just changed: tell open tool-window surfaces so the Direct API delivery
+        // option (and its model selector) appears/withdraws immediately, not only on the next
+        // unrelated refresh. markHasApiKey above is synchronous, so isConfigured() is already current.
+        project.getMessageBus().syncPublisher(AiConfigListener.TOPIC).aiConfigChanged();
 
         // D3 fallback refresh: a Settings apply is a likely moment for the user's CLI
         // state to have drifted from cached state (manual CLI switch in another terminal,

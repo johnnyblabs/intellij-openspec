@@ -2,6 +2,7 @@ package com.johnnyblabs.openspec.dialogs;
 
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
+import com.johnnyblabs.openspec.ai.AiConfigListener;
 import com.johnnyblabs.openspec.ai.AiCredentialStore;
 import com.johnnyblabs.openspec.ai.AiProvider;
 import com.johnnyblabs.openspec.settings.OpenSpecSettings;
@@ -88,5 +89,10 @@ public final class SetupWizardModel {
         }
 
         settings.setSetupCompleted(true);
+
+        // Tell open tool-window surfaces the AI config changed so the Direct API delivery option (and
+        // its model selector) surfaces immediately when the wizard closes, rather than only on the
+        // next unrelated refresh. markHasApiKey above is synchronous, so isConfigured() is current.
+        project.getMessageBus().syncPublisher(AiConfigListener.TOPIC).aiConfigChanged();
     }
 }

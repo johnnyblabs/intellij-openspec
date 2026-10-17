@@ -35,6 +35,7 @@ The [**Version support**](openspec-support.md#version-support) block in `openspe
 | [README.md](README.md) | This documentation index / map | Everyone | Living |
 | [openspec-support.md](openspec-support.md) | Plugin ↔ OpenSpec client coverage by CLI version; canonical version-support block | Users, contributors | Living |
 | [feature-reference.md](feature-reference.md) | Complete reference for every plugin feature, setting, and troubleshooting note | Users | Living |
+| [direct-api-workflow.md](direct-api-workflow.md) | Direct API delivery: setup, a worked generation example, and workflow diagrams | Users | Reference |
 | [feature-comparison-matrix.md](feature-comparison-matrix.md) | Competitive comparison vs. VS Code OpenSpec extensions | Evaluators, maintainers | Snapshot |
 | [getting-started-browser.md](getting-started-browser.md) | Setup guide: browse specs, no AI setup | Reviewers, leads, PMs | Reference |
 | [getting-started-copilot.md](getting-started-copilot.md) | Setup guide: IDE-first developer (Copilot / Cursor / Windsurf / Cline) | IDE-AI developers | Reference |

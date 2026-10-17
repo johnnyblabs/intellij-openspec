@@ -277,6 +277,51 @@ class DirectApiFlowStructuralGuardTest {
                 "the cache write must be on the success path (after the non-200 throw)");
     }
 
+    // --- mid-session AI-config refresh guards (the delivery selector re-offers Direct API without a restart) ---
+
+    @Test
+    void configurableApply_publishesAiConfigChanged() throws IOException {
+        String body = methodBody(read(CONFIGURABLE), "public void apply()");
+        assertTrue(body.contains("syncPublisher(AiConfigListener.TOPIC)") && body.contains("aiConfigChanged()"),
+                "apply() must publish AiConfigListener so the tool window re-offers Direct API immediately after Apply");
+    }
+
+    @Test
+    void wizardPersist_publishesAiConfigChanged() throws IOException {
+        String body = methodBody(read(WIZARD_MODEL), "public void persist(");
+        assertTrue(body.contains("syncPublisher(AiConfigListener.TOPIC)") && body.contains("aiConfigChanged()"),
+                "the Setup Wizard's persist() must publish AiConfigListener so Direct API surfaces when the wizard finishes");
+    }
+
+    @Test
+    void toolWindowPanel_subscribesToAiConfig_andRefreshesDeliveryOptions() throws IOException {
+        String content = read(TW_PANEL);
+        int sub = content.indexOf("subscribe(AiConfigListener.TOPIC");
+        assertTrue(sub >= 0, "the panel must subscribe to AiConfigListener.TOPIC");
+        // Parented to the panel's disposable connection so it dies with the tab, not the project.
+        assertTrue(content.contains("connect(this).subscribe(AiConfigListener.TOPIC"),
+                "the AiConfig subscription must be parented to the panel (connect(this))");
+        assertTrue(content.substring(sub).contains("refreshDeliveryOptions"),
+                "the AiConfig handler must call workflowPanel.refreshDeliveryOptions()");
+    }
+
+    @Test
+    void deliverySelector_rebuildsOnMidSessionApiTransition() throws IOException {
+        String content = read(WORKFLOW);
+        // populateToolSelector runs only in the constructor; the refresh sink must re-run it when the
+        // configured state transitions, so a key added mid-session adds the Direct API delivery item.
+        String sink = methodBody(content, "private void updatePipelineAndButton(");
+        int guard = sink.indexOf("hasApiNow != lastHasApi");
+        assertTrue(guard >= 0,
+                "updatePipelineAndButton must re-offer Direct API only on an isConfigured() transition (one-time, not per refresh)");
+        assertTrue(sink.substring(guard).contains("populateToolSelector()"),
+                "the transition guard must re-run populateToolSelector so a mid-session key surfaces Direct API");
+        // The public entry point the AiConfigListener subscriber calls must rebuild the selector too.
+        String refreshDelivery = methodBody(content, "public void refreshDeliveryOptions()");
+        assertTrue(refreshDelivery.contains("populateToolSelector()") && refreshDelivery.contains("updateModelSelectorVisibility()"),
+                "refreshDeliveryOptions must rebuild the delivery selector and re-evaluate the model selector");
+    }
+
     private static int countOccurrences(String haystack, String needle) {
         int n = 0;
         for (int i = haystack.indexOf(needle); i >= 0; i = haystack.indexOf(needle, i + needle.length())) {
