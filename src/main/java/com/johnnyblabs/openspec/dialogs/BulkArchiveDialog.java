@@ -2,6 +2,7 @@ package com.johnnyblabs.openspec.dialogs;
 
 import com.intellij.icons.AllIcons;
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.Task;
@@ -20,15 +21,15 @@ import com.johnnyblabs.openspec.services.SpecSyncService;
 import com.johnnyblabs.openspec.util.OpenSpecNotifier;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.VisibleForTesting;
 
 import javax.swing.*;
 import javax.swing.table.AbstractTableModel;
-import java.util.concurrent.CountDownLatch;
 import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.*;
-import java.io.IOException;
 import java.util.*;
 import java.util.List;
+import java.util.function.Function;
 
 public class BulkArchiveDialog extends DialogWrapper {
 
@@ -39,6 +40,12 @@ public class BulkArchiveDialog extends DialogWrapper {
     private final JPanel progressPanel = new JPanel();
     private JTable table;
     private boolean archiveStarted = false;
+    /**
+     * The dialog's modality, captured once after {@code init()}. Background results posted without it would be held by
+     * the platform until this modal dialog closes; the dialog window exists after {@code init()}, and the platform
+     * reuses this same modality entity when the dialog is shown.
+     */
+    private ModalityState dialogModality;
 
     public BulkArchiveDialog(Project project, List<Change> activeChanges) {
         super(project, true);
@@ -52,6 +59,10 @@ public class BulkArchiveDialog extends DialogWrapper {
         }
 
         init();
+        // The dialog window exists after init(), and the platform reuses its modality entity when the dialog is shown.
+        // A headless peer has no content panel; fall back rather than fail (that path is never modal anyway).
+        JComponent content = getContentPanel();
+        dialogModality = content != null ? ModalityState.stateForComponent(content) : ModalityState.defaultModalityState();
         loadArtifactStatus();
     }
 
@@ -98,7 +109,11 @@ public class BulkArchiveDialog extends DialogWrapper {
             public Component getTableCellRendererComponent(JTable t, Object val, boolean sel, boolean focus, int r, int c) {
                 super.getTableCellRendererComponent(t, val, sel, focus, r, c);
                 String status = String.valueOf(val);
-                if (status.contains("done") || status.contains("Done")) {
+                // The column is narrow; the full status (e.g. why a change is blocked) is in the tooltip.
+                setToolTipText(status.startsWith("Blocked") || status.startsWith("Failed") ? status : null);
+                if (status.startsWith("Blocked")) {
+                    setForeground(JBColor.ORANGE);
+                } else if (status.contains("done") || status.contains("Done")) {
                     setForeground(JBColor.GREEN.darker());
                 } else if (status.contains("fail") || status.contains("Failed")) {
                     setForeground(JBColor.RED);
@@ -124,10 +139,28 @@ public class BulkArchiveDialog extends DialogWrapper {
     }
 
     private void loadArtifactStatus() {
+        ArtifactOrchestrationService orchestration = project.getService(ArtifactOrchestrationService.class);
+        loadStatuses(rows, orchestration::getArtifactStatus, dialogModality, ignored -> isDisposed(), () -> {
+            tableModel.fireTableDataChanged();
+            updateConflicts();
+        });
+    }
+
+    /**
+     * Computes each row's artifact status on a pooled thread, then posts {@code onLoaded} with {@code modality}
+     * (dropped if {@code expired} holds by then, e.g. the dialog has closed).
+     */
+    @VisibleForTesting
+    static void loadStatuses(List<ChangeRow> rows, Function<String, ChangeArtifactDag> statusOf, ModalityState modality,
+                             com.intellij.openapi.util.Condition<?> expired, Runnable onLoaded) {
         ApplicationManager.getApplication().executeOnPooledThread(() -> {
-            ArtifactOrchestrationService orchestration = project.getService(ArtifactOrchestrationService.class);
             for (ChangeRow row : rows) {
-                ChangeArtifactDag dag = orchestration.getArtifactStatus(row.change.getName());
+                ChangeArtifactDag dag;
+                try {
+                    dag = statusOf.apply(row.change.getName());
+                } catch (RuntimeException e) {
+                    dag = null; // one change's status failing must not leave every row on "loading..."
+                }
                 if (dag != null) {
                     long done = dag.getArtifacts().stream()
                             .filter(a -> a.status() == com.johnnyblabs.openspec.model.ArtifactStatus.DONE)
@@ -138,10 +171,7 @@ public class BulkArchiveDialog extends DialogWrapper {
                     row.artifactStatus = "unknown";
                 }
             }
-            ApplicationManager.getApplication().invokeLater(() -> {
-                tableModel.fireTableDataChanged();
-                updateConflicts();
-            });
+            ApplicationManager.getApplication().invokeLater(onLoaded, modality, expired);
         });
     }
 
@@ -186,6 +216,11 @@ public class BulkArchiveDialog extends DialogWrapper {
     }
 
     public void runBulkArchive() {
+        runBulkArchive(Archiver.forProject(project));
+    }
+
+    @VisibleForTesting
+    void runBulkArchive(Archiver archiver) {
         archiveStarted = true;
         setOKButtonText("Close");
         getOKAction().setEnabled(false);
@@ -196,65 +231,150 @@ public class BulkArchiveDialog extends DialogWrapper {
         ProgressManager.getInstance().run(new Task.Backgroundable(project, "Bulk Archive", false) {
             @Override
             public void run(@NotNull ProgressIndicator indicator) {
-                ChangeService changeService = project.getService(ChangeService.class);
-                SpecSyncService syncService = project.getService(SpecSyncService.class);
-                int total = selected.size();
-
-                for (int i = 0; i < total; i++) {
-                    ChangeRow row = selected.get(i);
-                    indicator.setFraction((double) i / total);
-                    indicator.setText("Archiving: " + row.change.getName());
-
-                    ApplicationManager.getApplication().invokeLater(() -> {
-                        row.archiveStatus = "Archiving...";
-                        tableModel.fireTableDataChanged();
-                    });
-
-                    try {
-                        // Spec sync first (runs on background thread)
-                        List<SpecSyncResult> syncResults = syncService.computeSync(row.change.getName());
-                        if (!syncResults.isEmpty()) {
-                            syncService.applySync(syncResults);
-                        }
-
-                        // Archive via invokeLater + latch to avoid invokeAndWait deadlock
-                        CountDownLatch archiveLatch = new CountDownLatch(1);
-                        final Exception[] archiveError = {null};
-                        ApplicationManager.getApplication().invokeLater(() -> {
-                            try {
-                                changeService.archiveChange(row.change);
-                                row.archiveStatus = "Done";
-                            } catch (Exception ex) {
-                                archiveError[0] = ex;
-                                row.archiveStatus = "Failed: " + ex.getMessage();
-                            } finally {
-                                tableModel.fireTableDataChanged();
-                                archiveLatch.countDown();
-                            }
+                archiveAll(selected, dialogModality, archiver, tableModel::fireTableDataChanged,
+                        (i, name) -> {
+                            indicator.setFraction((double) i / selected.size());
+                            indicator.setText("Archiving: " + name);
                         });
-                        archiveLatch.await();
-                    } catch (InterruptedException ex) {
-                        Thread.currentThread().interrupt();
-                        ApplicationManager.getApplication().invokeLater(() -> {
-                            row.archiveStatus = "Failed: interrupted";
-                            tableModel.fireTableDataChanged();
-                        });
-                    } catch (Exception ex) {
-                        ApplicationManager.getApplication().invokeLater(() -> {
-                            row.archiveStatus = "Failed: " + ex.getMessage();
-                            tableModel.fireTableDataChanged();
-                        });
+            }
+
+            @Override
+            public void onFinished() {
+                // Runs on the EDT whether run() returned or threw, so the dialog can always be closed.
+                onArchiveFinished(selected);
+            }
+        });
+    }
+
+    /** What the archive loop does per change; the dialog's implementation delegates to the spec-sync and change services. */
+    @VisibleForTesting
+    interface Archiver {
+        /**
+         * The problems that would make the change's spec sync skip part of it (a missing MODIFIED/REMOVED target, an
+         * unpaired or unknown RENAMED entry); empty when it can sync cleanly or has no delta specs. Writes nothing.
+         * Called off the EDT.
+         */
+        List<String> check(String changeName) throws Exception;
+
+        /**
+         * Applies the change's delta specs to the main specs (no-op when it has none). Throws {@link Blocked} if a
+         * blocking problem has appeared since {@link #check}. Called off the EDT.
+         */
+        void sync(String changeName) throws Exception;
+
+        /** Moves the change to the archive. Called on the EDT (it performs a VFS write action). */
+        void archive(Change change) throws Exception;
+
+        /** The production archiver: spec sync through {@link SpecSyncService}, the move through {@link ChangeService}. */
+        static Archiver forProject(Project project) {
+            return new Archiver() {
+                @Override
+                public List<String> check(String changeName) {
+                    return blockers(project.getService(SpecSyncService.class).computeSync(changeName));
+                }
+
+                @Override
+                public void sync(String changeName) throws Exception {
+                    SpecSyncService syncService = project.getService(SpecSyncService.class);
+                    List<SpecSyncResult> syncResults = syncService.computeSync(changeName);
+                    List<String> problems = blockers(syncResults);
+                    if (!problems.isEmpty()) {
+                        throw new Blocked(problems.get(0));
+                    }
+                    if (!syncResults.isEmpty()) {
+                        syncService.applySync(syncResults);
                     }
                 }
 
-                ApplicationManager.getApplication().invokeLater(() -> {
-                    getOKAction().setEnabled(true);
-                    long doneCount = selected.stream().filter(r -> "Done".equals(r.archiveStatus)).count();
-                    OpenSpecNotifier.info(project, "Bulk Archive",
-                            doneCount + "/" + total + " changes archived");
-                });
+                @Override
+                public void archive(Change change) throws Exception {
+                    project.getService(ChangeService.class).archiveChange(change);
+                }
+            };
+        }
+    }
+
+    /** Every warning a sync result carries: each marks a delta the sync would skip. */
+    @VisibleForTesting
+    static List<String> blockers(List<SpecSyncResult> results) {
+        List<String> problems = new ArrayList<>();
+        for (SpecSyncResult result : results) {
+            problems.addAll(result.warnings());
+        }
+        return problems;
+    }
+
+    /** A change whose spec sync reports a blocking problem; it is neither synced nor archived. */
+    @VisibleForTesting
+    static final class Blocked extends Exception {
+        Blocked(String reason) {
+            super(reason);
+        }
+    }
+
+    @VisibleForTesting
+    interface Progress {
+        void step(int index, String changeName);
+    }
+
+    /**
+     * Checks every change first (any with a blocking sync result is shown as blocked and left alone), then archives the
+     * rest in order: spec sync off the EDT, then the archive itself on the EDT via
+     * {@code invokeAndWait} with {@code modality} (inline when already on the EDT). Row status updates are posted with
+     * {@code modality} so they appear in the open dialog. A failure marks that row and processing continues.
+     */
+    @VisibleForTesting
+    static void archiveAll(List<ChangeRow> selected, ModalityState modality, Archiver archiver,
+                           Runnable onRowChanged, Progress progress) {
+        // Phase 1: check every change before writing anything (upstream archive refuses the same cases).
+        List<ChangeRow> clear = new ArrayList<>();
+        for (ChangeRow row : selected) {
+            try {
+                List<String> problems = archiver.check(row.change.getName());
+                if (problems.isEmpty()) {
+                    clear.add(row);
+                } else {
+                    row.archiveStatus = "Blocked: " + problems.get(0);
+                }
+            } catch (Exception ex) {
+                row.archiveStatus = "Failed: " + ex.getMessage();
             }
-        });
+        }
+        ApplicationManager.getApplication().invokeLater(onRowChanged, modality);
+
+        // Phase 2: sync and archive the rest, in order.
+        for (int i = 0; i < clear.size(); i++) {
+            ChangeRow row = clear.get(i);
+            progress.step(i, row.change.getName());
+            row.archiveStatus = "Archiving...";
+            ApplicationManager.getApplication().invokeLater(onRowChanged, modality);
+            try {
+                archiver.sync(row.change.getName());
+                Exception[] archiveError = {null};
+                ApplicationManager.getApplication().invokeAndWait(() -> {
+                    try {
+                        archiver.archive(row.change);
+                    } catch (Exception ex) {
+                        archiveError[0] = ex;
+                    }
+                }, modality);
+                row.archiveStatus = archiveError[0] == null ? "Done" : "Failed: " + archiveError[0].getMessage();
+            } catch (Blocked ex) {
+                row.archiveStatus = "Blocked: " + ex.getMessage();
+            } catch (Exception ex) {
+                row.archiveStatus = "Failed: " + ex.getMessage();
+            }
+            ApplicationManager.getApplication().invokeLater(onRowChanged, modality);
+        }
+    }
+
+    /** End of a run: re-enable OK so the dialog can be closed, and report how many changes were archived. */
+    @VisibleForTesting
+    void onArchiveFinished(List<ChangeRow> selected) {
+        getOKAction().setEnabled(true);
+        tableModel.fireTableDataChanged();
+        long doneCount = selected.stream().filter(r -> "Done".equals(r.archiveStatus)).count();
+        OpenSpecNotifier.info(project, "Bulk Archive", doneCount + "/" + selected.size() + " changes archived");
     }
 
     @Override
@@ -273,12 +393,13 @@ public class BulkArchiveDialog extends DialogWrapper {
     // --- Table model ---
 
     static class ChangeRow {
+        // Written by background work, read by the table on the EDT.
         final Change change;
-        boolean selected = true;
-        String artifactStatus = "loading...";
-        boolean allComplete = false;
-        boolean hasConflict = false;
-        String archiveStatus = "";
+        volatile boolean selected = true;
+        volatile String artifactStatus = "loading...";
+        volatile boolean allComplete = false;
+        volatile boolean hasConflict = false;
+        volatile String archiveStatus = "";
 
         ChangeRow(Change change) {
             this.change = change;

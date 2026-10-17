@@ -196,6 +196,11 @@ tasks.jacocoTestReport {
 // DirectApiModelSelectionTest / the BuildListModelsRequest cases — blocks previously reachable only via a
 // live HTTP call. Measured 0.4044/0.3849/0.3808; INSTRUCTION ~0.006 below, LINE/BRANCH keep extra headroom
 // (BRANCH the volatile counter keeps the most).
+// RAISED 2026-10-17 (fix-bulk-archive-dialog-modality): 0.398/0.378/0.373 → 0.461/0.442/0.410. The v0.14.0
+// work added the first tests that drive OpenSpecSettingsPanel (headless modal-state test) and the Bulk Archive
+// loop, status load and production archiver against real code, plus the applySync threading tests, the 1.14.3
+// contract nests and the deprecation guards. Measured 0.4677/0.4488/0.4193; INSTRUCTION ~0.006 below,
+// LINE/BRANCH keep extra headroom (BRANCH the most).
 tasks.jacocoTestCoverageVerification {
     dependsOn(tasks.test)
     // Match the report: instrumented classes + the test JVM's execution data.
@@ -210,21 +215,21 @@ tasks.jacocoTestCoverageVerification {
             limit {
                 counter = "INSTRUCTION"
                 value = "COVEREDRATIO"
-                minimum = "0.398".toBigDecimal()
+                minimum = "0.461".toBigDecimal()
             }
         }
         rule {
             limit {
                 counter = "LINE"
                 value = "COVEREDRATIO"
-                minimum = "0.378".toBigDecimal()
+                minimum = "0.442".toBigDecimal()
             }
         }
         rule {
             limit {
                 counter = "BRANCH"
                 value = "COVEREDRATIO"
-                minimum = "0.373".toBigDecimal()
+                minimum = "0.410".toBigDecimal()
             }
         }
     }

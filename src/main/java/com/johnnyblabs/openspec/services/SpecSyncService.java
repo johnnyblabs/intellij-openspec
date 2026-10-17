@@ -1,6 +1,7 @@
 package com.johnnyblabs.openspec.services;
 
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.application.WriteAction;
 import com.intellij.openapi.components.Service;
 import com.intellij.openapi.diagnostic.Logger;
@@ -23,7 +24,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.concurrent.CountDownLatch;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -256,24 +256,13 @@ public final class SpecSyncService {
             // Write file content on current (background) thread — not inside WriteAction
             Files.writeString(path, result.projectedContent(), StandardCharsets.UTF_8);
 
-            // VFS refresh must happen inside WriteAction on EDT — use invokeLater + latch
-            // to avoid invokeAndWait deadlock while still synchronizing before validation
-            CountDownLatch refreshLatch = new CountDownLatch(1);
-            ApplicationManager.getApplication().invokeLater(() -> {
-                try {
-                    WriteAction.run(() -> {
-                        VirtualFile vf = LocalFileSystem.getInstance().refreshAndFindFileByPath(path.toString());
-                        if (vf != null) vf.refresh(false, false);
-                    });
-                } finally {
-                    refreshLatch.countDown();
-                }
-            });
-            try {
-                refreshLatch.await();
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
+            // The VFS refresh is a write action, so it runs on the EDT. invokeAndWait with the caller's modality: from a
+            // progress task that is the task's own (a modal dialog's, for Bulk Archive), so the hop isn't held until a
+            // dialog closes; on the EDT it runs inline. (The previous invokeLater + latch carried no modality.)
+            ApplicationManager.getApplication().invokeAndWait(() -> WriteAction.run(() -> {
+                VirtualFile vf = LocalFileSystem.getInstance().refreshAndFindFileByPath(path.toString());
+                if (vf != null) vf.refresh(false, false);
+            }), ModalityState.defaultModalityState());
 
             // Post-merge validation: compare pre-merge and post-merge issues
             postMergeWarnings.addAll(validatePostMerge(result));
