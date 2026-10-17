@@ -91,7 +91,7 @@ The plugin SHALL assemble a full-context implementation prompt (proposal, specs,
 
 ### Requirement: Archive action
 
-The plugin SHALL move completed changes to `openspec/changes/archive/YYYY-MM-DD-<name>/` with post-archive commit, push, and tracker updates. A Bulk Archive option SHALL be available when multiple active changes exist. When the change contains unsynced delta specs, the plugin SHALL prompt the user before proceeding with a three-option dialog. The archive operation in `WorkflowActionPanel` SHALL dispatch `changeService.archiveChange` via `invokeLater` from the background task, NOT via `invokeAndWait`. Post-archive UI updates (popover, refresh) SHALL execute inside the same `invokeLater` block.
+The plugin SHALL archive completed changes, through the OpenSpec CLI when it is available (see "Archive delegates to the OpenSpec CLI") and otherwise itself, with post-archive commit, push, and tracker updates. A Bulk Archive option SHALL be available when multiple active changes exist. When the change contains unsynced delta specs, the plugin SHALL prompt the user before proceeding with a three-option dialog. The archive SHALL run in a background task, never on the UI thread, and the post-archive UI updates (popover, refresh, notifications) SHALL be dispatched to the UI thread with `invokeLater`.
 
 #### Scenario: Archive flow
 - **WHEN** the user archives a change
@@ -111,7 +111,7 @@ The plugin SHALL move completed changes to `openspec/changes/archive/YYYY-MM-DD-
 
 #### Scenario: Archive guard — Archive Without Syncing
 - **WHEN** the user selects "Archive Without Syncing" from the archive guard dialog
-- **THEN** the plugin SHALL proceed with archiving the change as-is, including the unsynced delta specs
+- **THEN** the plugin SHALL proceed with archiving the change as-is, including the unsynced delta specs, without updating main specs (`--skip-specs` when the CLI archives)
 
 #### Scenario: Archive guard — Cancel
 - **WHEN** the user selects "Cancel" from the archive guard dialog
@@ -123,11 +123,11 @@ The plugin SHALL move completed changes to `openspec/changes/archive/YYYY-MM-DD-
 
 #### Scenario: No invokeAndWait in archive background task
 - **WHEN** the background task executes the archive operation
-- **THEN** `changeService.archiveChange` SHALL be dispatched via `invokeLater`, and the popover and refresh SHALL chain inside the same `invokeLater` lambda
+- **THEN** the archive SHALL run on the background task's thread, and the popover and refresh SHALL be chained in a single `invokeLater` to the UI thread, never `invokeAndWait`
 
 #### Scenario: Archive error reported from invokeLater
-- **WHEN** `changeService.archiveChange` throws inside the `invokeLater` block
-- **THEN** the exception SHALL be caught, the archive button SHALL be re-enabled, and an error notification SHALL be shown
+- **WHEN** the archive fails or is refused
+- **THEN** the failure SHALL be reported from an `invokeLater` on the UI thread: the archive button SHALL be re-enabled and an error notification SHALL be shown
 
 ### Requirement: Change selector
 
@@ -255,7 +255,7 @@ The Propose action and the delta-spec diff action SHALL be available while the I
 
 ### Requirement: Archive target directory
 
-When the plugin archives a change itself, it SHALL move the change to `openspec/changes/archive/YYYY-MM-DD-<name>/`, using the local date and keeping a name that already starts with a date unchanged. It SHALL refuse, before writing any spec, when that target already exists. It SHALL create `openspec/changes/archive/` when missing and SHALL NOT create `openspec/archive/`, though it SHALL still read archived changes from an existing legacy `openspec/archive/`.
+When the plugin archives a change itself (no OpenSpec CLI, or a CLI older than 1.5), it SHALL move the change to `openspec/changes/archive/YYYY-MM-DD-<name>/`, using the local date and keeping a name that already starts with a date unchanged. It SHALL refuse, before writing any spec, when that target already exists. It SHALL create `openspec/changes/archive/` when missing and SHALL NOT create `openspec/archive/`, though it SHALL still read archived changes from an existing legacy `openspec/archive/`.
 
 #### Scenario: Dated archive name
 - **WHEN** the user archives change `add-login` on 2026-10-17
@@ -268,3 +268,19 @@ When the plugin archives a change itself, it SHALL move the change to `openspec/
 #### Scenario: No archive directory yet
 - **WHEN** `openspec/changes/archive/` does not exist
 - **THEN** the plugin SHALL create it and archive into it, and SHALL NOT create `openspec/archive/`
+
+### Requirement: Archive delegates to the OpenSpec CLI
+
+With OpenSpec CLI 1.5 or later available, the plugin SHALL archive by running `openspec archive <name> --yes --json`, adding `--skip-specs` when the user archives without syncing. It SHALL report the archived folder on success, and on a non-zero exit SHALL show the CLI's `status[].message` and `fix` and leave the change active. Without a CLI, or with an older one, the plugin SHALL archive itself.
+
+#### Scenario: CLI archives the change
+- **WHEN** OpenSpec CLI 1.14 is available and the user archives `add-login`
+- **THEN** the plugin SHALL run `openspec archive add-login --yes --json` and report the folder named in its `archivedAs`
+
+#### Scenario: CLI refuses the change
+- **WHEN** the CLI exits non-zero with a `status` entry
+- **THEN** the plugin SHALL show that entry's `message` and `fix`, and the change SHALL stay active
+
+#### Scenario: Older or missing CLI
+- **WHEN** no OpenSpec CLI is available, or its version is below 1.5
+- **THEN** the plugin SHALL archive the change itself, as described in "Archive target directory"
