@@ -507,3 +507,25 @@ Per-item INFO totals: `info-change` 1, `nameless-change` 2. `nameless-change` st
   the INFO surfaces at `Severity.INFO` on a `valid:false` item while the failing verdict is preserved (the
   parser overwrites the issue path with `type/id`, so delta paths are asserted off the raw JSON only). This is
   the first fixture to positively exercise the `INFO` → `Severity.INFO` JSON mapping.
+- `scaffold-delta/` — **contract for the plugin's delta-spec scaffold** (`TemplateProvider.deltaSpecTemplate`,
+  written by the Create Delta Spec action). Two minimal projects, each with main spec `auth`
+  (`### Requirement: Login`) and change `c`, whose `specs/auth/spec.md` is a scaffold filled in with the
+  requirement in `added-requirement.md`, inserted immediately before the `## MODIFIED Requirements` heading:
+  - `new-template/` — the **current** template, generated from the real `deltaSpecTemplate("auth")` output (not
+    retyped). `validate-new.json` / `validate-new-strict.json` are real `openspec validate c --type change
+    --json` (default and `--strict`), both `valid:true`, with the comment-only MODIFIED/REMOVED/RENAMED
+    sections left as scaffolded. `ScaffoldingContractTest.filledTemplate_isExactlyTheInputTheCliValidated`
+    asserts the template plus the inserted requirement **equals** this input byte for byte, so the capture is
+    provably of the shipped template. If the template changes, regenerate the input from the new template and
+    re-capture; don't hand-edit the file. `BuiltInValidatorRulesTest.capturedFilledScaffold_hasNoBuiltInError_matchingTheCli`
+    and `DeltaSpecQuickFixTest` hold the built-in fallback and the IDE inspection to the same verdict (the
+    empty RENAMED section must not be an ERROR).
+  - `old-template/` — a **frozen negative control**: the pre-fix template (bare `## ADDED` / `## MODIFIED` /
+    `## REMOVED`, bare-name RENAMED guidance) filled the same way. `validate-old.json` /
+    `validate-old-strict.json` are `valid:false` ("No deltas found"). It documents why the template changed.
+    **Never re-capture it from current code**: the old template no longer exists there.
+
+  Capture recipe: in each project root, `HOME=$T XDG_CONFIG_HOME=$T/c XDG_DATA_HOME=$T/d XDG_STATE_HOME=$T/s
+  OPENSPEC_TELEMETRY=0 openspec validate c --type change --json [--strict]` with a throwaway `$T`. Then
+  sanitize `root.path` to `/fixture`. Not named `validate-parity-corpus.json`, so the version-stability guard
+  ignores this directory.

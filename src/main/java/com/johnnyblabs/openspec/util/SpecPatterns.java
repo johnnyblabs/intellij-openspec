@@ -28,6 +28,14 @@ public final class SpecPatterns {
     public static final Pattern REQUIREMENT_HEADER =
             Pattern.compile(REQUIREMENT_HEADER_PREFIX_REGEX + "(.+)$", Pattern.MULTILINE);
 
+    /**
+     * Matches any line that starts a RENAMED {@code FROM:} or {@code TO:} entry, bulleted or not.
+     * A RENAMED section with no such line is empty — the OpenSpec client accepts it beside other
+     * parsed deltas — so "no well-formed pair" is only an error when entry lines are present.
+     */
+    public static final Pattern RENAMED_ENTRY_LINE =
+            Pattern.compile("^\\s*(?:[-*+]\\s*)?(?:FROM|TO):", Pattern.MULTILINE);
+
     private static final Pattern SINGLE_LINE =
             Pattern.compile(REQUIREMENT_HEADER_PREFIX_REGEX + "(.+)$");
 

@@ -79,21 +79,21 @@ public final class TemplateProvider {
         return """
                 # Delta Spec: %s
 
-                ## ADDED
+                ## ADDED Requirements
 
-                <!-- New requirements -->
+                <!-- New requirements: one "### Requirement: <name>" block each, with at least one "#### Scenario:". -->
 
-                ## MODIFIED
+                ## MODIFIED Requirements
 
-                <!-- Changed requirements -->
+                <!-- Changed requirements: the full updated "### Requirement: <name>" block, with at least one "#### Scenario:". -->
 
-                ## REMOVED
+                ## REMOVED Requirements
 
-                <!-- Removed requirements -->
+                <!-- Removed requirements: the "### Requirement: <name>" block, with **Reason** and **Migration**. -->
 
                 ## RENAMED Requirements
 
-                <!-- Renamed requirements as FROM:/TO: pairs. Each entry needs two lines: one starting "- FROM:" with the old requirement name, then one starting "- TO:" with the new name. Delete this comment when adding entries. -->
+                <!-- Renamed requirements as FROM:/TO: pairs, e.g. - FROM: `### Requirement: Old name` then - TO: `### Requirement: New name` -->
                 """.formatted(domain);
     }
 

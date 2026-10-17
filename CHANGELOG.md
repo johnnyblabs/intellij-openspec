@@ -4,6 +4,11 @@
 
 ## Unreleased
 
+### Fixed
+
+- **Create Delta Spec now scaffolds a delta the OpenSpec CLI can read.** The scaffold used `## ADDED`, `## MODIFIED` and `## REMOVED` headings, but the CLI only recognizes `## ADDED Requirements` and its siblings. So a delta you wrote into the scaffold was invisible to it, and validation failed with "No deltas found". The scaffold now uses the CLI's headings, and its rename guidance shows the CLI's ``FROM: `### Requirement: Old` `` / ``TO: `### Requirement: New` `` format.
+- **An empty `## RENAMED Requirements` section is no longer reported as an error** by the built-in validator or the delta spec inspection. The CLI accepts an empty RENAMED section, so a correctly filled-in scaffold no longer shows a red error in the editor or fails validation when the CLI isn't installed. A RENAMED section with `FROM:`/`TO:` lines that don't form a pair is still an error.
+
 ## v0.12.0
 
 ### Added

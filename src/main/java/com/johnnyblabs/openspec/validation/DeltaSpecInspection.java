@@ -73,9 +73,11 @@ public class DeltaSpecInspection extends LocalInspectionTool {
             String sectionContent = text.substring(sectionStart, sectionEnd);
 
             if ("RENAMED".equals(sectionType)) {
-                // RENAMED sections carry FROM:/TO: pairs, not requirement blocks. Require at least one
-                // well-formed pair; mirrors SpecSyncService.RENAMED_ENTRY and BuiltInValidator.
-                if (!RENAMED_ENTRY_PATTERN.matcher(sectionContent).find()) {
+                // RENAMED sections carry FROM:/TO: pairs, not requirement blocks. Entry lines without a
+                // well-formed pair are an error; mirrors SpecSyncService.RENAMED_ENTRY and BuiltInValidator.
+                // An empty section (no FROM:/TO: lines, e.g. a fresh scaffold) is not: the CLI accepts it.
+                if (com.johnnyblabs.openspec.util.SpecPatterns.RENAMED_ENTRY_LINE.matcher(sectionContent).find()
+                        && !RENAMED_ENTRY_PATTERN.matcher(sectionContent).find()) {
                     PsiElement element = findNonEmptyElement(file, sectionHeaderOffset);
                     if (element != null) {
                         problems.add(manager.createProblemDescriptor(
