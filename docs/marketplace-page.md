@@ -91,7 +91,8 @@ Paste this HTML into the "Description" field on the plugin edit page:
   <li>Visual artifact pipeline with status chips (done / ready / blocked)</li>
   <li>Fast-Forward: one-click change creation + artifact generation</li>
   <li>Generate All: walk the full artifact DAG with progress reporting</li>
-  <li>Direct API support for Claude, OpenAI, and Gemini with secure credential storage</li>
+  <li>Direct API support for Claude, OpenAI, and Gemini with secure credential storage; the model list is discovered live from your account (a free, no-token request that also validates the key), with a built-in fallback when offline</li>
+  <li>Pick your AI model at generation time &mdash; an editable model dropdown in the tool-window header, shown when Direct API is the active delivery mode and populated from your account&rsquo;s live models, so you can switch models without opening Settings</li>
   <li>Detects AI tool configuration in your project and provides tool-specific delivery guidance</li>
   <li>Real-time editor inspections for spec format, RFC 2119 keywords, and delta spec structure</li>
   <li>Delta spec sync: merge ADDED / MODIFIED / REMOVED sections into main specs with preview</li>
