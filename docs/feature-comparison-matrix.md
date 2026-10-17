@@ -134,7 +134,6 @@ A comprehensive comparison of the OpenSpec IntelliJ plugin against known VS Code
 |---|---|---|---|---|---|
 | Dedicated settings panel | Yes (Settings > Tools) | Minimal | No | No | No |
 | CLI path configuration | Yes (manual + auto-detect) | No | No | No | No |
-| Schema version override | Yes | No | No | No | No |
 | Profile selection | Yes | No | No | No | No |
 | Auto-refresh toggle | Yes | No | No | No | No |
 | AI provider/model selection | Yes (live model discovery from your account; also switchable from the tool window) | No | No | No | No |

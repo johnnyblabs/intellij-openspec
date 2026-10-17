@@ -331,7 +331,6 @@ Access via **Settings > Tools > OpenSpec** (or **Preferences > Tools > OpenSpec*
 |---------|---------|
 | **CLI path** | Path to the `openspec` binary. Click **Detect** to auto-find it. |
 | **Status** | Shows CLI version when detected, or "not found". |
-| **Version override** | Force a specific OpenSpec schema version. Leave blank to use your project's `config.yaml`. |
 
 The plugin re-checks the CLI automatically when the project opens, when the OpenSpec tool window is shown, and
 when you switch back to the project's IDE window. So a CLI you upgrade while the IDE is running is picked up when
