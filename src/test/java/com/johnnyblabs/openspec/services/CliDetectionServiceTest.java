@@ -373,4 +373,47 @@ class CliDetectionServiceTest {
         assertEquals(0, runs.get(), "no CLI process may run inside the throttle window");
         assertEquals("1.12.0", svc.getDetectedVersion());
     }
+
+    @Test
+    void aDetectionInProgressNeverReadsAsUnavailable() throws Exception {
+        // A re-run must not clear the previous result while it probes: readers (the tool window, validation's
+        // CLI-or-fallback choice) would be told the CLI is missing for as long as the probe takes.
+        CliDetectionService svc = new CliDetectionService((Project) null);
+        svc.setIsWindowsForTest(false);
+        svc.setProcessRunnerForTest(cmd -> cmd.getParametersList().getList().contains("--version") ? "openspec 1.14.3" : null);
+        svc.detect();
+        assertTrue(svc.isAvailable());
+
+        java.util.concurrent.CountDownLatch probing = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.CountDownLatch release = new java.util.concurrent.CountDownLatch(1);
+        svc.setProcessRunnerForTest(cmd -> {
+            probing.countDown();
+            release.await(5, java.util.concurrent.TimeUnit.SECONDS);
+            return null; // the re-run will find nothing
+        });
+        Thread rerun = new Thread(svc::detect, "re-detect");
+        rerun.start();
+        assertTrue(probing.await(5, java.util.concurrent.TimeUnit.SECONDS), "the re-run reached its probe");
+
+        assertTrue(svc.isAvailable(), "mid-detection, readers still see the previous result");
+        assertEquals("1.14.3", svc.getDetectedVersion());
+        assertEquals("openspec", svc.getDetectedPath(), "path and version stay consistent with each other");
+
+        release.countDown();
+        rerun.join(5_000);
+        assertFalse(svc.isAvailable(), "the new result replaces the old one once the re-run completes");
+        assertNull(svc.getDetectedVersion());
+        assertNull(svc.getDetectedPath());
+    }
+
+    @Test
+    void detectedOnceIsFalseUntilTheFirstDetectionCompletes() {
+        CliDetectionService svc = new CliDetectionService((Project) null);
+        svc.setIsWindowsForTest(false);
+        svc.setProcessRunnerForTest(cmd -> null);
+        assertFalse(svc.isDetectedOnce(), "nothing has been detected yet");
+        svc.detect();
+        assertTrue(svc.isDetectedOnce(), "a completed detection counts even when the CLI wasn't found");
+        assertFalse(svc.isAvailable());
+    }
 }

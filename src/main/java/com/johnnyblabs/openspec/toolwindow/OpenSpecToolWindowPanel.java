@@ -617,9 +617,23 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
         };
     }
 
+    @org.jetbrains.annotations.TestOnly
+    javax.swing.tree.TreeModel treeModelForTest() {
+        return tree.getModel();
+    }
+
+    @org.jetbrains.annotations.TestOnly
+    String cliStatusTextForTest() {
+        return statusLabel.getText();
+    }
+
     void updateCliStatus() {
         CliDetectionService detection = project.getService(CliDetectionService.class);
-        if (detection != null && detection.isAvailable()) {
+        if (detection != null && !detection.isDetectedOnce()) {
+            // Startup detection hasn't finished yet: the CLI's availability is unknown, not missing.
+            statusLabel.setText("CLI: detecting…");
+            statusLabel.setForeground(UIManager.getColor("Label.disabledForeground"));
+        } else if (detection != null && detection.isAvailable()) {
             String version = detection.getDetectedVersion();
             statusLabel.setText("CLI: available" + (version != null ? " v" + version : ""));
             statusLabel.setForeground(JBColor.namedColor("Label.successForeground", new JBColor(new Color(0, 128, 0), new Color(100, 210, 100))));
@@ -701,6 +715,13 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
         project.getMessageBus().connect(this).subscribe(AiConfigListener.TOPIC,
                 () -> ApplicationManager.getApplication().invokeLater(
                         workflowPanel::refreshDeliveryOptions));
+
+        // Any completed CLI detection (project open, tool-window/focus re-check, Settings, manual refresh) redraws
+        // the CLI status. The label is built once; without this it kept whatever it read at construction, which
+        // could be mid-startup-detection, until a manual refresh.
+        project.getMessageBus().connect(this).subscribe(CliDetectionService.TOPIC,
+                (CliDetectionService.Listener) (available, version) -> ApplicationManager.getApplication()
+                        .invokeLater(this::updateCliStatus, project.getDisposed()));
     }
 
     private void debouncedRefresh() {

@@ -22,6 +22,7 @@
 - **Bulk Archive holds back changes whose spec updates can't be applied cleanly.** Before writing anything, it checks every selected change. A change whose delta specs refer to a requirement the main spec doesn't have (or a rename that can't be paired) is now shown as **Blocked** with the reason and left untouched, instead of being archived with part of its spec update silently dropped. The other changes are archived as before.
 - **The Bulk Archive dialog can always be closed when archiving ends.** If archiving stopped on an unexpected error, the dialog could be left with every button disabled.
 - **The legacy-file cleanup review appears again on OpenSpec 1.14.** OpenSpec 1.14 reworded the "Files to remove" notice in `openspec update`, and the plugin stopped recognizing it, so Update reported plain success while leftover command files remained. The review appears again, quotes what the CLI said, and, since OpenSpec now warns to back up any custom content first, starts with no files ticked so you choose what to remove.
+- **The tool window no longer says the CLI isn't found while it's still being detected.** When a project opened, the OpenSpec tool window could show "CLI: not found" until you clicked Refresh, even with the CLI installed. It now shows "CLI: detecting…" until detection finishes, then the real result, and updates whenever the CLI is detected again.
 
 ## v0.13.0
 

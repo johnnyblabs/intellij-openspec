@@ -16,4 +16,15 @@ public final class CliDetectionTestSupport {
                 ? "openspec " + version : null);
         service.tryPath("openspec");
     }
+
+    /** A process runner usable from other packages (the service's own runner type is package-private). */
+    @FunctionalInterface
+    public interface Runner {
+        String run(com.intellij.execution.configurations.GeneralCommandLine cmd) throws Exception;
+    }
+
+    /** Installs {@code runner} as {@code service}'s process runner. */
+    public static void setRunner(CliDetectionService service, Runner runner) {
+        service.setProcessRunnerForTest(runner::run);
+    }
 }
