@@ -26,9 +26,11 @@ class ArchiveMergeContractTest {
 
     private static final Path ROOT = Paths.get("src/test/resources/fixtures/cli/archive-1.14.3");
 
+    /** Every captured case except runs with extra flags (e.g. --skip-specs), whose merge isn't the default archive's. */
     static Stream<String> cases() throws IOException {
         try (Stream<Path> dirs = Files.list(ROOT)) {
-            return dirs.filter(Files::isDirectory).map(p -> p.getFileName().toString()).sorted().toList().stream();
+            return dirs.filter(Files::isDirectory).filter(p -> !Files.exists(p.resolve("args.txt")))
+                    .map(p -> p.getFileName().toString()).sorted().toList().stream();
         }
     }
 

@@ -17,6 +17,12 @@ public final class CliDetectionTestSupport {
         service.tryPath("openspec");
     }
 
+    /** Makes {@code service} report no CLI, whatever is installed on the machine running the tests. */
+    public static void fakeUnavailable(CliDetectionService service) {
+        service.setProcessRunnerForTest(cmd -> null);
+        service.detect();
+    }
+
     /** A process runner usable from other packages (the service's own runner type is package-private). */
     @FunctionalInterface
     public interface Runner {

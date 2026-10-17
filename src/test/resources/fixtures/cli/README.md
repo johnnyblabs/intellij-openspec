@@ -599,3 +599,9 @@ Per capability, `<cap>/main-before.md` and `<cap>/delta.md` are the inputs and `
 - Refusal codes in `status[0].code`: `archive_spec_update_failed` (the merge refused; also the novalidate wording), `archive_validation_failed` (pre-archive validation), `archive_target_exists`.
 - Warnings that don't block are in `archive.warnings` (e.g. `removed-gone`: "treating it as already removed").
 - One deliberate plugin divergence: on a merge refusal upstream leaves an empty `changes/archive/` behind; the plugin creates nothing when it refuses.
+
+## `archive-1.5.0/` and `archive-1.4.1/` — the floor for delegating archives to the CLI
+
+`archive-1.5.0/` holds a subset of the archive cases captured from CLI 1.5.0 (`OPENSPEC_BIN="npx -y @fission-ai/openspec@1.5.0" CAPTURE_CASES=… scripts/capture-archive-fixtures.py`). Its `archive --json` shapes match 1.14.3. Its rules are older, which is the point of delegating: `scenario-drop` archives, and `removed-gone` is refused. In human mode a refusal still exits 0 (`exit-human.txt`), while `--json` exits 1, so the plugin always uses `--json`. `skip-specs-ok` (also in 1.14.3) is `--skip-specs`: no `totals`, `specsUpdated: false`, main spec untouched.
+
+`archive-1.4.1/unknown-json/` is 1.4.1 rejecting the flag: `error: unknown option '--json'`, exit 1, empty stdout (`npx`'s npm notice lines removed from `stderr.txt`). It is the real "non-zero exit with no JSON" case for the parser.

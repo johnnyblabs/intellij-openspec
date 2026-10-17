@@ -143,8 +143,11 @@ public class BulkArchiveDialogModalityTest extends BasePlatformTestCase {
 
             @Override
             public void archive(Change change) throws Exception {
-                assertTrue("the archive's write action runs on the EDT",
+                assertFalse("the archive runs off the EDT (it may run the CLI)",
                         ApplicationManager.getApplication().isDispatchThread());
+                // The plugin's own archive moves the folder with a write action hopped to the EDT at the default
+                // modality; that hop must complete while the dialog is open.
+                ApplicationManager.getApplication().invokeAndWait(() -> { }, ModalityState.defaultModalityState());
                 if (change.getName().equals("broken")) {
                     throw new IllegalStateException("cannot move broken");
                 }
@@ -216,8 +219,9 @@ public class BulkArchiveDialogModalityTest extends BasePlatformTestCase {
     }
 
     public void testWithoutTheDialogsModalityTheArchiveStepWaitsForTheDialogToClose() throws Exception {
-        // Negative control for the archive hop: invokeAndWait posted NON_MODAL blocks the worker while the dialog is
-        // open (the stall the explicit modality prevents) and completes once it closes.
+        // Negative control for the archive's write hop: without the dialog's modality, the default-modality
+        // invokeAndWait the plugin's own move makes is held while the dialog is open (the stall the loop's
+        // dialog-modal indicator prevents) and completes once it closes.
         List<BulkArchiveDialog.ChangeRow> rows = rows("alpha");
         BulkArchiveDialog.Archiver archiver = new BulkArchiveDialog.Archiver() {
             @Override
@@ -231,6 +235,7 @@ public class BulkArchiveDialogModalityTest extends BasePlatformTestCase {
 
             @Override
             public void archive(Change change) {
+                ApplicationManager.getApplication().invokeAndWait(() -> { }, ModalityState.defaultModalityState());
             }
         };
         Object dialog = new Object();
@@ -244,7 +249,7 @@ public class BulkArchiveDialogModalityTest extends BasePlatformTestCase {
         } finally {
             LaterInvocator.leaveModal(dialog); // releases the held worker
         }
-        assertFalse("NON_MODAL archive hop must be held while the dialog is open", finishedWhileOpen);
+        assertFalse("a NON_MODAL archive write hop must be held while the dialog is open", finishedWhileOpen);
         assertTrue("…and run once it closes", within(loop::isDone));
         assertEquals("Done", rows.get(0).archiveStatus);
     }

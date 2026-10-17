@@ -39,19 +39,14 @@ public final class ChangeService {
         return getChangesFromDir(OpenSpecFileUtil.getArchiveDir(project));
     }
 
-    public String archiveFirstActive() throws IOException {
-        List<Change> active = getActiveChanges();
-        if (active.isEmpty()) return null;
-        return archiveChange(active.getFirst());
-    }
-
     private static final java.util.regex.Pattern DATED_NAME = java.util.regex.Pattern.compile("^\\d{4}-\\d{2}-\\d{2}-");
 
     private java.time.Clock clock = java.time.Clock.systemDefaultZone();
 
+    /** Replaces the clock used for dated archive names; {@code null} restores the system clock. */
     @org.jetbrains.annotations.TestOnly
-    public void setClockForTest(java.time.Clock clock) {
-        this.clock = clock;
+    public void setClockForTest(@org.jetbrains.annotations.Nullable java.time.Clock clock) {
+        this.clock = clock == null ? java.time.Clock.systemDefaultZone() : clock;
     }
 
     /**
@@ -85,37 +80,118 @@ public final class ChangeService {
         return exists ? archiveExistsMessage(target) : null;
     }
 
+    /** The first CLI version whose {@code archive --json} the plugin delegates to (1.4 has no {@code --json}). */
+    static final String CLI_ARCHIVE_FLOOR = "1.5.0";
+
+    /** Runs the OpenSpec CLI; a seam so tests can feed captured output and check the arguments. */
+    public interface ArchiveCli {
+        com.johnnyblabs.openspec.util.CliRunner.CliResult run(Project project, String... args)
+                throws com.johnnyblabs.openspec.util.CliRunner.CliException;
+    }
+
+    private static final ArchiveCli REAL_CLI = (p, args) -> com.johnnyblabs.openspec.util.CliRunner.run(p, 120_000, args);
+
+    private ArchiveCli archiveCli = REAL_CLI;
+
+    /** Replaces the CLI runner; {@code null} restores the real one. */
+    @org.jetbrains.annotations.TestOnly
+    public void setArchiveCliForTest(@org.jetbrains.annotations.Nullable ArchiveCli cli) {
+        this.archiveCli = cli == null ? REAL_CLI : cli;
+    }
+
     /**
-     * Moves a change to {@code openspec/changes/archive/<archiveTargetName>}, creating {@code changes/archive/} when
-     * missing. Refuses when the target exists. Never creates the legacy {@code openspec/archive/}, which is only read.
-     * Returns the archived folder name.
+     * Archives a change. With OpenSpec CLI 1.5 or later this runs {@code openspec archive <name> --yes --json}, adding
+     * {@code --skip-specs} when {@code syncSpecs} is false, so the user's CLI applies its own validation and rules.
+     * Otherwise the plugin archives the change itself: spec sync first when asked, then the dated move.
+     * Must be called off the UI thread (it may run a CLI process). Throws {@link ArchiveRefusedException} with
+     * OpenSpec's reason when the archive is refused; the change then stays active.
      */
-    public String archiveChange(Change change) throws IOException {
+    public ArchiveJson.Outcome archiveChange(Change change, boolean syncSpecs) throws IOException {
+        if (ApplicationManager.getApplication().isDispatchThread()) {
+            throw new IllegalStateException("archiveChange must not run on the UI thread: it may run the OpenSpec CLI");
+        }
+        CliDetectionService cli = project.getService(CliDetectionService.class);
+        String version = cli != null && cli.isAvailable() ? cli.getDetectedVersion() : null;
+        if (version != null && com.johnnyblabs.openspec.util.CliVersion.atLeast(version, CLI_ARCHIVE_FLOOR)) {
+            return archiveWithCli(change, syncSpecs);
+        }
+        return archiveItself(change, syncSpecs);
+    }
+
+    private ArchiveJson.Outcome archiveWithCli(Change change, boolean syncSpecs) throws IOException {
+        List<String> args = new ArrayList<>(List.of("archive", change.getName(), "--yes", "--json"));
+        if (!syncSpecs) args.add("--skip-specs");
+        com.johnnyblabs.openspec.util.CliRunner.CliResult result;
+        try {
+            result = archiveCli.run(project, args.toArray(String[]::new));
+        } catch (com.johnnyblabs.openspec.util.CliRunner.CliException e) {
+            throw new IOException("Could not run openspec archive: " + e.getMessage(), e);
+        }
+        try {
+            return ArchiveJson.parse(result.stdout(), result.stderr(), result.exitCode());
+        } finally {
+            // Whatever the CLI did on disk (a move, spec edits, or nothing), the tree and editors must see it.
+            VirtualFile root = OpenSpecFileUtil.getOpenSpecRoot(project);
+            if (root != null) {
+                com.intellij.openapi.vfs.VfsUtil.markDirtyAndRefresh(false, true, true, root);
+            }
+        }
+    }
+
+    /**
+     * The plugin's own archive (no CLI, or one older than 1.5): refuse an existing target before writing anything,
+     * sync specs when asked (all-or-nothing, as {@code openspec archive}), then move the change to its dated folder.
+     */
+    private ArchiveJson.Outcome archiveItself(Change change, boolean syncSpecs) throws IOException {
         VirtualFile changesDir = OpenSpecFileUtil.getChangesDir(project);
         if (changesDir == null) throw new IOException("Changes directory not found");
-
         VirtualFile changeDir = changesDir.findChild(change.getName());
         if (changeDir == null) throw new IOException("Change directory not found: " + change.getName());
 
         String conflict = archiveConflict(change.getName());
-        if (conflict != null) throw new IOException(conflict);
+        if (conflict != null) throw new ArchiveRefusedException(conflict, null);
+
+        boolean specsUpdated = false;
+        List<String> warnings = new ArrayList<>();
+        if (syncSpecs) {
+            SpecSyncService sync = project.getService(SpecSyncService.class);
+            List<com.johnnyblabs.openspec.model.SpecSyncResult> results = sync.computeSync(change.getName());
+            for (com.johnnyblabs.openspec.model.SpecSyncResult r : results) {
+                if (r.refused()) throw new ArchiveRefusedException(r.refusals().get(0), null);
+                warnings.addAll(r.warnings());
+            }
+            if (results.stream().anyMatch(com.johnnyblabs.openspec.model.SpecSyncResult::hasChanges)) {
+                sync.applySync(results);
+                specsUpdated = true;
+            }
+        }
 
         String target = archiveTargetName(change.getName());
-        WriteAction.run(() -> {
-            VirtualFile archive = changesDir.findChild("archive");
-            if (archive == null) {
-                archive = changesDir.createChildDirectory(this, "archive");
+        IOException[] failure = new IOException[1];
+        // The move is a write action, so it runs on the UI thread, carrying the caller's modality (a progress task's
+        // own inside a modal dialog, as for Bulk Archive), like SpecSyncService.applySync.
+        ApplicationManager.getApplication().invokeAndWait(() -> {
+            try {
+                WriteAction.run(() -> {
+                    VirtualFile archive = changesDir.findChild("archive");
+                    if (archive == null) {
+                        archive = changesDir.createChildDirectory(this, "archive");
+                    }
+                    changeDir.move(this, archive);
+                    if (!target.equals(changeDir.getName())) {
+                        changeDir.rename(this, target);
+                    }
+                });
+            } catch (IOException e) {
+                failure[0] = e;
             }
-            changeDir.move(this, archive);
-            if (!target.equals(changeDir.getName())) {
-                changeDir.rename(this, target);
-            }
-        });
+        }, com.intellij.openapi.application.ModalityState.defaultModalityState());
+        if (failure[0] != null) throw failure[0];
 
         // Archived-ness is directory location (changes/archive/), not a metadata field — the invented
         // status: write is retired. (This line previously did an unguarded getMetadata().setStatus on
         // possibly-null metadata AFTER the move committed, NPE-ing into a half-succeeded archive.)
-        return target;
+        return new ArchiveJson.Outcome(target, specsUpdated, List.copyOf(warnings));
     }
 
     public List<String> getMissingArtifacts(Change change) {

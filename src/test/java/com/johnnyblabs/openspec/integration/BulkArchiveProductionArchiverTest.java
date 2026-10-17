@@ -18,6 +18,80 @@ import java.util.concurrent.Future;
  */
 public class BulkArchiveProductionArchiverTest extends OpenSpecIntegrationTestBase {
 
+    @Override
+    protected void setUp() throws Exception {
+        super.setUp();
+        // Pin "no CLI" (the plugin's own archive) unless a test fakes one: never the CLI installed on this machine.
+        com.johnnyblabs.openspec.services.CliDetectionTestSupport.fakeUnavailable(
+                getProject().getService(com.johnnyblabs.openspec.services.CliDetectionService.class));
+    }
+
+    @Override
+    protected void tearDown() throws Exception {
+        try {
+            ChangeService reset = getProject().getService(ChangeService.class);
+            reset.setArchiveCliForTest(null);
+            reset.setClockForTest(null);
+        } finally {
+            super.tearDown();
+        }
+    }
+
+    private String archiveInsideOpenDialog(Change change) throws Exception {
+        Object dialog = new Object();
+        Future<String> loop;
+        LaterInvocator.enterModal(dialog);
+        try {
+            ModalityState modality = ModalityState.current();
+            loop = ApplicationManager.getApplication().executeOnPooledThread(
+                    () -> BulkArchiveDialogTestAccess.archiveWithProductionArchiver(getProject(), change, modality));
+            long end = System.currentTimeMillis() + 10_000;
+            while (System.currentTimeMillis() < end && !loop.isDone()) {
+                PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
+                Thread.sleep(20);
+            }
+            assertTrue("the archive must finish while the dialog is open", loop.isDone());
+        } finally {
+            LaterInvocator.leaveModal(dialog);
+            PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
+        }
+        return loop.get();
+    }
+
+    public void testWithTheCliEachChangeIsOneArchiveCallOffTheUiThread() throws Exception {
+        ChangeService changes = getProject().getService(ChangeService.class);
+        com.johnnyblabs.openspec.services.CliDetectionTestSupport.fakeAvailable(
+                getProject().getService(com.johnnyblabs.openspec.services.CliDetectionService.class), "1.14.3");
+        String captured = java.nio.file.Files.readString(java.nio.file.Paths.get(
+                "src/test/resources/fixtures/cli/archive-1.14.3/modified-ok/archive.json"));
+        List<List<String>> calls = new java.util.ArrayList<>();
+        List<Boolean> onUi = new java.util.ArrayList<>();
+        changes.setArchiveCliForTest((project, args) -> {
+            calls.add(List.of(args));
+            onUi.add(ApplicationManager.getApplication().isDispatchThread());
+            return new com.johnnyblabs.openspec.util.CliRunner.CliResult(0, captured, "");
+        });
+        myFixture.addFileToProject("openspec/changes/alpha/proposal.md", "## Why\n\nx\n");
+
+        assertEquals("Done", archiveInsideOpenDialog(change("alpha")));
+        assertEquals(List.of(List.of("archive", "alpha", "--yes", "--json")), calls);
+        assertEquals(List.of(false), onUi);
+    }
+
+    public void testWithTheCliARefusalMarksTheRowFailedWithTheCliMessage() throws Exception {
+        ChangeService changes = getProject().getService(ChangeService.class);
+        com.johnnyblabs.openspec.services.CliDetectionTestSupport.fakeAvailable(
+                getProject().getService(com.johnnyblabs.openspec.services.CliDetectionService.class), "1.14.3");
+        String captured = java.nio.file.Files.readString(java.nio.file.Paths.get(
+                "src/test/resources/fixtures/cli/archive-1.14.3/two-caps-one-refused/archive.json"));
+        changes.setArchiveCliForTest((project, args) -> new com.johnnyblabs.openspec.util.CliRunner.CliResult(1, captured, ""));
+        myFixture.addFileToProject("openspec/changes/alpha/proposal.md", "## Why\n\nx\n");
+
+        assertEquals("Failed: other MODIFIED failed for header \"### Requirement: Missing\" - not found "
+                + "Fix the change delta specs and rerun. No files were changed.", archiveInsideOpenDialog(change("alpha")));
+        assertTrue("still active", changes.getActiveChanges().stream().anyMatch(c -> c.getName().equals("alpha")));
+    }
+
     private Change change(String name) {
         return getProject().getService(ChangeService.class).getActiveChanges().stream()
                 .filter(c -> c.getName().equals(name)).findFirst().orElseThrow();

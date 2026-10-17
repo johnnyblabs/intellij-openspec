@@ -12,6 +12,9 @@
 
 - **Ready for IntelliJ IDEA 2026.x.** The plugin no longer calls platform methods that IntelliJ IDEA 2026.1 and later mark as deprecated where a replacement works on every supported IDE, so it keeps working as those methods are retired. Files open from links, buttons and notifications exactly as before. Compatibility is now checked against IntelliJ IDEA 2026.1 and 2026.2 as well, alongside 2024.2 and 2025.x.
 
+- **Archiving uses your OpenSpec CLI when it's version 1.5 or later.** Archive (from the tool window, the menu, or Verify) and Bulk Archive now run `openspec archive`, so a change is checked and archived by your CLI's own rules, and a refusal shows the CLI's reason and suggested fix, with the change left active. "Archive Without Syncing" archives without touching your main specs. Without the CLI, or with an older one, the plugin archives the change itself as before. Archiving now also runs in the background, so the IDE stays responsive.
+- **Archive and Verify now apply a change's spec updates when they archive it,** as `openspec archive` does. They used to move the change and leave its delta specs unapplied unless you had synced them first. Changes you already synced are unaffected.
+
 ### Fixed
 
 - **The schema section of Settings now works while Settings is open.** The schema list was always empty, and Validate, Open Templates and the config/profile sections seemed to do nothing, because their results only arrived after you closed the Settings dialog. They now appear straight away.

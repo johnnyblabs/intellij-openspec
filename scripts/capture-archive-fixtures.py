@@ -18,6 +18,7 @@ Runs use an isolated HOME and XDG directories, so the real global OpenSpec state
 Machine paths are replaced with /fixture and the archive date with <DATE>.
 
 Usage: scripts/capture-archive-fixtures.py   (uses the `openspec` on PATH, or $OPENSPEC_BIN)
+       CAPTURE_CASES=a,b scripts/capture-archive-fixtures.py   (only those cases, e.g. for an older CLI)
 """
 import json
 import os
@@ -219,6 +220,9 @@ CASES = {
     "new-cap-purpose-unclosed-fence": {"main": {}, "delta": {"newcap":
         "## Purpose\nThe purpose text that runs long enough to count for the threshold here.\n```text\nopen fence\n\n"
         "## ADDED Requirements\n\n" + req("Fresh")}},
+    "skip-specs-ok": {"main": {"demo": DEMO}, "delta": {"demo":
+        "## MODIFIED Requirements\n\n" + req("Works", "The system SHALL work reliably.", ("It works",))},
+        "args": ["--skip-specs"]},
     "already-dated-name": {"main": {"demo": DEMO}, "delta": {"demo": "## ADDED Requirements\n\n" + req("New")},
         "change": "2026-01-02-c1"},
     "existing-target": {"main": {"demo": DEMO}, "delta": {"demo": "## ADDED Requirements\n\n" + req("New")},
@@ -274,13 +278,13 @@ def capture(name, case, out_root, work):
         change = build(project, case)
         roots = sorted({str(project), os.path.realpath(project)}, key=len, reverse=True)
         if mode == "human":
-            results[mode] = run(project, env, "archive", change, "--yes") + (project, roots)
+            results[mode] = run(project, env, "archive", change, "--yes", *case.get("args", [])) + (project, roots)
         elif mode == "json":
-            results[mode] = run(project, env, "archive", change, "--yes", "--json") + (project, roots)
+            results[mode] = run(project, env, "archive", change, "--yes", "--json", *case.get("args", [])) + (project, roots)
         elif mode == "validate":
             results[mode] = run(project, env, "validate", change, "--json") + (project, roots)
         else:
-            results[mode] = run(project, env, "archive", change, "--yes", "--no-validate", "--json") + (project, roots)
+            results[mode] = run(project, env, "archive", change, "--yes", "--no-validate", "--json", *case.get("args", [])) + (project, roots)
 
     code_h, text_h, _, proj_h, roots_h = results["human"]
     code_j, _, stdout_j, proj_j, roots_j = results["json"]
@@ -289,9 +293,12 @@ def capture(name, case, out_root, work):
     (out / "archive.json").write_text(sanitize(stdout_j, roots_j))
     (out / "exit.txt").write_text(f"{code_j}\n")
     (out / "change.txt").write_text(case.get("change", "c1") + "\n")
+    if case.get("args"):
+        (out / "args.txt").write_text(" ".join(case["args"]) + "\n")
     (out / "validate.json").write_text(sanitize(stdout_v, roots_v))
     if code_h != code_j:
-        sys.exit(f"{name}: human exit {code_h} != json exit {code_j}")
+        # Older CLIs (e.g. 1.5.0) exit 0 from a refused human-mode archive but 1 with --json; record it.
+        (out / "exit-human.txt").write_text(f"{code_h}\n")
     try:
         validated = json.loads(stdout_v)["items"][0]["valid"]
     except (ValueError, KeyError, IndexError):
@@ -309,7 +316,7 @@ def capture(name, case, out_root, work):
         after_h = proj_h / "openspec" / "specs" / cap / "spec.md"
         after_j = proj_j / "openspec" / "specs" / cap / "spec.md"
         if code_j == 0 and after_j.exists():
-            if after_h.read_text() != after_j.read_text():
+            if after_h.exists() and after_h.read_text() != after_j.read_text():
                 sys.exit(f"{name}/{cap}: human and json runs wrote different specs")
             (out / cap / "main-after.md").write_text(after_j.read_text())
     # Record where the change went, so the archive-folder rules are captured too.
@@ -329,7 +336,10 @@ def main():
     out_root.mkdir(parents=True, exist_ok=True)
     (out_root / "version.txt").write_text(version + "\n")
     with tempfile.TemporaryDirectory() as tmp:
+        wanted = os.environ.get("CAPTURE_CASES")
         for name, case in CASES.items():
+            if wanted and name not in wanted.split(","):
+                continue
             capture(name, case, out_root, Path(tmp))
     leaks = subprocess.run(["grep", "-rnE", "/Users/|/private/|/var/folders", str(out_root)],
                            capture_output=True, text=True).stdout

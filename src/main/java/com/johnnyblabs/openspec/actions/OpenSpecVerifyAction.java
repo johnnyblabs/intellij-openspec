@@ -10,6 +10,7 @@ import com.johnnyblabs.openspec.dialogs.VerifyDialog;
 import com.johnnyblabs.openspec.model.ArchiveReadinessResult;
 import com.johnnyblabs.openspec.model.Change;
 import com.johnnyblabs.openspec.services.ArchiveReadinessService;
+import com.johnnyblabs.openspec.services.ArchiveDispatch;
 import com.johnnyblabs.openspec.services.ChangeService;
 import com.johnnyblabs.openspec.util.OpenSpecNotifier;
 import org.jetbrains.annotations.NotNull;
@@ -62,13 +63,14 @@ public class OpenSpecVerifyAction extends OpenSpecBaseAction {
     }
 
     private void archiveChange(Project project, ChangeService changeService, Change target) {
-        try {
-            changeService.archiveChange(target);
-            OpenSpecNotifier.info(project, "Archive", "Change archived: " + target.getName());
-        } catch (Exception ex) {
-            OpenSpecNotifier.error(project, "Archive", "Failed to archive change: " + ex.getMessage());
-            return;
-        }
-        refreshToolWindow(project);
+        String changeName = target.getName();
+        // In the background (it may run the OpenSpec CLI); merges the change's delta specs as `openspec archive` does.
+        ArchiveDispatch.start(project, target, true,
+                outcome -> {
+                    OpenSpecNotifier.info(project, "Archive", ArchiveDispatch.summary(changeName, outcome));
+                    refreshToolWindow(project);
+                },
+                error -> OpenSpecNotifier.error(project, "Archive",
+                        "Failed to archive change: " + ArchiveDispatch.reason(error)));
     }
 }
