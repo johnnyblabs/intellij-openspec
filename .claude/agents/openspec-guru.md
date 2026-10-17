@@ -20,9 +20,9 @@ There is **no code↔spec link concept** upstream. Progress attaches to changes,
 
 # Version and schema facts
 
-- Current supported CLI generation: **1.5.x** — skills-only delivery (`.claude/skills/openspec-*/SKILL.md` is the only tracked surface `openspec update` regenerates; other AI-tool mirrors like `.augment/`, `.codex/`, `.gemini/` are gitignored regenerated copies).
+- Supported CLI lines: **1.3.x–1.14.x** (floor 1.3.0, no ceiling); the single-sourced target is `openspecTargetVersion` in `gradle.properties` — read it, don't assume. Since 1.5 the CLI uses skills-only delivery (`.claude/skills/openspec-*/SKILL.md` is the only tracked surface `openspec update` regenerates; other AI-tool mirrors like `.augment/`, `.codex/`, `.gemini/` are gitignored regenerated copies).
 - 1.4→1.5 introduced the **store/workset** model and coordination layers (workspace, context store, initiatives). This state lives in **XDG paths** and is directly readable from disk without invoking the CLI — the plugin exploits this.
-- `.openspec.yaml` (per change dir): upstream's Zod schema accepts ONLY `schema:` and `created:` and **silently strips unknown keys**. Never propose storing anything else there.
+- `.openspec.yaml` (per change dir): upstream's schema recognizes a fixed set (`schema:`, `created:`, the optional `goal:`/`affected_areas:`/`initiative:` from 1.6, and `skip_specs:`/`retire_capabilities:`). Unknown keys were silently stripped before 1.14; since 1.14.0 `validate`/`status`/`instructions` warn about them (a failure under `--strict`), and from 1.14.2 lowercase `x-*` keys are exempt. The file is committed and published with the change, so never propose storing plugin or tracker data there.
 - `openspec/config.yaml`: upstream also silently strips keys it doesn't know — but some keys are **plugin-internal and load-bearing** (e.g. `version:`, required by the plugin's own `BuiltInValidator.validateConfig` and read by `OpenSpecSettings.getEffectiveVersion`). Before declaring any config key removable, grep `src/main/java/` and `src/test/java/` for reads of it.
 - The plugin's `VersionSupport` enum models the **config-format axis, deliberately pinned at 1.2.0** — it is NOT the CLI version axis. Do not suggest adding CLI-version entries to it.
 
@@ -30,8 +30,9 @@ There is **no code↔spec link concept** upstream. Progress attaches to changes,
 
 1. **Run the real CLI**: `openspec --help`, subcommand `--help`, and `--json` outputs. For state-dependent experiments, isolate with `XDG_DATA_HOME=$(mktemp -d)` so the real global store is untouched.
 2. **Read upstream source**: locate the installed package (`npm root -g`, then the `@fission-ai/openspec` dist/source) or WebFetch the GitHub repo. Zod schemas in upstream source are the ground truth for what config/state shapes are accepted.
-3. **Read captured contract fixtures** in `src/test/resources/fixtures/cli/` — they are real, sanitized CLI output and show exactly what shapes the plugin already depends on.
-4. Check the plugin's own specs (`openspec/specs/`) and archived changes (`openspec/changes/archive/`) for prior rulings and design history.
+3. **Read the upstream release notes** whenever a new CLI version or line is being assessed: the GitHub releases (https://github.com/Fission-AI/OpenSpec/releases, or `https://api.github.com/repos/Fission-AI/OpenSpec/releases`) for **every** version in the range, plus the package's CHANGELOG if it ships one. Classify each entry as covered (cite the fixture/test/code), not applicable (one-line reason), or a gap (what changed, which plugin code is affected, severity, and the real-CLI capture that would prove it). Binary diffs only catch changes on paths the plugin already exercises; release notes surface new commands, flags, deprecations and changed defaults it doesn't.
+4. **Read captured contract fixtures** in `src/test/resources/fixtures/cli/` — they are real, sanitized CLI output and show exactly what shapes the plugin already depends on.
+5. Check the plugin's own specs (`openspec/specs/`) and archived changes (`openspec/changes/archive/`) for prior rulings and design history.
 
 **Upstream is a read-only reference.** Never file issues, PRs, or drafts against Fission-AI/OpenSpec. Upstream defects get documented internally (note them in your answer so the orchestrator can record them); workarounds live plugin-side.
 

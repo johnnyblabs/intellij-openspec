@@ -234,6 +234,16 @@ tasks.check {
     dependsOn(tasks.jacocoTestCoverageVerification)
 }
 
+// runIde sandbox: disable the bundled Gradle plugins. On the 2024.2 target their startup activity downloads a
+// Gradle↔JVM compatibility table that now lists Java 25, which the 2024.2 parser rejects with an
+// `IllegalArgumentException: 25` error balloon on every launch. This plugin depends only on platform + yaml, so
+// the Gradle plugins are noise in the sandbox. prepareSandbox writes the sandbox's disabled_plugins.txt from this
+// set on every run (a hand-written file there is overwritten). uiSmoke and the test sandbox boot their own IDEs
+// and are unaffected.
+tasks.prepareSandbox {
+    disabledPlugins.addAll("com.intellij.gradle", "org.jetbrains.plugins.gradle", "org.jetbrains.plugins.gradle.maven")
+}
+
 // UI smoke journeys (see openspec/specs/ui-smoke-journeys): a real IDE booted by the
 // Starter framework with the built plugin installed, driven over the Driver SDK.
 // Deliberately NOT wired into `check`/`test` — heavy (full IDE boot per journey) and
