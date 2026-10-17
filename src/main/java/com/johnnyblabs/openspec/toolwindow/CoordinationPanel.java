@@ -14,7 +14,7 @@ import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.fileChooser.FileChooser;
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory;
-import com.intellij.openapi.fileEditor.FileEditorManager;
+import com.intellij.openapi.fileEditor.OpenFileDescriptor;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.vfs.LocalFileSystem;
@@ -407,7 +407,7 @@ public final class CoordinationPanel extends JPanel {
                                     + artifactNode.initiative().id() + "'.",
                             "Artifact Not Created");
                 } else if (vf != null) {
-                    FileEditorManager.getInstance(project).openFile(vf, true);
+                    new OpenFileDescriptor(project, vf).navigate(true);
                 } else {
                     Messages.showErrorDialog(project, "Could not open " + existing, "Open Failed");
                 }

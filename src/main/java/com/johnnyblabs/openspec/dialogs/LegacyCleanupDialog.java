@@ -1,6 +1,6 @@
 package com.johnnyblabs.openspec.dialogs;
 
-import com.intellij.openapi.fileEditor.FileEditorManager;
+import com.intellij.openapi.fileEditor.OpenFileDescriptor;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.DialogWrapper;
 import com.intellij.openapi.vfs.LocalFileSystem;
@@ -105,7 +105,7 @@ public class LegacyCleanupDialog extends DialogWrapper {
         if (base == null) return;
         VirtualFile vf = LocalFileSystem.getInstance().refreshAndFindFileByPath(base + "/" + relativePath);
         if (vf != null) {
-            FileEditorManager.getInstance(project).openFile(vf, true);
+            new OpenFileDescriptor(project, vf).navigate(true);
         }
     }
 }

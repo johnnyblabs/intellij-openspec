@@ -2,7 +2,7 @@ package com.johnnyblabs.openspec.settings;
 
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory;
-import com.intellij.openapi.fileEditor.FileEditorManager;
+import com.intellij.openapi.fileEditor.OpenFileDescriptor;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.TextBrowseFolderListener;
 import com.intellij.openapi.ui.TextFieldWithBrowseButton;
@@ -603,7 +603,7 @@ public class OpenSpecSettingsPanel {
                 for (java.util.Map.Entry<String, String> entry : templates.entrySet()) {
                     VirtualFile file = LocalFileSystem.getInstance().refreshAndFindFileByPath(entry.getValue());
                     if (file != null) {
-                        FileEditorManager.getInstance(project).openFile(file, true);
+                        new OpenFileDescriptor(project, file).navigate(true);
                     } else {
                         // Creation is the CLI's job (schema init scaffolds templates) — report, don't create.
                         missing.add(entry.getKey() + ": " + entry.getValue());
@@ -636,7 +636,7 @@ public class OpenSpecSettingsPanel {
                     LocalFileSystem.getInstance().refreshAndFindFileByPath(path);
                     VirtualFile file = LocalFileSystem.getInstance().findFileByPath(path);
                     if (file != null) {
-                        FileEditorManager.getInstance(project).openFile(file, true);
+                        new OpenFileDescriptor(project, file).navigate(true);
                     }
                 }
             });
@@ -659,7 +659,7 @@ public class OpenSpecSettingsPanel {
                     LocalFileSystem.getInstance().refreshAndFindFileByPath(path);
                     VirtualFile file = LocalFileSystem.getInstance().findFileByPath(path);
                     if (file != null) {
-                        FileEditorManager.getInstance(project).openFile(file, true);
+                        new OpenFileDescriptor(project, file).navigate(true);
                     }
                 }
             });

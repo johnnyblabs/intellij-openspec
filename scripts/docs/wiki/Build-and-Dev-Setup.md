@@ -53,7 +53,7 @@ intellij-openspec/
 | `./gradlew test` | Run JUnit 5 tests |
 | `./gradlew runIde` | Launch sandboxed IntelliJ with plugin |
 | `./gradlew buildPlugin` | Produce distributable ZIP |
-| `./gradlew verifyPlugin` | Validate plugin descriptor |
+| `./gradlew verifyPlugin` | Run the IntelliJ Plugin Verifier: binary compatibility and deprecated/removed API usage against the verified IDE set (Community 2024.2 and 2025.2, plus IntelliJ IDEA 2025.3, 2026.1 and 2026.2) |
 
 ## Build Configuration Highlights
 

@@ -11,7 +11,7 @@ import com.johnnyblabs.openspec.util.OpenSpecFileUtil;
 import com.johnnyblabs.openspec.util.SpecPatterns;
 
 import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.application.ReadAction;
+import com.intellij.openapi.util.ThrowableComputable;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -94,7 +94,8 @@ public final class SpecParsingService {
                     || ApplicationManager.getApplication().isDispatchThread()) {
                 content = new String(file.contentsToByteArray(), StandardCharsets.UTF_8);
             } else {
-                content = ReadAction.compute(() -> new String(file.contentsToByteArray(), StandardCharsets.UTF_8));
+                content = ApplicationManager.getApplication().runReadAction(
+                        (ThrowableComputable<String, IOException>) () -> new String(file.contentsToByteArray(), StandardCharsets.UTF_8));
             }
             return parseSpecContent(content, domain, file.getPath());
         } catch (IOException e) {

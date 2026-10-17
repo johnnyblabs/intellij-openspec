@@ -1,5 +1,7 @@
 import org.jetbrains.changelog.markdownToHTML
+import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
+import org.jetbrains.intellij.platform.gradle.models.ProductRelease
 import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask
 import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask.FailureLevel
 
@@ -373,16 +375,48 @@ intellijPlatform {
     }
 
     pluginVerification {
+        // Verified set: the 2024.2 floor, the last IntelliJ IDEA Community line (2025.2), and every unified
+        // IntelliJ IDEA release line after it. JetBrains ships no Community build from 2025.3 on, so
+        // recommended() (Community-only) stopped at 2025.2 and never saw deprecations in newer IDEs. Each
+        // select{} resolves the latest patch of each matching release line; EAP builds are excluded (the
+        // Marketplace verifies them on every upload). 2024.3 and 2025.1 are skipped: the plugin compiles
+        // against 2024.2, and API breakage surfaces first in the newest lines.
+        // When a new stable IntelliJ IDEA line ships (2026.3 = build 263), raise untilBuild to include it.
         ides {
-            recommended()
+            select {
+                types = listOf(IntelliJPlatformType.IntellijIdeaCommunity)
+                channels = listOf(ProductRelease.Channel.RELEASE)
+                sinceBuild = "242"
+                untilBuild = "242.*"
+            }
+            select {
+                types = listOf(IntelliJPlatformType.IntellijIdeaCommunity)
+                channels = listOf(ProductRelease.Channel.RELEASE)
+                sinceBuild = "252"
+                untilBuild = "252.*"
+            }
+            select {
+                types = listOf(IntelliJPlatformType.IntellijIdea)
+                channels = listOf(ProductRelease.Channel.RELEASE)
+                sinceBuild = "253"
+                untilBuild = "262.*"
+            }
         }
         // Verifier severity gate — pinned replica of the IPGP 2.18.1 DEFAULT failure set (do NOT
         // shorten: dropping INTERNAL_API_USAGES / OVERRIDE_ONLY_API_USAGES would silently regress
         // coverage; pinning also protects us if a future IPGP weakens its default). DEPRECATED_API_USAGES
-        // is deliberately EXCLUDED — we knowingly retain a few plain-@Deprecated usages whose replacement
-        // doesn't exist at the 242 floor (ReadAction.compute→computeBlocking; the Reworked Terminal API),
-        // tracked for the floor bump. (The former ActionUtil.invokeAction usages are migrated to
-        // ActionManager.tryToExecute via ActionLauncher, which is non-deprecated across 242–252.)
+        // is deliberately EXCLUDED — the ci spec requires migrating a plain-@Deprecated usage once a replacement
+        // exists at the 242 floor, and lets these documented exceptions (no replacement at 242) stay until the
+        // floor advances:
+        //   - TerminalToolWindowManager.createShellWidget (OpenSpecTerminalLauncher; deprecated 2026.1+): its
+        //     replacement, the Reworked Terminal API, does not exist on 2024.2.
+        //   - SearchEverywhereContributor.getDataForItem (SpecSearchEverywhereContributor; deprecated 2026.2+):
+        //     abstract on 2024.2, so it must be overridden there; its replacement API does not exist on 2024.2
+        //     and is experimental and coroutine-only.
+        // (Migrated already, so not exceptions: ActionUtil.invokeAction → ActionLauncher, ReadAction.compute →
+        // Application.runReadAction(ThrowableComputable), FileEditorManager.openFile(file, boolean) →
+        // OpenFileDescriptor.navigate(true); DeprecatedPlatformApiHygieneTest and ActionInvocationHygieneTest
+        // keep them from coming back.)
         // NOTE: scheduled-for-removal usage is NOT (and cannot be) gated here — IPGP 2.18.1 folds
         // forRemoval usages into the verifier's "Deprecated API usages" report section and names them
         // "scheduled for removal" only on the verdict line its problem-collector skips, so

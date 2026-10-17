@@ -1,9 +1,9 @@
 package com.johnnyblabs.openspec.validation;
 
 import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.components.Service;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.ThrowableComputable;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.johnnyblabs.openspec.model.Change;
 import com.johnnyblabs.openspec.model.OpenSpecConfig;
@@ -516,7 +516,8 @@ public final class BuiltInValidator {
                     || ApplicationManager.getApplication().isDispatchThread()) {
                 return new String(file.contentsToByteArray(), StandardCharsets.UTF_8);
             }
-            return ReadAction.compute(() -> new String(file.contentsToByteArray(), StandardCharsets.UTF_8));
+            return ApplicationManager.getApplication().runReadAction(
+                    (ThrowableComputable<String, IOException>) () -> new String(file.contentsToByteArray(), StandardCharsets.UTF_8));
         } catch (IOException e) {
             return null;
         }
