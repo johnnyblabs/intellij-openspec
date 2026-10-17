@@ -293,8 +293,12 @@ The plugin SHALL discover a change's delta spec files by recursively locating `s
 - **THEN** the validator SHALL report an INFO-severity issue with code `delta-skipped-header` anchored to that header's line, and the file's verdict SHALL be unaffected by it
 
 #### Scenario: Renamed section missing FROM/TO
-- **WHEN** a `## RENAMED Requirements` section contains no well-formed `FROM:`/`TO:` pair (matching `^\s*(?:-\s*)?FROM:\s*(.+)$\s*^\s*(?:-\s*)?TO:\s*(.+)$`, mirroring the sync layer's parser)
+- **WHEN** a `## RENAMED Requirements` section contains at least one `FROM:` or `TO:` line but no well-formed `FROM:`/`TO:` pair (matching `^\s*(?:-\s*)?FROM:\s*(.+)$\s*^\s*(?:-\s*)?TO:\s*(.+)$`, mirroring the sync layer's parser)
 - **THEN** the validator SHALL report an ERROR with code `delta-renamed-fields`
+
+#### Scenario: An empty RENAMED section is not an error
+- **WHEN** a `## RENAMED Requirements` section contains no `FROM:` or `TO:` line at all (it is empty, or holds only HTML-comment guidance such as a freshly scaffolded delta), and the built-in validator or the delta IDE inspection evaluates it
+- **THEN** neither SHALL report `delta-renamed-fields` for that section, matching the OpenSpec client, which reports a change `valid:true` when its delta has an empty RENAMED section beside a parsed ADDED requirement — so the fallback is never more restrictive than the client
 
 #### Scenario: Renamed section with valid FROM/TO
 - **WHEN** a `## RENAMED Requirements` section contains one or more well-formed `FROM:`/`TO:` pairs (bullet or non-bullet form)
