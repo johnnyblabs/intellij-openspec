@@ -87,14 +87,26 @@ the label (labels are now the plain artifact id, keeping a subtle foreground tin
 Badges use distinct shapes, are theme- and HiDPI-correct, and each badged node names its status in
 its tooltip. A blocked artifact keeps a `(needs: …)` suffix naming the unmet dependencies. When the
 OpenSpec CLI is unavailable, badges degrade honestly to done-versus-not-done (the ready/blocked split
-needs the CLI's dependency graph). A **change** node itself carries a **done** badge when all of its
-artifacts are complete (it is apply-ready), and shows its task progress as an `X/Y` count in the
-label when a tasks artifact exists. Tasks are counted exactly as the OpenSpec CLI counts them: any bullet
+needs the CLI's dependency graph). A **change** node itself shows one of three stages, one badge at a time:
+
+- **No badge:** some artifacts are still missing.
+- **Apply-ready (green dot):** all artifacts are complete; tasks may still be open.
+- **All tasks done (check mark):** all artifacts are complete **and** every task is done. The label adds
+  `· all tasks done` after the count, so finished changes stand out without reading every `X/Y`. This is
+  a *suggestion* that the change is ready to archive, not a guarantee: archiving can still be refused,
+  for example by spec validation. Run **Verify** to confirm. The label deliberately says "all tasks done"
+  rather than "ready to archive", because Verify's "Ready to archive" also checks validation.
+
+The dot and the check differ in shape, so the stages don't rely on color. Without the OpenSpec CLI,
+neither badge appears (artifact completion comes from the CLI), while the `X/Y` count still shows.
+
+The change node also shows its task progress as an `X/Y` count in the label when a tasks artifact exists. Tasks are counted exactly as the OpenSpec CLI counts them: any bullet
 or numbered marker (`-`, `*`, `+`, `1.`, `1)`), empty or padded boxes (`[]`, `[ x ]`), and done only
 when the box holds `x`. The same counts drive the workflow panel, Apply, and Verify.
 
 **On-model boundary.** Only **change**, **change-artifact**, and **missing-artifact** nodes carry a
-status badge — these are the nodes with client-owned status (apply-readiness, task progress). **Spec,
+status badge — these are the nodes with client-owned status (apply-readiness, task progress, and their
+combination, all-tasks-done). **Spec,
 requirement, delta-spec, and config nodes are never badged**, because the OpenSpec model attaches no
 status to a spec or requirement; a badge there would repeat the removed `@spec` coverage scorecard.
 

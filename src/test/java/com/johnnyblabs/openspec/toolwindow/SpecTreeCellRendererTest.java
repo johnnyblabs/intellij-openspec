@@ -40,6 +40,7 @@ class SpecTreeCellRendererTest {
         assertInstanceOf(LayeredIcon.class, SpecTreeCellRenderer.iconForType(TreeNodeType.ARTIFACT_BLOCKED));
         assertInstanceOf(LayeredIcon.class, SpecTreeCellRenderer.iconForType(TreeNodeType.MISSING_ARTIFACT));
         assertInstanceOf(LayeredIcon.class, SpecTreeCellRenderer.iconForType(TreeNodeType.CHANGE_DONE));
+        assertInstanceOf(LayeredIcon.class, SpecTreeCellRenderer.iconForType(TreeNodeType.CHANGE_ARCHIVE_READY));
     }
 
     @Test
@@ -78,12 +79,51 @@ class SpecTreeCellRendererTest {
         assertSame(AllIcons.RunConfigurations.TestState.Green2, changeDone.getIcon(1));
     }
 
+    @Test
+    void archiveReadyComposesChangeBaseWithADistinctCheckBadge() {
+        LayeredIcon archiveReady = (LayeredIcon) SpecTreeCellRenderer.iconForType(TreeNodeType.CHANGE_ARCHIVE_READY);
+        LayeredIcon changeDone = (LayeredIcon) SpecTreeCellRenderer.iconForType(TreeNodeType.CHANGE_DONE);
+        assertEquals(2, archiveReady.getIconCount());
+        assertSame(SpecTreeCellRenderer.CHANGE_ICON, archiveReady.getIcon(0));
+        assertSame(AllIcons.General.GreenCheckmark, archiveReady.getIcon(1));
+        assertNotSame(changeDone.getIcon(1), archiveReady.getIcon(1),
+                "archive-ready must differ from apply-ready by badge shape, not color alone");
+    }
+
+    @Test
+    void archiveReady_addsAllTasksDoneFragmentAfterTheDimmedCount() {
+        List<LabelFragment> f = SpecTreeCellRenderer.changeFragments(
+                new ChangeLabelParts("ship-it", new int[]{3, 3}), TreeNodeType.CHANGE_ARCHIVE_READY);
+        assertEquals(3, f.size(), "name, count, cue: " + f);
+        assertEquals("ship-it", f.get(0).text());
+        assertSame(SimpleTextAttributes.REGULAR_ATTRIBUTES, f.get(0).attributes());
+        assertEquals(" 3/3", f.get(1).text());
+        assertSame(SimpleTextAttributes.GRAYED_ATTRIBUTES, f.get(1).attributes(), "the count is never greened");
+        String cue = f.get(2).text();
+        assertTrue(cue.startsWith(" · ") && cue.contains("all tasks done"), cue);
+        assertFalse(cue.toLowerCase(java.util.Locale.ROOT).contains("ready to archive"),
+                "Verify owns 'ready to archive' (it also requires validation): " + cue);
+        assertSame(SpecTreeCellRenderer.ALL_TASKS_DONE_ATTR, f.get(2).attributes());
+        assertNotSame(SimpleTextAttributes.GRAYED_ATTRIBUTES, f.get(2).attributes());
+        assertNotSame(SimpleTextAttributes.REGULAR_ATTRIBUTES, f.get(2).attributes());
+    }
+
+    @Test
+    void completeCountWithoutArchiveReady_hasNoCue() {
+        // The cue depends on the node's state, not on N/N alone (an incomplete DAG can still have 8/8 tasks).
+        for (TreeNodeType type : List.of(TreeNodeType.CHANGE, TreeNodeType.CHANGE_DONE)) {
+            List<LabelFragment> f = SpecTreeCellRenderer.changeFragments(new ChangeLabelParts("c", new int[]{8, 8}), type);
+            assertEquals(2, f.size(), type + ": " + f);
+            assertSame(SimpleTextAttributes.GRAYED_ATTRIBUTES, f.get(1).attributes());
+        }
+    }
+
     // --- Change-node fragmentation: name un-tinted (primary), count dimmed ---
 
     @Test
     void changeName_isPrimaryColor() {
         List<LabelFragment> f = SpecTreeCellRenderer.changeFragments(
-                new ChangeLabelParts("add-user-auth", new int[]{3, 11}));
+                new ChangeLabelParts("add-user-auth", new int[]{3, 11}), TreeNodeType.CHANGE);
         // The NAME is the first fragment and must use REGULAR (default) — the whole point of the
         // refactor is that the name reads primary and stops competing with the count.
         assertEquals("add-user-auth", f.get(0).text());
@@ -95,7 +135,7 @@ class SpecTreeCellRendererTest {
     void nameAndCount_areTheOnlyFragments_countGrayed() {
         // The invented [status] tag is retired — a change node is just name + (optional) dimmed count.
         List<LabelFragment> f = SpecTreeCellRenderer.changeFragments(
-                new ChangeLabelParts("add-user-auth", new int[]{3, 11}));
+                new ChangeLabelParts("add-user-auth", new int[]{3, 11}), TreeNodeType.CHANGE);
         assertEquals(2, f.size(), "name + count, no status tag");
         assertEquals("add-user-auth", f.get(0).text());
         assertEquals(" 3/11", f.get(1).text());
@@ -109,7 +149,7 @@ class SpecTreeCellRendererTest {
         // that, from the artifact DAG). The count must stay uniformly gray so it never contradicts a
         // non-done icon.
         List<LabelFragment> f = SpecTreeCellRenderer.changeFragments(
-                new ChangeLabelParts("fix-login", new int[]{8, 8}));
+                new ChangeLabelParts("fix-login", new int[]{8, 8}), TreeNodeType.CHANGE);
         LabelFragment count = f.get(f.size() - 1);
         assertEquals(" 8/8", count.text());
         assertSame(SimpleTextAttributes.GRAYED_ATTRIBUTES, count.attributes(),
@@ -119,7 +159,7 @@ class SpecTreeCellRendererTest {
     @Test
     void noTasksArtifact_omitsCount() {
         List<LabelFragment> f = SpecTreeCellRenderer.changeFragments(
-                new ChangeLabelParts("plan-only", null));
+                new ChangeLabelParts("plan-only", null), TreeNodeType.CHANGE);
         assertEquals(1, f.size(), "just the name when there are no tasks");
         assertEquals("plan-only", f.get(0).text());
     }
@@ -127,7 +167,7 @@ class SpecTreeCellRendererTest {
     @Test
     void zeroTotalTasks_omitsCount() {
         List<LabelFragment> f = SpecTreeCellRenderer.changeFragments(
-                new ChangeLabelParts("empty-tasks", new int[]{0, 0}));
+                new ChangeLabelParts("empty-tasks", new int[]{0, 0}), TreeNodeType.CHANGE);
         assertEquals(1, f.size(), "an empty tasks file yields no count fragment");
         assertEquals("empty-tasks", f.get(0).text());
     }

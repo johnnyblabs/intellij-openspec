@@ -6,6 +6,7 @@
 
 ### Added
 
+- **Finished changes stand out in the Changes tree.** A change whose artifacts are all complete and whose tasks are all done now gets a check-mark badge in place of the apply-ready dot, plus an "all tasks done" cue after its task count, so you no longer have to read every `25/25` to find work that's ready to wrap up. It's a suggestion to archive, not a guarantee (the tooltip points you to Verify, which also checks validation). It shows when the OpenSpec CLI is available.
 - **OpenSpec CLI 1.13.x is now a supported line.** Its validation verdicts over the shared parity corpus are unchanged from 1.12. Where 1.13 made the CLI more permissive, the plugin now follows it (see the fixes below). 1.13's new, stricter checks are deliberately not copied into the built-in validator, so it never rejects a change that an older supported CLI would accept. The plugin targets CLI 1.13.2 (minimum CLI remains 1.3.0).
 
 ### Fixed

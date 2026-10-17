@@ -89,6 +89,10 @@ class SpecPreviewRenderTest {
         assertEquals(PreviewKind.CHANGE_DELTAS,
                 SpecPreviewRenderer.classify(TreeNodeType.CHANGE, "/proj/openspec/changes/my-change"));
         assertEquals(PreviewKind.NONE, SpecPreviewRenderer.classify(TreeNodeType.CHANGE, null));
+        // Every change rollup state previews identically, including archive-ready.
+        assertEquals(PreviewKind.CHANGE_DELTAS,
+                SpecPreviewRenderer.classify(TreeNodeType.CHANGE_ARCHIVE_READY, "/proj/openspec/changes/my-change"));
+        assertEquals(PreviewKind.NONE, SpecPreviewRenderer.classify(TreeNodeType.CHANGE_ARCHIVE_READY, null));
         // Absent path and non-previewable types collapse to NONE.
         assertEquals(PreviewKind.NONE, SpecPreviewRenderer.classify(TreeNodeType.DELTA_SPEC, null));
         assertEquals(PreviewKind.NONE, SpecPreviewRenderer.classify(TreeNodeType.HINT, "/s/spec.md"));
