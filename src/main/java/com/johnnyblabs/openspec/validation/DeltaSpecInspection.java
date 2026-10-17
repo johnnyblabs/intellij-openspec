@@ -25,7 +25,6 @@ public class DeltaSpecInspection extends LocalInspectionTool {
             com.johnnyblabs.openspec.util.SpecPatterns.REQUIREMENT_HEADER;
     private static final Pattern SCENARIO_PATTERN = Pattern.compile(
             "^#{4} Scenario:.+", Pattern.MULTILINE);
-    private static final Pattern RENAMED_ENTRY_PATTERN = com.johnnyblabs.openspec.util.SpecPatterns.RENAMED_PAIR;
     // REMOVED metadata markers, tolerant of both bold forms: **Reason:** (colon inside) and **Reason**: (colon outside).
     private static final Pattern REMOVED_REASON_PATTERN = Pattern.compile("\\*\\*\\s*Reason\\s*:?\\s*\\*\\*", Pattern.CASE_INSENSITIVE);
     private static final Pattern REMOVED_MIGRATION_PATTERN = Pattern.compile("\\*\\*\\s*Migration\\s*:?\\s*\\*\\*", Pattern.CASE_INSENSITIVE);
@@ -57,6 +56,23 @@ public class DeltaSpecInspection extends LocalInspectionTool {
 
         // Structural validation of requirement blocks within delta sections
         Matcher sectionMatcher = DELTA_SECTION_PATTERN.matcher(text);
+        // Unpaired renames, read exactly as OpenSpec's reader (and the merge, and the built-in validator) pair them.
+        String raw = file.getText();
+        String[] rawLines = raw.split("\n", -1);
+        for (com.johnnyblabs.openspec.services.SpecMerge.Unpaired u
+                : com.johnnyblabs.openspec.services.SpecMerge.summarize(raw).unpaired()) {
+            int offset = 0;
+            for (int i = 0; i < u.line() - 1 && i < rawLines.length; i++) offset += rawLines[i].length() + 1;
+            PsiElement element = findNonEmptyElement(file, Math.min(offset, Math.max(0, raw.length() - 1)));
+            if (element != null) {
+                String missing = "FROM".equals(u.side()) ? "TO" : "FROM";
+                problems.add(manager.createProblemDescriptor(element,
+                        "RENAMED " + u.side() + ": \"" + u.name() + "\" has no matching " + missing + ": line. "
+                                + "Write each rename as a FROM: line followed immediately by its TO: line.",
+                        (LocalQuickFix) null, ProblemHighlightType.ERROR, isOnTheFly));
+            }
+        }
+
         while (sectionMatcher.find()) {
             String sectionType = sectionMatcher.group(1);
             int sectionHeaderOffset = sectionMatcher.start();
@@ -72,22 +88,8 @@ public class DeltaSpecInspection extends LocalInspectionTool {
             String sectionContent = text.substring(sectionStart, sectionEnd);
 
             if ("RENAMED".equals(sectionType)) {
-                // RENAMED sections carry FROM:/TO: pairs, not requirement blocks. Entry lines without a
-                // well-formed pair are an error; mirrors BuiltInValidator. (Bare names pass here; the merge,
-                // like OpenSpec, reads only FROM:/TO: lines carrying `### Requirement:` - see SpecMerge.)
-                // An empty section (no FROM:/TO: lines, e.g. a fresh scaffold) is not: the CLI accepts it.
-                if (com.johnnyblabs.openspec.util.SpecPatterns.RENAMED_ENTRY_LINE.matcher(sectionContent).find()
-                        && !RENAMED_ENTRY_PATTERN.matcher(sectionContent).find()) {
-                    PsiElement element = findNonEmptyElement(file, sectionHeaderOffset);
-                    if (element != null) {
-                        problems.add(manager.createProblemDescriptor(
-                                element,
-                                "RENAMED section must contain at least one FROM:/TO: pair",
-                                (LocalQuickFix) null,
-                                ProblemHighlightType.ERROR,
-                                isOnTheFly));
-                    }
-                }
+                // RENAMED holds FROM:/TO: pairs, not requirement blocks. Unpaired renames are marked from
+                // SpecMerge's reading below; bare `FROM: Old` lines are ignored, as OpenSpec ignores them.
                 continue;
             }
 

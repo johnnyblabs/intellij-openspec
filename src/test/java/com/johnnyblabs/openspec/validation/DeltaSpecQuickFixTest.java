@@ -111,6 +111,21 @@ public class DeltaSpecQuickFixTest extends OpenSpecIntegrationTestBase {
                         .iterator().hasNext());
     }
 
+    public void testCapturedBareRenameBesideAnEntryIsNotMarked() throws Exception {
+        String delta = java.nio.file.Files.readString(java.nio.file.Paths.get(
+                "src/test/resources/fixtures/cli/1.14.3/validate-renamed/bare-beside-added/delta.md"));
+        assertFalse("the CLI ignores bare FROM/TO lines (valid:true)", renamedProblems(delta).iterator().hasNext());
+    }
+
+    public void testCapturedUnpairedRenameBesideAnEntryIsMarked() throws Exception {
+        String delta = java.nio.file.Files.readString(java.nio.file.Paths.get(
+                "src/test/resources/fixtures/cli/1.14.3/validate-renamed/unpaired-beside-added/delta.md"));
+        java.util.List<ProblemDescriptor> problems = renamedProblems(delta);
+        assertEquals(1, problems.size());
+        assertEquals("RENAMED FROM: \"Works\" has no matching TO: line. Write each rename as a FROM: line followed immediately by its TO: line.",
+                problems.get(0).getDescriptionTemplate());
+    }
+
     private java.util.List<ProblemDescriptor> renamedProblems(String deltaContent) {
         myFixture.addFileToProject("openspec/changes/fix-change/specs/actions/spec.md", deltaContent);
         refreshVfs();
@@ -119,7 +134,7 @@ public class DeltaSpecQuickFixTest extends OpenSpecIntegrationTestBase {
                 InspectionManager.getInstance(getProject()), false);
         java.util.List<ProblemDescriptor> renamed = new java.util.ArrayList<>();
         for (ProblemDescriptor p : problems) {
-            if (p.getDescriptionTemplate().contains("RENAMED section")) {
+            if (p.getDescriptionTemplate().contains("has no matching")) {
                 renamed.add(p);
             }
         }

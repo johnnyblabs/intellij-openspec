@@ -1,0 +1,37 @@
+{
+  "items": [
+    {
+      "id": "c1",
+      "type": "change",
+      "valid": false,
+      "issues": [
+        {
+          "level": "ERROR",
+          "path": "demo/spec.md",
+          "line": 12,
+          "message": "RENAMED FROM: \"Works\" has no matching TO: line. Write each rename as a FROM: line followed immediately by its TO: line."
+        }
+      ],
+      "durationMs": 9
+    }
+  ],
+  "summary": {
+    "totals": {
+      "items": 1,
+      "passed": 0,
+      "failed": 1
+    },
+    "byType": {
+      "change": {
+        "items": 1,
+        "passed": 0,
+        "failed": 1
+      }
+    }
+  },
+  "version": "1.0",
+  "root": {
+    "path": "/fixture",
+    "source": "nearest"
+  }
+}
