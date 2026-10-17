@@ -130,24 +130,15 @@ class ScaffoldingContractTest {
     // --- Change artifacts match v1.2.0 required set ---
 
     @Test
-    void v1_2_requiredArtifacts_matchScaffoldingOutput() {
-        // The scaffolding creates: proposal.md, design.md, tasks.md, specs/
-        // VersionSupport.V1_2 requires: proposal, design, tasks, specs
+    void v1_2_requiredArtifacts_includeDesignAndTasks_butProposeScaffoldsOnlyTheProposal() {
+        // The config-format pin still lists design and tasks as required artifacts...
         Set<String> required = VersionSupport.V1_2.getRequiredArtifacts();
-
-        // Verify scaffolding creates a file for each required artifact
-        // (excluding "specs" which is a directory, not a .md file)
-        for (String artifact : required) {
-            if ("specs".equals(artifact)) continue;
-            String template = switch (artifact) {
-                case "proposal" -> TemplateProvider.proposalTemplate("test", "test desc", null);
-                case "design" -> TemplateProvider.designTemplate("test");
-                case "tasks" -> TemplateProvider.tasksTemplate("test");
-                default -> fail("Unknown required artifact: " + artifact);
-            };
-            assertNotNull(template, "Template for artifact '" + artifact + "' must exist");
-            assertFalse(template.isBlank(), "Template for artifact '" + artifact + "' must not be blank");
-        }
+        assertTrue(required.containsAll(Set.of("proposal", "design", "tasks", "specs")), String.valueOf(required));
+        // ...but the built-in Propose only scaffolds the proposal, as `openspec new change` creates no artifact files:
+        // a design/tasks template would read as done to `openspec status`.
+        String proposal = TemplateProvider.proposalTemplate("test", "test desc", null);
+        assertNotNull(proposal);
+        assertFalse(proposal.isBlank());
     }
 
     @Test

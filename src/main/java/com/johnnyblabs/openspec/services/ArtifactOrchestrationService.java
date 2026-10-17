@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedHashSet;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -58,13 +59,31 @@ public final class ArtifactOrchestrationService {
      * <b>Must NOT be called on EDT</b> — spawns an external process.
      * Falls back to cache on failure.
      */
+    /** Runs the OpenSpec CLI; a seam so tests can feed captured {@code status} output. */
+    public interface StatusCli {
+        CliRunner.CliResult run(Project project, String... args) throws CliRunner.CliException;
+    }
+
+    private static final StatusCli REAL_STATUS_CLI = CliRunner::run;
+    private StatusCli statusCli = REAL_STATUS_CLI;
+
+    /** Replaces the CLI runner for {@code status}; {@code null} restores the real one. */
+    @org.jetbrains.annotations.TestOnly
+    public void setStatusCliForTest(@org.jetbrains.annotations.Nullable StatusCli cli) {
+        this.statusCli = cli == null ? REAL_STATUS_CLI : cli;
+    }
+
+    /**
+     * The change's artifact status exactly as {@code openspec status --change <name> --json} reports it. Upstream
+     * decides done-ness by the file existing, and the plugin doesn't second-guess it; a done file that still looks
+     * like a template is only pointed out ({@link #templateLookingArtifacts}).
+     */
     public ChangeArtifactDag getArtifactStatus(String changeName) {
         try {
-            CliRunner.CliResult result = CliRunner.run(project, "status", "--change", changeName, "--json");
+            CliRunner.CliResult result = statusCli.run(project, "status", "--change", changeName, "--json");
             if (result.isSuccess() && !result.stdout().isBlank()) {
                 ChangeArtifactDag dag = CliOutputParser.parseChangeStatus(result.stdout());
                 if (dag != null) {
-                    applyScaffoldingOverrides(dag, changeName);
                     dagCache.put(changeName, dag);
                     return dag;
                 }
@@ -76,67 +95,24 @@ public final class ArtifactOrchestrationService {
     }
 
     /**
-     * Checks each "done" artifact for scaffolding content and overrides status accordingly.
-     * Skips glob-pattern output paths (e.g., specs) since they can't be resolved to a single file.
+     * The ids of done, single-file artifacts whose file still looks like an unfilled template, for a non-blocking hint
+     * on the pipeline chips. Never changes {@code dag}. Glob outputs (specs) aren't checked. Reads files: call off the
+     * UI thread.
      */
-    void applyScaffoldingOverrides(ChangeArtifactDag dag, String changeName) {
+    public Set<String> templateLookingArtifacts(String changeName, @org.jetbrains.annotations.Nullable ChangeArtifactDag dag) {
         String basePath = project.getBasePath();
-        if (basePath == null) return;
-
         ScaffoldingDetectionService detector = project.getService(ScaffoldingDetectionService.class);
-        if (detector == null) return;
-
-        String changeDir = basePath + "/openspec/changes/" + changeName;
-        List<ArtifactInfo> artifacts = dag.getArtifacts();
-
-        // First pass: identify which artifacts are scaffolding
-        Set<String> scaffoldedIds = new HashSet<>();
-        for (ArtifactInfo artifact : artifacts) {
+        if (dag == null || basePath == null || detector == null) return Set.of();
+        Set<String> ids = new LinkedHashSet<>();
+        for (ArtifactInfo artifact : dag.getArtifacts()) {
             if (artifact.status() != ArtifactStatus.DONE) continue;
-
             String outputPath = artifact.outputPath();
-            // Skip glob patterns — can't resolve to a single file
             if (outputPath == null || outputPath.contains("*")) continue;
-
-            String filePath = changeDir + "/" + outputPath;
-            if (detector.isScaffolding(filePath)) {
-                scaffoldedIds.add(artifact.id());
+            if (detector.isScaffolding(basePath + "/openspec/changes/" + changeName + "/" + outputPath)) {
+                ids.add(artifact.id());
             }
         }
-
-        if (scaffoldedIds.isEmpty()) return;
-
-        // Second pass: override status based on dependency analysis
-        // Use earlier artifacts in the list as implicit dependencies
-        // (DAG order: proposal → design/specs → tasks)
-        List<ArtifactInfo> updatedArtifacts = new ArrayList<>();
-        for (ArtifactInfo artifact : artifacts) {
-            if (!scaffoldedIds.contains(artifact.id())) {
-                updatedArtifacts.add(artifact);
-                continue;
-            }
-
-            // Check if any earlier artifacts in the list are also scaffolded
-            List<String> blockedBy = new ArrayList<>();
-            for (ArtifactInfo earlier : artifacts) {
-                if (earlier.id().equals(artifact.id())) break;
-                if (scaffoldedIds.contains(earlier.id())) {
-                    blockedBy.add(earlier.id());
-                }
-            }
-
-            if (blockedBy.isEmpty()) {
-                updatedArtifacts.add(new ArtifactInfo(artifact.id(), artifact.outputPath(), ArtifactStatus.READY, List.of()));
-            } else {
-                updatedArtifacts.add(new ArtifactInfo(artifact.id(), artifact.outputPath(), ArtifactStatus.BLOCKED, blockedBy));
-            }
-        }
-        dag.setArtifacts(updatedArtifacts);
-
-        // Recalculate isComplete
-        boolean allDone = updatedArtifacts.stream()
-                .allMatch(a -> a.status() == ArtifactStatus.DONE);
-        dag.setComplete(allDone);
+        return Set.copyOf(ids);
     }
 
     /**

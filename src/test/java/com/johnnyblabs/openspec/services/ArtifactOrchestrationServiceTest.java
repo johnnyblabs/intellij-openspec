@@ -81,11 +81,6 @@ class ArtifactOrchestrationServiceTest {
             try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
                 cli.when(() -> CliRunner.run(eq(project), eq("status"), eq("--change"), eq("c"), eq("--json")))
                         .thenReturn(cliResult);
-                // No scaffolding service needed since no DONE artifact with non-glob path will trigger it
-                // Actually it will try — let's mock it
-                when(project.getBasePath()).thenReturn("/tmp/test");
-                when(project.getService(ScaffoldingDetectionService.class)).thenReturn(scaffoldingService);
-                when(scaffoldingService.isScaffolding(anyString())).thenReturn(false);
 
                 ChangeArtifactDag result = service.getArtifactStatus("c");
 
@@ -105,9 +100,6 @@ class ArtifactOrchestrationServiceTest {
             try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
                 cli.when(() -> CliRunner.run(eq(project), eq("status"), eq("--change"), eq("c"), eq("--json")))
                         .thenReturn(cliResult);
-                when(project.getBasePath()).thenReturn("/tmp/test");
-                when(project.getService(ScaffoldingDetectionService.class)).thenReturn(scaffoldingService);
-                when(scaffoldingService.isScaffolding(anyString())).thenReturn(false);
 
                 // First call
                 service.getArtifactStatus("c");
@@ -123,10 +115,10 @@ class ArtifactOrchestrationServiceTest {
     }
 
     @Nested
-    class ScaffoldingOverride {
+    class TemplateHint {
 
         @Test
-        void scaffoldedDoneArtifact_overriddenToReady() {
+        void scaffoldedDoneArtifact_isNamedButStaysDone() {
             when(project.getBasePath()).thenReturn("/tmp/test");
             when(project.getService(ScaffoldingDetectionService.class)).thenReturn(scaffoldingService);
 
@@ -140,10 +132,9 @@ class ArtifactOrchestrationServiceTest {
                     new ArtifactInfo("proposal", "proposal.md", ArtifactStatus.DONE, List.of())
             ));
 
-            service.applyScaffoldingOverrides(dag, "c");
-
-            assertEquals(ArtifactStatus.READY, dag.getArtifacts().getFirst().status());
-            assertFalse(dag.isComplete());
+            assertEquals(java.util.Set.of("proposal"), service.templateLookingArtifacts("c", dag));
+            assertEquals(ArtifactStatus.DONE, dag.getArtifacts().getFirst().status(), "named as a template, but the CLI's status stands");
+            assertTrue(dag.isComplete());
         }
 
         @Test
@@ -159,8 +150,7 @@ class ArtifactOrchestrationServiceTest {
                     new ArtifactInfo("proposal", "proposal.md", ArtifactStatus.DONE, List.of())
             ));
 
-            service.applyScaffoldingOverrides(dag, "c");
-
+            assertEquals(java.util.Set.of(), service.templateLookingArtifacts("c", dag));
             assertEquals(ArtifactStatus.DONE, dag.getArtifacts().getFirst().status());
             assertTrue(dag.isComplete());
         }
@@ -176,7 +166,7 @@ class ArtifactOrchestrationServiceTest {
                     new ArtifactInfo("specs", "specs/**/*.md", ArtifactStatus.DONE, List.of())
             ));
 
-            service.applyScaffoldingOverrides(dag, "c");
+            assertEquals(java.util.Set.of(), service.templateLookingArtifacts("c", dag));
 
             // Glob paths should not be checked for scaffolding
             verify(scaffoldingService, never()).isScaffolding(anyString());
@@ -206,8 +196,6 @@ class ArtifactOrchestrationServiceTest {
                                 "{\"id\":\"design\",\"outputPath\":\"design.md\",\"status\":\"ready\",\"missingDeps\":[]}," +
                                 "{\"id\":\"tasks\",\"outputPath\":\"tasks.md\",\"status\":\"blocked\",\"missingDeps\":[\"design\"]}" +
                                 "]}", ""));
-                when(project.getBasePath()).thenReturn("/tmp/test");
-                when(project.getService(ScaffoldingDetectionService.class)).thenReturn(scaffoldingService);
 
                 ArtifactInfo next = service.getNextReadyArtifact("c");
                 assertNotNull(next);
@@ -224,9 +212,6 @@ class ArtifactOrchestrationServiceTest {
                                 "{\"id\":\"proposal\",\"outputPath\":\"proposal.md\",\"status\":\"done\",\"missingDeps\":[]}," +
                                 "{\"id\":\"tasks\",\"outputPath\":\"tasks.md\",\"status\":\"done\",\"missingDeps\":[]}" +
                                 "]}", ""));
-                when(project.getBasePath()).thenReturn("/tmp/test");
-                when(project.getService(ScaffoldingDetectionService.class)).thenReturn(scaffoldingService);
-                when(scaffoldingService.isScaffolding(anyString())).thenReturn(false);
 
                 ArtifactInfo next = service.getNextReadyArtifact("c");
                 assertNull(next);
@@ -242,8 +227,6 @@ class ArtifactOrchestrationServiceTest {
                                 "{\"id\":\"design\",\"outputPath\":\"design.md\",\"status\":\"blocked\",\"missingDeps\":[\"proposal\"]}," +
                                 "{\"id\":\"tasks\",\"outputPath\":\"tasks.md\",\"status\":\"blocked\",\"missingDeps\":[\"design\"]}" +
                                 "]}", ""));
-                when(project.getBasePath()).thenReturn("/tmp/test");
-                when(project.getService(ScaffoldingDetectionService.class)).thenReturn(scaffoldingService);
 
                 ArtifactInfo next = service.getNextReadyArtifact("c");
                 assertNull(next);
@@ -297,8 +280,6 @@ class ArtifactOrchestrationServiceTest {
             AtomicInteger callCount = new AtomicInteger(0);
 
             try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
-                when(project.getBasePath()).thenReturn(tempDir.toString());
-                when(project.getService(ScaffoldingDetectionService.class)).thenReturn(scaffoldingService);
 
                 // Mock status calls — evolving DAG state
                 cli.when(() -> CliRunner.run(eq(project), eq("status"), eq("--change"), eq("c"), eq("--json")))
@@ -399,8 +380,6 @@ class ArtifactOrchestrationServiceTest {
             AtomicInteger callCount = new AtomicInteger(0);
 
             try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
-                when(project.getBasePath()).thenReturn(tempDir.toString());
-                when(project.getService(ScaffoldingDetectionService.class)).thenReturn(scaffoldingService);
 
                 // Two artifacts: proposal (ready), design (ready after proposal)
                 cli.when(() -> CliRunner.run(eq(project), eq("status"), eq("--change"), eq("c"), eq("--json")))
@@ -472,8 +451,6 @@ class ArtifactOrchestrationServiceTest {
             AtomicInteger callCount = new AtomicInteger(0);
 
             try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
-                when(project.getBasePath()).thenReturn(tempDir.toString());
-                when(project.getService(ScaffoldingDetectionService.class)).thenReturn(scaffoldingService);
 
                 cli.when(() -> CliRunner.run(eq(project), eq("status"), eq("--change"), eq("c"), eq("--json")))
                         .thenAnswer(inv -> {

@@ -13,8 +13,6 @@ import java.util.regex.Pattern;
 @Service(Service.Level.PROJECT)
 public final class ScaffoldingDetectionService {
 
-    private static final int MIN_CONTENT_THRESHOLD = 20;
-
     private static final Pattern HEADING_PATTERN = Pattern.compile("^\\s{0,3}#+\\s+.*$", Pattern.MULTILINE);
     private static final Pattern HTML_COMMENT_PATTERN = Pattern.compile("<!--.*?-->", Pattern.DOTALL);
 
@@ -78,7 +76,8 @@ public final class ScaffoldingDetectionService {
             }
         }
 
-        String result = remaining.toString().trim();
-        return result.length() < MIN_CONTENT_THRESHOLD;
+        // A template is nothing but headings, HTML-comment guidance and known placeholder task lines. Any other
+        // text, however short ("Use a set.", one ticked task), was written by someone and is not a template.
+        return remaining.toString().isBlank();
     }
 }

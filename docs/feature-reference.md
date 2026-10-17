@@ -188,18 +188,18 @@ The **Workflow Action Panel** (below the tree) displays this as a row of status 
 
 | Status | Icon | Meaning |
 |--------|------|---------|
-| **Done** | Green checkmark | Artifact file exists with real content |
+| **Done** | Green checkmark | `openspec status` reports the artifact done (its file exists). A done file that still looks like an unfilled template reads `<name> · template` in muted text, with a tooltip pointing to **Regenerate**; nothing is disabled by it |
 | **Ready** | Blue filled circle | Dependencies satisfied — ready to generate |
 | **Blocked** | Gray empty circle | Waiting on upstream artifacts |
 
-The panel includes a **change selector** dropdown for switching between multiple active changes, and a **Generate** button that targets the next ready artifact.
+Statuses are exactly what `openspec status` reports. The panel includes a **change selector** dropdown for switching between multiple active changes (the panel acts on the change selected there, not the one selected in the tree), and a **Generate** button that targets the next ready artifact.
 
 ### Workflow Actions
 
 | Action | Menu | Description |
 |--------|------|-------------|
 | **Init** | OpenSpec > Init | Initialize OpenSpec in the current project. Creates `openspec/` directory structure. |
-| **Propose** | OpenSpec > Propose... | Create a new change with name and description. Scaffolds artifact files. |
+| **Propose** | OpenSpec > Propose... | Create a new change with name and description. With the CLI it runs `openspec new change`; without it, the plugin writes the same `.openspec.yaml` plus your proposal and an empty `specs/` folder, and no template design or task files. |
 | **Fast-Forward** | OpenSpec > Fast-Forward... | Create a change and generate all artifacts in one step via Direct API. |
 | **Continue** | OpenSpec > Continue | Generate the next ready artifact in the active change. Requires Direct API. |
 | **Explore** | OpenSpec > Explore... | Prompt for an optional topic, assemble the explore prompt (skill instructions + project context + topic), and deliver via configured delivery mode. With Direct API configured, the Explore tab appears in the tool window for inline input and rendered responses. Clipboard and Editor Tab modes use the topic dialog. |

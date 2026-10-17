@@ -40,41 +40,6 @@ public final class TemplateProvider {
                 """.formatted(whyContent, whatChangesContent);
     }
 
-    public static String designTemplate(String changeName) {
-        return """
-                # Design: %s
-
-                ## Approach
-
-                <!-- Describe the technical approach -->
-
-                ## Components Affected
-
-                <!-- List affected components -->
-
-                ## Trade-offs
-
-                <!-- Document any trade-offs -->
-                """.formatted(changeName);
-    }
-
-    public static String tasksTemplate(String changeName) {
-        return """
-                # Tasks: %s
-
-                ## Implementation Tasks
-
-                - [ ] Task 1
-                - [ ] Task 2
-                - [ ] Task 3
-
-                ## Testing Tasks
-
-                - [ ] Write unit tests
-                - [ ] Integration testing
-                """.formatted(changeName);
-    }
-
     public static String deltaSpecTemplate(String domain) {
         return """
                 # Delta Spec: %s
