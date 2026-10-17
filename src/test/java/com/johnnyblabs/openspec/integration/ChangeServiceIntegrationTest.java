@@ -15,6 +15,25 @@ import java.util.List;
  */
 public class ChangeServiceIntegrationTest extends OpenSpecIntegrationTestBase {
 
+    @Override
+    protected void setUp() throws Exception {
+        super.setUp();
+        // These cover the plugin's own archive; pin "no CLI" whatever is installed on this machine.
+        com.johnnyblabs.openspec.services.CliDetectionTestSupport.fakeUnavailable(
+                getProject().getService(com.johnnyblabs.openspec.services.CliDetectionService.class));
+    }
+
+    @Override
+    protected void tearDown() throws Exception {
+        try {
+            ChangeService reset = getProject().getService(ChangeService.class);
+            reset.setArchiveCliForTest(null);
+            reset.setClockForTest(null);
+        } finally {
+            super.tearDown();
+        }
+    }
+
     public void testFindsActiveChanges() {
         ChangeService changeService = getProject().getService(ChangeService.class);
         List<Change> changes = changeService.getActiveChanges();
@@ -75,7 +94,7 @@ public class ChangeServiceIntegrationTest extends OpenSpecIntegrationTestBase {
         assertNull("precondition: metadata is null (no .openspec.yaml)", noMeta.getMetadata());
 
         changeService.setClockForTest(FIXED);
-        assertEquals("2026-10-17-no-meta", changeService.archiveChange(noMeta)); // must not NPE (red on pre-retirement code)
+        assertEquals("2026-10-17-no-meta", offEdt(() -> changeService.archiveChange(noMeta, false)).archivedAs()); // must not NPE (red on pre-retirement code)
 
         assertNotNull("listed as archived after archiveChange (proves no NPE aborted the move)",
                 byName(changeService.getArchivedChanges(), "2026-10-17-no-meta"));
@@ -98,7 +117,7 @@ public class ChangeServiceIntegrationTest extends OpenSpecIntegrationTestBase {
         assertNull("malformed .openspec.yaml leaves metadata null", bad.getMetadata());
 
         changeService.setClockForTest(FIXED);
-        changeService.archiveChange(bad); // must not NPE
+        offEdt(() -> changeService.archiveChange(bad, false)); // must not NPE
 
         assertTrue(byName(changeService.getArchivedChanges(), "2026-10-17-bad-meta") != null);
     }
@@ -112,7 +131,7 @@ public class ChangeServiceIntegrationTest extends OpenSpecIntegrationTestBase {
         ChangeService changeService = getProject().getService(ChangeService.class);
         changeService.setClockForTest(FIXED);
 
-        assertEquals("2026-01-02-dated", changeService.archiveChange(byName(changeService.getActiveChanges(), "2026-01-02-dated")));
+        assertEquals("2026-01-02-dated", offEdt(() -> changeService.archiveChange(byName(changeService.getActiveChanges(), "2026-01-02-dated"), false)).archivedAs());
         assertNotNull(getChangesDir().findFileByRelativePath("archive/2026-01-02-dated"));
     }
 
@@ -127,7 +146,7 @@ public class ChangeServiceIntegrationTest extends OpenSpecIntegrationTestBase {
         Change twice = byName(changeService.getActiveChanges(), "twice");
 
         try {
-            changeService.archiveChange(twice);
+            offEdt(() -> changeService.archiveChange(twice, false));
             fail("an existing archive target must refuse");
         } catch (java.io.IOException e) {
             assertEquals("Archive '2026-10-17-twice' already exists.", e.getMessage());
@@ -143,7 +162,7 @@ public class ChangeServiceIntegrationTest extends OpenSpecIntegrationTestBase {
         ChangeService changeService = getProject().getService(ChangeService.class);
         changeService.setClockForTest(FIXED);
 
-        changeService.archiveChange(byName(changeService.getActiveChanges(), "first"));
+        offEdt(() -> changeService.archiveChange(byName(changeService.getActiveChanges(), "first"), false));
 
         assertNotNull(getChangesDir().findFileByRelativePath("archive/2026-10-17-first"));
         assertNull("the legacy openspec/archive/ is never created", openspecRoot.findChild("archive"));

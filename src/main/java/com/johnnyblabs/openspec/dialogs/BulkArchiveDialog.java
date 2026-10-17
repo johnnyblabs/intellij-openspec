@@ -3,6 +3,7 @@ package com.johnnyblabs.openspec.dialogs;
 import com.intellij.icons.AllIcons;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ModalityState;
+import com.intellij.openapi.progress.EmptyProgressIndicator;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.Task;
@@ -16,6 +17,7 @@ import com.johnnyblabs.openspec.model.Change;
 import com.johnnyblabs.openspec.model.ChangeArtifactDag;
 import com.johnnyblabs.openspec.model.SpecSyncResult;
 import com.johnnyblabs.openspec.services.ArtifactOrchestrationService;
+import com.johnnyblabs.openspec.services.ArchiveDispatch;
 import com.johnnyblabs.openspec.services.ChangeService;
 import com.johnnyblabs.openspec.services.SpecSyncService;
 import com.johnnyblabs.openspec.util.OpenSpecNotifier;
@@ -227,6 +229,7 @@ public class BulkArchiveDialog extends DialogWrapper {
         getCancelAction().setEnabled(false);
 
         List<ChangeRow> selected = rows.stream().filter(r -> r.selected).toList();
+        ArchiveDispatch.saveBeforeArchive(); // the CLI archives what's on disk
 
         ProgressManager.getInstance().run(new Task.Backgroundable(project, "Bulk Archive", false) {
             @Override
@@ -257,12 +260,15 @@ public class BulkArchiveDialog extends DialogWrapper {
         List<String> check(String changeName) throws Exception;
 
         /**
-         * Applies the change's delta specs to the main specs (no-op when it has none). Throws {@link Blocked} if a
-         * blocking problem has appeared since {@link #check}. Called off the EDT.
+         * Last check before archiving the change. Throws {@link Blocked} if a blocking problem has appeared since
+         * {@link #check}. Called off the EDT.
          */
         void sync(String changeName) throws Exception;
 
-        /** Moves the change to the archive. Called on the EDT (it performs a VFS write action). */
+        /**
+         * Syncs the change's delta specs and moves it to the archive in one step: {@code openspec archive} on CLI 1.5+,
+         * otherwise the plugin's own sync and move. Called off the EDT (it may run a CLI process).
+         */
         void archive(Change change) throws Exception;
 
         /** The production archiver: spec sync through {@link SpecSyncService}, the move through {@link ChangeService}. */
@@ -284,20 +290,11 @@ public class BulkArchiveDialog extends DialogWrapper {
                     if (conflict != null) {
                         throw new Blocked(conflict);
                     }
-                    SpecSyncService syncService = project.getService(SpecSyncService.class);
-                    List<SpecSyncResult> syncResults = syncService.computeSync(changeName);
-                    List<String> problems = blockers(syncResults);
-                    if (!problems.isEmpty()) {
-                        throw new Blocked(problems.get(0));
-                    }
-                    if (!syncResults.isEmpty()) {
-                        syncService.applySync(syncResults);
-                    }
                 }
 
                 @Override
                 public void archive(Change change) throws Exception {
-                    project.getService(ChangeService.class).archiveChange(change);
+                    project.getService(ChangeService.class).archiveChange(change, true);
                 }
             };
         }
@@ -359,19 +356,23 @@ public class BulkArchiveDialog extends DialogWrapper {
             ApplicationManager.getApplication().invokeLater(onRowChanged, modality);
             try {
                 archiver.sync(row.change.getName());
+                // On this background thread: the archive may run the CLI. Under an indicator carrying the dialog's
+                // modality, so the plugin's own move (a write action hopped to the UI thread with the default modality,
+                // like the spec sync) runs while the dialog is open instead of waiting for it to close.
                 Exception[] archiveError = {null};
-                ApplicationManager.getApplication().invokeAndWait(() -> {
+                ProgressManager.getInstance().runProcess(() -> {
                     try {
                         archiver.archive(row.change);
                     } catch (Exception ex) {
                         archiveError[0] = ex;
                     }
-                }, modality);
-                row.archiveStatus = archiveError[0] == null ? "Done" : "Failed: " + archiveError[0].getMessage();
+                }, new EmptyProgressIndicator(modality));
+                if (archiveError[0] != null) throw archiveError[0];
+                row.archiveStatus = "Done";
             } catch (Blocked ex) {
                 row.archiveStatus = "Blocked: " + ex.getMessage();
             } catch (Exception ex) {
-                row.archiveStatus = "Failed: " + ex.getMessage();
+                row.archiveStatus = "Failed: " + ArchiveDispatch.reason(ex);
             }
             ApplicationManager.getApplication().invokeLater(onRowChanged, modality);
         }

@@ -1672,6 +1672,7 @@ public class WorkflowActionPanel extends JPanel {
         if (activeChangeName == null) return;
         String changeName = activeChangeName;
 
+        boolean syncSpecs = true;
         if (hasDeltaSpecs) {
             int choice = Messages.showYesNoCancelDialog(
                     project,
@@ -1686,10 +1687,12 @@ public class WorkflowActionPanel extends JPanel {
             if (choice == Messages.YES) {
                 onSyncSpecs();
                 return;
-            } else if (choice == Messages.CANCEL) {
+            }
+            Boolean sync = archiveSyncSpecs(choice);
+            if (sync == null) {
                 return;
             }
-            // Messages.NO falls through to archive
+            syncSpecs = sync;
         }
 
         archiveIconButton.setEnabled(false);
@@ -1708,19 +1711,29 @@ public class WorkflowActionPanel extends JPanel {
             return;
         }
 
-        Change finalTarget = target;
-        ApplicationManager.getApplication().invokeLater(() -> {
-            try {
-                changeService.archiveChange(finalTarget);
-                showGuidancePopover(archiveIconButton,
-                        "\u2713 " + changeName + " archived", null, null);
-                if (onRefreshRequested != null) onRefreshRequested.run();
-                refresh();
-            } catch (Exception ex) {
-                archiveIconButton.setEnabled(true);
-                OpenSpecNotifier.error(project, "Archive", "Archive failed: " + ex.getMessage());
-            }
-        });
+        // The archive may run the OpenSpec CLI, so it runs in a background task; the outcome comes back on the UI thread.
+        com.johnnyblabs.openspec.services.ArchiveDispatch.start(project, target, syncSpecs,
+                outcome -> {
+                    showGuidancePopover(archiveIconButton, "\u2713 " + changeName + " archived", null, null);
+                    OpenSpecNotifier.info(project, "Archive",
+                            com.johnnyblabs.openspec.services.ArchiveDispatch.summary(changeName, outcome));
+                    if (onRefreshRequested != null) onRefreshRequested.run();
+                    refresh();
+                },
+                error -> {
+                    archiveIconButton.setEnabled(true);
+                    OpenSpecNotifier.error(project, "Archive",
+                            "Archive failed: " + com.johnnyblabs.openspec.services.ArchiveDispatch.reason(error));
+                });
+    }
+
+    /**
+     * What the unsynced-delta-specs prompt's answer means for the archive: "Archive Without Syncing" ({@code NO})
+     * archives without updating main specs ({@code --skip-specs} when the CLI archives); "Cancel" (or closing the
+     * prompt) archives nothing ({@code null}). "Sync First" is handled before this: it syncs and does not archive.
+     */
+    static Boolean archiveSyncSpecs(int choice) {
+        return choice == Messages.NO ? Boolean.FALSE : null;
     }
 
     // --- Change-level validation ---
