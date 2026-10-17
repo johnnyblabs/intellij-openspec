@@ -293,7 +293,7 @@ The plugin SHALL discover a change's delta spec files by recursively locating `s
 - **THEN** the validator SHALL report an INFO-severity issue with code `delta-skipped-header` anchored to that header's line, and the file's verdict SHALL be unaffected by it
 
 #### Scenario: Renamed section missing FROM/TO
-- **WHEN** a `## RENAMED Requirements` section contains at least one `FROM:` or `TO:` line but no well-formed `FROM:`/`TO:` pair (matching `^\s*(?:-\s*)?FROM:\s*(.+)$\s*^\s*(?:-\s*)?TO:\s*(.+)$`, mirroring the sync layer's parser)
+- **WHEN** a `## RENAMED Requirements` section contains at least one `FROM:` or `TO:` line but no well-formed `FROM:`/`TO:` pair (a `FROM:` line immediately followed by a `TO:` line, each optionally prefixed by any one CommonMark bullet marker `-`, `*`, or `+`; matching `^\s*(?:[-*+]\s*)?FROM:\s*(.+)$\s*^\s*(?:[-*+]\s*)?TO:\s*(.+)$`, mirroring the sync layer's parser)
 - **THEN** the validator SHALL report an ERROR with code `delta-renamed-fields`
 
 #### Scenario: An empty RENAMED section is not an error
@@ -301,8 +301,12 @@ The plugin SHALL discover a change's delta spec files by recursively locating `s
 - **THEN** neither SHALL report `delta-renamed-fields` for that section, matching the OpenSpec client, which reports a change `valid:true` when its delta has an empty RENAMED section beside a parsed ADDED requirement — so the fallback is never more restrictive than the client
 
 #### Scenario: Renamed section with valid FROM/TO
-- **WHEN** a `## RENAMED Requirements` section contains one or more well-formed `FROM:`/`TO:` pairs (bullet or non-bullet form)
+- **WHEN** a `## RENAMED Requirements` section contains one or more well-formed `FROM:`/`TO:` pairs (non-bullet form, or bulleted with any of `-`, `*`, `+`)
 - **THEN** the validator SHALL NOT report `delta-renamed-fields` or `delta-spec-sections` for that file
+
+#### Scenario: Star- or plus-bulleted RENAMED pair is accepted, matching CLI 1.13
+- **WHEN** a `## RENAMED Requirements` section's only pair is written with `*` or `+` bullets (e.g. ``* FROM: `### Requirement: Old` `` followed by ``* TO: `### Requirement: New` ``), and the built-in validator or the delta IDE inspection evaluates it
+- **THEN** neither SHALL report `delta-renamed-fields`, matching CLI 1.13.0+, which parses every CommonMark bullet marker and reports such a change `valid:true` — so the fallback is never more restrictive than the client
 
 #### Scenario: Verdict parity with the 1.6 CLI
 - **WHEN** the verdict-parity corpus (specs and delta files exercising the keyword, fence, scenario, and skipped-header rule classes) is validated by the plugin and by the captured real 1.6.0 CLI output
@@ -432,3 +436,14 @@ This presentation SHALL be produced by the single shared result-rendering path, 
 - **WHEN** results are grouped under file headers
 - **THEN** the file headers SHALL serve only as grouping keys and SHALL NOT display a per-file valid/invalid badge, because the model carries a single result-level verdict and no per-file verdict
 
+### Requirement: Item-less CLI error response is a failed run
+
+When a CLI `validate --json` run returns a JSON object that carries **no `items` array** but reports one or more error-severity entries in a top-level `status` array (as CLI 1.13.1 does for a rejected item id, `{"status":[{"severity":"error","code":"invalid_item",...}]}`), the plugin SHALL treat the run as **failed** — not as a pass with zero items — and SHALL fall back to the built-in validator as the verdict, consistent with the rule that a failed or unparseable CLI run never yields a blind pass. A response that carries an `items` array SHALL continue to take its verdict from each item's `valid` field, unchanged.
+
+#### Scenario: invalid_item error response does not report PASS
+- **WHEN** the CLI's `validate --json` output is the captured 1.13.2 `invalid_item` error response (no `items`, a `status` entry with `"severity":"error"`)
+- **THEN** the plugin SHALL NOT report the run as passed, and SHALL use the built-in validator's result as the verdict
+
+#### Scenario: A normal items response is unaffected
+- **WHEN** the CLI's `validate --json` output carries an `items` array
+- **THEN** the plugin SHALL derive pass/fail from each item's `valid` field exactly as before, regardless of any top-level `status` entries

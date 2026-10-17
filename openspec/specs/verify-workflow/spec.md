@@ -25,6 +25,11 @@ The plugin SHALL provide a Verify action that drives off the resolved workflow s
 - **THEN** Verify SHALL fall back to the deterministic filesystem existence check for the required artifacts and SHALL still perform the `tasks.md` checkbox check
 - **AND** Verify SHALL NOT fail or block solely because status was unavailable
 
+#### Scenario: Task lines are recognized with the client's task-line grammar
+- **WHEN** `tasks.md` (or any surface that counts a change's tasks: the change node's `X/Y` progress, the workflow panel, Apply) contains checkbox lines
+- **THEN** the plugin SHALL recognize a task line exactly as the OpenSpec client (1.13.1+) does: optional leading whitespace, then a bullet marker (`-`, `*`, `+`) or an ordered marker (one to nine digits followed by `.` or `)`), then a checkbox that is either empty (`[]`), whitespace-only (`[ ]`), or holds a single non-space mark with optional surrounding spaces (`[x]`, `[ x ]`, `[~]`)
+- **AND** a task SHALL count as done only when its mark is `x` or `X`; every other recognized task (empty, whitespace-only, `~`, or any other single mark) SHALL count toward the total as not-done, so the plugin's completed/total counts equal the client's `completedTasks`/`totalTasks` for the same file
+
 #### Scenario: Partial tasks count as not-done
 - **WHEN** `tasks.md` contains in-progress checkboxes written as `- [~]`
 - **THEN** Verify SHALL count each `- [~]` toward the total task count and treat it as not-done (blocking archive, with the same gating effect as `- [ ]`), and SHALL NOT exclude it from either the completed or the total count
