@@ -137,7 +137,7 @@ A comprehensive comparison of the OpenSpec IntelliJ plugin against known VS Code
 | Schema version override | Yes | No | No | No | No |
 | Profile selection | Yes | No | No | No | No |
 | Auto-refresh toggle | Yes | No | No | No | No |
-| AI provider/model selection | Yes | No | No | No | No |
+| AI provider/model selection | Yes (live model discovery from your account; also switchable from the tool window) | No | No | No | No |
 | Preferred delivery method | Yes (persisted) | No | No | No | No |
 | Config profile display | Yes | No | No | No | No |
 | Custom schema management (fork/new) | Yes (CLI v1.3.0+) | No | No | No | No |
@@ -164,7 +164,7 @@ A comprehensive comparison of the OpenSpec IntelliJ plugin against known VS Code
 - Consolidated change-deltas view — everything a change modifies at the spec level, grouped by capability/operation and badged, assembled from the CLI, cross-linked to the per-capability delta diff
 - Artifact-status badge overlays on tree node icons (done / ready / blocked / not-created) with X/Y task-progress on change nodes
 - Grouped, navigable validation console (by file, clickable file:line links, per-severity color) plus a Project-View context-menu Validate scoped to the clicked change or spec
-- Multi-provider Direct API generation with secure credential storage (Claude, OpenAI, Gemini)
+- Multi-provider Direct API generation with secure credential storage (Claude, OpenAI, Gemini), live discovery of your account's models, and an operation-time model selector in the tool window
 - Visual artifact pipeline with DAG-driven workflow
 - Scaffolding detection preventing false "complete" status
 - AI tool detection with type-aware guidance (CLI vs IDE panel)
