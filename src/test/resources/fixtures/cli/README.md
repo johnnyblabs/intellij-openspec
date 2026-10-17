@@ -583,3 +583,9 @@ Real captures from CLI **1.3.0** (run through `npx @fission-ai/openspec@1.3.0`, 
 - `schema-fork.txt` / `schema-init.txt`: the same fork and init **without** `--json`. This is the human-readable output the plugin used to treat as a file path; the tests assert no path is read from it.
 
 All files are byte-identical between the two versions; the key sets were also compared at capture time. Consumed by `SchemaServiceTest` and `OpenSpecSettingsPanelModalityTest`.
+
+## `1.13.2/update-legacy-pending.txt` and `1.14.3/update-legacy-pending.txt` — legacy-cleanup wording change
+
+Real `openspec update` stdout from CLI **1.13.2** (run through `npx @fission-ai/openspec@1.13.2`) and the installed **1.14.3**. Each was captured in a fresh scratch project with isolated `HOME`/`XDG_*` and `OPENSPEC_TELEMETRY=0`, after `init --tools cursor .` and three hand-placed legacy command files (`.cursor/commands/openspec-{proposal,apply,archive}.md`), with stdin closed. The output contains no absolute paths.
+
+The two captures differ only in the block's guidance line and the version on the "up to date" line. 1.13.2 prints `No user content to preserve:`; from 1.14.0 the CLI prints `These files will be deleted entirely. Back up any custom content before proceeding:`. Unlike the Junie-based 1.6.0 and 1.7.0 captures, these use Cursor, whose old command files current CLIs still report as legacy. Consumed by `UpdateOutputParserContractTest`, `UpdateLegacyCleanupFlowTest` and the cleanup dialog test.

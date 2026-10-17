@@ -179,4 +179,81 @@ class UpdateOutputParserContractTest {
                     "1.7's clean update (no migration preamble) must not read as a pending block");
         }
     }
+
+    /**
+     * The guidance line across every captured wording. 1.6.0/1.7.0 (Junie) and 1.13.2 (Cursor) print
+     * "No user content to preserve:"; 1.14.0 reworded it to a back-up warning, which the old parser rejected,
+     * so the cleanup flow never appeared on 1.14.x. Expected values are read from each capture's own text.
+     */
+    @Nested
+    class GuidanceLineAcrossGenerations {
+
+        /** The capture's lines from just after "Files to remove" to the ⚠ footer: [guidance, bullet...]. */
+        private List<String> blockLines(String capture) {
+            List<String> lines = capture.lines().toList();
+            int header = lines.indexOf("Files to remove");
+            assertTrue(header >= 0, "capture must contain the block");
+            List<String> block = new java.util.ArrayList<>();
+            for (String line : lines.subList(header + 1, lines.size())) {
+                if (line.startsWith("⚠") || line.isBlank()) break;
+                block.add(line);
+            }
+            return block;
+        }
+
+        private void assertParsesAsCaptured(String fixture) {
+            String capture = loadFixture(fixture);
+            List<String> block = blockLines(capture);
+            String expectedGuidance = block.get(0);
+            List<String> expectedFiles = block.subList(1, block.size()).stream()
+                    .map(l -> l.replaceFirst("^\\s*•\\s+", "")).toList();
+
+            UpdateOutputParser.LegacyCleanup parsed = UpdateOutputParser.parseLegacyCleanupBlock(capture);
+
+            assertEquals(expectedFiles, parsed.files(), fixture);
+            assertEquals(expectedGuidance, parsed.guidance(), fixture);
+        }
+
+        @Test
+        void v1_6_0() {
+            assertParsesAsCaptured("1.6.0/update-legacy-pending.txt");
+            assertTrue(UpdateOutputParser.parseLegacyCleanupBlock(loadFixture("1.6.0/update-legacy-pending.txt"))
+                    .certifiesNoUserContent());
+        }
+
+        @Test
+        void v1_7_0() {
+            assertParsesAsCaptured("1.7.0/update-legacy-pending.txt");
+        }
+
+        @Test
+        void v1_13_2() {
+            assertParsesAsCaptured("1.13.2/update-legacy-pending.txt");
+            assertTrue(UpdateOutputParser.parseLegacyCleanupBlock(loadFixture("1.13.2/update-legacy-pending.txt"))
+                    .certifiesNoUserContent(), "up to 1.13 the CLI certifies there is no user content");
+        }
+
+        @Test
+        void v1_14_3_rewordedGuidanceStillParses() {
+            assertParsesAsCaptured("1.14.3/update-legacy-pending.txt");
+            UpdateOutputParser.LegacyCleanup parsed =
+                    UpdateOutputParser.parseLegacyCleanupBlock(loadFixture("1.14.3/update-legacy-pending.txt"));
+            assertEquals(3, parsed.files().size());
+            assertFalse(parsed.certifiesNoUserContent(), "1.14 warns to back up custom content instead");
+            assertTrue(parsed.guidance().contains("Back up any custom content"));
+        }
+
+        @Test
+        void tooMuchProseBeforeTheBulletsIsNotTheBlock() {
+            String unexpected = """
+                    Files to remove
+                    one line of prose
+                    another line of prose
+                    and a third
+                      • looks/like/an/entry.md
+                    """;
+            assertTrue(UpdateOutputParser.parseLegacyCleanupBlock(unexpected).isEmpty(),
+                    "more than a short guidance before the bullets means unknown structure — offer nothing");
+        }
+    }
 }

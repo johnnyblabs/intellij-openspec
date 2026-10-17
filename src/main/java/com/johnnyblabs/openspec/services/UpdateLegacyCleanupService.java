@@ -22,8 +22,8 @@ import java.util.List;
 /**
  * Resolves the {@code openspec update} "legacy files pending" outcome gracefully.
  *
- * <p>The CLI's skills migration flags leftover files, certifies them "No user content to
- * preserve", and suggests {@code --force} or an interactive run — both unreachable from the
+ * <p>The CLI's skills migration flags leftover files (certifying "No user content to preserve" before
+ * 1.14; warning to back up custom content from 1.14.0) and suggests {@code --force} or an interactive run — both unreachable from the
  * plugin's non-interactive console. This service turns that dead end into a consented flow:
  * review the CLI-listed files, delete exactly the checked ones through undoable VFS
  * operations, verify with a re-run, and terminate truthfully when the CLI regenerates the
@@ -50,7 +50,8 @@ public final class UpdateLegacyCleanupService {
      * recorded as regenerating on this CLI).
      */
     public void handleUpdateResult(String stdout) {
-        List<String> pending = UpdateOutputParser.parseLegacyCleanup(stdout);
+        UpdateOutputParser.LegacyCleanup block = UpdateOutputParser.parseLegacyCleanupBlock(stdout);
+        List<String> pending = block.files();
         if (pending.isEmpty()) {
             return;
         }
@@ -63,15 +64,17 @@ public final class UpdateLegacyCleanupService {
             return;
         }
         OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_SYSTEM, "OpenSpec update",
-                "OpenSpec has migrated to agent skills and found " + pending.size()
-                        + " legacy file(s) it reports safe to remove. Review to resolve — the plugin never runs --force for you.",
+                "OpenSpec has migrated to agent skills and listed " + pending.size()
+                        + " legacy file(s) for removal. Review them before anything is deleted — the plugin never runs"
+                        + " --force for you.",
                 com.intellij.notification.NotificationType.INFORMATION,
                 com.intellij.notification.NotificationAction.createSimpleExpiring(
-                        "Review legacy cleanup…", () -> showCleanupDialog(pending)));
+                        "Review legacy cleanup…", () -> showCleanupDialog(block)));
     }
 
-    private void showCleanupDialog(List<String> pending) {
-        LegacyCleanupDialog dialog = new LegacyCleanupDialog(project, pending);
+    private void showCleanupDialog(UpdateOutputParser.LegacyCleanup block) {
+        List<String> pending = block.files();
+        LegacyCleanupDialog dialog = new LegacyCleanupDialog(project, block);
         LegacyCleanupDialog.Outcome outcome = dialog.showAndGetOutcome();
         PropertiesComponent state = PropertiesComponent.getInstance(project);
         switch (outcome) {

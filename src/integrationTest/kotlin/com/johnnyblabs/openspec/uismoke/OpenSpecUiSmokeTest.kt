@@ -166,20 +166,11 @@ class OpenSpecUiSmokeTest {
     /** Journey 2 — Update cleanup: the legacy-seeded project raises the review notice. */
     @Test
     fun updateActionRaisesCleanupNotice() {
-        // The plugin's legacy-file cleanup notice mirrors `openspec update`'s "legacy files pending"
-        // block, which older CLIs emitted for orphaned tool command/skill files. OpenSpec 1.8's
-        // `openspec update` DROPPED that block entirely — it updates tool files in place and reports no
-        // pending cleanup (verified against the real 1.8.0 CLI: the update output is "Updated <tool>",
-        // no cleanup block, and the files remain) — so the notice can never fire on a 1.8+ host. Skip on
-        // 1.8+; the feature stays exercised on the older CLIs the plugin still supports.
-        // Follow-up: assess whether the legacy-cleanup feature + this journey should be retired now that
-        // the CLI no longer surfaces the block.
-        val cliVersion = hostCliVersion()
-        org.junit.jupiter.api.Assumptions.assumeTrue(
-            cliVersion != null && Regex("""^(\d+)\.(\d+)""").find(cliVersion)?.destructured
-                ?.let { (maj, min) -> maj.toInt() == 1 && min.toInt() < 8 } == true
-        ) { "update-cleanup journey needs a CLI that still emits the legacy-cleanup block (< 1.8); found: $cliVersion" }
-
+        // The plugin's legacy-file cleanup notice mirrors `openspec update`'s "Files to remove" block. The
+        // seeded demo carries legacy `.cursor/commands/openspec-*.md` files, which current CLIs (verified on
+        // 1.13.2 and 1.14.3) still list there; the demo's Junie command files are regenerated in place instead,
+        // which is why an earlier version of this journey wrongly concluded the block was gone from 1.8 on.
+        // CLI 1.14.0 reworded the block's guidance line; the plugin recognizes both wordings.
         newContext(freshDemoProject()).runIdeWithDriver().useDriverAndCloseIde {
             waitForIndicators(5.minutes)
 

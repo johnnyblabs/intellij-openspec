@@ -1,13 +1,13 @@
 # OpenSpec Plugin — Lifecycle Test-Drive
 
 Keep this file open in a split editor and work through the stops in order.
-This project was initialized by OpenSpec CLI **1.3.1** on purpose. It carries
-`.junie/commands/opsx-*.md` files that CLIs before 1.8 report as legacy, which is what makes
-the Update cleanup flow fire (Stop 3).
+This project was initialized by OpenSpec CLI **1.3.1** on purpose, and carries legacy
+`.cursor/commands/openspec-*.md` command files that current CLIs report as leftovers. That is
+what makes the Update cleanup flow fire (Stop 3).
 
 > **Automated coverage** (`gradle uiSmoke`, same seeded fixture): presence/wiring of
 > Stops 1 (tree + panel), 2 (editor parity incl. the seeded `keyword-in-header` spec),
-> 3 (cleanup notice, on CLI < 1.8 only), 4 (Settings schemas), and the Stop 5 archive confirmation guard.
+> 3 (cleanup notice), 4 (Settings schemas), and the Stop 5 archive confirmation guard.
 > This manual walkthrough remains the judgment pass —
 > wording, layout, feel — not the only safety net.
 
@@ -34,26 +34,22 @@ written lowercase: `### requirement:`.
       Expect the targeted warning — *"move the keyword onto the requirement body line"* —
       with a quick-fix that inserts a body line. Undo when done.
 
-## Stop 3 — Update legacy cleanup (CLI < 1.8 only)
+## Stop 3 — Update legacy cleanup
 
 Run **OpenSpec ▸ Update** (menu or tool-window toolbar).
 
-**On CLI 1.8 or later (including the current target):** `openspec update` regenerates the Junie
-files in place and reports no pending cleanup, so the plugin correctly shows **no** cleanup
-notice. Check only:
-
-- [ ] Console shows the CLI output (`Updated: Junie (vX.Y.Z)`), exit 0, and no cleanup notification
-
-**On a CLI before 1.8** (for example by pointing Settings ▸ CLI path at an older install), the full flow:
-
-- [ ] A **"Review legacy cleanup…"** notification appears
-- [ ] Open the dialog: 4 files, each with a checkbox and a clickable link (opens the file),
-      the CLI's *"No user content to preserve"* quote, and the *"never runs --force"* note
-- [ ] Click **Remove Selected** → files are deleted (one undo step), then a
-      verification `openspec update` runs automatically
-- [ ] Expect the **regeneration-loop notice**: that CLI version's junie integration
-      re-creates the files it flags; the notice explains it and suppresses future nags
-- [ ] Run **Update** again → no re-nag (suppressed while the CLI reports the same set)
+- [ ] Console shows the CLI output, including a **"Files to remove"** block listing the three
+      `.cursor/commands/openspec-*.md` files, exit 0
+- [ ] Instead of silent success: a **"Review legacy cleanup…"** notification appears ("listed 3 legacy
+      file(s) for removal"; it no longer claims the files are safe to remove)
+- [ ] Open the dialog: 3 files, each with a checkbox and a clickable link (opens the file), the CLI's
+      own guidance line quoted, and the *"never runs --force"* note
+- [ ] **CLI 1.14 or later:** the CLI warns *"These files will be deleted entirely. Back up any custom
+      content before proceeding"*, so **no box starts ticked** and the dialog says to choose. On older
+      CLIs it says *"No user content to preserve"* and all start ticked
+- [ ] Tick the files and click **Remove Selected** → files are deleted (one undo step), then a
+      verification `openspec update` runs automatically and reports no remaining cleanup
+- [ ] Run **Update** again → no cleanup notice
 
 ## Stop 4 — Schema tooling (Settings)
 

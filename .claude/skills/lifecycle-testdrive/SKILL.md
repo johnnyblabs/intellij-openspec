@@ -11,11 +11,10 @@ the change lifecycle end-to-end, and puts the walkthrough checklist **inside the
 
 The demo project is deliberately seeded to trigger real behavior:
 
-- Initialized by an **older OpenSpec CLI (1.3.1)** with the `junie` tool → leaves
-  `.junie/commands/opsx-*.md` files. These count as legacy only for CLIs **before 1.8**, which
-  is when the Update action's legacy-cleanup flow fires. From 1.8, `openspec update` regenerates
-  them in place and reports no cleanup, so that walkthrough stop is skipped (as the uiSmoke
-  journey is).
+- Initialized by an **older OpenSpec CLI (1.3.1)** with the `junie` tool, plus **legacy
+  `.cursor/commands/openspec-*.md` command files**. Current CLIs (1.13, 1.14, …) list the Cursor
+  files under `openspec update`'s "Files to remove", so the Update action's legacy-cleanup flow
+  fires. The Junie files are regenerated in place instead.
 - A main spec written with a **lowercase `### requirement:` header** → exercises the
   CLI-1.4 case-insensitive parsing parity.
 - A change with **proposal done, design/specs ready, tasks blocked** → the workflow
