@@ -2,7 +2,9 @@
 
 ## Purpose
 Pre-archive verification checking completeness, correctness, and coherence of a change's implementation against its artifacts.
+
 ## Requirements
+
 ### Requirement: Pre-archive verification
 
 The plugin SHALL provide a Verify action that drives off the resolved workflow schema context (`openspec status` `actionContext.mode`). For a non-default mode such as `workspace-planning`, Verify SHALL explain that repo-local verification does not apply and stop without producing spec-driven-shaped findings. For the `spec-driven`, repo-local case, Verify SHALL check a change across two dimensions: **completeness** (deterministic) and **correctness/coherence** (semantic, language-agnostic, delegated to the AI bridge). The completeness dimension SHALL source its artifact-level check from the CLI status DAG (`openspec status --change <name> --json`, schema-aware) when available, and its task-checkbox check from parsing `tasks.md` locally. Verify SHALL NOT gate correctness on source file extension or language.
@@ -14,7 +16,7 @@ The plugin SHALL provide a Verify action that drives off the resolved workflow s
 #### Scenario: Completeness check — artifact level from status
 - **WHEN** Verify runs for a spec-driven change and the CLI status DAG is available
 - **THEN** it SHALL derive artifact-level completeness from the schema's own artifact set as reported by `openspec status` — treating each artifact the DAG reports as not done as a completeness finding — rather than checking a hardcoded artifact list against the filesystem
-- **AND** its completeness verdict SHALL be consistent with the Apply gate by consuming the same orchestration seam (including the client-side scaffolding adjustments to `isComplete`)
+- **AND** its completeness verdict SHALL be consistent with the Apply gate by consuming the same orchestration seam, which passes the CLI's artifact status and `isComplete` through unchanged
 
 #### Scenario: Completeness check — task level from tasks.md
 - **WHEN** Verify runs for a spec-driven change
@@ -111,4 +113,3 @@ not by error count.
 #### Scenario: Verify notification group
 - **WHEN** the plugin registers its notification groups
 - **THEN** it SHALL register `OpenSpec.Verify` (STICKY_BALLOON) and SHALL NOT register `OpenSpec.Compliance`
-

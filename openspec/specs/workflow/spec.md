@@ -7,7 +7,7 @@ Artifact generation pipeline: propose, generate, apply, archive actions with del
 
 ### Requirement: Propose action
 
-The plugin SHALL create a new change with all required artifacts (proposal.md, design.md, tasks.md, specs/) via built-in scaffolding matching the OpenSpec 1.2.0 template structure. The `createChange` call and subsequent UI updates SHALL execute via `invokeLater` from a pooled thread to avoid blocking the EDT. When multiple schemas are available, the propose dialog SHALL include a schema selector and pass the selected schema to the CLI.
+When it creates a change itself (without the CLI), the plugin SHALL create what `openspec new change` creates (`.openspec.yaml`) plus the proposal from the Propose dialog (`proposal.md`) and an empty `specs/` folder. It SHALL NOT write template `design.md` or `tasks.md` files, which upstream never creates and which the CLI would report as done. The `createChange` call and subsequent UI updates SHALL execute via `invokeLater` from a pooled thread to avoid blocking the EDT. When multiple schemas are available, the propose dialog SHALL include a schema selector and pass the selected schema to the CLI.
 
 #### Scenario: Change creation
 - **WHEN** the user proposes a change
@@ -23,7 +23,7 @@ The plugin SHALL display the selected change's pipeline status with interactive 
 
 #### Scenario: Pipeline visualization
 - **WHEN** a change is selected
-- **THEN** the panel SHALL show interactive artifact status chips (DONE, READY, BLOCKED, GENERATING) with content-aware scaffolding detection, hover affordances, and click/right-click actions
+- **THEN** the panel SHALL show interactive artifact status chips (DONE, READY, BLOCKED, GENERATING) with the status `openspec status` reports, a non-blocking hint on a DONE chip whose file looks like an unfilled template, hover affordances, and click/right-click actions
 
 #### Scenario: Generate via chip click
 - **WHEN** the user clicks a READY chip
@@ -217,7 +217,7 @@ When assembling the prompt to generate an artifact, the plugin inlines the conte
 
 ### Requirement: Delta spec scaffolding uses the client's canonical delta grammar
 
-When the plugin scaffolds a delta spec for a change (the Create Delta Spec action), the generated file SHALL use the section headings the OpenSpec client parses — `## ADDED Requirements`, `## MODIFIED Requirements`, `## REMOVED Requirements`, and `## RENAMED Requirements` — and its placeholder guidance SHALL describe only forms the client accepts: `### Requirement: <name>` blocks with at least one `#### Scenario:` for ADDED and MODIFIED, a `### Requirement: <name>` block with **Reason** and **Migration** for REMOVED, and `FROM:`/`TO:` pairs carrying the requirement header (``- FROM: `### Requirement: <old>` `` then ``- TO: `### Requirement: <new>` ``) for RENAMED. Placeholder guidance SHALL be written as HTML comments so that an unfilled scaffold carries no requirement content and continues to be detected as scaffolding rather than as a completed artifact.
+When the plugin scaffolds a delta spec for a change (the Create Delta Spec action), the generated file SHALL use the section headings the OpenSpec client parses — `## ADDED Requirements`, `## MODIFIED Requirements`, `## REMOVED Requirements`, and `## RENAMED Requirements` — and its placeholder guidance SHALL describe only forms the client accepts: `### Requirement: <name>` blocks with at least one `#### Scenario:` for ADDED and MODIFIED, a `### Requirement: <name>` block with **Reason** and **Migration** for REMOVED, and `FROM:`/`TO:` pairs carrying the requirement header (``- FROM: `### Requirement: <old>` `` then ``- TO: `### Requirement: <new>` ``) for RENAMED. Placeholder guidance SHALL be written as HTML comments so that an unfilled scaffold carries no requirement content and is flagged by the scaffolding hint.
 
 #### Scenario: A filled-in scaffold is accepted by the client
 - **WHEN** a user scaffolds a delta spec and adds one valid `### Requirement:` block with a `#### Scenario:` under the ADDED section, leaving the other sections as scaffolded
@@ -229,7 +229,7 @@ When the plugin scaffolds a delta spec for a change (the Create Delta Spec actio
 
 #### Scenario: An unfilled scaffold is still detected as scaffolding
 - **WHEN** a delta spec has just been scaffolded and not edited
-- **THEN** the plugin's scaffolding detection SHALL classify it as scaffolding (not done), because it contains only headings and HTML-comment guidance
+- **THEN** the plugin's scaffolding detection SHALL classify it as scaffolding, because it contains only headings and HTML-comment guidance, and SHALL show that as a hint without changing the status `openspec status` reports
 
 ### Requirement: In-panel links and buttons launch actions through the platform action pipeline
 
