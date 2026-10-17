@@ -63,7 +63,8 @@ public class OpenSpecSyncAction extends OpenSpecBaseAction {
 
                 ApplicationManager.getApplication().invokeLater(() -> {
                     SyncPreviewDialog dialog = new SyncPreviewDialog(project, results);
-                    if (dialog.showAndGet()) {
+                    // OK on a preview with nothing to apply just closes it: no write, no "synced" notice.
+                    if (dialog.showAndGet() && results.stream().anyMatch(SpecSyncResult::hasChanges)) {
                         ProgressManager.getInstance().run(new Task.Backgroundable(project, "Applying spec sync...", false) {
                             @Override
                             public void run(@NotNull ProgressIndicator ind) {

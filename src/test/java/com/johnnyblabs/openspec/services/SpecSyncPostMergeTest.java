@@ -1,152 +1,96 @@
 package com.johnnyblabs.openspec.services;
 
-import com.johnnyblabs.openspec.model.DeltaSpecOperation;
-import com.johnnyblabs.openspec.model.DeltaSpecOperation.OperationType;
+import com.intellij.openapi.project.Project;
+import com.johnnyblabs.openspec.model.SpecSyncResult;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import org.mockito.Mockito;
 
-import java.util.ArrayList;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Tests for post-merge validation rules and strict-mode MODIFIED blocking.
- * These test the sync operation logic in isolation without a full IntelliJ project.
+ * The MODIFIED-target guard and the all-or-nothing write, against the real merge and {@link SpecSyncService#applySync}.
  */
 class SpecSyncPostMergeTest {
 
+    private static final String MAIN = """
+            # workflow Specification
+
+            ## Requirements
+
+            ### Requirement: Existing
+            The system SHALL do X.
+
+            #### Scenario: X works
+            - **WHEN** triggered
+            - **THEN** X happens
+            """;
+
+    private static final String ADD = """
+            ## ADDED Requirements
+
+            ### Requirement: New feature
+            The system SHALL add Y.
+
+            #### Scenario: Y works
+            - **WHEN** triggered
+            - **THEN** Y happens
+            """;
+
+    private static final String MODIFY_MISSING = """
+            ## MODIFIED Requirements
+
+            ### Requirement: Nonexistent
+            Updated.
+
+            #### Scenario: S
+            - **WHEN** x
+            - **THEN** y
+            """;
+
     @Test
-    void cleanMerge_noWarnings() {
-        // Adding a well-formed requirement to an existing spec
-        String original = """
-                # Workflow
+    void cleanMerge_keepsExistingAndAppends() {
+        SpecMerge.Result r = SpecMerge.merge("workflow", "c1", ADD, MAIN);
 
-                ## Requirements
-
-                ### Requirement: Existing
-                The system SHALL do X.
-
-                #### Scenario: X works
-                - **WHEN** triggered
-                - **THEN** X happens
-                """;
-        DeltaSpecOperation addOp = new DeltaSpecOperation(
-                OperationType.ADDED, "workflow", "New feature",
-                "### Requirement: New feature\nThe system SHALL add Y.\n\n#### Scenario: Y works\n- **WHEN** triggered\n- **THEN** Y happens\n",
-                null, null);
-        List<String> warnings = new ArrayList<>();
-        // Use the static-friendly applyAdded directly
-        String result = applyAdded(original, addOp);
-        // The merged result has valid requirements with scenarios
-        assertTrue(result.contains("### Requirement: Existing"));
-        assertTrue(result.contains("### Requirement: New feature"));
-        assertTrue(result.contains("#### Scenario: Y works"));
-    }
-
-    @Test
-    void modifiedUnmatched_lenientMode_warns() {
-        String original = """
-                # Workflow
-
-                ## Requirements
-
-                ### Requirement: Existing
-                The system SHALL do X.
-
-                #### Scenario: X works
-                - **WHEN** triggered
-                - **THEN** X happens
-                """;
-        DeltaSpecOperation modOp = new DeltaSpecOperation(
-                OperationType.MODIFIED, "workflow", "Nonexistent",
-                "### Requirement: Nonexistent\nUpdated content.\n\n#### Scenario: Updated\n- **WHEN** triggered\n- **THEN** updated\n",
-                null, null);
-        List<String> warnings = new ArrayList<>();
-        String result = applyModified(original, modOp, warnings);
-        assertEquals(1, warnings.size());
-        assertTrue(warnings.getFirst().contains("not found"));
-        // Content unchanged
-        assertEquals(original, result);
+        assertNull(r.refusal());
+        assertTrue(r.warnings().isEmpty());
+        assertTrue(r.projected().indexOf("### Requirement: Existing") < r.projected().indexOf("### Requirement: New feature"));
     }
 
     @Test
-    void modifiedUnmatched_surfacesAlwaysOnGuard() {
-        // The MODIFIED-target-missing guard is ALWAYS on — it is no longer gated on a persistent
-        // strict setting (that setting was removed). It surfaces the sync-modified-target-missing rule
-        // and skips the operation, with no strict/lenient distinction and no ERROR-prefix.
-        String original = "# Workflow\n\n## Requirements\n\n### Requirement: Exists\n"
-                + "The system SHALL exist.\n\n#### Scenario: S\n- **WHEN** x\n- **THEN** y\n";
-        DeltaSpecOperation modOp = new DeltaSpecOperation(
-                OperationType.MODIFIED, "workflow", "Nonexistent",
-                "### Requirement: Nonexistent\nUpdated.\n\n#### Scenario: S\n- **WHEN** x\n- **THEN** y\n",
-                null, null);
-        List<String> warnings = new ArrayList<>();
-        String result = applyModified(original, modOp, warnings);
-        assertEquals(1, warnings.size());
-        assertTrue(warnings.getFirst().contains("sync-modified-target-missing"), "names the always-on guard");
-        assertFalse(warnings.getFirst().startsWith("ERROR:"), "no strict-mode ERROR prefix — the setting is removed");
-        assertEquals(original, result, "the unmatched MODIFIED op is skipped, content unchanged");
+    void modifiedUnmatched_isAnAlwaysOnRefusal() {
+        SpecMerge.Result r = SpecMerge.merge("workflow", "c1", MODIFY_MISSING, MAIN);
+
+        assertEquals("workflow MODIFIED failed for header \"### Requirement: Nonexistent\" - not found", r.refusal());
+        assertNull(r.projected(), "a refused capability has no projected content");
     }
 
     @Test
-    void mergePreservesPreExistingContent() {
-        String original = """
-                # Workflow
+    void applySync_refusesTheWholeChangeBeforeWritingAnything(@TempDir Path dir) throws IOException {
+        Path good = dir.resolve("good/spec.md");
+        Path bad = dir.resolve("bad/spec.md");
+        Files.createDirectories(good.getParent());
+        Files.createDirectories(bad.getParent());
+        Files.writeString(good, MAIN);
+        Files.writeString(bad, MAIN);
 
-                ## Requirements
+        SpecMerge.Result ok = SpecMerge.merge("good", "c1", ADD, MAIN);
+        SpecMerge.Result refused = SpecMerge.merge("bad", "c1", MODIFY_MISSING, MAIN);
+        // The applying capability comes first, so a per-capability write would already have changed it.
+        List<SpecSyncResult> results = List.of(
+                new SpecSyncResult("good", good.toString(), MAIN, ok.projected(), ok.operations(), ok.warnings(), List.of()),
+                new SpecSyncResult("bad", bad.toString(), MAIN, MAIN, refused.operations(), refused.warnings(), List.of(refused.refusal())));
 
-                ### Requirement: Keep this
-                The system SHALL keep this.
+        SpecSyncService service = new SpecSyncService(Mockito.mock(Project.class));
+        IOException e = assertThrows(IOException.class, () -> service.applySync(results));
 
-                #### Scenario: Kept
-                - **WHEN** checked
-                - **THEN** still here
-                """;
-        DeltaSpecOperation addOp = new DeltaSpecOperation(
-                OperationType.ADDED, "workflow", "New one",
-                "### Requirement: New one\nThe system SHALL add.\n\n#### Scenario: Added\n- **WHEN** triggered\n- **THEN** added\n",
-                null, null);
-        String result = applyAdded(original, addOp);
-        assertTrue(result.contains("### Requirement: Keep this"), "Original content should be preserved");
-        assertTrue(result.contains("### Requirement: New one"), "New content should be appended");
-    }
-
-    // --- Helpers matching SpecSyncService logic ---
-
-    private String applyAdded(String content, DeltaSpecOperation op) {
-        if (content.isEmpty()) {
-            return "# " + op.capabilityName() + "\n\n## Purpose\n\n## Requirements\n\n" + op.content() + "\n";
-        }
-        return content.stripTrailing() + "\n\n" + op.content() + "\n";
-    }
-
-    private String applyModified(String content, DeltaSpecOperation op, List<String> warnings) {
-        int[] range = findRequirementBlock(content, op.requirementName());
-        if (range == null) {
-            // Mirrors SpecSyncService.applyModified — the always-on sync-modified-target-missing guard.
-            warnings.add("MODIFIED requirement '" + op.requirementName() + "' not found in "
-                    + op.capabilityName() + " — this delta can't be applied; review before syncing "
-                    + "[sync-modified-target-missing]");
-            return content;
-        }
-        return content.substring(0, range[0]) + op.content() + content.substring(range[1]);
-    }
-
-    private int[] findRequirementBlock(String content, String reqName) {
-        java.util.regex.Pattern headerPattern = java.util.regex.Pattern.compile(
-                "^### Requirement:\\s*" + java.util.regex.Pattern.quote(reqName) + "\\s*$",
-                java.util.regex.Pattern.MULTILINE | java.util.regex.Pattern.CASE_INSENSITIVE);
-        java.util.regex.Matcher m = headerPattern.matcher(content);
-        if (!m.find()) return null;
-        int start = m.start();
-        java.util.regex.Pattern nextHeading = java.util.regex.Pattern.compile("^##[#]? ", java.util.regex.Pattern.MULTILINE);
-        java.util.regex.Matcher endMatcher = nextHeading.matcher(content);
-        int end = content.length();
-        int searchFrom = m.end();
-        while (endMatcher.find(searchFrom)) {
-            end = endMatcher.start();
-            break;
-        }
-        return new int[]{start, end};
+        assertTrue(e.getMessage().contains(refused.refusal()), e.getMessage());
+        assertEquals(MAIN, Files.readString(good), "no capability is written when any is refused");
+        assertEquals(MAIN, Files.readString(bad));
     }
 }

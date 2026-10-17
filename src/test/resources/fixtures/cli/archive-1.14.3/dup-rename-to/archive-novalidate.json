@@ -1,0 +1,15 @@
+{
+  "archive": null,
+  "root": {
+    "path": "/fixture",
+    "source": "nearest"
+  },
+  "status": [
+    {
+      "severity": "error",
+      "code": "archive_spec_update_failed",
+      "message": "demo validation failed - duplicate TO in RENAMED for header \"### Requirement: Same\"",
+      "fix": "Fix the change delta specs and rerun. No files were changed."
+    }
+  ]
+}

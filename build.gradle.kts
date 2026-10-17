@@ -201,6 +201,11 @@ tasks.jacocoTestReport {
 // loop, status load and production archiver against real code, plus the applySync threading tests, the 1.14.3
 // contract nests and the deprecation guards. Measured 0.4677/0.4488/0.4193; INSTRUCTION ~0.006 below,
 // LINE/BRANCH keep extra headroom (BRANCH the most).
+// RAISED 2026-10-17 (align-spec-sync-with-archive): 0.461/0.442/0.410 → 0.535/0.510/0.448. The pure SpecMerge
+// (a port of OpenSpec's archive merge) and CodeFences are contract-tested against 33 captured `openspec archive`
+// runs plus unit tests, and the remaining v0.14.0 changes (legacy-cleanup dialog, CLI detection topic) added real-
+// code tests. Measured 0.5454/0.5223/0.4598; floors held ~0.01 below (more than the usual 0.006 because this is a
+// large step measured locally; LINE/BRANCH keep the documented runner wobble headroom).
 tasks.jacocoTestCoverageVerification {
     dependsOn(tasks.test)
     // Match the report: instrumented classes + the test JVM's execution data.
@@ -215,21 +220,21 @@ tasks.jacocoTestCoverageVerification {
             limit {
                 counter = "INSTRUCTION"
                 value = "COVEREDRATIO"
-                minimum = "0.461".toBigDecimal()
+                minimum = "0.535".toBigDecimal()
             }
         }
         rule {
             limit {
                 counter = "LINE"
                 value = "COVEREDRATIO"
-                minimum = "0.442".toBigDecimal()
+                minimum = "0.510".toBigDecimal()
             }
         }
         rule {
             limit {
                 counter = "BRANCH"
                 value = "COVEREDRATIO"
-                minimum = "0.410".toBigDecimal()
+                minimum = "0.448".toBigDecimal()
             }
         }
     }

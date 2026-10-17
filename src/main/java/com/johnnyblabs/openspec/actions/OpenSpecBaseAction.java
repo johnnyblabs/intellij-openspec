@@ -6,6 +6,10 @@ import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFileManager;
+import java.util.List;
+import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.openapi.vfs.LocalFileSystem;
+import com.intellij.openapi.project.ProjectUtil;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowManager;
 import com.intellij.ui.content.Content;
@@ -108,12 +112,14 @@ public abstract class OpenSpecBaseAction extends AnAction {
     }
 
     /**
-     * Refreshes the VFS synchronously and then rebuilds the OpenSpec tool window tree.
-     * Sync refresh ensures the tree sees newly created files (e.g., after propose).
+     * Refreshes the VFS and then rebuilds the OpenSpec tool window tree, so the tree sees newly created files (e.g.,
+     * after propose). Safe from any thread. On the UI thread it refreshes synchronously, as before. From a background
+     * task (Sync applies specs in one) the synchronous refresh isn't allowed and would freeze the UI if hopped there,
+     * so it refreshes the project directory asynchronously and rebuilds the tree when that finishes.
      */
     protected static void refreshToolWindow(Project project) {
-        VirtualFileManager.getInstance().syncRefresh();
-        ApplicationManager.getApplication().invokeLater(() -> {
+        Runnable rebuild = () -> {
+            if (project.isDisposed()) return;
             ToolWindow toolWindow = ToolWindowManager.getInstance(project).getToolWindow("OpenSpec");
             if (toolWindow == null) return;
             for (Content content : toolWindow.getContentManager().getContents()) {
@@ -123,6 +129,18 @@ public abstract class OpenSpecBaseAction extends AnAction {
                     break;
                 }
             }
-        });
+        };
+        if (ApplicationManager.getApplication().isDispatchThread()) {
+            VirtualFileManager.getInstance().syncRefresh();
+            rebuild.run();
+            return;
+        }
+        VirtualFile projectDir = ProjectUtil.guessProjectDir(project);
+        if (projectDir == null) {
+            ApplicationManager.getApplication().invokeLater(rebuild, project.getDisposed());
+            return;
+        }
+        LocalFileSystem.getInstance().refreshFiles(List.of(projectDir), true, true,
+                () -> ApplicationManager.getApplication().invokeLater(rebuild, project.getDisposed()));
     }
 }

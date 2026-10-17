@@ -270,11 +270,20 @@ public class BulkArchiveDialog extends DialogWrapper {
             return new Archiver() {
                 @Override
                 public List<String> check(String changeName) {
-                    return blockers(project.getService(SpecSyncService.class).computeSync(changeName));
+                    // The archive-folder collision is checked here, before any spec is synced, as OpenSpec does.
+                    List<String> problems = new ArrayList<>();
+                    String conflict = project.getService(ChangeService.class).archiveConflict(changeName);
+                    if (conflict != null) problems.add(conflict);
+                    problems.addAll(blockers(project.getService(SpecSyncService.class).computeSync(changeName)));
+                    return problems;
                 }
 
                 @Override
                 public void sync(String changeName) throws Exception {
+                    String conflict = project.getService(ChangeService.class).archiveConflict(changeName);
+                    if (conflict != null) {
+                        throw new Blocked(conflict);
+                    }
                     SpecSyncService syncService = project.getService(SpecSyncService.class);
                     List<SpecSyncResult> syncResults = syncService.computeSync(changeName);
                     List<String> problems = blockers(syncResults);
@@ -294,12 +303,12 @@ public class BulkArchiveDialog extends DialogWrapper {
         }
     }
 
-    /** Every warning a sync result carries: each marks a delta the sync would skip. */
+    /** Every refusal a sync result carries: OpenSpec's archive would refuse the change. Warnings don't block. */
     @VisibleForTesting
     static List<String> blockers(List<SpecSyncResult> results) {
         List<String> problems = new ArrayList<>();
         for (SpecSyncResult result : results) {
-            problems.addAll(result.warnings());
+            problems.addAll(result.refusals());
         }
         return problems;
     }

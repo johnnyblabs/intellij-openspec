@@ -1359,7 +1359,8 @@ public class WorkflowActionPanel extends JPanel {
 
                     com.johnnyblabs.openspec.dialogs.SyncPreviewDialog dialog =
                             new com.johnnyblabs.openspec.dialogs.SyncPreviewDialog(project, results);
-                    if (dialog.showAndGet()) {
+                    // OK on a preview with nothing to apply just closes it: no write, no "synced" notice.
+                    if (dialog.showAndGet() && results.stream().anyMatch(com.johnnyblabs.openspec.model.SpecSyncResult::hasChanges)) {
                         ProgressManager.getInstance().run(new Task.Backgroundable(project, "Applying spec sync...", false) {
                             @Override
                             public void run(@NotNull ProgressIndicator ind) {

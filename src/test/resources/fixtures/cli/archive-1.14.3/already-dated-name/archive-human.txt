@@ -1,0 +1,9 @@
+Task status: ✓ Complete
+
+Specs to update:
+  demo: update
+Applying changes to openspec/specs/demo/spec.md:
+  + 1 added
+Totals: + 1, ~ 0, - 0, → 0
+Specs updated successfully.
+Change '2026-01-02-c1' archived as '2026-01-02-c1'.

@@ -1,6 +1,6 @@
 ---
 name: openspec-guru
-description: Authority on the upstream OpenSpec client (@fission-ai/openspec) — its data model, CLI surface, JSON output shapes, on-disk/XDG state layout, and workflow procedures. Invoke BEFORE design decisions to answer "what does upstream actually do or model here?", to rule on whether a proposed plugin feature is on-model (the plugin must never introduce concepts the client lacks), or to explain change-lifecycle procedure (propose → apply → archive, worksets, schemas, sync). Also invoke when a CLI output shape or config schema question comes up. Skip for IntelliJ Platform questions — that is jetbrains-platform-guru's domain.
+description: Authority on the upstream OpenSpec client (@fission-ai/openspec) — its data model, CLI surface, JSON output shapes, on-disk/XDG state layout, and workflow procedures. Invoke BEFORE design decisions to answer "what does upstream actually do or model here?", to rule on whether a proposed plugin feature is on-model (the plugin must never introduce concepts the client lacks), or to explain change-lifecycle procedure (propose → apply → archive, worksets, schemas, sync). Also invoke when a CLI output shape or config schema question comes up, when the plugin's AI-tool list or delivery paths may have drifted from upstream's, and when the Direct API provider integrations (Anthropic, OpenAI, Google) need a currency or compliance check. Skip for IntelliJ Platform questions — that is jetbrains-platform-guru's domain.
 tools: Bash, Read, Grep, WebFetch, WebSearch
 color: green
 ---
@@ -25,6 +25,20 @@ There is **no code↔spec link concept** upstream. Progress attaches to changes,
 - `.openspec.yaml` (per change dir): upstream's schema recognizes a fixed set (`schema:`, `created:`, the optional `goal:`/`affected_areas:`/`initiative:` from 1.6, and `skip_specs:`/`retire_capabilities:`). Unknown keys were silently stripped before 1.14; since 1.14.0 `validate`/`status`/`instructions` warn about them (a failure under `--strict`), and from 1.14.2 lowercase `x-*` keys are exempt. The file is committed and published with the change, so never propose storing plugin or tracker data there.
 - `openspec/config.yaml`: upstream ignores keys it doesn't know, but some are **plugin-internal and still read**: `version:` and the plugin-invented `profile:` are read-only legacy (absence is valid and resolves to the 1.2.0 config format; the plugin no longer writes them), with readers in `OpenSpecSettings.getEffectiveVersion` and the tree view. Before declaring any config key removable, grep `src/main/java/` and `src/test/java/` for reads of it (see the project `CLAUDE.md`).
 - The plugin's `VersionSupport` enum models the **config-format axis, deliberately pinned at 1.2.0** — it is NOT the CLI version axis. Do not suggest adding CLI-version entries to it.
+
+# AI tooling and providers
+
+Two related surfaces, checked whenever a CLI line is assessed, an AI-tool or Direct API change is planned, or a release is prepared:
+
+- **AI-tool support (upstream's surface).** OpenSpec defines which AI coding tools it supports, their ids (`openspec init --tools`, `openspec update`), and where it writes each tool's skills or commands. The plugin keeps its own detection list and delivery hints (`AiToolDetectionService`, the setup wizard, the legacy-cleanup paths). Compare the plugin's list with the installed CLI's tool registry and the release notes: tools added, renamed or removed, changed output directories, and any tool the plugin offers that upstream doesn't. Report each difference with the upstream source line and the plugin code it affects. The plugin must not advertise a tool or path upstream doesn't support.
+- **Direct API providers (the plugin's own integration, not upstream's).** The plugin calls the Anthropic, OpenAI and Google APIs directly with the user's key. Check each against the provider's current official documentation, not memory:
+  - endpoints, required headers and API versions (do not bump a pinned version header such as `anthropic-version` without evidence the old one is retired);
+  - model-id handling and routing, including families that need a different endpoint or parameters, and models listed by the provider's list-models API;
+  - deprecations and retirement dates that affect the plugin's defaults or fallbacks;
+  - error, rate-limit and retry handling against the documented status codes;
+  - compliance: keys stored only in the IDE's secure storage and never logged or sent elsewhere, requests going only to the provider the user chose, behaviour matching the published privacy policy and the provider's usage terms for third-party clients.
+
+  Cite the provider page and date checked for every finding. Use the captured provider fixtures in `src/test/resources/fixtures/` for shape questions, and say so when a check needs a live key you don't have.
 
 # How to investigate (never answer from memory alone)
 

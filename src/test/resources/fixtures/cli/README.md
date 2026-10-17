@@ -589,3 +589,13 @@ All files are byte-identical between the two versions; the key sets were also co
 Real `openspec update` stdout from CLI **1.13.2** (run through `npx @fission-ai/openspec@1.13.2`) and the installed **1.14.3**. Each was captured in a fresh scratch project with isolated `HOME`/`XDG_*` and `OPENSPEC_TELEMETRY=0`, after `init --tools cursor .` and three hand-placed legacy command files (`.cursor/commands/openspec-{proposal,apply,archive}.md`), with stdin closed. The output contains no absolute paths.
 
 The two captures differ only in the block's guidance line and the version on the "up to date" line. 1.13.2 prints `No user content to preserve:`; from 1.14.0 the CLI prints `These files will be deleted entirely. Back up any custom content before proceeding:`. Unlike the Junie-based 1.6.0 and 1.7.0 captures, these use Cursor, whose old command files current CLIs still report as legacy. Consumed by `UpdateOutputParserContractTest`, `UpdateLegacyCleanupFlowTest` and the cleanup dialog test.
+
+## `archive-1.14.3/` — real `openspec archive` runs, the oracle for the plugin's spec merge
+
+Captured by `scripts/capture-archive-fixtures.py` (re-run it after a CLI upgrade; it writes `archive-<version>/`). Each case is a one-change project archived three ways in isolated `HOME`/`XDG_*` directories: `archive c1 --yes` (`archive-human.txt`), `archive c1 --yes --json` (`archive.json`, `exit.txt`), and `validate c1 --json` (`validate.json`). When validation refuses the change, `archive --yes --no-validate --json` is captured too (`archive-novalidate.json`): its message is the wording the merge itself uses, which the plugin's refusal must match, since the plugin has no separate validation pass in front of its merge.
+
+Per capability, `<cap>/main-before.md` and `<cap>/delta.md` are the inputs and `<cap>/main-after.md` is upstream's main spec after a successful archive (absent when refused or for an untouched capability). `layout.txt` records where the change went (`changes/archive/<DATE>-c1`, never `openspec/archive/`), and `change.txt` the change's folder name. Set `OPENSPEC_BIN` (e.g. `npx -y @fission-ai/openspec@1.14.3`) to capture from a pinned CLI instead of the one on `PATH`. Machine paths are `/fixture`, the archive date is `<DATE>`.
+
+- Refusal codes in `status[0].code`: `archive_spec_update_failed` (the merge refused; also the novalidate wording), `archive_validation_failed` (pre-archive validation), `archive_target_exists`.
+- Warnings that don't block are in `archive.warnings` (e.g. `removed-gone`: "treating it as already removed").
+- One deliberate plugin divergence: on a merge refusal upstream leaves an empty `changes/archive/` behind; the plugin creates nothing when it refuses.
