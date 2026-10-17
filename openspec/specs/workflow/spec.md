@@ -2,7 +2,9 @@
 
 ## Purpose
 Artifact generation pipeline: propose, generate, apply, archive actions with delivery routing and progress feedback.
+
 ## Requirements
+
 ### Requirement: Propose action
 
 The plugin SHALL create a new change with all required artifacts (proposal.md, design.md, tasks.md, specs/) via built-in scaffolding matching the OpenSpec 1.2.0 template structure. The `createChange` call and subsequent UI updates SHALL execute via `invokeLater` from a pooled thread to avoid blocking the EDT. When multiple schemas are available, the propose dialog SHALL include a schema selector and pass the selected schema to the CLI.
@@ -250,3 +252,19 @@ The Propose action and the delta-spec diff action SHALL be available while the I
 #### Scenario: No deprecated action-invocation API
 - **WHEN** the Plugin Verifier checks the plugin against every IDE in the supported range
 - **THEN** it SHALL report no usage of the deprecated `ActionUtil.invokeAction` overloads
+
+### Requirement: Archive target directory
+
+When the plugin archives a change itself, it SHALL move the change to `openspec/changes/archive/YYYY-MM-DD-<name>/`, using the local date and keeping a name that already starts with a date unchanged. It SHALL refuse, before writing any spec, when that target already exists. It SHALL create `openspec/changes/archive/` when missing and SHALL NOT create `openspec/archive/`, though it SHALL still read archived changes from an existing legacy `openspec/archive/`.
+
+#### Scenario: Dated archive name
+- **WHEN** the user archives change `add-login` on 2026-10-17
+- **THEN** the change SHALL be moved to `openspec/changes/archive/2026-10-17-add-login/`
+
+#### Scenario: Target already exists
+- **WHEN** `openspec/changes/archive/2026-10-17-add-login/` already exists
+- **THEN** the archive SHALL be refused with no spec written and the change left active
+
+#### Scenario: No archive directory yet
+- **WHEN** `openspec/changes/archive/` does not exist
+- **THEN** the plugin SHALL create it and archive into it, and SHALL NOT create `openspec/archive/`
