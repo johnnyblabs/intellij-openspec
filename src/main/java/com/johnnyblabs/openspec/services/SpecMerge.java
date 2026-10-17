@@ -63,7 +63,8 @@ public final class SpecMerge {
     record RenamePair(String from, String to) {
     }
 
-    record Unpaired(String side, String name, int line) {
+    /** A RENAMED {@code FROM:} with no {@code TO:} after it (or a {@code TO:} with no {@code FROM:}), 1-based line. */
+    public record Unpaired(String side, String name, int line) {
     }
 
     /** A parsed delta spec, as upstream's {@code parseDeltaSpec} reads it. */
@@ -90,6 +91,34 @@ public final class SpecMerge {
     /** Case- and whitespace-folded name, used only to refuse near-misses, never to match. */
     public static String foldName(String name) {
         return normalizeName(name).toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
+    }
+
+    /**
+     * What a delta holds, read as OpenSpec's reader reads it: the delta sections present (as {@code ## <TYPE>
+     * Requirements}, in OpenSpec's order), how many entries they parse to, and the unpaired renames. Shared by the
+     * built-in validator and the delta inspection so they recognise entries exactly as the merge does.
+     */
+    public record DeltaSummary(List<String> sections, int entries, List<Unpaired> unpaired) {
+    }
+
+    private static final String[] SECTION_TITLES = {"ADDED", "MODIFIED", "REMOVED", "RENAMED"};
+
+    public static DeltaSummary summarize(String deltaContent) {
+        Plan plan = parseDelta(deltaContent);
+        List<String> present = new ArrayList<>();
+        List<String> lines = lines(deltaContent);
+        boolean[] mask = CodeFences.mask(lines);
+        Set<String> titles = new HashSet<>();
+        for (int i = 0; i < lines.size(); i++) {
+            if (mask[i]) continue;
+            Matcher m = SECTION.matcher(lines.get(i));
+            if (m.find()) titles.add(m.group(2).strip().toLowerCase(Locale.ROOT));
+        }
+        for (String t : SECTION_TITLES) {
+            if (titles.contains(t.toLowerCase(Locale.ROOT) + " requirements")) present.add("## " + t + " Requirements");
+        }
+        int entries = plan.added().size() + plan.modified().size() + plan.removed().size() + plan.renamed().size();
+        return new DeltaSummary(List.copyOf(present), entries, plan.unpaired());
     }
 
     // --- delta parsing ---

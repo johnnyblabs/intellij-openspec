@@ -38,7 +38,6 @@ public final class BuiltInValidator {
     private static final Pattern CLAUSE_PATTERN = Pattern.compile("^-\\s+\\*{0,2}(GIVEN|WHEN|THEN|AND)\\*{0,2}\\b", Pattern.MULTILINE);
     private static final Pattern DELTA_SECTION_PATTERN = Pattern.compile("^## (ADDED|MODIFIED|REMOVED|RENAMED)", Pattern.MULTILINE);
     private static final Pattern FULL_SPEC_PATTERN = Pattern.compile("^## (Requirements|Purpose)", Pattern.MULTILINE);
-    private static final Pattern RENAMED_ENTRY_PATTERN = com.johnnyblabs.openspec.util.SpecPatterns.RENAMED_PAIR;
     // REMOVED metadata markers, tolerant of both bold forms: **Reason:** (colon inside) and **Reason**: (colon outside).
     private static final Pattern REMOVED_REASON_PATTERN = Pattern.compile("\\*\\*\\s*Reason\\s*:?\\s*\\*\\*", Pattern.CASE_INSENSITIVE);
     private static final Pattern REMOVED_MIGRATION_PATTERN = Pattern.compile("\\*\\*\\s*Migration\\s*:?\\s*\\*\\*", Pattern.CASE_INSENSITIVE);
@@ -291,8 +290,8 @@ public final class BuiltInValidator {
 
         int deltaCount = validateDeltaSpecs(changePath, issues);
         // No-deltas ERROR (mirrors the CLI): a change whose schema requires specs and does not declare
-        // skip_specs must have at least one delta spec. `deltaCount` counts the spec.md files found under
-        // specs/ — a misplaced root spec.md counts as found, so a misplaced-only change gets the
+        // skip_specs must have at least one delta. `deltaCount` counts the entries parsed from the delta
+        // spec.md files under specs/, as OpenSpec does — a misplaced root spec.md counts as found, so a misplaced-only change gets the
         // misplaced ERROR alone, matching the CLI. A negative count means the change dir could not be
         // resolved on disk, so we do not guess (no false positive). skip_specs suppresses it exactly as
         // the CLI does (which reports a skip_specs change with no deltas valid, with an INFO note).
@@ -372,10 +371,9 @@ public final class BuiltInValidator {
         VirtualFile specFile = dir.findChild("spec.md");
         if (specFile != null && !specFile.isDirectory()) {
             String raw = readFile(specFile);
-            if (raw != null) {
-                validateDeltaContent(raw, specFile.getPath(), issues);
-            }
-            found++;
+            // Count parsed entries (OpenSpec's "at least one delta" counts entries, not files); an unreadable
+            // file counts as one so it can't trigger a false no-deltas error.
+            found += raw != null ? validateDeltaContent(raw, specFile.getPath(), issues) : 1;
         }
         for (VirtualFile child : dir.getChildren()) {
             if (child.isDirectory()) {
@@ -622,7 +620,24 @@ public final class BuiltInValidator {
      * delta file. Static + package-private so rule tests drive production logic rather than a mirror.
      * Fence-masks internally; {@code path} is used only for issue locations.
      */
-    static void validateDeltaContent(String raw, String path, List<ValidationIssue> issues) {
+    static int validateDeltaContent(String raw, String path, List<ValidationIssue> issues) {
+        // Entries are recognised exactly as OpenSpec's reader (and the plugin's merge) recognise them.
+        com.johnnyblabs.openspec.services.SpecMerge.DeltaSummary summary =
+                com.johnnyblabs.openspec.services.SpecMerge.summarize(raw);
+        if (!summary.sections().isEmpty() && summary.entries() == 0) {
+            issues.add(new ValidationIssue(ValidationIssue.Severity.ERROR, path, firstSectionLine(raw),
+                    "Delta sections " + sectionList(summary.sections()) + " were found, but no requirement entries "
+                            + "parsed. Ensure each section includes at least one \"### Requirement:\" block "
+                            + "(REMOVED may use bullet list syntax).",
+                    "delta-no-entries"));
+        }
+        for (com.johnnyblabs.openspec.services.SpecMerge.Unpaired u : summary.unpaired()) {
+            String missing = "FROM".equals(u.side()) ? "TO" : "FROM";
+            issues.add(new ValidationIssue(ValidationIssue.Severity.ERROR, path, u.line(),
+                    "RENAMED " + u.side() + ": \"" + u.name() + "\" has no matching " + missing + ": line. "
+                            + "Write each rename as a FROM: line followed immediately by its TO: line.",
+                    "delta-renamed-fields"));
+        }
         // All structural matching runs on the fence-masked form (offsets preserved).
         String content = maskFences(raw);
         // Skip full specs (## Requirements / ## Purpose) — only delta specs need
@@ -632,6 +647,21 @@ public final class BuiltInValidator {
                     "Delta spec should have ADDED, MODIFIED, REMOVED, or RENAMED sections", "delta-spec-sections"));
         }
         validateDeltaSpecStructure(content, path, issues);
+        return summary.entries();
+    }
+
+    /** OpenSpec's section list: "A", "A and B", "A, B and C". */
+    private static String sectionList(List<String> sections) {
+        if (sections.size() == 1) return sections.get(0);
+        return String.join(", ", sections.subList(0, sections.size() - 1)) + " and " + sections.get(sections.size() - 1);
+    }
+
+    private static int firstSectionLine(String raw) {
+        String[] lines = raw.replace("\r\n", "\n").split("\n", -1);
+        for (int i = 0; i < lines.length; i++) {
+            if (lines[i].matches("^##\\s+(?i:(ADDED|MODIFIED|REMOVED|RENAMED) Requirements)\\s*$")) return i + 1;
+        }
+        return 1;
     }
 
     private static void validateDeltaSpecStructure(String content, String path, List<ValidationIssue> issues) {
@@ -659,16 +689,9 @@ public final class BuiltInValidator {
             }
 
             if ("RENAMED".equals(sectionType)) {
-                // RENAMED sections carry FROM:/TO: pairs (bullet or plain form), not requirement blocks.
-                // Entry lines without a well-formed pair are an error. (This accepts bare names; the merge,
-                // like OpenSpec, reads only FROM:/TO: lines carrying `### Requirement:` - see SpecMerge.)
-                // An empty section (no FROM:/TO: lines, e.g. a fresh scaffold) is not: the CLI accepts it.
-                if (com.johnnyblabs.openspec.util.SpecPatterns.RENAMED_ENTRY_LINE.matcher(sectionContent).find()
-                        && !RENAMED_ENTRY_PATTERN.matcher(sectionContent).find()) {
-                    issues.add(new ValidationIssue(ValidationIssue.Severity.ERROR, path, sectionHeaderLine,
-                            "RENAMED section must contain at least one FROM:/TO: pair",
-                            "delta-renamed-fields"));
-                }
+                // RENAMED holds FROM:/TO: pairs, not requirement blocks. Unpaired renames and a file with no
+                // entries at all are reported from SpecMerge's reading (validateDeltaContent); bare `FROM: Old`
+                // lines are ignored, as OpenSpec ignores them.
                 continue;
             }
 

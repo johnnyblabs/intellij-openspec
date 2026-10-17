@@ -615,29 +615,38 @@ class BuiltInValidatorRulesTest {
     // --- RENAMED delta section ---
 
     @Test
-    void deltaRenamed_validFromTo_passes() {
+    void deltaRenamed_headerFormPair_passes() {
         String content = """
+                ## RENAMED Requirements
+
+                - FROM: `### Requirement: Old requirement name`
+                - TO: `### Requirement: New requirement name`
+                """;
+        List<ValidationIssue> issues = validateDeltaStructure(content);
+        assertTrue(issues.stream().noneMatch(i -> i.severity() == ValidationIssue.Severity.ERROR),
+                "a header-form RENAMED pair is an entry; no error: " + issues);
+    }
+
+    /** Every supported CLI (1.3.0–1.14.3) reads bare FROM/TO as nothing: a file holding only them has no entries. */
+    @Test
+    void deltaRenamed_bareNamesOnly_isNoEntries_notRenamedFields() {
+        for (String content : List.of("""
                 ## RENAMED Requirements
 
                 - FROM: Old requirement name
                 - TO: New requirement name
-                """;
-        List<ValidationIssue> issues = validateDeltaStructure(content);
-        assertTrue(issues.stream().noneMatch(i -> i.rule().equals("delta-renamed-fields")),
-                "RENAMED with valid FROM/TO should not produce delta-renamed-fields error");
-    }
-
-    @Test
-    void deltaRenamed_validFromToWithoutBullets_passes() {
-        String content = """
+                """, """
                 ## RENAMED Requirements
 
                 FROM: Old requirement name
                 TO: New requirement name
-                """;
-        List<ValidationIssue> issues = validateDeltaStructure(content);
-        assertTrue(issues.stream().noneMatch(i -> i.rule().equals("delta-renamed-fields")),
-                "RENAMED with valid FROM/TO (non-bullet) should not produce delta-renamed-fields error");
+                """)) {
+            List<ValidationIssue> issues = validateDeltaStructure(content);
+            assertTrue(issues.stream().anyMatch(i -> i.rule().equals("delta-no-entries")
+                    && i.severity() == ValidationIssue.Severity.ERROR), "no entries parsed: " + issues);
+            assertTrue(issues.stream().noneMatch(i -> i.rule().equals("delta-renamed-fields")),
+                    "bare lines are ignored, not a rename error: " + issues);
+        }
     }
 
     @Test
@@ -652,6 +661,25 @@ class BuiltInValidatorRulesTest {
                 i.severity() == ValidationIssue.Severity.ERROR
                         && i.rule().equals("delta-renamed-fields")),
                 "RENAMED entry lines with no well-formed FROM/TO pair should be ERROR: " + issues);
+    }
+
+    /** The CLI rejected the old (1.12) delta scaffold as having no entries; the built-in validator now agrees, verbatim. */
+    @Test
+    void capturedOldScaffold_isNoEntries_matchingTheCli() throws Exception {
+        String base = "src/test/resources/fixtures/cli/1.12.0/scaffold-delta/";
+        com.google.gson.JsonObject item = com.google.gson.JsonParser.parseString(java.nio.file.Files.readString(
+                java.nio.file.Paths.get(base + "validate-old.json"))).getAsJsonObject().getAsJsonArray("items").get(0).getAsJsonObject();
+        assertFalse(item.get("valid").getAsBoolean(), "capture: the CLI rejects the old scaffold");
+        String cliMessage = null;
+        for (var e : item.getAsJsonArray("issues")) {
+            String m = e.getAsJsonObject().get("message").getAsString();
+            if (m.contains("no requirement entries parsed")) cliMessage = m;
+        }
+        assertNotNull(cliMessage);
+        String delta = java.nio.file.Files.readString(java.nio.file.Paths.get(base + "old-template/openspec/changes/c/specs/auth/spec.md")).replace("\r\n", "\n");
+        List<ValidationIssue> issues = validateDeltaStructure(delta);
+        String expected = cliMessage;
+        assertTrue(issues.stream().anyMatch(i -> i.rule().equals("delta-no-entries") && i.message().equals(expected)), issues.toString());
     }
 
     @Test
