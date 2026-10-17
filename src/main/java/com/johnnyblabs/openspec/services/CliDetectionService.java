@@ -5,6 +5,7 @@ import com.intellij.openapi.components.Service;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.SystemInfo;
+import com.intellij.util.messages.Topic;
 import com.johnnyblabs.openspec.settings.OpenSpecSettings;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.TestOnly;
@@ -48,10 +49,24 @@ public final class CliDetectionService {
         @Nullable String runAndCapture(GeneralCommandLine cmd) throws Exception;
     }
 
+    /**
+     * Announced on the project message bus after every completed detection (CLI found or not), from whichever thread
+     * ran it. Subscribers that touch UI must hop to the EDT themselves.
+     */
+    public static final Topic<Listener> TOPIC = Topic.create("OpenSpec CLI detection", Listener.class);
+
+    public interface Listener {
+        void detectionCompleted(boolean available, @Nullable String version);
+    }
+
+    /** One detection result. Published as a whole, so readers never see a mix of two results or a cleared state. */
+    private record Detection(boolean available, @Nullable String path, @Nullable String version) {
+        static final Detection NONE = new Detection(false, null, null);
+    }
+
     private final @Nullable Project project;
-    private volatile boolean available;
-    private volatile String detectedPath;
-    private volatile String detectedVersion;
+    private volatile Detection current = Detection.NONE;
+    private volatile boolean detectedOnce;
     private volatile String loginShellPath;
     private volatile Instant lastDetectionTime;
     private volatile @Nullable Boolean isWindowsOverride;
@@ -95,11 +110,12 @@ public final class CliDetectionService {
         return true;
     }
 
+    /**
+     * Probes for the CLI and publishes the result when done. The previous result stays visible to readers until then:
+     * a detection in progress never reads as "unavailable".
+     */
     public void detect() {
-        available = false;
-        detectedPath = null;
-        detectedVersion = null;
-
+        Detection found = null;
         try {
             // Resolve login shell PATH first — needed on macOS where GUI apps
             // don't inherit terminal PATH (so node/openspec can't be found).
@@ -111,39 +127,57 @@ public final class CliDetectionService {
                 OpenSpecSettings settings = OpenSpecSettings.getInstance(project);
                 String settingsPath = settings.getCliPath();
                 if (settingsPath != null && !settingsPath.isEmpty()) {
-                    if (tryPath(settingsPath)) return;
+                    found = probe(settingsPath);
                 }
             }
 
             // 2. Try bare "openspec" via GeneralCommandLine (uses IntelliJ's env resolution)
-            if (tryPath("openspec")) return;
+            if (found == null) {
+                found = probe("openspec");
+            }
 
             // 3. Try via user's login shell (Unix) or where.exe (Windows)
-            String shellPath = tryLoginShellWhich();
-            if (shellPath != null && tryPath(shellPath)) return;
+            if (found == null) {
+                String shellPath = tryLoginShellWhich();
+                if (shellPath != null) {
+                    found = probe(shellPath);
+                }
+            }
 
             // 4. Try common install locations for the host OS
-            for (String path : commonPathsForCurrentOs()) {
-                if (tryPath(path)) return;
+            if (found == null) {
+                for (String path : commonPathsForCurrentOs()) {
+                    found = probe(path);
+                    if (found != null) break;
+                }
             }
         } finally {
-            lastDetectionTime = Instant.now();
+            publish(found != null ? found : Detection.NONE);
         }
     }
 
     // Public so cross-package integration tests (e.g. the Windows `.cmd` shim invocation test in the
-    // coordination package) can exercise the real suffix-fallback + process-spawn end-to-end.
+    // coordination package) can exercise the real suffix-fallback + process-spawn end-to-end. Publishes on success.
     public boolean tryPath(String path) {
-        if (tryPathDirect(path)) return true;
-        if (isWindows() && !hasRecognizedWindowsSuffix(path)) {
-            for (String suffix : WINDOWS_EXE_SUFFIXES) {
-                if (tryPathDirect(path + suffix)) return true;
-            }
-        }
-        return false;
+        Detection found = probe(path);
+        if (found == null) return false;
+        publish(found);
+        return true;
     }
 
-    private boolean tryPathDirect(String path) {
+    /** The detection at {@code path} (with Windows suffix fallback), or {@code null}; changes no state. */
+    private @Nullable Detection probe(String path) {
+        Detection found = probeDirect(path);
+        if (found == null && isWindows() && !hasRecognizedWindowsSuffix(path)) {
+            for (String suffix : WINDOWS_EXE_SUFFIXES) {
+                found = probeDirect(path + suffix);
+                if (found != null) break;
+            }
+        }
+        return found;
+    }
+
+    private @Nullable Detection probeDirect(String path) {
         try {
             GeneralCommandLine cmd = new GeneralCommandLine(path, "--version");
             cmd.setCharset(StandardCharsets.UTF_8);
@@ -151,19 +185,27 @@ public final class CliDetectionService {
 
             String output = processRunner.runAndCapture(cmd);
             if (output != null) {
-                available = true;
-                detectedPath = path;
-                detectedVersion = output.replaceAll("(?i)openspec\\s*v?", "").trim();
-                if (detectedVersion.isEmpty()) {
-                    detectedVersion = output;
+                String version = output.replaceAll("(?i)openspec\\s*v?", "").trim();
+                if (version.isEmpty()) {
+                    version = output;
                 }
-                LOG.info("OpenSpec CLI detected at: " + path + " version: " + detectedVersion);
-                return true;
+                LOG.info("OpenSpec CLI detected at: " + path + " version: " + version);
+                return new Detection(true, path, version);
             }
         } catch (Exception e) {
             LOG.debug("CLI not available at: " + path, e);
         }
-        return false;
+        return null;
+    }
+
+    /** Makes {@code result} the current detection in one step, then announces it. */
+    private void publish(Detection result) {
+        current = result;
+        lastDetectionTime = Instant.now();
+        detectedOnce = true;
+        if (project != null && !project.isDisposed()) {
+            project.getMessageBus().syncPublisher(TOPIC).detectionCompleted(result.available(), result.version());
+        }
     }
 
     private static boolean hasRecognizedWindowsSuffix(String path) {
@@ -316,14 +358,19 @@ public final class CliDetectionService {
     }
 
     public boolean isAvailable() {
-        return available;
+        return current.available();
     }
 
     public String getDetectedPath() {
-        return detectedPath;
+        return current.path();
     }
 
     public String getDetectedVersion() {
-        return detectedVersion;
+        return current.version();
+    }
+
+    /** Whether any detection has completed yet; until then the CLI's availability is simply unknown. */
+    public boolean isDetectedOnce() {
+        return detectedOnce;
     }
 }

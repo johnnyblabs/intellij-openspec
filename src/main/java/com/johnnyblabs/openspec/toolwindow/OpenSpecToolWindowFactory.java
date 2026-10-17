@@ -22,8 +22,6 @@ import com.intellij.ui.content.Content;
 import com.intellij.ui.content.ContentFactory;
 import org.jetbrains.annotations.NotNull;
 
-import java.awt.*;
-
 public class OpenSpecToolWindowFactory implements ToolWindowFactory, DumbAware {
 
     /**
@@ -51,24 +49,17 @@ public class OpenSpecToolWindowFactory implements ToolWindowFactory, DumbAware {
     }
 
     /**
-     * Re-detects the CLI off the EDT (throttled to once per 30s by {@code detectIfStale}) and, if detection ran,
-     * refreshes the tool window's CLI status on the EDT; also a best-effort workflow-profile refresh. Shared by the
+     * Re-detects the CLI off the EDT (throttled to once per 30s by {@code detectIfStale}); a detection that runs
+     * announces itself and the Browse panel redraws its CLI status from that. Also a best-effort workflow-profile refresh. Shared by the
      * tool-window-shown and IDE-focus-regained triggers so the two paths cannot drift.
      */
     private static void refreshCliStatus(Project project, ToolWindow tw) {
         ApplicationManager.getApplication().executeOnPooledThread(() -> {
             CliDetectionService detection = project.getService(CliDetectionService.class);
-            if (detection != null && detection.detectIfStale()) {
-                ApplicationManager.getApplication().invokeLater(() -> {
-                    if (project.isDisposed()) return;
-                    Content browseContent = tw.getContentManager().findContent("Browse");
-                    if (browseContent != null) {
-                        Component component = browseContent.getComponent();
-                        if (component instanceof OpenSpecToolWindowPanel panel) {
-                            panel.updateCliStatus();
-                        }
-                    }
-                });
+            if (detection != null) {
+                // A detection that runs announces itself on CliDetectionService.TOPIC; the Browse panel redraws its
+                // CLI status from that, so nothing to repaint here.
+                detection.detectIfStale();
             }
             WorkflowProfileService profileService = project.getService(WorkflowProfileService.class);
             if (profileService != null) {
