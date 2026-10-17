@@ -1,5 +1,7 @@
 # Direct API — workflow & example
 
+> **Maintenance: Reference** — updated when the Direct API delivery workflow changes.
+
 **Direct API** is one of the plugin's three artifact **delivery methods**. Instead of copying a prompt for you to paste into an external AI tool, the plugin calls your AI provider **directly** with your own API key and writes the generated artifact straight back into the change — a one-click, end-to-end generation flow.
 
 | Delivery method | What happens | Needs a key? |
