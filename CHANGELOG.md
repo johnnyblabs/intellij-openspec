@@ -18,6 +18,9 @@
 - **Fork and New open the schema they create.** After forking or creating a schema, its `schema.yaml` opens in the editor. Before, nothing opened.
 - **Schema buttons say when they need a selection.** Fork, Validate and Open Templates are greyed out until you select a schema in the list, instead of silently doing nothing, and Refresh clears any old validation result.
 - **New Schema applies the description and artifacts you choose.** Previously only the name was used, so every new schema got all four artifacts and no description of your own.
+- **Bulk Archive shows each change's status while it's open.** The status column used to stay on "loading..." until the dialog closed. It now fills in as soon as each change's status is known.
+- **Bulk Archive holds back changes whose spec updates can't be applied cleanly.** Before writing anything, it checks every selected change. A change whose delta specs refer to a requirement the main spec doesn't have (or a rename that can't be paired) is now shown as **Blocked** with the reason and left untouched, instead of being archived with part of its spec update silently dropped. The other changes are archived as before.
+- **The Bulk Archive dialog can always be closed when archiving ends.** If archiving stopped on an unexpected error, the dialog could be left with every button disabled.
 
 ## v0.13.0
 
