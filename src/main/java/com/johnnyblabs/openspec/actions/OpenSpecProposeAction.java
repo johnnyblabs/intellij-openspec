@@ -25,7 +25,9 @@ import java.awt.*;
  * minimal. Built-in scaffolding produces a complete, predictable structure every
  * time.</p>
  */
-public class OpenSpecProposeAction extends OpenSpecBaseAction {
+// DumbAware: Propose reads no indexes, and in-panel links launch it through ActionLauncher, whose update session
+// would otherwise silently skip it while the IDE is indexing.
+public class OpenSpecProposeAction extends OpenSpecBaseAction implements com.intellij.openapi.project.DumbAware {
 
     @Override
     protected String getWorkflowId() { return "propose"; }

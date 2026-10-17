@@ -380,8 +380,9 @@ intellijPlatform {
         // shorten: dropping INTERNAL_API_USAGES / OVERRIDE_ONLY_API_USAGES would silently regress
         // coverage; pinning also protects us if a future IPGP weakens its default). DEPRECATED_API_USAGES
         // is deliberately EXCLUDED — we knowingly retain a few plain-@Deprecated usages whose replacement
-        // doesn't exist at the 242 floor (ActionUtil.invokeAction→performAction needs 252;
-        // ReadAction.compute→computeBlocking; the Reworked Terminal API), tracked for the floor bump.
+        // doesn't exist at the 242 floor (ReadAction.compute→computeBlocking; the Reworked Terminal API),
+        // tracked for the floor bump. (The former ActionUtil.invokeAction usages are migrated to
+        // ActionManager.tryToExecute via ActionLauncher, which is non-deprecated across 242–252.)
         // NOTE: scheduled-for-removal usage is NOT (and cannot be) gated here — IPGP 2.18.1 folds
         // forRemoval usages into the verifier's "Deprecated API usages" report section and names them
         // "scheduled for removal" only on the verdict line its problem-collector skips, so
@@ -402,8 +403,7 @@ intellijPlatform {
 // IPGP problem-collector skips). So we enforce it directly off the verifier's own PLAIN report files,
 // keyed on wording the verifier emits ONLY for forRemoval usages: "... will be removed in ..." per usage
 // (in deprecated-usages.txt) and "N usages of scheduled for removal API" on the verdict
-// (verification-verdict.txt). Plain-@Deprecated usages (our deferred ActionUtil.invokeAction calls) emit
-// neither, so they stay green. The .html reports are skipped so a static legend can never false-trip it.
+// (verification-verdict.txt). Plain-@Deprecated usages emit neither, so they stay green. The .html reports are skipped so a static legend can never false-trip it.
 // A call to a platform API the vendor will delete becomes a NoSuchMethodError-class break on a future
 // IDE (untilBuild is open-ended), so this fails the verify gate now rather than surfacing as a
 // Marketplace warning or a user crash.

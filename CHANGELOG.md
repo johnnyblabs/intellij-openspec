@@ -10,6 +10,7 @@
 
 ### Fixed
 
+- **Propose and the delta-spec diff links now also work while the IDE is indexing.** The "Propose a Change" button and links in the tool window, the workflow panel and the Setup Wizard, and the diff links in the deltas preview, now launch their action through the IDE's standard action pipeline. They keep working during indexing instead of showing a "not available while indexing" message.
 - **Renames written with `*` or `+` bullets are no longer reported as errors.** OpenSpec CLI 1.13 accepts any list bullet in `## RENAMED Requirements`, but the built-in validator and the delta spec inspection only accepted `-`, so a valid rename was flagged in the editor and failed validation when the CLI wasn't installed.
 - **Spec sync now applies every removal and rename the CLI applies.** Bullet-form removals (``* `### Requirement: Name` ``) were silently skipped. Renames written in the CLI's own format (``FROM: `### Requirement: Old` ``) never found their target.
 - **Task progress now matches the CLI's counts.** Tasks written with `*`, `+` or numbered markers (`1.`, `1)`), or with boxes like `[]` or `[ x ]`, were not counted. The tree's `X/Y`, the workflow panel, Apply and Verify could show a change as finished while the CLI still listed open tasks, and Verify could allow archiving with work left.
