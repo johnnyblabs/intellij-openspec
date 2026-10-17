@@ -524,7 +524,7 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
         DefaultActionGroup contextMenu = new DefaultActionGroup();
 
         switch (data.type()) {
-            case CHANGE, CHANGE_DONE -> {
+            case CHANGE, CHANGE_DONE, CHANGE_ARCHIVE_READY -> {
                 contextMenu.add(ActionManager.getInstance().getAction("OpenSpec.Apply"));
                 contextMenu.add(ActionManager.getInstance().getAction("OpenSpec.Archive"));
                 if (data.filePath() != null) {

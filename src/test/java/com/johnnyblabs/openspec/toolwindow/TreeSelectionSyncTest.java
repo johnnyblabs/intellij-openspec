@@ -41,6 +41,23 @@ class TreeSelectionSyncTest {
     }
 
     @Test
+    void resolveChangeName_fromArchiveReadyChangeAndItsChild() {
+        DefaultMutableTreeNode root = new DefaultMutableTreeNode("OpenSpec");
+        DefaultMutableTreeNode changesNode = new DefaultMutableTreeNode(
+                new SpecTreeModel.TreeNodeData("Changes", SpecTreeModel.TreeNodeType.CHANGES, null, null, null, null));
+        DefaultMutableTreeNode changeNode = new DefaultMutableTreeNode(new SpecTreeModel.TreeNodeData(
+                "ship-it", SpecTreeModel.TreeNodeType.CHANGE_ARCHIVE_READY, "/path", "ship-it", null, null));
+        DefaultMutableTreeNode child = new DefaultMutableTreeNode(new SpecTreeModel.TreeNodeData(
+                "tasks", SpecTreeModel.TreeNodeType.ARTIFACT_DONE, "/path/tasks.md", null, "tasks", null));
+        root.add(changesNode);
+        changesNode.add(changeNode);
+        changeNode.add(child);
+
+        assertEquals("ship-it", SpecTreeModel.resolveChangeName(new TreePath(new Object[]{root, changesNode, changeNode})));
+        assertEquals("ship-it", SpecTreeModel.resolveChangeName(new TreePath(new Object[]{root, changesNode, changeNode, child})));
+    }
+
+    @Test
     void resolveChangeName_fromChangesGroupNode_returnsNull() {
         // Selecting the "Changes" group header (not a specific change) resolves to null.
         DefaultMutableTreeNode root = new DefaultMutableTreeNode("OpenSpec");

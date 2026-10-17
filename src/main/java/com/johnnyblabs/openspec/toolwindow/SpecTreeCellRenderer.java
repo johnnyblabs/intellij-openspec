@@ -38,6 +38,9 @@ public class SpecTreeCellRenderer extends ColoredTreeCellRenderer {
     static final Icon ARTIFACT_BLOCKED_ICON = badged(ARTIFACT_ICON, AllIcons.Nodes.ErrorMark);
     static final Icon MISSING_ARTIFACT_BADGED_ICON = badged(MISSING_ARTIFACT_ICON, AllIcons.Nodes.WarningMark);
     static final Icon CHANGE_DONE_ICON = badged(CHANGE_ICON, AllIcons.RunConfigurations.TestState.Green2);
+    // Archive-ready (artifacts complete AND all tasks done) replaces the apply-ready dot with a check — a
+    // different shape, so the stages stay distinguishable without color; it echoes the Archive check icon.
+    static final Icon CHANGE_ARCHIVE_READY_ICON = badged(CHANGE_ICON, AllIcons.General.GreenCheckmark);
 
     private static LayeredIcon badged(Icon base, Icon badge) {
         LayeredIcon layered = new LayeredIcon(2);
@@ -57,6 +60,11 @@ public class SpecTreeCellRenderer extends ColoredTreeCellRenderer {
     private static final SimpleTextAttributes READY_ATTR = new SimpleTextAttributes(SimpleTextAttributes.STYLE_BOLD, READY_COLOR);
     private static final SimpleTextAttributes BLOCKED_ATTR = new SimpleTextAttributes(SimpleTextAttributes.STYLE_ITALIC, BLOCKED_COLOR);
     private static final SimpleTextAttributes MISSING_ATTR = new SimpleTextAttributes(SimpleTextAttributes.STYLE_ITALIC, MISSING_COLOR);
+    /** The archive-ready text cue. The words carry the meaning; the theme's success color only reinforces it. */
+    static final SimpleTextAttributes ALL_TASKS_DONE_ATTR = new SimpleTextAttributes(SimpleTextAttributes.STYLE_PLAIN,
+            JBColor.namedColor("Label.successForeground", DONE_COLOR));
+    /** Says "all tasks done", never "ready to archive": Verify owns that phrase, and it also requires validation. */
+    static final String ALL_TASKS_DONE_TEXT = " · all tasks done";
 
     @Override
     public void customizeCellRenderer(JTree tree, Object value, boolean selected, boolean expanded,
@@ -69,7 +77,7 @@ public class SpecTreeCellRenderer extends ColoredTreeCellRenderer {
             setToolTipText(data.tooltip());
 
             switch (data.type()) {
-                case CHANGE, CHANGE_DONE -> appendChangeFragments(data);
+                case CHANGE, CHANGE_DONE, CHANGE_ARCHIVE_READY -> appendChangeFragments(data);
                 case MISSING_ARTIFACT -> append(data.label(), MISSING_ATTR);
                 case ARTIFACT_DONE -> append(data.label(), DONE_ATTR);
                 case ARTIFACT_READY -> append(data.label(), READY_ATTR);
@@ -101,7 +109,7 @@ public class SpecTreeCellRenderer extends ColoredTreeCellRenderer {
             append(data.label(), SimpleTextAttributes.REGULAR_ATTRIBUTES);
             return;
         }
-        for (LabelFragment fragment : changeFragments(parts)) {
+        for (LabelFragment fragment : changeFragments(parts, data.type())) {
             append(fragment.text(), fragment.attributes());
         }
     }
@@ -114,14 +122,19 @@ public class SpecTreeCellRenderer extends ColoredTreeCellRenderer {
      * unit-testable without a running IDE: the name is always {@code REGULAR_ATTRIBUTES} (primary), and
      * the {@code X/Y} count is always {@code GRAYED_ATTRIBUTES} — including at {@code N/N}, so a complete
      * task count is never greened (that "done" story belongs to the icon badge, on the artifact-DAG signal).
+     * An archive-ready node adds a separate {@link #ALL_TASKS_DONE_TEXT} fragment after the still-dimmed count.
      */
-    static java.util.List<LabelFragment> changeFragments(SpecTreeModel.TreeNodeData.ChangeLabelParts parts) {
+    static java.util.List<LabelFragment> changeFragments(SpecTreeModel.TreeNodeData.ChangeLabelParts parts,
+                                                         SpecTreeModel.TreeNodeType type) {
         java.util.List<LabelFragment> fragments = new java.util.ArrayList<>();
         fragments.add(new LabelFragment(parts.name(), SimpleTextAttributes.REGULAR_ATTRIBUTES));
 
         int[] counts = parts.taskCounts();
         if (counts != null && counts.length == 2 && counts[1] > 0) {
             fragments.add(new LabelFragment(" " + counts[0] + "/" + counts[1], SimpleTextAttributes.GRAYED_ATTRIBUTES));
+        }
+        if (type == SpecTreeModel.TreeNodeType.CHANGE_ARCHIVE_READY) {
+            fragments.add(new LabelFragment(ALL_TASKS_DONE_TEXT, ALL_TASKS_DONE_ATTR));
         }
         return fragments;
     }
@@ -140,6 +153,7 @@ public class SpecTreeCellRenderer extends ColoredTreeCellRenderer {
         return switch (type) {
             case CHANGES, CHANGE -> CHANGE_ICON;
             case CHANGE_DONE -> CHANGE_DONE_ICON;
+            case CHANGE_ARCHIVE_READY -> CHANGE_ARCHIVE_READY_ICON;
             case ARTIFACT -> ARTIFACT_ICON;
             case ARTIFACT_DONE -> ARTIFACT_DONE_ICON;
             case ARTIFACT_READY -> ARTIFACT_READY_ICON;

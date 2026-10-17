@@ -72,7 +72,7 @@ public class SpecTreeModel {
             int[] taskCounts = readTaskCounts(change);
 
             String label = buildChangeLabel(change.getName(), taskCounts);
-            TreeNodeType changeType = changeNodeType(dag);
+            TreeNodeType changeType = changeNodeType(dag, taskCounts);
             String changeTooltip = buildChangeTooltip(change, dag, taskCounts);
 
             DefaultMutableTreeNode changeNode = new DefaultMutableTreeNode(
@@ -128,22 +128,77 @@ public class SpecTreeModel {
     }
 
     /**
-     * Routes a change node to {@link TreeNodeType#CHANGE_DONE} (apply-ready done badge)
-     * when the CLI reports every artifact complete, else plain {@link TreeNodeType#CHANGE}.
+     * Routes a change node to its rollup state, from two client-owned signals:
+     * <ul>
+     *   <li>{@link TreeNodeType#CHANGE_ARCHIVE_READY} — the CLI reports every artifact complete AND every task
+     *       is done ({@code completed == total}, {@code total > 0}; counts use the client's task-line grammar).
+     *       The same condition under which {@code openspec archive} raises no open-tasks warning — a suggestion,
+     *       never a guarantee (archive can still be refused, e.g. by validation).</li>
+     *   <li>{@link TreeNodeType#CHANGE_DONE} — every artifact complete (apply-ready), tasks open or uncounted.</li>
+     *   <li>{@link TreeNodeType#CHANGE} — otherwise, including when the CLI is unavailable ({@code dag == null}):
+     *       the artifact half is never guessed.</li>
+     * </ul>
      */
-    static TreeNodeType changeNodeType(ChangeArtifactDag dag) {
-        return (dag != null && dag.isComplete()) ? TreeNodeType.CHANGE_DONE : TreeNodeType.CHANGE;
+    static TreeNodeType changeNodeType(ChangeArtifactDag dag, int[] taskCounts) {
+        if (dag == null || !dag.isComplete()) {
+            return TreeNodeType.CHANGE;
+        }
+        return allTasksDone(taskCounts) ? TreeNodeType.CHANGE_ARCHIVE_READY : TreeNodeType.CHANGE_DONE;
+    }
+
+    private static boolean allTasksDone(int[] taskCounts) {
+        return taskCounts != null && taskCounts.length == 2 && taskCounts[1] > 0 && taskCounts[0] == taskCounts[1];
     }
 
     private String buildChangeTooltip(Change change, ChangeArtifactDag dag, int[] taskCounts) {
-        List<String> parts = new ArrayList<>();
-        if (dag != null && dag.isComplete()) {
-            parts.add("Apply-ready — all artifacts complete");
+        return changeTooltip(changeNodeType(dag, taskCounts), taskCounts,
+                displayPath(project.getBasePath(), change.getPath()));
+    }
+
+    /**
+     * The change path as shown in its tooltip: relative to the project root when the change lives under it
+     * ({@code openspec/changes/<name>}), otherwise the absolute path unchanged (e.g. a change in a store outside
+     * the project, or no project root).
+     */
+    static String displayPath(String projectBase, String changePath) {
+        if (projectBase == null || changePath == null) {
+            return changePath;
+        }
+        try {
+            Path base = Path.of(projectBase).normalize();
+            Path change = Path.of(changePath).normalize();
+            if (change.startsWith(base) && !change.equals(base)) {
+                return base.relativize(change).toString().replace('\\', '/');
+            }
+        } catch (java.nio.file.InvalidPathException ignored) {
+            // fall through to the absolute path
+        }
+        return changePath;
+    }
+
+    /**
+     * The change node's tooltip, one fact per line: the status first in bold (as every badged node names its
+     * status), then the task count, then — for archive-ready — a hint deferring to Verify (which also checks
+     * validation), and the path last in small text. A change with no status or count shows just its path.
+     */
+    static String changeTooltip(TreeNodeType type, int[] taskCounts, String path) {
+        List<String> lines = new ArrayList<>();
+        if (type == TreeNodeType.CHANGE_ARCHIVE_READY) {
+            lines.add("<b>All tasks done</b> — ready to archive (suggestion)");
+        } else if (type == TreeNodeType.CHANGE_DONE) {
+            lines.add("<b>Apply-ready</b> — all artifacts complete");
         }
         if (taskCounts != null && taskCounts.length == 2 && taskCounts[1] > 0) {
-            parts.add(taskCounts[0] + "/" + taskCounts[1] + " tasks");
+            lines.add(taskCounts[0] + "/" + taskCounts[1] + " tasks");
         }
-        return parts.isEmpty() ? change.getPath() : String.join(" — ", parts) + " — " + change.getPath();
+        if (lines.isEmpty()) {
+            return path;
+        }
+        if (type == TreeNodeType.CHANGE_ARCHIVE_READY) {
+            lines.add("<i>Run Verify to confirm — archiving may still be blocked by validation.</i>");
+        }
+        lines.add("<small>" + com.intellij.openapi.util.text.StringUtil.escapeXmlEntities(path) + "</small>");
+        return "<html>" + String.join("<br>", lines) + "</html>";
     }
 
     /**
@@ -255,7 +310,7 @@ public class SpecTreeModel {
             if (node instanceof DefaultMutableTreeNode treeNode) {
                 Object userObject = treeNode.getUserObject();
                 if (userObject instanceof TreeNodeData data
-                        && (data.type() == TreeNodeType.CHANGE || data.type() == TreeNodeType.CHANGE_DONE)
+                        && data.type().isChange()
                         && data.changeName() != null) {
                     return data.changeName();
                 }
@@ -265,9 +320,14 @@ public class SpecTreeModel {
     }
 
     public enum TreeNodeType {
-        CHANGES, CHANGE, CHANGE_DONE, ARTIFACT, MISSING_ARTIFACT,
+        CHANGES, CHANGE, CHANGE_DONE, CHANGE_ARCHIVE_READY, ARTIFACT, MISSING_ARTIFACT,
         ARTIFACT_DONE, ARTIFACT_READY, ARTIFACT_BLOCKED,
-        DELTA_SPEC, HINT
+        DELTA_SPEC, HINT;
+
+        /** A change node in any rollup state (plain, apply-ready, archive-ready). */
+        public boolean isChange() {
+            return this == CHANGE || this == CHANGE_DONE || this == CHANGE_ARCHIVE_READY;
+        }
     }
 
     public record TreeNodeData(String label, TreeNodeType type, String filePath, String changeName, String artifactId,
