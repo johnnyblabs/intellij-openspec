@@ -12,7 +12,6 @@ import com.johnnyblabs.openspec.services.CliDetectionService;
 import com.johnnyblabs.openspec.settings.OpenSpecSettings;
 import com.johnnyblabs.openspec.util.CliRunner;
 import com.johnnyblabs.openspec.util.OpenSpecFileUtil;
-import com.johnnyblabs.openspec.version.VersionSupport;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -48,20 +47,13 @@ public final class ScaffoldingService {
                     TemplateProvider.openspecYamlTemplate(
                             OpenSpecSettings.getInstance(project).getEffectiveSchema(project)));
 
-            // proposal.md (always required)
+            // proposal.md, from what the user entered in the Propose dialog
             writeFile(changeDir, "proposal.md",
                     TemplateProvider.proposalTemplate(changeName, why, whatChanges));
 
-            // Version-aware artifacts
-            VersionSupport version = getVersionSupport();
-            if (version.getRequiredArtifacts().contains("design")) {
-                writeFile(changeDir, "design.md",
-                        TemplateProvider.designTemplate(changeName));
-            }
-            if (version.getRequiredArtifacts().contains("tasks")) {
-                writeFile(changeDir, "tasks.md",
-                        TemplateProvider.tasksTemplate(changeName));
-            }
+            // No design.md or tasks.md: `openspec new change` doesn't create them, and a template file would read as
+            // done to `openspec status` (which decides done-ness by the file existing). They are generated or written
+            // next; until then the CLI reports them ready or blocked.
 
             // specs directory for delta specs
             changeDir.createChildDirectory(this, "specs");
@@ -149,11 +141,6 @@ public final class ScaffoldingService {
 
             return openspecDir;
         });
-    }
-
-    private VersionSupport getVersionSupport() {
-        String version = OpenSpecSettings.getInstance(project).getEffectiveVersion(project);
-        return VersionSupport.fromString(version);
     }
 
     private VirtualFile writeFile(VirtualFile dir, String name, String content) throws IOException {

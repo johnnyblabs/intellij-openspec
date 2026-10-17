@@ -57,6 +57,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Set;
 import java.util.Map;
 
 /**
@@ -439,7 +440,7 @@ public class WorkflowActionPanel extends JPanel {
 
             if (active.isEmpty()) {
                 updateChangeSelector(names);
-                updatePipelineAndButton(null, null);
+                updatePipelineAndButton(null, null, Set.of());
                 return;
             }
 
@@ -787,7 +788,9 @@ public class WorkflowActionPanel extends JPanel {
         // desync the rendered pipeline from the mode label.
         WorkflowSchemaContextService contextService = project.getService(WorkflowSchemaContextService.class);
         WorkflowSchemaContext ctx = contextService != null ? contextService.getContext(changeName) : null;
-        updatePipelineAndButton(dag, ctx);
+        // Done files that still look like templates: a hint on their chips only (the CLI's status stands).
+        Set<String> hints = orchestration.templateLookingArtifacts(changeName, dag);
+        updatePipelineAndButton(dag, ctx, hints);
     }
 
     /**
@@ -806,8 +809,9 @@ public class WorkflowActionPanel extends JPanel {
         }
     }
 
-    private void updatePipelineAndButton(ChangeArtifactDag dag, WorkflowSchemaContext ctx) {
+    private void updatePipelineAndButton(ChangeArtifactDag dag, WorkflowSchemaContext ctx, Set<String> hints) {
         ApplicationManager.getApplication().invokeLater(() -> {
+            templateHintIds = hints;
             pipelinePanel.removeAll();
 
             // Mid-session API-config transition: populateToolSelector() runs only in the constructor,
@@ -917,7 +921,34 @@ public class WorkflowActionPanel extends JPanel {
         });
     }
 
+    /**
+     * Ids of done artifacts whose file still looks like an unfilled template, for the current change. Read by every
+     * chip render (including the re-render while an artifact generates), so the hint can't drop out mid-run.
+     */
+    private Set<String> templateHintIds = Set.of();
+
+    static final String TEMPLATE_HINT_SUFFIX = " \u00B7 template";
+
+    /** The chip's label: the artifact id, marked when a done file still looks like a template. */
+    static String chipName(ArtifactInfo artifact, boolean templateLooking) {
+        return artifact.status() == ArtifactStatus.DONE && templateLooking ? artifact.id() + TEMPLATE_HINT_SUFFIX : artifact.id();
+    }
+
+    /** The DONE chip's tooltip; a template-looking file says so and points at Regenerate. */
+    static String doneChipTooltip(boolean templateLooking) {
+        return templateLooking
+                ? "<html>Click to open \u00B7 Right-click for options<br>"
+                        + "Looks like an unfilled template \u00B7 Right-click \u2192 Regenerate to replace it</html>"
+                : "Click to open \u00B7 Right-click for options";
+    }
+
+    @org.jetbrains.annotations.TestOnly
+    Set<String> templateHintIdsForTest() {
+        return templateHintIds;
+    }
+
     private JPanel createPipelineChip(ArtifactInfo artifact) {
+        boolean templateLooking = artifact.status() == ArtifactStatus.DONE && templateHintIds.contains(artifact.id());
         JPanel chip = new JPanel(new FlowLayout(FlowLayout.LEFT, 2, 1));
         chip.setOpaque(true);
 
@@ -968,8 +999,9 @@ public class WorkflowActionPanel extends JPanel {
             iconLabel.setFont(iconLabel.getFont().deriveFont(12f));
         }
 
-        JBLabel nameLabel = new JBLabel(artifact.id());
-        nameLabel.setForeground(color);
+        JBLabel nameLabel = new JBLabel(chipName(artifact, templateLooking));
+        // A template-looking done file keeps its check mark (the CLI says done) but reads as secondary text.
+        nameLabel.setForeground(templateLooking ? JBUI.CurrentTheme.ContextHelp.FOREGROUND : color);
         nameLabel.setFont(nameLabel.getFont().deriveFont(Font.PLAIN, 12f));
 
         chip.add(iconLabel);
@@ -978,7 +1010,7 @@ public class WorkflowActionPanel extends JPanel {
         // State-aware tooltips
         switch (artifact.status()) {
             case READY -> chip.setToolTipText("Click to generate \u00B7 Right-click for options");
-            case DONE -> chip.setToolTipText("Click to open \u00B7 Right-click for options");
+            case DONE -> chip.setToolTipText(doneChipTooltip(templateLooking));
             case GENERATING -> chip.setToolTipText("Generating...");
             case BLOCKED -> {
                 String desc = ARTIFACT_DESCRIPTIONS.getOrDefault(artifact.id(), artifact.id());
@@ -988,6 +1020,11 @@ public class WorkflowActionPanel extends JPanel {
                 chip.setToolTipText(deps);
             }
             default -> chip.setToolTipText(ARTIFACT_DESCRIPTIONS.getOrDefault(artifact.id(), artifact.id()));
+        }
+
+        if (templateLooking) {
+            chip.getAccessibleContext().setAccessibleDescription(
+                    "Looks like an unfilled template. Right-click, then Regenerate, to replace it.");
         }
 
         // Cursors

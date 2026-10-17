@@ -110,6 +110,14 @@ class ScaffoldingDetectionServiceTest {
         assertFalse(service.isScaffoldingContent(content));
     }
 
+    /** The sandbox's real-but-tiny files, which the old 20-character rule mislabelled as templates. */
+    @Test
+    void veryShortRealContent_isNotScaffolding() {
+        assertFalse(service.isScaffoldingContent("## Decisions\n\nUse a set.\n"));
+        assertFalse(service.isScaffoldingContent("## 1. Work\n\n- [x] 1.1 Add tags\n"));
+        assertFalse(service.isScaffoldingContent("# Design\n\nOK\n"));
+    }
+
     @Test
     void headingsOnly_isScaffolding() {
         String content = """

@@ -59,42 +59,19 @@ class TemplateProviderTest {
 
     // --- Design template ---
 
+    /**
+     * The plugin no longer writes design or tasks templates (Propose creates what {@code openspec new change} does,
+     * plus the proposal), but changes made by older versions still hold them. Their frozen copies in the fixture must
+     * still be recognised, so the chips can hint that they look like unfilled templates.
+     */
     @Test
-    void designTemplate_hasMarkdownTitle() {
-        String result = TemplateProvider.designTemplate("my-feature");
-        assertTrue(result.contains("# Design: my-feature"));
+    void oldDesignAndTasksTemplatesAreStillRecognisedAsTemplates() throws Exception {
+        java.nio.file.Path change = java.nio.file.Paths.get("src/test/resources/fixtures/cli/1.14.3/status-template-artifacts/change");
+        com.johnnyblabs.openspec.services.ScaffoldingDetectionService detector =
+                new com.johnnyblabs.openspec.services.ScaffoldingDetectionService(null);
+        assertTrue(detector.isScaffoldingContent(java.nio.file.Files.readString(change.resolve("design.md"))));
+        assertTrue(detector.isScaffoldingContent(java.nio.file.Files.readString(change.resolve("tasks.md"))));
     }
-
-    @Test
-    void designTemplate_hasSections() {
-        String result = TemplateProvider.designTemplate("my-feature");
-        assertTrue(result.contains("## Approach"));
-        assertTrue(result.contains("## Components Affected"));
-        assertTrue(result.contains("## Trade-offs"));
-    }
-
-    // --- Tasks template ---
-
-    @Test
-    void tasksTemplate_hasMarkdownTitle() {
-        String result = TemplateProvider.tasksTemplate("my-feature");
-        assertTrue(result.contains("# Tasks: my-feature"));
-    }
-
-    @Test
-    void tasksTemplate_hasImplementationAndTestingSections() {
-        String result = TemplateProvider.tasksTemplate("my-feature");
-        assertTrue(result.contains("## Implementation Tasks"));
-        assertTrue(result.contains("## Testing Tasks"));
-    }
-
-    @Test
-    void tasksTemplate_hasCheckboxItems() {
-        String result = TemplateProvider.tasksTemplate("my-feature");
-        assertTrue(result.contains("- [ ] "), "Tasks must have checkbox items");
-    }
-
-    // --- Delta spec template ---
 
     @Test
     void deltaSpecTemplate_hasMarkdownTitle() {

@@ -585,4 +585,34 @@ class WorkflowActionPanelTest {
                     "setActiveChange must NOT call refreshForChangeOnPool() directly — it blocks the EDT");
         }
     }
+
+    @org.junit.jupiter.api.Nested
+    class TemplateHintChip {
+
+        private com.johnnyblabs.openspec.model.ArtifactInfo artifact(com.johnnyblabs.openspec.model.ArtifactStatus status) {
+            return new com.johnnyblabs.openspec.model.ArtifactInfo("design", "design.md", status, java.util.List.of());
+        }
+
+        @org.junit.jupiter.api.Test
+        void aTemplateLookingDoneFileIsMarkedAndPointsAtRegenerate() {
+            assertEquals("design \u00B7 template",
+                    WorkflowActionPanel.chipName(artifact(com.johnnyblabs.openspec.model.ArtifactStatus.DONE), true));
+            String tip = WorkflowActionPanel.doneChipTooltip(true);
+            assertTrue(tip.contains("Click to open \u00B7 Right-click for options"), tip);
+            assertTrue(tip.contains("Looks like an unfilled template"), tip);
+            assertTrue(tip.contains("Regenerate"), tip);
+        }
+
+        @org.junit.jupiter.api.Test
+        void anOrdinaryDoneFileKeepsTodaysLabelAndTooltip() {
+            assertEquals("design", WorkflowActionPanel.chipName(artifact(com.johnnyblabs.openspec.model.ArtifactStatus.DONE), false));
+            assertEquals("Click to open \u00B7 Right-click for options", WorkflowActionPanel.doneChipTooltip(false));
+        }
+
+        @org.junit.jupiter.api.Test
+        void theHintOnlyEverAppliesToDoneArtifacts() {
+            assertEquals("design", WorkflowActionPanel.chipName(artifact(com.johnnyblabs.openspec.model.ArtifactStatus.READY), true));
+            assertEquals("design", WorkflowActionPanel.chipName(artifact(com.johnnyblabs.openspec.model.ArtifactStatus.BLOCKED), true));
+        }
+    }
 }
