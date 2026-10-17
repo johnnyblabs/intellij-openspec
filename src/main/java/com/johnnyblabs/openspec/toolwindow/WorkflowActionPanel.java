@@ -2,7 +2,6 @@ package com.johnnyblabs.openspec.toolwindow;
 
 import com.intellij.openapi.actionSystem.ActionManager;
 import com.intellij.openapi.actionSystem.AnAction;
-import com.intellij.openapi.actionSystem.DataContext;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.project.Project;
@@ -1397,8 +1396,7 @@ public class WorkflowActionPanel extends JPanel {
         proposeLink.addHyperlinkListener(ev -> {
             AnAction action = ActionManager.getInstance().getAction("OpenSpec.Propose");
             if (action != null) {
-                DataContext ctx = dataId -> com.intellij.openapi.actionSystem.CommonDataKeys.PROJECT.is(dataId) ? project : null;
-                com.intellij.openapi.actionSystem.ex.ActionUtil.invokeAction(action, ctx, "WorkflowPanel", null, null);
+                com.johnnyblabs.openspec.actions.ActionLauncher.launch(action, proposeLink, "WorkflowPanel");
             }
         });
         card.add(proposeLink);

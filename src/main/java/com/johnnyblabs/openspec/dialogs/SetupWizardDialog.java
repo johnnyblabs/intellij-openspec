@@ -575,11 +575,11 @@ public class SetupWizardDialog extends DialogWrapper {
                 SwingUtilities.invokeLater(() -> {
                     com.intellij.openapi.actionSystem.AnAction proposeAction =
                             com.intellij.openapi.actionSystem.ActionManager.getInstance().getAction("OpenSpec.Propose");
-                    if (proposeAction != null) {
-                        com.intellij.openapi.actionSystem.DataContext context =
-                                dataId -> com.intellij.openapi.actionSystem.CommonDataKeys.PROJECT.is(dataId) ? project : null;
-                        com.intellij.openapi.actionSystem.ex.ActionUtil.invokeAction(
-                                proposeAction, context, "SetupWizard", null, null);
+                    // The dialog is disposed by now: take the data context from this project's frame. Never
+                    // null — that falls back to whichever window has focus, which may be another project.
+                    java.awt.Component frame = com.intellij.openapi.wm.WindowManager.getInstance().getFrame(project);
+                    if (proposeAction != null && frame != null) {
+                        com.johnnyblabs.openspec.actions.ActionLauncher.launch(proposeAction, frame, "SetupWizard");
                     }
                 });
             }

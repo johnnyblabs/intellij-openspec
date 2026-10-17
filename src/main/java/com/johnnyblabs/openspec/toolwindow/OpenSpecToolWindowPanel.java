@@ -171,9 +171,8 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
             String changeDir = deltasChangeDir;
             if (changeDir == null) return;
             String deltaSpecPath = changeDir + "/specs/" + capability + "/spec.md";
-            DeltaSpecDiffAction action = new DeltaSpecDiffAction(deltaSpecPath);
-            DataContext context = dataId -> CommonDataKeys.PROJECT.is(dataId) ? project : null;
-            com.intellij.openapi.actionSystem.ex.ActionUtil.invokeAction(action, context, "OpenSpecPreview", null, null);
+            com.johnnyblabs.openspec.actions.ActionLauncher.launch(
+                    new DeltaSpecDiffAction(deltaSpecPath), previewPane, "OpenSpecPreview");
         });
 
         showPreviewEmptyState();
@@ -492,8 +491,7 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
                 // "No active changes" — trigger Propose action
                 AnAction action = ActionManager.getInstance().getAction("OpenSpec.Propose");
                 if (action != null) {
-                    DataContext context = dataId -> CommonDataKeys.PROJECT.is(dataId) ? project : null;
-                    com.intellij.openapi.actionSystem.ex.ActionUtil.invokeAction(action, context, "SpecTree", null, null);
+                    com.johnnyblabs.openspec.actions.ActionLauncher.launch(action, tree, "SpecTree");
                 }
             }
         } else if ("OpenSpec".equals(parent.getUserObject())) {

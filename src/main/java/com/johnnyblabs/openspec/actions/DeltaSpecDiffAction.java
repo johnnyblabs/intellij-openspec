@@ -16,7 +16,8 @@ import org.jetbrains.annotations.NotNull;
  * Opens IntelliJ's diff viewer showing a delta spec (right) against its
  * corresponding main spec (left).
  */
-public final class DeltaSpecDiffAction extends AnAction {
+// DumbAware: the diff reads files, not indexes, so the deltas-preview link keeps working while the IDE is indexing.
+public final class DeltaSpecDiffAction extends AnAction implements com.intellij.openapi.project.DumbAware {
 
     private final String deltaSpecPath;
 
