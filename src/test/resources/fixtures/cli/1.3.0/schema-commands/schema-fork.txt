@@ -1,0 +1,6 @@
+
+Source: /cli-install/schemas/spec-driven (package)
+Destination: /fixture/openspec/schemas/my-fork
+
+You can now customize the schema at:
+  /fixture/openspec/schemas/my-fork/schema.yaml

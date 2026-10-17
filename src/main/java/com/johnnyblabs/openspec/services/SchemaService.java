@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.intellij.openapi.components.Service;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
@@ -14,7 +15,10 @@ import com.johnnyblabs.openspec.util.CliJson;
 import com.johnnyblabs.openspec.util.CliRunner;
 import com.johnnyblabs.openspec.util.CliVersion;
 import com.johnnyblabs.openspec.version.VersionSupport;
+import org.jetbrains.annotations.TestOnly;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -67,19 +71,20 @@ public final class SchemaService {
     }
 
     /**
-     * Forks an existing schema by calling {@code openspec schema fork <source> <name>}.
+     * Forks an existing schema by calling {@code openspec schema fork <source> <name> --json}.
      *
-     * @return the path to the forked schema file, or null on failure
+     * @return the new schema's {@code schema.yaml} (or its directory when that file is absent), read from the
+     *         CLI's reported {@code destinationPath}; {@code null} on failure or when the output carries no path
      */
     public String forkSchema(String source, String name) {
         try {
-            CliRunner.CliResult result = CliRunner.run(project, "schema", "fork", source, name);
+            CliRunner.CliResult result = CliRunner.run(project, forkArgs(source, name).toArray(new String[0]));
             if (!result.isSuccess()) {
                 LOG.warn("openspec schema fork failed: " + result.stderr());
                 return null;
             }
             clearCache();
-            return result.stdout().trim();
+            return schemaFileIn(schemaDirFromJson(result.stdout(), "destinationPath"));
         } catch (CliRunner.CliException e) {
             LOG.warn("Failed to fork schema", e);
             return null;
@@ -87,23 +92,81 @@ public final class SchemaService {
     }
 
     /**
-     * Creates a new schema by calling {@code openspec schema init <name>}.
+     * Creates a new schema by calling {@code openspec schema init <name> --json --no-default}, with the
+     * description and artifact selection the user chose.
      *
-     * @return the path to the new schema file, or null on failure
+     * @return the new schema's {@code schema.yaml} (or its directory when that file is absent), read from the
+     *         CLI's reported {@code path}; {@code null} on failure or when the output carries no path
      */
-    public String initSchema(String name) {
+    public String initSchema(String name, String description, List<String> artifacts) {
         try {
-            CliRunner.CliResult result = CliRunner.run(project, "schema", "init", name);
+            CliRunner.CliResult result = CliRunner.run(project,
+                    initArgs(name, description, artifacts).toArray(new String[0]));
             if (!result.isSuccess()) {
                 LOG.warn("openspec schema init failed: " + result.stderr());
                 return null;
             }
             clearCache();
-            return result.stdout().trim();
+            return schemaFileIn(schemaDirFromJson(result.stdout(), "path"));
         } catch (CliRunner.CliException e) {
             LOG.warn("Failed to init schema", e);
             return null;
         }
+    }
+
+    /** CLI arguments for {@code schema fork}; {@code --json} so the destination is read structurally. */
+    static List<String> forkArgs(String source, String name) {
+        return List.of("schema", "fork", source, name, "--json");
+    }
+
+    /**
+     * CLI arguments for {@code schema init}. {@code --no-default} is always passed: the plugin runs the CLI without
+     * a terminal, so it can't answer the CLI's "set as default?" question. {@code --description} is passed only when
+     * non-blank; {@code --artifacts} carries the selection as a comma list when there is one.
+     */
+    static List<String> initArgs(String name, String description, List<String> artifacts) {
+        List<String> args = new ArrayList<>(List.of("schema", "init", name, "--json", "--no-default"));
+        if (description != null && !description.isBlank()) {
+            args.add("--description");
+            args.add(description.trim());
+        }
+        if (artifacts != null && !artifacts.isEmpty()) {
+            args.add("--artifacts");
+            args.add(String.join(",", artifacts));
+        }
+        return args;
+    }
+
+    /**
+     * The schema directory a {@code schema fork --json} / {@code schema init --json} response reports under
+     * {@code key} ({@code destinationPath} / {@code path}), or {@code null} when the output is not a JSON object or
+     * lacks a non-blank string at that key.
+     */
+    static String schemaDirFromJson(String stdout, String key) {
+        try {
+            JsonElement parsed = JsonParser.parseString(CliJson.extractJsonPayload(stdout == null ? "" : stdout));
+            if (!parsed.isJsonObject()) {
+                return null;
+            }
+            JsonObject obj = parsed.getAsJsonObject();
+            if (!obj.has(key) || !obj.get(key).isJsonPrimitive()) {
+                return null;
+            }
+            String dir = obj.get(key).getAsString();
+            return dir.isBlank() ? null : dir;
+        } catch (RuntimeException e) {
+            LOG.warn("Could not read '" + key + "' from schema command output", e);
+            return null;
+        }
+    }
+
+    /** {@code <dir>/schema.yaml} when that file exists, otherwise {@code dir} itself; {@code null} passes through. */
+    static String schemaFileIn(String dir) {
+        if (dir == null) {
+            return null;
+        }
+        Path schemaFile = Path.of(dir, "schema.yaml");
+        return Files.isRegularFile(schemaFile) ? schemaFile.toString() : dir;
     }
 
     /**
@@ -191,6 +254,17 @@ public final class SchemaService {
     /**
      * Checks whether the detected CLI version supports schema commands.
      */
+    /**
+     * Seeds the schema list from captured {@code schemas --json} output, with no resolution provenance, so a headless
+     * test can drive the settings panel without spawning the CLI (the panel loads on a pooled thread, where a
+     * thread-local static mock of the CLI runner would not apply).
+     */
+    @TestOnly
+    public void seedSchemaListForTest(String schemasJson) {
+        cachedSchemas = parseSchemaList(schemasJson);
+        cachedResolutions = Map.of();
+    }
+
     public boolean isSchemaSupported() {
         CliDetectionService detection = project.getService(CliDetectionService.class);
         if (detection == null || !detection.isAvailable()) {

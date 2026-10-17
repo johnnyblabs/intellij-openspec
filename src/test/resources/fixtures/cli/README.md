@@ -571,3 +571,15 @@ Real CLI **1.14.3** captures, each run in an isolated environment (`HOME`/`XDG_C
 - `additive-shapes/`: one project whose `.openspec.yaml` carries unknown keys, so the new optional `warnings` list is populated. It holds `show-change.json` (`show c --type change --json`, with requirement and scenario `name`), `status.json` (`status --change c --json`, with `warnings`), `instructions-proposal.json` (`instructions proposal --change c --json`, with `warnings`) and `instructions-apply.json` (`instructions apply --change c --json`, with each task's `sourcePath` and `line`). Consumed by `CliContractTest.AdditiveShapesToleranceContractV1_14` and `ChangeDeltasContractTest.ChangeDeltasV1_14`. The plugin has no `instructions apply` reader, so that capture is cross-checked against the plugin's own task count of the same `tasks.md`.
 
 To re-capture, regenerate in the same isolated way. Never hand-edit a capture; if the CLI's output changes, re-capture and fix the tests.
+
+## `1.3.0/schema-commands/` and `1.14.3/schema-commands/` — schema fork/init/list output
+
+Real captures from CLI **1.3.0** (run through `npx @fission-ai/openspec@1.3.0`, which reported `1.3.0`) and the installed **1.14.3**, each in a fresh scratch project (`openspec/config.yaml` with `schema: spec-driven`) with an isolated `HOME`/`XDG_*` and `OPENSPEC_TELEMETRY=0`. Stdout only: the "Schema commands are experimental" note goes to stderr. Project roots are sanitized to `/fixture`, and fork's `sourcePath` (the CLI's own install location, which the plugin never reads) to `/cli-install/schemas/spec-driven`.
+
+- `schema-fork.json`: `schema fork spec-driven my-fork --json`. The plugin reads `destinationPath`.
+- `schema-init.json`: `schema init my-new --json --no-default`. The plugin reads `path`.
+- `schema-init-desc-artifacts.json`: the same, with `--description "A custom flow" --artifacts proposal,tasks`.
+- `schemas.json`: `schemas --json` after the three commands above, so it lists the package schema plus three project schemas. The settings-panel dialog test uses it.
+- `schema-fork.txt` / `schema-init.txt`: the same fork and init **without** `--json`. This is the human-readable output the plugin used to treat as a file path; the tests assert no path is read from it.
+
+All files are byte-identical between the two versions; the key sets were also compared at capture time. Consumed by `SchemaServiceTest` and `OpenSpecSettingsPanelModalityTest`.

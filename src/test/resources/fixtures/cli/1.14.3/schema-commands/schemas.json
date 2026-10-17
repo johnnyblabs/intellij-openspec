@@ -1,0 +1,44 @@
+[
+  {
+    "name": "my-fork",
+    "description": "Default OpenSpec workflow - proposal → specs → design → tasks",
+    "artifacts": [
+      "proposal",
+      "specs",
+      "design",
+      "tasks"
+    ],
+    "source": "project"
+  },
+  {
+    "name": "my-new",
+    "description": "Custom workflow schema for my-new",
+    "artifacts": [
+      "proposal",
+      "specs",
+      "design",
+      "tasks"
+    ],
+    "source": "project"
+  },
+  {
+    "name": "my-new2",
+    "description": "A custom flow",
+    "artifacts": [
+      "proposal",
+      "tasks"
+    ],
+    "source": "project"
+  },
+  {
+    "name": "spec-driven",
+    "description": "Default OpenSpec workflow - proposal → specs → design → tasks",
+    "artifacts": [
+      "proposal",
+      "specs",
+      "design",
+      "tasks"
+    ],
+    "source": "package"
+  }
+]
