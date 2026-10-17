@@ -353,10 +353,12 @@ Read-only display of the current profile name and description from `config.yaml`
 | Setting | Purpose |
 |---------|---------|
 | **Schema list** | Available workflow schemas, each tagged with where it resolves from (`[project]`, `[user]`, `[package]`); a copy that shadows another source says so (e.g. `[project, shadows package]`). Select one as default for new changes. |
-| **Fork** | Fork an existing schema to customize it. |
-| **New** | Create a new schema with selected artifact types. |
+| **Fork** | Fork an existing schema to customize it; the new schema's `schema.yaml` opens in the editor. |
+| **New** | Create a new schema with the description and artifact types you choose; its `schema.yaml` opens in the editor. |
 | **Validate** | Check the selected schema's structure and templates via `openspec schema validate` — structure errors, missing templates, and circular dependencies appear inline below the list. |
 | **Open Templates** | Open the selected schema's artifact templates in the editor (paths resolved via `openspec templates`); missing template files are reported, never created. |
+
+Fork, Validate and Open Templates act on the schema selected in the list, and stay disabled until you select one.
 
 > Schema management requires the OpenSpec CLI v1.3.0 or later.
 

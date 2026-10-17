@@ -15,6 +15,7 @@ import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBList;
 import com.intellij.util.ui.FormBuilder;
 import com.intellij.util.ui.JBUI;
+import com.intellij.util.ui.update.UiNotifyConnector;
 import com.johnnyblabs.openspec.ai.AiApiException;
 import com.johnnyblabs.openspec.ai.AiCredentialStore;
 import com.johnnyblabs.openspec.ai.AiModelOptions;
@@ -32,8 +33,11 @@ import com.johnnyblabs.openspec.util.OpenSpecTerminalLauncher;
 import com.intellij.notification.NotificationAction;
 import com.intellij.notification.NotificationType;
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.application.ModalityState;
 
 import com.intellij.ui.JBColor;
+
+import org.jetbrains.annotations.TestOnly;
 
 import javax.swing.*;
 import java.awt.*;
@@ -45,6 +49,8 @@ public class OpenSpecSettingsPanel {
     private static final String API_KEY_MASK = "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022";
 
     private final JPanel mainPanel;
+    /** Set once the panel is first shown in the Settings dialog; CLI-backed loads wait for it (see onFirstShown). */
+    private boolean firstShown;
 
     // CLI section
     // The version override targets the config-format version axis, which the plugin deliberately
@@ -101,6 +107,7 @@ public class OpenSpecSettingsPanel {
 
     // Schema section
     private JBList<SchemaInfo> schemaList;
+    private boolean schemaManagementSupported;
     private DefaultListModel<SchemaInfo> schemaListModel;
     private JComboBox<String> defaultSchemaCombo;
     private JButton forkButton;
@@ -271,8 +278,26 @@ public class OpenSpecSettingsPanel {
         mainPanel.add(directApiSection);
 
         // Initialize state
-        detectCli(); // Auto-detect CLI on panel creation
+        // The CLI-backed loads wait until the panel is actually showing in the Settings dialog: only then can their
+        // results be posted with the dialog's modality (see uiModality()).
+        UiNotifyConnector.doWhenFirstShown(mainPanel, this::onFirstShown);
         onProviderChanged();
+    }
+
+    /** First time the panel is shown: run the CLI-backed loads that construction deferred. */
+    private void onFirstShown() {
+        firstShown = true;
+        // Same order as construction used: the loads read the current detection state before detectCli() re-runs
+        // detection (which marks the CLI unavailable until its probe finishes).
+        refreshConfigProfileSection();
+        updateSchemaSectionVisibility();
+        detectCli();
+    }
+
+    /** Headless stand-in for the panel being shown in the Settings dialog (a light test can't show a window). */
+    @TestOnly
+    void simulateFirstShownForTest() {
+        onFirstShown();
     }
 
     private JPanel buildConfigProfileSection() {
@@ -341,7 +366,11 @@ public class OpenSpecSettingsPanel {
         workflowListPanel.revalidate();
         workflowListPanel.repaint();
         profileFallbackLabel.setVisible(false);
+        if (!firstShown) {
+            return; // the CLI read runs once the dialog is showing (onFirstShown), so its result can reach it
+        }
 
+        ModalityState modality = uiModality(); // captured on the EDT, before leaving it
         ApplicationManager.getApplication().executeOnPooledThread(() -> {
             ConfigProfileView view;
             try {
@@ -351,7 +380,7 @@ public class OpenSpecSettingsPanel {
                 view = new ConfigProfileView(localProfile, List.of(), true);
             }
             ConfigProfileView finalView = view;
-            ApplicationManager.getApplication().invokeLater(() -> applyConfigProfileView(finalView));
+            ApplicationManager.getApplication().invokeLater(() -> applyConfigProfileView(finalView), modality);
         });
     }
 
@@ -395,6 +424,11 @@ public class OpenSpecSettingsPanel {
             }
         });
         schemaList.setVisibleRowCount(4);
+        schemaList.addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                updateSelectionActions();
+            }
+        });
 
         defaultSchemaCombo = new JComboBox<>();
         defaultSchemaCombo.setEditable(true);
@@ -462,25 +496,55 @@ public class OpenSpecSettingsPanel {
         return panel;
     }
 
+    /**
+     * Fork, Validate and Open Templates act on the selected schema, so they're enabled only while one is selected —
+     * otherwise a click would silently do nothing. New and Refresh don't need a selection.
+     */
+    private void updateSelectionActions() {
+        boolean enabled = schemaManagementSupported && schemaList.getSelectedValue() != null;
+        String hint = enabled ? null : "Select a schema in the list first";
+        forkButton.setEnabled(enabled);
+        validateSchemaButton.setEnabled(enabled);
+        openTemplatesButton.setEnabled(enabled);
+        forkButton.setToolTipText(hint);
+        validateSchemaButton.setToolTipText(enabled
+                ? "Check the selected schema's structure and templates (openspec schema validate)" : hint);
+        openTemplatesButton.setToolTipText(enabled ? "Open the selected schema's artifact templates in the editor" : hint);
+    }
+
     private void updateSchemaSectionVisibility() {
         SchemaService schemaService = project.getService(SchemaService.class);
         boolean supported = schemaService != null && schemaService.isSchemaSupported();
         schemaUnsupportedLabel.setVisible(!supported);
         schemasContentPanel.setVisible(supported);
-        forkButton.setEnabled(supported);
+        schemaManagementSupported = supported;
         newSchemaButton.setEnabled(supported);
         refreshSchemasButton.setEnabled(supported);
-        validateSchemaButton.setEnabled(supported);
-        openTemplatesButton.setEnabled(supported);
+        updateSelectionActions();
         if (supported) {
             loadSchemaList();
         }
     }
 
+    /**
+     * The modality to post background results back with. A plain {@code invokeLater} from a pooled thread is
+     * NON_MODAL, and the platform holds it until the modal Settings dialog closes, so the update would land on a panel
+     * nobody can see. Capture this on the EDT, before leaving it, from code that runs while the dialog is showing: a
+     * user action, or the first-shown callback. (During construction the dialog isn't showing yet, which is why the
+     * initial loads are deferred to {@link #onFirstShown()}.)
+     */
+    private static ModalityState uiModality() {
+        return ModalityState.current();
+    }
+
     private void loadSchemaList() {
+        if (!firstShown) {
+            return; // loaded once the dialog is showing (onFirstShown), so the result can reach it
+        }
         SchemaService schemaService = project.getService(SchemaService.class);
         if (schemaService == null) return;
 
+        ModalityState modality = uiModality(); // captured on the EDT, before leaving it
         com.intellij.openapi.application.ApplicationManager.getApplication().executeOnPooledThread(() -> {
             List<SchemaInfo> schemas = schemaService.listSchemas();
             // Provenance rides the same cache lifecycle as the listing (cleared on fork/init).
@@ -506,7 +570,7 @@ public class OpenSpecSettingsPanel {
                 if (defaultSchema != null && !defaultSchema.isEmpty()) {
                     defaultSchemaCombo.setSelectedItem(defaultSchema);
                 }
-            });
+            }, modality);
         });
     }
 
@@ -569,6 +633,7 @@ public class OpenSpecSettingsPanel {
         SchemaService schemaService = project.getService(SchemaService.class);
         if (schemaService == null) return;
 
+        ModalityState modality = uiModality(); // captured on the EDT, before leaving it
         com.intellij.openapi.application.ApplicationManager.getApplication().executeOnPooledThread(() -> {
             com.johnnyblabs.openspec.model.SchemaValidationReport report =
                     schemaService.validateSchema(selected.name());
@@ -581,7 +646,7 @@ public class OpenSpecSettingsPanel {
                 }
                 schemaValidationResultLabel.setText(formatValidationReport(report));
                 schemaValidationResultLabel.setVisible(true);
-            });
+            }, modality);
         });
     }
 
@@ -591,6 +656,7 @@ public class OpenSpecSettingsPanel {
         SchemaService schemaService = project.getService(SchemaService.class);
         if (schemaService == null) return;
 
+        ModalityState modality = uiModality(); // captured on the EDT, before leaving it
         com.intellij.openapi.application.ApplicationManager.getApplication().executeOnPooledThread(() -> {
             java.util.Map<String, String> templates = schemaService.resolveTemplates(selected.name());
             com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater(() -> {
@@ -613,7 +679,7 @@ public class OpenSpecSettingsPanel {
                     com.johnnyblabs.openspec.util.OpenSpecNotifier.warn(project,
                             "Template file(s) not found on disk — " + String.join("; ", missing));
                 }
-            });
+            }, modality);
         });
     }
 
@@ -628,6 +694,7 @@ public class OpenSpecSettingsPanel {
         SchemaService schemaService = project.getService(SchemaService.class);
         if (schemaService == null) return;
 
+        ModalityState modality = uiModality(); // captured on the EDT, before leaving it
         com.intellij.openapi.application.ApplicationManager.getApplication().executeOnPooledThread(() -> {
             String path = schemaService.forkSchema(selected.name(), forkName.trim());
             com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater(() -> {
@@ -639,7 +706,7 @@ public class OpenSpecSettingsPanel {
                         new OpenFileDescriptor(project, file).navigate(true);
                     }
                 }
-            });
+            }, modality);
         });
     }
 
@@ -648,11 +715,14 @@ public class OpenSpecSettingsPanel {
         if (!dialog.showAndGet()) return;
 
         String name = dialog.getSchemaName();
+        String description = dialog.getDescription();
+        java.util.List<String> artifacts = dialog.getSelectedArtifacts();
         SchemaService schemaService = project.getService(SchemaService.class);
         if (schemaService == null) return;
 
+        ModalityState modality = uiModality(); // captured on the EDT, before leaving it
         com.intellij.openapi.application.ApplicationManager.getApplication().executeOnPooledThread(() -> {
-            String path = schemaService.initSchema(name);
+            String path = schemaService.initSchema(name, description, artifacts);
             com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater(() -> {
                 if (path != null) {
                     loadSchemaList();
@@ -662,11 +732,15 @@ public class OpenSpecSettingsPanel {
                         new OpenFileDescriptor(project, file).navigate(true);
                     }
                 }
-            });
+            }, modality);
         });
     }
 
     private void refreshSchemaList() {
+        // A reload rebuilds the list and drops the selection, so a validation result would no longer sit next to the
+        // schema it describes — clear it.
+        schemaValidationResultLabel.setText("");
+        schemaValidationResultLabel.setVisible(false);
         SchemaService schemaService = project.getService(SchemaService.class);
         if (schemaService != null) {
             schemaService.clearCache();
@@ -1057,6 +1131,38 @@ public class OpenSpecSettingsPanel {
     }
 
     /** Visible for tests. */
+    @TestOnly
+    JBLabel schemaValidationResultLabelForTest() {
+        return schemaValidationResultLabel;
+    }
+
+    @TestOnly
+    JBList<SchemaInfo> schemaListForTest() {
+        return schemaList;
+    }
+
+    /** Enabled state of Fork, Validate, Open Templates, New and Refresh, in that order. */
+    @TestOnly
+    boolean[] schemaButtonsEnabledForTest() {
+        return new boolean[]{forkButton.isEnabled(), validateSchemaButton.isEnabled(), openTemplatesButton.isEnabled(),
+                newSchemaButton.isEnabled(), refreshSchemasButton.isEnabled()};
+    }
+
+    @TestOnly
+    void clickRefreshSchemasForTest() {
+        refreshSchemasButton.doClick();
+    }
+
+    @TestOnly
+    ListModel<SchemaInfo> schemaListModelForTest() {
+        return schemaListModel;
+    }
+
+    @TestOnly
+    JComboBox<String> defaultSchemaComboForTest() {
+        return defaultSchemaCombo;
+    }
+
     void clickImDoneForTest() {
         onImDoneClicked();
     }
@@ -1115,6 +1221,7 @@ public class OpenSpecSettingsPanel {
         // first refresh() with no prior state always returns false.
         service.getActiveWorkflows();
 
+        ModalityState modality = uiModality(); // captured on the EDT, before leaving it
         ApplicationManager.getApplication().executeOnPooledThread(() -> {
             try {
                 service.refresh();
@@ -1137,7 +1244,7 @@ public class OpenSpecSettingsPanel {
                         switchService.promptAndRunUpdateIfConfirmed(newProfile);
                     }
                 }
-            });
+            }, modality);
         });
     }
 

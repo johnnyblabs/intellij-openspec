@@ -171,31 +171,68 @@ class SchemaServiceTest {
         }
     }
 
+    /** The schema directory a captured fork/init response reports under {@code key} — read from the fixture itself. */
+    private static String reportedDir(String fixturePath, String key) {
+        return com.google.gson.JsonParser.parseString(fixture(fixturePath)).getAsJsonObject().get(key).getAsString();
+    }
+
+    private static final List<String> GENERATIONS = List.of("1.3.0", "1.14.3");
+
     @Nested
     class ForkSchema {
 
         @Test
-        void callsCliWithCorrectArgs() {
-            try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
-                cli.when(() -> CliRunner.run(eq(project), eq("schema"), eq("fork"), eq("spec-driven"), eq("my-fork")))
-                        .thenReturn(new CliRunner.CliResult(0, "/path/to/my-fork.yaml\n", ""));
+        void callsCliWithJsonAndReturnsTheReportedDestination() {
+            for (String gen : GENERATIONS) {
+                String captured = fixture(gen + "/schema-commands/schema-fork.json");
+                try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
+                    cli.when(() -> CliRunner.run(eq(project), eq("schema"), eq("fork"), eq("spec-driven"), eq("my-fork"), eq("--json")))
+                            .thenReturn(new CliRunner.CliResult(0, captured, ""));
 
-                String path = service.forkSchema("spec-driven", "my-fork");
+                    String path = service.forkSchema("spec-driven", "my-fork");
 
-                assertEquals("/path/to/my-fork.yaml", path);
-                cli.verify(() -> CliRunner.run(eq(project), eq("schema"), eq("fork"), eq("spec-driven"), eq("my-fork")));
+                    // The fixture's directory doesn't exist on this machine, so the directory itself comes back.
+                    assertEquals(reportedDir(gen + "/schema-commands/schema-fork.json", "destinationPath"), path, gen);
+                }
             }
         }
 
         @Test
         void returnsNull_onFailure() {
             try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
-                cli.when(() -> CliRunner.run(eq(project), eq("schema"), eq("fork"), eq("spec-driven"), eq("bad")))
+                cli.when(() -> CliRunner.run(eq(project), eq("schema"), eq("fork"), eq("spec-driven"), eq("bad"), eq("--json")))
                         .thenReturn(new CliRunner.CliResult(1, "", "Schema not found"));
 
-                String path = service.forkSchema("spec-driven", "bad");
+                assertNull(service.forkSchema("spec-driven", "bad"));
+            }
+        }
+    }
 
-                assertNull(path);
+    @Nested
+    class OpensSchemaYaml {
+
+        @Test
+        void forkAndInitReturnTheCreatedSchemaYaml(@org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp)
+                throws java.io.IOException {
+            // The user-visible fix end to end: the captured response, pointed at a real directory holding
+            // schema.yaml (as the CLI creates it), yields that file rather than the directory or the prose.
+            String root = tmp.toString().replace('\\', '/'); // JSON-safe on Windows too
+            java.nio.file.Path forkYaml = java.nio.file.Files.createDirectories(tmp.resolve("openspec/schemas/my-fork"))
+                    .resolve("schema.yaml");
+            java.nio.file.Files.writeString(forkYaml, "name: my-fork\n");
+            java.nio.file.Path initYaml = java.nio.file.Files.createDirectories(tmp.resolve("openspec/schemas/my-new"))
+                    .resolve("schema.yaml");
+            java.nio.file.Files.writeString(initYaml, "name: my-new\n");
+            String fork = fixture("1.14.3/schema-commands/schema-fork.json").replace("/fixture", root);
+            String init = fixture("1.14.3/schema-commands/schema-init.json").replace("/fixture", root);
+            try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
+                cli.when(() -> CliRunner.run(eq(project), eq("schema"), eq("fork"), eq("spec-driven"), eq("my-fork"), eq("--json")))
+                        .thenReturn(new CliRunner.CliResult(0, fork, ""));
+                cli.when(() -> CliRunner.run(eq(project), eq("schema"), eq("init"), eq("my-new"), eq("--json"), eq("--no-default")))
+                        .thenReturn(new CliRunner.CliResult(0, init, ""));
+
+                assertEquals(forkYaml, java.nio.file.Path.of(service.forkSchema("spec-driven", "my-fork")));
+                assertEquals(initYaml, java.nio.file.Path.of(service.initSchema("my-new", null, List.of())));
             }
         }
     }
@@ -204,28 +241,91 @@ class SchemaServiceTest {
     class InitSchema {
 
         @Test
-        void callsCliWithCorrectArgs() {
-            try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
-                cli.when(() -> CliRunner.run(eq(project), eq("schema"), eq("init"), eq("my-schema")))
-                        .thenReturn(new CliRunner.CliResult(0, "/path/to/my-schema.yaml\n", ""));
+        void callsCliWithTheChosenOptionsAndReturnsTheReportedPath() {
+            for (String gen : GENERATIONS) {
+                String captured = fixture(gen + "/schema-commands/schema-init-desc-artifacts.json");
+                try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
+                    cli.when(() -> CliRunner.run(eq(project), eq("schema"), eq("init"), eq("my-new2"), eq("--json"),
+                                    eq("--no-default"), eq("--description"), eq("A custom flow"), eq("--artifacts"),
+                                    eq("proposal,tasks")))
+                            .thenReturn(new CliRunner.CliResult(0, captured, ""));
 
-                String path = service.initSchema("my-schema");
+                    String path = service.initSchema("my-new2", "A custom flow", List.of("proposal", "tasks"));
 
-                assertEquals("/path/to/my-schema.yaml", path);
-                cli.verify(() -> CliRunner.run(eq(project), eq("schema"), eq("init"), eq("my-schema")));
+                    assertEquals(reportedDir(gen + "/schema-commands/schema-init-desc-artifacts.json", "path"), path, gen);
+                }
             }
         }
 
         @Test
         void returnsNull_onFailure() {
             try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
-                cli.when(() -> CliRunner.run(eq(project), eq("schema"), eq("init"), eq("bad")))
+                cli.when(() -> CliRunner.run(eq(project), eq("schema"), eq("init"), eq("bad"), eq("--json"), eq("--no-default")))
                         .thenReturn(new CliRunner.CliResult(1, "", "Init failed"));
 
-                String path = service.initSchema("bad");
-
-                assertNull(path);
+                assertNull(service.initSchema("bad", "", List.of()));
             }
+        }
+    }
+
+    @Nested
+    class SchemaCommandArgumentsAndPaths {
+
+        @Test
+        void initArgsCarryTheDescriptionAndArtifactsAndNeverPrompt() {
+            assertEquals(List.of("schema", "init", "flow", "--json", "--no-default",
+                            "--description", "My flow", "--artifacts", "proposal,specs,tasks"),
+                    SchemaService.initArgs("flow", "  My flow  ", List.of("proposal", "specs", "tasks")));
+        }
+
+        @Test
+        void initArgsOmitABlankDescriptionAndAnEmptySelection() {
+            assertEquals(List.of("schema", "init", "flow", "--json", "--no-default"),
+                    SchemaService.initArgs("flow", "   ", List.of()));
+            assertEquals(List.of("schema", "init", "flow", "--json", "--no-default"),
+                    SchemaService.initArgs("flow", null, null));
+        }
+
+        @Test
+        void forkArgsAskForJson() {
+            assertEquals(List.of("schema", "fork", "spec-driven", "mine", "--json"),
+                    SchemaService.forkArgs("spec-driven", "mine"));
+        }
+
+        @Test
+        void schemaDirIsReadFromEachGenerationsCapture() {
+            for (String gen : GENERATIONS) {
+                String fork = gen + "/schema-commands/schema-fork.json";
+                String init = gen + "/schema-commands/schema-init.json";
+                assertEquals(reportedDir(fork, "destinationPath"),
+                        SchemaService.schemaDirFromJson(fixture(fork), "destinationPath"), gen);
+                assertEquals(reportedDir(init, "path"), SchemaService.schemaDirFromJson(fixture(init), "path"), gen);
+                // Each command reports its own key; the other one is absent.
+                assertNull(SchemaService.schemaDirFromJson(fixture(fork), "path"), gen);
+                assertNull(SchemaService.schemaDirFromJson(fixture(init), "destinationPath"), gen);
+            }
+        }
+
+        @Test
+        void proseOrMissingOutputYieldsNoPath() {
+            // The pre-fix bug: the plugin treated the CLI's human-readable output (captured, without --json) as a path.
+            for (String gen : GENERATIONS) {
+                assertNull(SchemaService.schemaDirFromJson(fixture(gen + "/schema-commands/schema-fork.txt"),
+                        "destinationPath"), gen);
+                assertNull(SchemaService.schemaDirFromJson(fixture(gen + "/schema-commands/schema-init.txt"), "path"), gen);
+            }
+            assertNull(SchemaService.schemaDirFromJson("", "path"));
+            assertNull(SchemaService.schemaDirFromJson(null, "path"));
+            assertNull(SchemaService.schemaDirFromJson("[]", "path"));
+        }
+
+        @Test
+        void schemaFileInPrefersSchemaYamlWhenPresent(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir)
+                throws java.io.IOException {
+            assertEquals(dir.toString(), SchemaService.schemaFileIn(dir.toString()), "no schema.yaml yet: the directory");
+            java.nio.file.Path yaml = java.nio.file.Files.writeString(dir.resolve("schema.yaml"), "name: x\n");
+            assertEquals(yaml.toString(), SchemaService.schemaFileIn(dir.toString()));
+            assertNull(SchemaService.schemaFileIn(null));
         }
     }
 
@@ -269,8 +369,8 @@ class SchemaServiceTest {
             try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
                 cli.when(() -> CliRunner.run(eq(project), eq("schemas"), eq("--json")))
                         .thenReturn(listResult);
-                cli.when(() -> CliRunner.run(eq(project), eq("schema"), eq("fork"), eq("spec-driven"), eq("my-fork")))
-                        .thenReturn(new CliRunner.CliResult(0, "/path/fork.yaml", ""));
+                cli.when(() -> CliRunner.run(eq(project), eq("schema"), eq("fork"), eq("spec-driven"), eq("my-fork"), eq("--json")))
+                        .thenReturn(new CliRunner.CliResult(0, fixture("1.14.3/schema-commands/schema-fork.json"), ""));
 
                 // First call — populates cache
                 service.listSchemas();
@@ -296,13 +396,13 @@ class SchemaServiceTest {
             try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
                 cli.when(() -> CliRunner.run(eq(project), eq("schemas"), eq("--json")))
                         .thenReturn(listResult);
-                cli.when(() -> CliRunner.run(eq(project), eq("schema"), eq("init"), eq("new-schema")))
-                        .thenReturn(new CliRunner.CliResult(0, "/path/new-schema.yaml", ""));
+                cli.when(() -> CliRunner.run(eq(project), eq("schema"), eq("init"), eq("new-schema"), eq("--json"), eq("--no-default")))
+                        .thenReturn(new CliRunner.CliResult(0, fixture("1.14.3/schema-commands/schema-init.json"), ""));
 
                 // First call — populates cache
                 service.listSchemas();
                 // Init — invalidates cache
-                service.initSchema("new-schema");
+                service.initSchema("new-schema", null, List.of());
                 // Third call — should re-invoke CLI
                 service.listSchemas();
 

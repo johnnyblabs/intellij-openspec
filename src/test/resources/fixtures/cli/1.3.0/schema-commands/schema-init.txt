@@ -1,0 +1,9 @@
+
+Schema created at: /fixture/openspec/schemas/my-new
+
+Artifacts: proposal, specs, design, tasks
+
+Next steps:
+  1. Edit /fixture/openspec/schemas/my-new/schema.yaml to customize artifacts
+  2. Modify templates in the schema directory
+  3. Use with: openspec new --schema my-new

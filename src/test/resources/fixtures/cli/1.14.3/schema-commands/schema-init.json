@@ -1,0 +1,12 @@
+{
+  "created": true,
+  "path": "/fixture/openspec/schemas/my-new",
+  "schema": "my-new",
+  "artifacts": [
+    "proposal",
+    "specs",
+    "design",
+    "tasks"
+  ],
+  "setAsDefault": false
+}

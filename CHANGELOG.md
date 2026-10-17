@@ -12,6 +12,13 @@
 
 - **Ready for IntelliJ IDEA 2026.x.** The plugin no longer calls platform methods that IntelliJ IDEA 2026.1 and later mark as deprecated where a replacement works on every supported IDE, so it keeps working as those methods are retired. Files open from links, buttons and notifications exactly as before. Compatibility is now checked against IntelliJ IDEA 2026.1 and 2026.2 as well, alongside 2024.2 and 2025.x.
 
+### Fixed
+
+- **The schema section of Settings now works while Settings is open.** The schema list was always empty, and Validate, Open Templates and the config/profile sections seemed to do nothing, because their results only arrived after you closed the Settings dialog. They now appear straight away.
+- **Fork and New open the schema they create.** After forking or creating a schema, its `schema.yaml` opens in the editor. Before, nothing opened.
+- **Schema buttons say when they need a selection.** Fork, Validate and Open Templates are greyed out until you select a schema in the list, instead of silently doing nothing, and Refresh clears any old validation result.
+- **New Schema applies the description and artifacts you choose.** Previously only the name was used, so every new schema got all four artifacts and no description of your own.
+
 ## v0.13.0
 
 ### Added

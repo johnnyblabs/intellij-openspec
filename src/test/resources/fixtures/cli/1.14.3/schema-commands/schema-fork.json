@@ -1,0 +1,8 @@
+{
+  "forked": true,
+  "source": "spec-driven",
+  "sourcePath": "/cli-install/schemas/spec-driven",
+  "sourceLocation": "package",
+  "destination": "my-fork",
+  "destinationPath": "/fixture/openspec/schemas/my-fork"
+}
