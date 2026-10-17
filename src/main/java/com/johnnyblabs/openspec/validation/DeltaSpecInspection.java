@@ -73,7 +73,8 @@ public class DeltaSpecInspection extends LocalInspectionTool {
 
             if ("RENAMED".equals(sectionType)) {
                 // RENAMED sections carry FROM:/TO: pairs, not requirement blocks. Entry lines without a
-                // well-formed pair are an error; mirrors SpecSyncService.RENAMED_ENTRY and BuiltInValidator.
+                // well-formed pair are an error; mirrors BuiltInValidator. (Bare names pass here; the merge,
+                // like OpenSpec, reads only FROM:/TO: lines carrying `### Requirement:` - see SpecMerge.)
                 // An empty section (no FROM:/TO: lines, e.g. a fresh scaffold) is not: the CLI accepts it.
                 if (com.johnnyblabs.openspec.util.SpecPatterns.RENAMED_ENTRY_LINE.matcher(sectionContent).find()
                         && !RENAMED_ENTRY_PATTERN.matcher(sectionContent).find()) {

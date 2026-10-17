@@ -1,0 +1,10 @@
+Task status: ✓ Complete
+
+Specs to update:
+  newcap: create
+⚠️  Warning: newcap - delta Purpose ignored (it would leave the new spec unreadable); wrote the placeholder Purpose instead.
+Applying changes to openspec/specs/newcap/spec.md:
+  + 1 added
+Totals: + 1, ~ 0, - 0, → 0
+Specs updated successfully.
+Change 'c1' archived as '<DATE>-c1'.

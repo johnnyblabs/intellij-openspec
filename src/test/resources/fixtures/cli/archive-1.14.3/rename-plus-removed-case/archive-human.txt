@@ -1,0 +1,6 @@
+
+Validation errors in change delta specs:
+  ✗ Requirement present in both RENAMED and REMOVED: "Works" (REMOVED spells it "works")
+
+Validation failed. Please fix the errors before archiving.
+To skip validation (not recommended), use --no-validate flag.

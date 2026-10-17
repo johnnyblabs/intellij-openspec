@@ -1,0 +1,6 @@
+
+Validation errors in change delta specs:
+  ✗ MODIFIED references old name from RENAMED. Use new header for "Working"
+
+Validation failed. Please fix the errors before archiving.
+To skip validation (not recommended), use --no-validate flag.

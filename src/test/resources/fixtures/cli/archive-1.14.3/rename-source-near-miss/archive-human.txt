@@ -1,0 +1,6 @@
+Task status: ✓ Complete
+
+Specs to update:
+  demo: update
+demo RENAMED failed for header "### Requirement: Works" - source not found, but "### Requirement: works" exists; fix the header to match it exactly
+Aborted. No files were changed.

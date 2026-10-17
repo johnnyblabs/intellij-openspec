@@ -1,0 +1,2 @@
+changes/archive: 2026-01-02-c1
+openspec/archive exists: False

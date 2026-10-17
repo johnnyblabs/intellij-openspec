@@ -23,7 +23,24 @@ public class BulkArchiveProductionArchiverTest extends OpenSpecIntegrationTestBa
                 .filter(c -> c.getName().equals(name)).findFirst().orElseThrow();
     }
 
+    private static final String GHOST_MAIN = """
+            # ghost Specification
+
+            ## Purpose
+            A capability whose spec exists but lacks the requirement the delta modifies.
+
+            ## Requirements
+
+            ### Requirement: Present
+            The system SHALL be present.
+
+            #### Scenario: Here
+            - **WHEN** checked
+            - **THEN** present
+            """;
+
     public void testCheckReportsAMissingModifiedTarget() throws Exception {
+        myFixture.addFileToProject("openspec/specs/ghost/spec.md", GHOST_MAIN);
         myFixture.addFileToProject("openspec/changes/orphaned/proposal.md", "## Why\n\nx\n");
         myFixture.addFileToProject("openspec/changes/orphaned/specs/ghost/spec.md", """
                 ## MODIFIED Requirements
@@ -38,9 +55,27 @@ public class BulkArchiveProductionArchiverTest extends OpenSpecIntegrationTestBa
 
         List<String> problems = BulkArchiveDialogTestAccess.productionCheck(getProject(), "orphaned");
 
-        assertEquals(1, problems.size());
-        assertTrue(problems.get(0), problems.get(0).contains("[sync-modified-target-missing]"));
-        assertTrue(problems.get(0), problems.get(0).contains("Gone"));
+        assertEquals(List.of("ghost MODIFIED failed for header \"### Requirement: Gone\" - not found"), problems);
+    }
+
+    public void testCheckDoesNotBlockOnARemovedTargetThatIsAlreadyGone() throws Exception {
+        // OpenSpec treats it as already removed (a warning), so Bulk Archive doesn't block on it either.
+        myFixture.addFileToProject("openspec/specs/ghost/spec.md", GHOST_MAIN);
+        myFixture.addFileToProject("openspec/changes/tidy/proposal.md", "## Why\n\nx\n");
+        myFixture.addFileToProject("openspec/changes/tidy/specs/ghost/spec.md",
+                "## REMOVED Requirements\n\n- `### Requirement: Long gone`\n");
+
+        assertEquals(List.of(), BulkArchiveDialogTestAccess.productionCheck(getProject(), "tidy"));
+    }
+
+    public void testCheckBlocksWhenTheArchiveFolderExists() throws Exception {
+        ChangeService changes = getProject().getService(ChangeService.class);
+        changes.setClockForTest(java.time.Clock.fixed(java.time.Instant.parse("2026-10-17T12:00:00Z"), java.time.ZoneOffset.UTC));
+        myFixture.addFileToProject("openspec/changes/plain/proposal.md", "## Why\n\nx\n");
+        myFixture.addFileToProject("openspec/changes/archive/2026-10-17-plain/proposal.md", "## Why\n\nold\n");
+
+        assertEquals(List.of("Archive '2026-10-17-plain' already exists."),
+                BulkArchiveDialogTestAccess.productionCheck(getProject(), "plain"));
     }
 
     public void testCheckIsCleanForAChangeWithoutDeltaSpecs() throws Exception {
@@ -75,6 +110,8 @@ public class BulkArchiveProductionArchiverTest extends OpenSpecIntegrationTestBa
 
         ChangeService changes = getProject().getService(ChangeService.class);
         assertTrue("no longer active", changes.getActiveChanges().stream().noneMatch(c -> c.getName().equals("plain")));
-        assertTrue("now archived", changes.getArchivedChanges().stream().anyMatch(c -> c.getName().equals("plain")));
+        String archived = changes.archiveTargetName("plain");
+        assertTrue("archived under its dated name " + archived,
+                changes.getArchivedChanges().stream().anyMatch(c -> c.getName().equals(archived)));
     }
 }

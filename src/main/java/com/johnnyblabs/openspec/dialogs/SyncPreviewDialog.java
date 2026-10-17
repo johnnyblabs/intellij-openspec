@@ -7,12 +7,14 @@ import com.intellij.diff.requests.SimpleDiffRequest;
 import com.intellij.openapi.fileTypes.PlainTextFileType;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.DialogWrapper;
+import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBTabbedPane;
 import com.intellij.util.ui.JBUI;
 import com.johnnyblabs.openspec.model.SpecSyncResult;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.TestOnly;
 
 import javax.swing.*;
 import java.awt.*;
@@ -33,6 +35,22 @@ public class SyncPreviewDialog extends DialogWrapper {
         setOKButtonText("Apply");
         setCancelButtonText("Cancel");
         init();
+        // OpenSpec's archive refuses the whole change when any capability is refused, so nothing here is appliable.
+        setOKActionEnabled(refusals().isEmpty());
+    }
+
+    private List<String> refusals() {
+        return results.stream().flatMap(r -> r.refusals().stream()).toList();
+    }
+
+    @TestOnly
+    boolean applyEnabledForTest() {
+        return isOKActionEnabled();
+    }
+
+    @TestOnly
+    List<String> refusalsShownForTest() {
+        return refusals();
     }
 
     @Override
@@ -44,6 +62,33 @@ public class SyncPreviewDialog extends DialogWrapper {
         List<String> allWarnings = new ArrayList<>();
         for (SpecSyncResult r : results) {
             allWarnings.addAll(r.warnings());
+        }
+
+        List<String> refusals = refusals();
+        if (!refusals.isEmpty()) {
+            JPanel refusedPanel = new JPanel();
+            refusedPanel.setLayout(new BoxLayout(refusedPanel, BoxLayout.Y_AXIS));
+            refusedPanel.setBorder(JBUI.Borders.compound(
+                    JBUI.Borders.customLine(JBColor.RED, 0, 0, 1, 0),
+                    JBUI.Borders.empty(8)));
+            JBLabel header = new JBLabel("OpenSpec would refuse to archive this change, so no spec can be synced:");
+            header.setForeground(JBColor.RED);
+            header.setAlignmentX(Component.LEFT_ALIGNMENT);
+            refusedPanel.add(header);
+            for (String refusal : refusals) {
+                JBLabel label = new JBLabel("<html>&nbsp;&nbsp;" + StringUtil.escapeXmlEntities(refusal) + "</html>");
+                label.setForeground(JBColor.RED);
+                label.setAlignmentX(Component.LEFT_ALIGNMENT);
+                refusedPanel.add(label);
+            }
+            for (String w : allWarnings) {
+                JBLabel label = new JBLabel("  " + w);
+                label.setForeground(JBColor.ORANGE);
+                label.setAlignmentX(Component.LEFT_ALIGNMENT);
+                refusedPanel.add(label);
+            }
+            mainPanel.add(refusedPanel, BorderLayout.CENTER);
+            return mainPanel;
         }
 
         // Warnings panel at top

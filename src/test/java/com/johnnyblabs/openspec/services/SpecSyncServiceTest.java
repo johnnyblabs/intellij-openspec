@@ -52,9 +52,9 @@ class SpecSyncServiceTest {
         }
 
         @Test
-        void findsRequirementBlockWithNonCanonicalHeaderCasing() {
+        void modifiesRequirementWithNonCanonicalHeaderCasing() {
             String mainSpec = """
-                    # Case Parity
+                    # case-parity Specification
 
                     ## Requirements
 
@@ -65,32 +65,40 @@ class SpecSyncServiceTest {
                     - **WHEN** sync looks it up
                     - **THEN** it resolves
                     """;
+            String delta = """
+                    ## MODIFIED Requirements
 
-            int[] block = service.findRequirementBlock(mainSpec, "Target block");
+                    ### Requirement: Target block
+                    The system SHALL be found and updated.
 
-            assertNotNull(block, "Lookup must resolve a lowercase-token header");
-            assertTrue(mainSpec.substring(block[0], block[1]).contains("The system SHALL be found."));
+                    #### Scenario: Find
+                    - **WHEN** sync looks it up
+                    - **THEN** it resolves
+                    """;
+
+            SpecMerge.Result r = SpecMerge.merge("case-parity", "c1", delta, mainSpec);
+
+            assertNull(r.refusal(), "the header token matches in any casing; only the NAME is exact");
+            assertTrue(r.projected().contains("found and updated"), r.projected());
         }
 
         @Test
         void renamedRewritesNonCanonicalHeaderToCanonicalCasing() {
             String mainSpec = """
-                    # Case Parity
+                    # case-parity Specification
+
+                    ## Requirements
 
                     ### requirement: Old name
                     The system SHALL be renamed.
                     """;
-            DeltaSpecOperation op = new DeltaSpecOperation(
-                    OperationType.RENAMED, "case-parity", null, null, "Old name", "New name");
-            List<String> warnings = new ArrayList<>();
+            String delta = "## RENAMED Requirements\n\n- FROM: `### Requirement: Old name`\n- TO: `### Requirement: New name`\n";
 
-            String result = service.applyRenamed(mainSpec, op, warnings);
+            SpecMerge.Result r = SpecMerge.merge("case-parity", "c1", delta, mainSpec);
 
-            assertTrue(warnings.isEmpty(), "Rename must match the lowercase-token header: " + warnings);
-            assertTrue(result.contains("### Requirement: New name"),
-                    "Rewritten header must use canonical casing, got: " + result);
-            assertFalse(result.contains("### requirement:"),
-                    "Non-canonical source header must not survive the rewrite: " + result);
+            assertNull(r.refusal(), "rename must match the lowercase-token header");
+            assertTrue(r.projected().contains("### Requirement: New name"), r.projected());
+            assertFalse(r.projected().contains("### requirement:"), r.projected());
         }
     }
 
@@ -159,7 +167,9 @@ class SpecSyncServiceTest {
         }
 
         @Test
-        void parsesRenamedSection() {
+        void bareRenamedNamesAreNotRenames() {
+            // OpenSpec reads FROM:/TO: only with the `### Requirement:` header; its validate rejects a delta holding
+            // only bare lines and archive refuses it, so the plugin reads no rename from them either.
             String content = """
                     ## RENAMED Requirements
 
@@ -167,12 +177,9 @@ class SpecSyncServiceTest {
                     TO: New name
                     """;
 
-            List<DeltaSpecOperation> ops = service.parseDeltaSpecContent("workflow", content);
-
-            assertEquals(1, ops.size());
-            assertEquals(OperationType.RENAMED, ops.getFirst().type());
-            assertEquals("Old name", ops.getFirst().fromName());
-            assertEquals("New name", ops.getFirst().toName());
+            assertTrue(service.parseDeltaSpecContent("workflow", content).isEmpty());
+            assertEquals("Delta parsing found no operations for workflow. Provide ADDED/MODIFIED/REMOVED/RENAMED sections in change spec.",
+                    SpecMerge.merge("workflow", "c1", content, "# workflow Specification\n\n## Requirements\n").refusal());
         }
 
         @Test
@@ -197,8 +204,9 @@ class SpecSyncServiceTest {
             List<DeltaSpecOperation> ops = service.parseDeltaSpecContent("cap", content);
 
             assertEquals(2, ops.size());
-            assertEquals(OperationType.ADDED, ops.get(0).type());
-            assertEquals(OperationType.REMOVED, ops.get(1).type());
+            // Operations come back in apply order (RENAMED, REMOVED, MODIFIED, ADDED), not document order.
+            assertEquals(OperationType.REMOVED, ops.get(0).type());
+            assertEquals(OperationType.ADDED, ops.get(1).type());
         }
 
         @Test
@@ -253,7 +261,7 @@ class SpecSyncServiceTest {
         }
 
         @Test
-        void parsesRenamedWithBulletFormat() {
+        void bulletedBareRenamedNamesAreNotRenamesEither() {
             String content = """
                     ## RENAMED Requirements
 
@@ -261,11 +269,7 @@ class SpecSyncServiceTest {
                     - TO: New requirement
                     """;
 
-            List<DeltaSpecOperation> ops = service.parseDeltaSpecContent("cap", content);
-
-            assertEquals(1, ops.size());
-            assertEquals("Old requirement", ops.getFirst().fromName());
-            assertEquals("New requirement", ops.getFirst().toName());
+            assertTrue(service.parseDeltaSpecContent("cap", content).isEmpty());
         }
 
         @Test
@@ -285,11 +289,12 @@ class SpecSyncServiceTest {
         }
 
         @Test
-        void bareRequirementName_stripsBackticksAndHeaderToken_keepsBareNames() {
-            assertEquals("Old", SpecSyncService.bareRequirementName("`### Requirement: Old`"));
-            assertEquals("Old", SpecSyncService.bareRequirementName("### requirement: Old"));
-            assertEquals("Old name", SpecSyncService.bareRequirementName("Old name"));
-            assertEquals("Old name", SpecSyncService.bareRequirementName("  `Old name`  "));
+        void normalizeName_stripsClosingHashesAndTrims_keepsCase() {
+            assertEquals("Works", SpecMerge.normalizeName("  Works ##  "));
+            assertEquals("C#", SpecMerge.normalizeName("C#"), "a # not preceded by a space is part of the name");
+            assertEquals("Works", SpecMerge.normalizeName("Works\t#"));
+            assertEquals("works", SpecMerge.normalizeName("works"), "no case folding: names match exactly");
+            assertEquals("works well", SpecMerge.foldName("Works   Well"), "the fold is only for refusing near-misses");
         }
 
         @Test
@@ -308,10 +313,9 @@ class SpecSyncServiceTest {
                 assertEquals(rename.get("from").getAsString(), ops.getFirst().fromName());
                 assertEquals(rename.get("to").getAsString(), ops.getFirst().toName());
 
-                List<String> warnings = new ArrayList<>();
-                String renamed = service.applyRenamed(main, ops.getFirst(), warnings);
-                assertTrue(warnings.isEmpty(), "rename must find its target: " + warnings);
-                assertEquals(requirementHeaders(fixture(base + "archived-spec.md")), requirementHeaders(renamed));
+                SpecMerge.Result r = SpecMerge.merge("demo", "c", delta, main);
+                assertNull(r.refusal(), "rename must find its target");
+                assertEquals(requirementHeaders(fixture(base + "archived-spec.md")), requirementHeaders(r.projected()));
             }
         }
 
@@ -340,10 +344,10 @@ class SpecSyncServiceTest {
                     .map(DeltaSpecOperation::requirementName).toList(),
                     "bullet REMOVED entries must parse to the removals the client applies");
 
-            List<String> warnings = new ArrayList<>();
-            String after = service.applyRemoved(main, ops.getFirst(), warnings);
-            assertTrue(warnings.isEmpty(), "removal must find its target: " + warnings);
-            assertEquals(requirementHeaders(fixture(base + "archived-spec.md")), requirementHeaders(after),
+            SpecMerge.Result r = SpecMerge.merge("demo", "c", delta, main);
+            assertNull(r.refusal());
+            assertTrue(r.warnings().isEmpty(), "removal must find its target: " + r.warnings());
+            assertEquals(requirementHeaders(fixture(base + "archived-spec.md")), requirementHeaders(r.projected()),
                     "the applied main spec must keep exactly the requirements the client's archive kept");
 
             List<DeltaSpecOperation> crlfOps = service.parseDeltaSpecContent("demo", delta.replace("\n", "\r\n"));
@@ -385,10 +389,10 @@ class SpecSyncServiceTest {
     }
 
     @Nested
-    class ApplyOperations {
+    class Merge {
 
         private static final String SAMPLE_SPEC = """
-                # Workflow
+                # workflow Specification
 
                 ## Purpose
                 Artifact generation pipeline.
@@ -410,122 +414,103 @@ class SpecSyncServiceTest {
                 - **THEN** the change SHALL be moved
                 """;
 
-        @Test
-        void applyAdded_appendsToExisting() {
-            DeltaSpecOperation op = new DeltaSpecOperation(
-                    OperationType.ADDED, "workflow", "Sync action",
-                    "### Requirement: Sync action\nThe plugin SHALL sync specs.\n\n#### Scenario: Sync\n- **WHEN** sync\n- **THEN** specs update",
-                    null, null);
-
-            String result = service.applyAdded(SAMPLE_SPEC, op);
-
-            assertTrue(result.contains("### Requirement: Sync action"));
-            assertTrue(result.contains("### Requirement: Propose action"));
-            // New content should be at the end
-            int proposeIdx = result.indexOf("### Requirement: Propose action");
-            int syncIdx = result.indexOf("### Requirement: Sync action");
-            assertTrue(syncIdx > proposeIdx);
+        private SpecMerge.Result merge(String delta) {
+            return SpecMerge.merge("workflow", "c1", delta, SAMPLE_SPEC);
         }
 
         @Test
-        void applyAdded_createsNewFile() {
-            DeltaSpecOperation op = new DeltaSpecOperation(
-                    OperationType.ADDED, "new-cap", "First req",
-                    "### Requirement: First req\nDoes something.\n\n#### Scenario: Basic\n- **WHEN** x\n- **THEN** y",
-                    null, null);
+        void added_appendsAfterExistingRequirements() {
+            SpecMerge.Result r = merge("## ADDED Requirements\n\n### Requirement: Sync action\nThe plugin SHALL sync specs.\n\n#### Scenario: Sync\n- **WHEN** sync\n- **THEN** specs update\n");
 
-            String result = service.applyAdded("", op);
-
-            assertTrue(result.startsWith("# New Cap"));
-            assertTrue(result.contains("## Purpose"));
-            assertTrue(result.contains("### Requirement: First req"));
+            assertNull(r.refusal());
+            assertTrue(r.projected().indexOf("### Requirement: Sync action") > r.projected().indexOf("### Requirement: Archive action"));
         }
 
         @Test
-        void applyModified_replacesBlock() {
-            DeltaSpecOperation op = new DeltaSpecOperation(
-                    OperationType.MODIFIED, "workflow", "Propose action",
-                    "### Requirement: Propose action\nThe plugin SHALL create a change with validation.\n\n#### Scenario: Validated creation\n- **WHEN** propose\n- **THEN** validate first",
-                    null, null);
-            List<String> warnings = new ArrayList<>();
+        void added_newCapabilityGetsTheClientsSkeleton() {
+            SpecMerge.Result r = SpecMerge.merge("new-cap", "add-thing",
+                    "## ADDED Requirements\n\n### Requirement: First req\nDoes something.\n\n#### Scenario: Basic\n- **WHEN** x\n- **THEN** y\n", null);
 
-            String result = service.applyModified(SAMPLE_SPEC, op, warnings);
+            assertEquals("""
+                    # new-cap Specification
 
-            assertTrue(warnings.isEmpty());
-            assertTrue(result.contains("create a change with validation"));
-            assertFalse(result.contains("create a new change."));
-            // Archive should still be there
-            assertTrue(result.contains("### Requirement: Archive action"));
+                    ## Purpose
+                    TBD - created by archiving change add-thing. Update Purpose after archive.
+
+                    ## Requirements
+
+                    ### Requirement: First req
+                    Does something.
+
+                    #### Scenario: Basic
+                    - **WHEN** x
+                    - **THEN** y
+                    """, r.projected());
         }
 
         @Test
-        void applyModified_warnsOnUnmatched() {
-            DeltaSpecOperation op = new DeltaSpecOperation(
-                    OperationType.MODIFIED, "workflow", "Nonexistent req",
-                    "### Requirement: Nonexistent req\nContent",
-                    null, null);
-            List<String> warnings = new ArrayList<>();
+        void modified_replacesBlockKeepingItsScenarios() {
+            SpecMerge.Result r = merge("## MODIFIED Requirements\n\n### Requirement: Propose action\nThe plugin SHALL create a change with validation.\n\n#### Scenario: Change creation\n- **WHEN** propose\n- **THEN** validate first\n");
 
-            String result = service.applyModified(SAMPLE_SPEC, op, warnings);
-
-            assertEquals(1, warnings.size());
-            assertTrue(warnings.getFirst().contains("not found"));
-            assertEquals(SAMPLE_SPEC, result);
+            assertNull(r.refusal());
+            assertTrue(r.projected().contains("create a change with validation"));
+            assertFalse(r.projected().contains("create a new change."));
+            assertTrue(r.projected().contains("### Requirement: Archive action"));
         }
 
         @Test
-        void applyRemoved_removesBlock() {
-            DeltaSpecOperation op = new DeltaSpecOperation(
-                    OperationType.REMOVED, "workflow", "Archive action",
-                    "### Requirement: Archive action\n**Reason**: Deprecated",
-                    null, null);
-            List<String> warnings = new ArrayList<>();
+        void modified_droppingAScenarioIsRefused() {
+            SpecMerge.Result r = merge("## MODIFIED Requirements\n\n### Requirement: Propose action\nThe plugin SHALL create a change with validation.\n\n#### Scenario: Validated creation\n- **WHEN** propose\n- **THEN** validate first\n");
 
-            String result = service.applyRemoved(SAMPLE_SPEC, op, warnings);
-
-            assertTrue(warnings.isEmpty());
-            assertFalse(result.contains("### Requirement: Archive action"));
-            assertTrue(result.contains("### Requirement: Propose action"));
+            assertNull(r.projected());
+            assertTrue(r.refusal().contains("current spec contains scenario(s) not present in the modified block: \"Change creation\""), r.refusal());
         }
 
         @Test
-        void applyRemoved_warnsOnUnmatched() {
-            DeltaSpecOperation op = new DeltaSpecOperation(
-                    OperationType.REMOVED, "workflow", "Ghost req",
-                    "### Requirement: Ghost req\n**Reason**: Gone",
-                    null, null);
-            List<String> warnings = new ArrayList<>();
+        void modified_unmatchedIsRefused() {
+            SpecMerge.Result r = merge("## MODIFIED Requirements\n\n### Requirement: Nonexistent req\nContent\n\n#### Scenario: S\n- **WHEN** a\n- **THEN** b\n");
 
-            String result = service.applyRemoved(SAMPLE_SPEC, op, warnings);
-
-            assertEquals(1, warnings.size());
-            assertTrue(warnings.getFirst().contains("not found"));
+            assertEquals("workflow MODIFIED failed for header \"### Requirement: Nonexistent req\" - not found", r.refusal());
         }
 
         @Test
-        void applyRenamed_updatesHeader() {
-            DeltaSpecOperation op = new DeltaSpecOperation(
-                    OperationType.RENAMED, "workflow", "Propose action",
-                    null, "Propose action", "Create action");
-            List<String> warnings = new ArrayList<>();
+        void modified_caseVariantIsNotAMatch() {
+            SpecMerge.Result r = merge("## MODIFIED Requirements\n\n### Requirement: propose action\nContent.\n\n#### Scenario: Change creation\n- **WHEN** a\n- **THEN** b\n");
 
-            String result = service.applyRenamed(SAMPLE_SPEC, op, warnings);
-
-            assertTrue(warnings.isEmpty());
-            assertTrue(result.contains("### Requirement: Create action"));
-            assertFalse(result.contains("### Requirement: Propose action"));
+            assertEquals("workflow MODIFIED failed for header \"### Requirement: propose action\" - not found", r.refusal());
         }
 
         @Test
-        void applyRenamed_warnsOnUnmatched() {
-            DeltaSpecOperation op = new DeltaSpecOperation(
-                    OperationType.RENAMED, "workflow", "Missing",
-                    null, "Missing", "New name");
-            List<String> warnings = new ArrayList<>();
+        void removed_removesBlock() {
+            SpecMerge.Result r = merge("## REMOVED Requirements\n\n### Requirement: Archive action\n**Reason**: Deprecated\n");
 
-            String result = service.applyRenamed(SAMPLE_SPEC, op, warnings);
+            assertNull(r.refusal());
+            assertFalse(r.projected().contains("### Requirement: Archive action"));
+            assertTrue(r.projected().contains("### Requirement: Propose action"));
+        }
 
-            assertEquals(1, warnings.size());
+        @Test
+        void removed_alreadyGoneIsAWarningNotARefusal() {
+            SpecMerge.Result r = merge("## REMOVED Requirements\n\n- `### Requirement: Ghost req`\n");
+
+            assertNull(r.refusal());
+            assertEquals(List.of("workflow - REMOVED requirement \"Ghost req\" is not in the current spec; treating it as already removed."), r.warnings());
+        }
+
+        @Test
+        void renamed_updatesHeaderInPlace() {
+            SpecMerge.Result r = merge("## RENAMED Requirements\n\n- FROM: `### Requirement: Propose action`\n- TO: `### Requirement: Create action`\n");
+
+            assertNull(r.refusal());
+            assertTrue(r.projected().indexOf("### Requirement: Create action") < r.projected().indexOf("### Requirement: Archive action"));
+            assertFalse(r.projected().contains("### Requirement: Propose action"));
+        }
+
+        @Test
+        void renamed_missingSourceIsRefused() {
+            SpecMerge.Result r = merge("## RENAMED Requirements\n\n- FROM: `### Requirement: Missing`\n- TO: `### Requirement: New name`\n");
+
+            assertEquals("workflow RENAMED failed for header \"### Requirement: Missing\" - source not found", r.refusal());
         }
 
         @Test
@@ -544,75 +529,6 @@ class SpecSyncServiceTest {
             assertEquals(OperationType.REMOVED, sorted.get(1).type());
             assertEquals(OperationType.MODIFIED, sorted.get(2).type());
             assertEquals(OperationType.ADDED, sorted.get(3).type());
-        }
-
-        @Test
-        void applyOperations_allTypesInSequence() {
-            List<DeltaSpecOperation> ops = List.of(
-                    new DeltaSpecOperation(OperationType.REMOVED, "workflow", "Archive action",
-                            "### Requirement: Archive action\n**Reason**: gone", null, null),
-                    new DeltaSpecOperation(OperationType.ADDED, "workflow", "Sync",
-                            "### Requirement: Sync\nSyncs specs.\n\n#### Scenario: Sync\n- **WHEN** sync\n- **THEN** done",
-                            null, null)
-            );
-            List<String> warnings = new ArrayList<>();
-
-            String result = service.applyOperations(SAMPLE_SPEC, ops, warnings);
-
-            assertTrue(warnings.isEmpty());
-            assertFalse(result.contains("Archive action"));
-            assertTrue(result.contains("### Requirement: Sync"));
-            assertTrue(result.contains("### Requirement: Propose action"));
-        }
-    }
-
-    @Nested
-    class FindRequirementBlock {
-
-        @Test
-        void findsBlockBetweenHeadings() {
-            String content = """
-                    ### Requirement: First
-                    Content one.
-
-                    ### Requirement: Second
-                    Content two.
-                    """;
-
-            int[] range = service.findRequirementBlock(content, "First");
-            assertNotNull(range);
-            String block = content.substring(range[0], range[1]);
-            assertTrue(block.contains("Content one"));
-            assertFalse(block.contains("Content two"));
-        }
-
-        @Test
-        void findsLastBlock() {
-            String content = """
-                    ### Requirement: First
-                    Content one.
-
-                    ### Requirement: Last
-                    Content last.
-                    """;
-
-            int[] range = service.findRequirementBlock(content, "Last");
-            assertNotNull(range);
-            String block = content.substring(range[0], range[1]);
-            assertTrue(block.contains("Content last"));
-        }
-
-        @Test
-        void returnsNullForMissing() {
-            String content = "### Requirement: Something\nContent.";
-            assertNull(service.findRequirementBlock(content, "Missing"));
-        }
-
-        @Test
-        void caseInsensitiveMatch() {
-            String content = "### Requirement: Propose Action\nContent.";
-            int[] range = service.findRequirementBlock(content, "propose action");
-            assertNotNull(range);
         }
     }
 

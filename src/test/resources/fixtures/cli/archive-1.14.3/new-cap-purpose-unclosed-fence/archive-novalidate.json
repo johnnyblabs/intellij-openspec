@@ -1,0 +1,15 @@
+{
+  "archive": null,
+  "root": {
+    "path": "/fixture",
+    "source": "nearest"
+  },
+  "status": [
+    {
+      "severity": "error",
+      "code": "archive_spec_update_failed",
+      "message": "Delta parsing found no operations for newcap. Provide ADDED/MODIFIED/REMOVED/RENAMED sections in change spec.",
+      "fix": "Fix the change delta specs and rerun. No files were changed."
+    }
+  ]
+}

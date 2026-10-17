@@ -1,6 +1,7 @@
 package com.johnnyblabs.openspec.integration;
 
 import com.intellij.openapi.application.WriteAction;
+import com.intellij.openapi.vfs.VfsUtil;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.johnnyblabs.openspec.model.Change;
 import com.johnnyblabs.openspec.services.ChangeService;
@@ -73,10 +74,11 @@ public class ChangeServiceIntegrationTest extends OpenSpecIntegrationTestBase {
         assertNotNull("no-meta change discovered", noMeta);
         assertNull("precondition: metadata is null (no .openspec.yaml)", noMeta.getMetadata());
 
-        changeService.archiveChange(noMeta); // must not NPE (red on pre-retirement code)
+        changeService.setClockForTest(FIXED);
+        assertEquals("2026-10-17-no-meta", changeService.archiveChange(noMeta)); // must not NPE (red on pre-retirement code)
 
         assertNotNull("listed as archived after archiveChange (proves no NPE aborted the move)",
-                byName(changeService.getArchivedChanges(), "no-meta"));
+                byName(changeService.getArchivedChanges(), "2026-10-17-no-meta"));
         assertNull("no longer active", byName(changeService.getActiveChanges(), "no-meta"));
     }
 
@@ -95,9 +97,56 @@ public class ChangeServiceIntegrationTest extends OpenSpecIntegrationTestBase {
         assertNotNull(bad);
         assertNull("malformed .openspec.yaml leaves metadata null", bad.getMetadata());
 
+        changeService.setClockForTest(FIXED);
         changeService.archiveChange(bad); // must not NPE
 
-        assertTrue(byName(changeService.getArchivedChanges(), "bad-meta") != null);
+        assertTrue(byName(changeService.getArchivedChanges(), "2026-10-17-bad-meta") != null);
+    }
+
+    private static final java.time.Clock FIXED =
+            java.time.Clock.fixed(java.time.Instant.parse("2026-10-17T12:00:00Z"), java.time.ZoneOffset.UTC);
+
+    public void testArchiveKeepsAnAlreadyDatedName() throws Exception {
+        WriteAction.runAndWait(() -> getChangesDir().createChildDirectory(this, "2026-01-02-dated")
+                .createChildData(this, "proposal.md").setBinaryContent("## Why\n\nx\n".getBytes(StandardCharsets.UTF_8)));
+        ChangeService changeService = getProject().getService(ChangeService.class);
+        changeService.setClockForTest(FIXED);
+
+        assertEquals("2026-01-02-dated", changeService.archiveChange(byName(changeService.getActiveChanges(), "2026-01-02-dated")));
+        assertNotNull(getChangesDir().findFileByRelativePath("archive/2026-01-02-dated"));
+    }
+
+    public void testArchiveRefusesAnExistingTargetAndLeavesTheChangeActive() throws Exception {
+        WriteAction.runAndWait(() -> {
+            getChangesDir().createChildDirectory(this, "twice").createChildData(this, "proposal.md")
+                    .setBinaryContent("## Why\n\nx\n".getBytes(StandardCharsets.UTF_8));
+            VfsUtil.createDirectoryIfMissing(getChangesDir(), "archive/2026-10-17-twice");
+        });
+        ChangeService changeService = getProject().getService(ChangeService.class);
+        changeService.setClockForTest(FIXED);
+        Change twice = byName(changeService.getActiveChanges(), "twice");
+
+        try {
+            changeService.archiveChange(twice);
+            fail("an existing archive target must refuse");
+        } catch (java.io.IOException e) {
+            assertEquals("Archive '2026-10-17-twice' already exists.", e.getMessage());
+        }
+        assertNotNull("still active", byName(changeService.getActiveChanges(), "twice"));
+    }
+
+    public void testArchiveCreatesChangesArchiveNeverTheLegacyFolder() throws Exception {
+        WriteAction.runAndWait(() -> getChangesDir().createChildDirectory(this, "first")
+                .createChildData(this, "proposal.md").setBinaryContent("## Why\n\nx\n".getBytes(StandardCharsets.UTF_8)));
+        VirtualFile openspecRoot = getChangesDir().getParent();
+        assertNull("precondition: no changes/archive yet", getChangesDir().findChild("archive"));
+        ChangeService changeService = getProject().getService(ChangeService.class);
+        changeService.setClockForTest(FIXED);
+
+        changeService.archiveChange(byName(changeService.getActiveChanges(), "first"));
+
+        assertNotNull(getChangesDir().findFileByRelativePath("archive/2026-10-17-first"));
+        assertNull("the legacy openspec/archive/ is never created", openspecRoot.findChild("archive"));
     }
 
     private static Change byName(List<Change> changes, String name) {

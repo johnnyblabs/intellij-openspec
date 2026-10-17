@@ -45,31 +45,77 @@ public final class ChangeService {
         return archiveChange(active.getFirst());
     }
 
+    private static final java.util.regex.Pattern DATED_NAME = java.util.regex.Pattern.compile("^\\d{4}-\\d{2}-\\d{2}-");
+
+    private java.time.Clock clock = java.time.Clock.systemDefaultZone();
+
+    @org.jetbrains.annotations.TestOnly
+    public void setClockForTest(java.time.Clock clock) {
+        this.clock = clock;
+    }
+
+    /**
+     * The folder name a change archives to, as {@code openspec archive} names it: {@code YYYY-MM-DD-<name>} in local
+     * time, or the name unchanged when it already starts with a date.
+     */
+    public String archiveTargetName(String changeName) {
+        return archiveTargetName(changeName, java.time.LocalDate.now(clock));
+    }
+
+    /** {@link #archiveTargetName(String)} for a given date. */
+    public static String archiveTargetName(String changeName, java.time.LocalDate date) {
+        return DATED_NAME.matcher(changeName).find() ? changeName : date + "-" + changeName;
+    }
+
+    /** OpenSpec's refusal when the archive folder already exists. */
+    public static String archiveExistsMessage(String target) {
+        return "Archive '" + target + "' already exists.";
+    }
+
+    /** OpenSpec's refusal when the change's archive folder already exists, or {@code null} when it can archive. */
+    public @org.jetbrains.annotations.Nullable String archiveConflict(String changeName) {
+        VirtualFile changesDir = OpenSpecFileUtil.getChangesDir(project);
+        if (changesDir == null) return null;
+        String target = archiveTargetName(changeName);
+        VirtualFile archive = changesDir.findChild("archive");
+        // The disk too, not only the VFS cache: a folder the CLI or git just created may not be refreshed yet.
+        java.nio.file.Path onDisk = changesDir.getFileSystem().getNioPath(changesDir); // null for in-memory files
+        boolean exists = archive != null && archive.findChild(target) != null
+                || onDisk != null && java.nio.file.Files.exists(onDisk.resolve("archive").resolve(target));
+        return exists ? archiveExistsMessage(target) : null;
+    }
+
+    /**
+     * Moves a change to {@code openspec/changes/archive/<archiveTargetName>}, creating {@code changes/archive/} when
+     * missing. Refuses when the target exists. Never creates the legacy {@code openspec/archive/}, which is only read.
+     * Returns the archived folder name.
+     */
     public String archiveChange(Change change) throws IOException {
         VirtualFile changesDir = OpenSpecFileUtil.getChangesDir(project);
-        VirtualFile archiveDir = OpenSpecFileUtil.getArchiveDir(project);
         if (changesDir == null) throw new IOException("Changes directory not found");
 
         VirtualFile changeDir = changesDir.findChild(change.getName());
         if (changeDir == null) throw new IOException("Change directory not found: " + change.getName());
 
+        String conflict = archiveConflict(change.getName());
+        if (conflict != null) throw new IOException(conflict);
+
+        String target = archiveTargetName(change.getName());
         WriteAction.run(() -> {
-            VirtualFile targetArchiveDir = archiveDir;
-            if (targetArchiveDir == null) {
-                VirtualFile root = OpenSpecFileUtil.getOpenSpecRoot(project);
-                if (root != null) {
-                    targetArchiveDir = root.createChildDirectory(this, "archive");
-                }
+            VirtualFile archive = changesDir.findChild("archive");
+            if (archive == null) {
+                archive = changesDir.createChildDirectory(this, "archive");
             }
-            if (targetArchiveDir != null) {
-                changeDir.move(this, targetArchiveDir);
+            changeDir.move(this, archive);
+            if (!target.equals(changeDir.getName())) {
+                changeDir.rename(this, target);
             }
         });
 
         // Archived-ness is directory location (changes/archive/), not a metadata field — the invented
         // status: write is retired. (This line previously did an unguarded getMetadata().setStatus on
         // possibly-null metadata AFTER the move committed, NPE-ing into a half-succeeded archive.)
-        return change.getName();
+        return target;
     }
 
     public List<String> getMissingArtifacts(Change change) {

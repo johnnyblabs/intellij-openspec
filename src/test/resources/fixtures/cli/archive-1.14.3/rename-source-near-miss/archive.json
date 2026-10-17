@@ -1,0 +1,15 @@
+{
+  "archive": null,
+  "root": {
+    "path": "/fixture",
+    "source": "nearest"
+  },
+  "status": [
+    {
+      "severity": "error",
+      "code": "archive_spec_update_failed",
+      "message": "demo RENAMED failed for header \"### Requirement: Works\" - source not found, but \"### Requirement: works\" exists; fix the header to match it exactly",
+      "fix": "Fix the change delta specs and rerun. No files were changed."
+    }
+  ]
+}

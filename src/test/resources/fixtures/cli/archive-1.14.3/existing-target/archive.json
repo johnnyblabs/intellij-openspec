@@ -1,0 +1,14 @@
+{
+  "archive": null,
+  "root": {
+    "path": "/fixture",
+    "source": "nearest"
+  },
+  "status": [
+    {
+      "severity": "error",
+      "code": "archive_target_exists",
+      "message": "Archive '<DATE>-c1' already exists."
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "archive": {
+    "change": "c1",
+    "archivedAs": "<DATE>-c1",
+    "path": "/fixture/openspec/changes/archive/<DATE>-c1",
+    "specsUpdated": true,
+    "totals": {
+      "added": 1,
+      "modified": 0,
+      "removed": 0,
+      "renamed": 0
+    },
+    "warnings": [
+      "newcap - 1 REMOVED requirement(s) ignored for new spec (nothing to remove)."
+    ]
+  },
+  "root": {
+    "path": "/fixture",
+    "source": "nearest"
+  }
+}
