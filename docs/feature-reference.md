@@ -247,15 +247,23 @@ When you click Generate, the plugin delivers the assembled prompt via your confi
 
 ### AI Tool Detection
 
-The plugin scans your project for AI tool configuration directories — **30 tools are detected** in total; a representative subset is shown below:
+The plugin knows every AI tool the OpenSpec CLI can set up (**50 tools** as of OpenSpec 1.14) and detects them the way the CLI does, using the same names as OpenSpec's tool picker. A representative subset is shown below:
 
-| Directory | Tool | Type |
-|-----------|------|------|
-| `.github/` | GitHub Copilot | IDE Panel |
+| Detected from | Tool | Type |
+|---------------|------|------|
+| `.github/copilot-instructions.md`, `.github/prompts/`, `.github/instructions/`, … | GitHub Copilot | IDE Panel |
 | `.cursor/` | Cursor | IDE Panel |
-| `.windsurf/` | Windsurf | IDE Panel |
+| `.devin/` (or the older `.windsurf/`) | Devin Desktop (formerly Windsurf) | IDE Panel |
 | `.cline/` | Cline | IDE Panel |
 | `.claude/` | Claude Code | CLI |
+| `.agents/skills/` (owner recorded in `.agents/skills/.openspec-target`) | Codex, or another tool sharing `.agents` | CLI |
+
+A few rules come straight from the CLI:
+- **Copilot is detected only from its own files.** A plain `.github/` folder, which most repositories have, doesn't count.
+- **Tools sharing `.agents/`** (Codex, Amp, Antigravity, Zed and others) are told apart by OpenSpec's ownership marker, then by the generated skills.
+- **Older directories still count:** `.windsurf/`, `.codex/` and `.kimi/`, for example.
+- **Tools that install into your home directory** (MiniMax Code) are detected there.
+- **Newer tools are hidden from older CLIs.** The plugin only offers or passes a tool to `openspec init` when your installed CLI accepts it.
 
 Detected tools appear in bold in the settings panel and are available as clipboard delivery targets. **CLI** tools receive save-path hints in the guidance text; **IDE Panel** tools receive paste-target guidance.
 

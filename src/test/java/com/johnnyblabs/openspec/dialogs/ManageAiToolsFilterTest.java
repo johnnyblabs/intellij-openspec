@@ -167,6 +167,9 @@ class ManageAiToolsFilterTest {
         void allToolNamesHaveDirNames() {
             for (String name : AiToolDetectionService.getAllToolNames()) {
                 String dirName = AiToolDetectionService.getToolDirName(name);
+                if (dirName == null && com.johnnyblabs.openspec.services.AiToolRegistry.byName(name).globalSkillsDir() != null) {
+                    continue; // installs into the home directory
+                }
                 assertNotNull(dirName, name + " should have a directory name");
                 assertTrue(dirName.startsWith("."), name + " dir should start with dot");
             }

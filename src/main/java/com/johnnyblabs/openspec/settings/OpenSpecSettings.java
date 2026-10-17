@@ -112,12 +112,13 @@ public final class OpenSpecSettings implements PersistentStateComponent<OpenSpec
         state.preferredDeliveryMethod = method;
     }
 
+    /** The preferred AI tool's current display name; a name saved by an earlier version maps to its new one. */
     public String getPreferredTool() {
-        return state.preferredTool;
+        return com.johnnyblabs.openspec.services.AiToolRegistry.canonicalName(state.preferredTool);
     }
 
     public void setPreferredTool(String tool) {
-        state.preferredTool = tool;
+        state.preferredTool = com.johnnyblabs.openspec.services.AiToolRegistry.canonicalName(tool);
     }
 
     public boolean isSetupCompleted() {

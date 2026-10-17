@@ -158,7 +158,8 @@ class AiToolDetectionServiceTest {
             assertEquals(".claude", AiToolDetectionService.getToolDirName("Claude Code"));
             assertEquals(".github", AiToolDetectionService.getToolDirName("GitHub Copilot"));
             assertEquals(".cursor", AiToolDetectionService.getToolDirName("Cursor"));
-            assertEquals(".windsurf", AiToolDetectionService.getToolDirName("Windsurf"));
+            assertEquals(".devin", AiToolDetectionService.getToolDirName("Devin Desktop (formerly Windsurf)"));
+            assertEquals(".devin", AiToolDetectionService.getToolDirName("Windsurf"), "the former name still resolves");
             assertEquals(".cline", AiToolDetectionService.getToolDirName("Cline"));
             assertEquals(".gemini", AiToolDetectionService.getToolDirName("Gemini"));
             assertEquals(".amazonq", AiToolDetectionService.getToolDirName("Amazon Q"));
@@ -198,8 +199,9 @@ class AiToolDetectionServiceTest {
 
         @Test
         void getCliToolId_kimiAndVibe_mapToUpstreamValues() {
-            assertEquals("kimi", AiToolDetectionService.getCliToolId("Kimi CLI"));
-            assertEquals(".kimi", AiToolDetectionService.getToolDirName("Kimi CLI"));
+            assertEquals("kimi", AiToolDetectionService.getCliToolId("Kimi Code"));
+            assertEquals("kimi", AiToolDetectionService.getCliToolId("Kimi CLI"), "the former name still resolves");
+            assertEquals(".kimi-code", AiToolDetectionService.getToolDirName("Kimi Code"));
             assertEquals("vibe", AiToolDetectionService.getCliToolId("Mistral Vibe"));
             assertEquals(".vibe", AiToolDetectionService.getToolDirName("Mistral Vibe"));
         }
@@ -227,9 +229,9 @@ class AiToolDetectionServiceTest {
     class AllToolNames {
 
         @Test
-        void getAllToolNames_returns30Tools() {
+        void getAllToolNames_returnsTheCliRegistrysFiftyTools() {
             var names = AiToolDetectionService.getAllToolNames();
-            assertEquals(30, names.size());
+            assertEquals(50, names.size());
         }
 
         @Test
@@ -238,14 +240,16 @@ class AiToolDetectionServiceTest {
             assertTrue(names.contains("Claude Code"));
             assertTrue(names.contains("GitHub Copilot"));
             assertTrue(names.contains("Cursor"));
-            assertTrue(names.contains("Amazon Q"));
+            assertTrue(names.contains("Amazon Q Developer"));
             assertTrue(names.contains("Kiro"));
-            assertTrue(names.contains("Roo Code"));
+            assertTrue(names.contains("Zoo Code"));
             assertTrue(names.contains("Junie"));
             assertTrue(names.contains("Lingma"));
             assertTrue(names.contains("ForgeCode"));
-            assertTrue(names.contains("Bob Shell"));
-            assertTrue(names.contains("Kimi CLI"));
+            assertTrue(names.contains("IBM Bob"));
+            assertTrue(names.contains("Kimi Code"));
+            assertTrue(names.contains("Devin Desktop (formerly Windsurf)"));
+            assertFalse(names.contains("Windsurf"), "former names are aliases, not listed tools");
             assertTrue(names.contains("Mistral Vibe"));
         }
 
@@ -264,8 +268,12 @@ class AiToolDetectionServiceTest {
         }
 
         @Test
-        void everyToolHasDirName() {
+        void everyProjectToolHasDirName() {
             for (String tool : AiToolDetectionService.getAllToolNames()) {
+                if (AiToolRegistry.byName(tool).globalSkillsDir() != null) {
+                    assertNull(AiToolDetectionService.getToolDirName(tool), tool + " installs into the home directory");
+                    continue;
+                }
                 assertNotNull(AiToolDetectionService.getToolDirName(tool),
                         tool + " should have a directory name");
             }
@@ -322,17 +330,18 @@ class AiToolDetectionServiceTest {
 
         @Test
         void allMapsHaveSameSize() {
-            // TOOL_DIRS, TOOL_TYPES, and CLI_TOOL_IDS should all have 30 entries (OpenSpec 1.4.x)
+            // Every tool has a type and a CLI id; all but global-only tools have a directory (OpenSpec 1.14.x)
             var names = AiToolDetectionService.getAllToolNames();
-            assertEquals(30, names.size(), "Should have 30 tools");
+            assertEquals(50, names.size(), "Should have 50 tools");
 
             for (String name : names) {
                 assertNotNull(AiToolDetectionService.getToolType(name),
                         name + " missing from TOOL_TYPES");
                 assertNotNull(AiToolDetectionService.getCliToolId(name),
                         name + " missing from CLI_TOOL_IDS");
-                assertNotNull(AiToolDetectionService.getToolDirName(name),
-                        name + " missing from TOOL_DIRS");
+                assertTrue(AiToolDetectionService.getToolDirName(name) != null
+                                || AiToolRegistry.byName(name).globalSkillsDir() != null,
+                        name + " has no directory");
             }
         }
     }
@@ -351,9 +360,10 @@ class AiToolDetectionServiceTest {
 
         @Test
         void bobShell_hasExplicitTerminalGuidance() {
-            var g = AiToolDetectionService.getToolGuidance("Bob Shell");
+            var g = AiToolDetectionService.getToolGuidance("IBM Bob");
             assertEquals("terminal", g.chatPanelName());
-            assertEquals("Paste into Bob Shell", g.pasteAction());
+            assertEquals("Paste into IBM Bob", g.pasteAction());
+            assertSame(g, AiToolDetectionService.getToolGuidance("Bob Shell"), "the former name still resolves");
             assertNull(g.promptPrefix());
             assertTrue(g.canAutoSave());
         }
@@ -378,9 +388,9 @@ class AiToolDetectionServiceTest {
 
         @Test
         void kimiCli_hasExplicitTerminalGuidance() {
-            var g = AiToolDetectionService.getToolGuidance("Kimi CLI");
+            var g = AiToolDetectionService.getToolGuidance("Kimi Code");
             assertEquals("terminal", g.chatPanelName());
-            assertEquals("Paste into Kimi CLI", g.pasteAction());
+            assertEquals("Paste into Kimi Code", g.pasteAction());
             assertNull(g.promptPrefix());
             assertTrue(g.canAutoSave(),
                     "Kimi CLI must report canAutoSave=true so the IDE watches tasks.md instead of prompting for manual save");

@@ -1,0 +1,18 @@
+{
+  "project": {
+    ".agents/skills/.openspec-target": "antigravity\n",
+    ".agents/skills/openspec-apply-change/SKILL.md": "",
+    ".agents/skills/openspec-archive-change/SKILL.md": "",
+    ".agents/skills/openspec-explore/SKILL.md": "",
+    ".agents/skills/openspec-propose/SKILL.md": "",
+    ".agents/skills/openspec-sync-specs/SKILL.md": "",
+    ".agents/skills/openspec-update-change/SKILL.md": "",
+    ".agents/workflows/opsx-apply.md": "",
+    ".agents/workflows/opsx-archive.md": "",
+    ".agents/workflows/opsx-explore.md": "",
+    ".agents/workflows/opsx-propose.md": "",
+    ".agents/workflows/opsx-sync.md": "",
+    ".agents/workflows/opsx-update.md": ""
+  },
+  "home": {}
+}

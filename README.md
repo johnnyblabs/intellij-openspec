@@ -12,7 +12,7 @@ An IDE-native client for the [OpenSpec](https://github.com/fission-ai/openspec) 
 - **Spec browser & viewer** — a master/detail tree of capabilities and requirements beside a rendered-markdown preview pane, with content-aware search (over requirement and scenario text), artifact-status badges on tree icons (a change whose artifacts are complete and whose tasks are all done gets a check mark and an "all tasks done" cue, so finished work stands out), and a consolidated change-deltas view that shows everything a change modifies at the spec level
 - **Validation you can navigate** — real-time editor inspections and quick-fixes matching the OpenSpec CLI's own parser, plus a Validate action (from the toolbar or the Project View context menu, scoped to the clicked change or spec) whose results render grouped by file with clickable file:line links and per-severity coloring
 - **Change lifecycle** — create, implement, verify, and archive OpenSpec changes from a dedicated tool window, with schema-aware completeness gates and task-level progress
-- **Works with your AI tooling** — detects 30+ AI coding tools (Claude Code, GitHub Copilot, Cursor, Gemini CLI, and more) and hands generation off to the one you already use, or calls the Anthropic, OpenAI, or Google APIs directly with your own key
+- **Works with your AI tooling** — detects the 50 AI coding tools OpenSpec supports (Claude Code, GitHub Copilot, Cursor, Gemini CLI, and more), the way the OpenSpec CLI detects them, and hands generation off to the one you already use, or calls the Anthropic, OpenAI, or Google APIs directly with your own key
 - **Schema authoring** — fork, create, and validate custom workflow schemas, with template editing and resolution-provenance tags straight from the CLI
 - **Stores & worksets** — browse and manage the OpenSpec CLI 1.5 coordination model, with health diagnostics and graceful support back to the 1.4 workspace model
 - **Setup wizard** — guided onboarding for new and existing projects; the plugin works with or without the OpenSpec CLI installed and degrades gracefully
@@ -29,7 +29,7 @@ Compatible with IntelliJ IDEA, PyCharm, GoLand, WebStorm, RubyMine, and the rest
 | Persona | You are... | AI setup? | Get started |
 |---------|-----------|-----------|-------------|
 | **Spec Browser** | A reviewer, lead, or PM who wants to browse specs | None | [Getting Started](docs/getting-started-browser.md) |
-| **IDE-First Developer** | A dev using Copilot, Cursor, Windsurf, or Cline inside IntelliJ | None (uses your existing tool) | [Getting Started](docs/getting-started-copilot.md) |
+| **IDE-First Developer** | A dev using Copilot, Cursor, Devin Desktop (formerly Windsurf), or Cline inside IntelliJ | None (uses your existing tool) | [Getting Started](docs/getting-started-copilot.md) |
 | **CLI Companion** | A dev using Claude Code, Gemini CLI, or another terminal AI | None (uses your existing tool) | [Getting Started](docs/getting-started-cli-companion.md) |
 | **Standalone API User** | A dev with an API key who wants a fully self-contained workflow | API key only | [Getting Started](docs/getting-started-api.md) |
 
