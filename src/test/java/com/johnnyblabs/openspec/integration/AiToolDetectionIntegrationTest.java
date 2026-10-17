@@ -41,8 +41,8 @@ public class AiToolDetectionIntegrationTest extends OpenSpecIntegrationTestBase 
         assertTrue("Should have detected tools", service.hasDetectedTools());
     }
 
-    public void testDetect_findsCopilotDir() throws Exception {
-        createToolDir(".github");
+    public void testDetect_findsCopilotFromItsInstructionsDir() throws Exception {
+        createToolDir(".github/instructions");
 
         AiToolDetectionService service = getProject().getService(AiToolDetectionService.class);
         service.detect();
@@ -50,9 +50,19 @@ public class AiToolDetectionIntegrationTest extends OpenSpecIntegrationTestBase 
         assertTrue("Should detect GitHub Copilot", service.getDetectedTools().contains("GitHub Copilot"));
     }
 
+    /** Nearly every repository has .github; like the CLI, only Copilot's own paths detect it. */
+    public void testDetect_bareGithubDirIsNotCopilot() throws Exception {
+        createToolDir(".github/workflows");
+
+        AiToolDetectionService service = getProject().getService(AiToolDetectionService.class);
+        service.detect();
+
+        assertFalse("A bare .github is not Copilot", service.getDetectedTools().contains("GitHub Copilot"));
+    }
+
     public void testDetect_findsMultipleTools() throws Exception {
         createToolDir(".claude");
-        createToolDir(".github");
+        createToolDir(".github/instructions");
         createToolDir(".cursor");
 
         AiToolDetectionService service = getProject().getService(AiToolDetectionService.class);
@@ -95,7 +105,7 @@ public class AiToolDetectionIntegrationTest extends OpenSpecIntegrationTestBase 
 
     public void testPrimaryToolLabel_returnsFirstDetected() throws Exception {
         createToolDir(".claude");
-        createToolDir(".github");
+        createToolDir(".github/instructions");
 
         AiToolDetectionService service = getProject().getService(AiToolDetectionService.class);
         service.detect();
@@ -114,7 +124,7 @@ public class AiToolDetectionIntegrationTest extends OpenSpecIntegrationTestBase 
 
     public void testPreferredToolLabel_defaultsToFirstDetected() throws Exception {
         createToolDir(".claude");
-        createToolDir(".github");
+        createToolDir(".github/instructions");
 
         OpenSpecSettings settings = OpenSpecSettings.getInstance(getProject());
         settings.setPreferredTool("");
@@ -128,7 +138,7 @@ public class AiToolDetectionIntegrationTest extends OpenSpecIntegrationTestBase 
 
     public void testPreferredToolLabel_returnsSavedPreference() throws Exception {
         createToolDir(".claude");
-        createToolDir(".github");
+        createToolDir(".github/instructions");
 
         OpenSpecSettings settings = OpenSpecSettings.getInstance(getProject());
         settings.setPreferredTool("GitHub Copilot");
@@ -169,7 +179,7 @@ public class AiToolDetectionIntegrationTest extends OpenSpecIntegrationTestBase 
 
     public void testDetectedToolsHaveCorrectTypes() throws Exception {
         createToolDir(".claude");
-        createToolDir(".github");
+        createToolDir(".github/instructions");
         createToolDir(".gemini");
 
         AiToolDetectionService service = getProject().getService(AiToolDetectionService.class);
@@ -203,7 +213,7 @@ public class AiToolDetectionIntegrationTest extends OpenSpecIntegrationTestBase 
         for (String dirName : ALL_TOOL_DIRS) {
             File dir = new File(basePath, dirName);
             if (dir.isDirectory()) {
-                dir.delete();
+                com.intellij.openapi.util.io.FileUtil.delete(dir);
             }
         }
     }

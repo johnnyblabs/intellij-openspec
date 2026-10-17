@@ -273,9 +273,8 @@ public class GettingStartedPanel extends JPanel implements Disposable {
         if (basePath == null) return false;
         String filePath = file.getPath();
         // Check if the event is a tool directory being created at project root
-        for (String toolName : com.johnnyblabs.openspec.services.AiToolDetectionService.getAllToolNames()) {
-            String dirName = com.johnnyblabs.openspec.services.AiToolDetectionService.getToolDirName(toolName);
-            if (dirName != null && filePath.startsWith(basePath + "/" + dirName)) {
+        for (String root : com.johnnyblabs.openspec.services.AiToolRegistry.topLevelPaths()) {
+            if (filePath.equals(basePath + "/" + root) || filePath.startsWith(basePath + "/" + root + "/")) {
                 return true;
             }
         }

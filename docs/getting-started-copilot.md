@@ -1,12 +1,12 @@
 # Getting Started: IDE-First Developer
 
-*For developers using GitHub Copilot, Cursor, Windsurf, or Cline inside IntelliJ.*
+*For developers using GitHub Copilot, Cursor, Devin Desktop (formerly Windsurf), or Cline inside IntelliJ.*
 
 > **Maintenance: Reference** — stable; updated only when the described setup flow changes (see the [documentation index](README.md)).
 
 *Last verified: 2026-10-17 against plugin v0.13.0 source*
 
-This guide walks you through setting up the OpenSpec IntelliJ plugin and completing your first spec-driven change using an IDE-based AI tool. The examples use GitHub Copilot, but the clipboard workflow works identically with Cursor, Windsurf, and Cline. By the end, you'll have proposed, generated, implemented, and archived a change — the full OpenSpec lifecycle.
+This guide walks you through setting up the OpenSpec IntelliJ plugin and completing your first spec-driven change using an IDE-based AI tool. The examples use GitHub Copilot, but the clipboard workflow works identically with Cursor, Devin Desktop, and Cline. By the end, you'll have proposed, generated, implemented, and archived a change — the full OpenSpec lifecycle.
 
 ---
 
@@ -98,13 +98,13 @@ The settings panel has sections stacked vertically: **CLI**, **General**, **Conf
 
 This tab controls how the plugin delivers generated prompts to your AI tool.
 
-**Detected tools** — The plugin scans your project root for AI tool configuration directories (`.github/` for Copilot, `.claude/` for Claude Code, `.cursor/` for Cursor, etc.). Detected tools appear in bold, e.g., "Detected: **GitHub Copilot**, **Claude Code**".
+**Detected tools** — The plugin detects AI tools the way the OpenSpec CLI does (Copilot from `.github/copilot-instructions.md`, `.github/prompts/` or its other own files, `.claude/` for Claude Code, `.cursor/` for Cursor, etc.). A plain `.github/` folder doesn't mean Copilot; if Copilot isn't detected yet, choose it in the setup wizard or **Manage AI Tools**. Detected tools appear in bold, e.g., "Detected: **GitHub Copilot**, **Claude Code**".
 
 **Deliver via** — A unified dropdown that determines what happens when you click the Generate button:
 
 | Option | What it does |
 |--------|--------------|
-| **Copy for GitHub Copilot** | Copies the AI prompt to your clipboard. You paste it into Copilot Chat. Appears automatically when `.github/` is detected in your project. |
+| **Copy for GitHub Copilot** | Copies the AI prompt to your clipboard. You paste it into Copilot Chat. Appears automatically when Copilot is detected in your project. |
 | **Copy for [Other Tool]** | Same clipboard behavior, tailored message for the detected tool. One entry per detected tool. |
 | **Open in Editor Tab** | Opens the prompt in a temporary editor tab so you can review it before pasting into any AI tool. |
 | **Generate via API** | Sends the prompt directly to an AI provider's API (Claude, OpenAI, or Gemini) and writes the response to disk automatically. Requires an API key on the Direct API tab. |

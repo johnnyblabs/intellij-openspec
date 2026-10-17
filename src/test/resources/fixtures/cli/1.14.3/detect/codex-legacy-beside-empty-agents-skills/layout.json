@@ -1,0 +1,19 @@
+{
+  "project": {
+    ".agents/skills/.keep": "",
+    ".codex/skills/openspec-apply-change/SKILL.md": "",
+    ".codex/skills/openspec-archive-change/SKILL.md": "",
+    ".codex/skills/openspec-explore/SKILL.md": "",
+    ".codex/skills/openspec-propose/SKILL.md": "",
+    ".codex/skills/openspec-sync-specs/SKILL.md": "",
+    ".codex/skills/openspec-update-change/SKILL.md": ""
+  },
+  "home": {
+    ".codex/prompts/opsx-apply.md": "",
+    ".codex/prompts/opsx-archive.md": "",
+    ".codex/prompts/opsx-explore.md": "",
+    ".codex/prompts/opsx-propose.md": "",
+    ".codex/prompts/opsx-sync.md": "",
+    ".codex/prompts/opsx-update.md": ""
+  }
+}

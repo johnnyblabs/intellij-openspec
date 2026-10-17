@@ -8,6 +8,8 @@
 
 - **OpenSpec CLI 1.14.x is now a supported line.** The plugin reads 1.14's output as before; the new fields it adds are simply ignored. 1.14's new warnings (an unrecognized key in a change's `.openspec.yaml`, a very long requirement, and text that archiving would not carry into the main spec) appear when the CLI validates, and only fail validation in strict mode. They are deliberately not copied into the built-in validator, so it never rejects a change that an older supported CLI would accept. The plugin targets CLI 1.14.3 (minimum CLI remains 1.3.0).
 
+- **All 50 AI coding tools OpenSpec supports.** The plugin knew 30. The 20 added since include Amp, Zed Agent, Warp, Grok Build, Hermes Agent and Rovo Dev CLI. Tools appear under the names OpenSpec's tool picker uses (for example "Devin Desktop (formerly Windsurf)", "Gemini CLI", "Zoo Code"); a preferred tool saved under an old name still works. A tool is only offered or passed to `openspec init` when your installed CLI accepts it.
+
 ### Changed
 
 - **Ready for IntelliJ IDEA 2026.x.** The plugin no longer calls platform methods that IntelliJ IDEA 2026.1 and later mark as deprecated where a replacement works on every supported IDE, so it keeps working as those methods are retired. Files open from links, buttons and notifications exactly as before. Compatibility is now checked against IntelliJ IDEA 2026.1 and 2026.2 as well, alongside 2024.2 and 2025.x.
@@ -22,6 +24,8 @@
 
 ### Fixed
 
+- **AI tools set up by OpenSpec are recognised where it now puts them.** Devin Desktop (formerly Windsurf) in `.devin/`, Codex and Antigravity in `.agents/`, and Kimi Code in `.kimi-code/` used to stay "not configured" after `openspec init`. Detection now follows the OpenSpec CLI's own rules, including the older directories.
+- **GitHub Copilot is no longer reported in every GitHub repository.** Like the OpenSpec CLI, the plugin detects Copilot from its own files (such as `.github/copilot-instructions.md` or `.github/prompts/`), not from any `.github/` folder. If Copilot isn't detected, choose it in the setup wizard or Manage AI Tools.
 - **The schema section of Settings now works while Settings is open.** The schema list was always empty, and Validate, Open Templates and the config/profile sections seemed to do nothing, because their results only arrived after you closed the Settings dialog. They now appear straight away.
 - **Fork and New open the schema they create.** After forking or creating a schema, its `schema.yaml` opens in the editor. Before, nothing opened.
 - **Schema buttons say when they need a selection.** Fork, Validate and Open Templates are greyed out until you select a schema in the list, instead of silently doing nothing, and Refresh clears any old validation result.

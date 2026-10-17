@@ -309,8 +309,11 @@ public class ManageAiToolsDialog extends DialogWrapper {
         String basePath = project.getBasePath();
         if (basePath == null) return;
 
-        String dirName = AiToolDetectionService.getToolDirName(tool.name());
+        com.johnnyblabs.openspec.services.AiToolRegistry.AiTool entry =
+                com.johnnyblabs.openspec.services.AiToolRegistry.byName(tool.name());
+        String dirName = entry != null ? com.johnnyblabs.openspec.services.AiToolRegistry.builtInDir(entry) : null;
         if (dirName == null) return;
+        String marker = com.johnnyblabs.openspec.services.AiToolRegistry.builtInMarker(entry);
 
         try {
             com.intellij.openapi.vfs.VirtualFile baseDir =
@@ -319,8 +322,12 @@ public class ManageAiToolsDialog extends DialogWrapper {
                 OpenSpecNotifier.error(project, "AI Tools", "Project directory not found");
                 return;
             }
-            com.intellij.openapi.application.WriteAction.run(() ->
-                    baseDir.createChildDirectory(this, dirName));
+            com.intellij.openapi.application.WriteAction.run(() -> {
+                com.intellij.openapi.vfs.VirtualFile dir = com.intellij.openapi.vfs.VfsUtil.createDirectoryIfMissing(baseDir, dirName);
+                if (marker != null && dir != null && dir.findChild(".openspec-target") == null) {
+                    com.intellij.openapi.vfs.VfsUtil.saveText(dir.createChildData(this, ".openspec-target"), entry.id() + "\n");
+                }
+            });
             VirtualFileManager.getInstance().syncRefresh();
             setPreferredTool(tool.name());
             loadTools();
