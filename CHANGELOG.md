@@ -11,6 +11,7 @@
 
 ### Fixed
 
+- **The plugin now notices an OpenSpec CLI you upgrade while the IDE is running.** When you switch back to the project's IDE window, the plugin re-checks the CLI (at most once every 30 seconds) and the tool window shows the new version. Before, it kept showing the version from when the project opened until you reopened the project or re-showed the tool window.
 - **Propose and the delta-spec diff links now also work while the IDE is indexing.** The "Propose a Change" button and links in the tool window, the workflow panel and the Setup Wizard, and the diff links in the deltas preview, now launch their action through the IDE's standard action pipeline. They keep working during indexing instead of showing a "not available while indexing" message.
 - **Renames written with `*` or `+` bullets are no longer reported as errors.** OpenSpec CLI 1.13 accepts any list bullet in `## RENAMED Requirements`, but the built-in validator and the delta spec inspection only accepted `-`, so a valid rename was flagged in the editor and failed validation when the CLI wasn't installed.
 - **Spec sync now applies every removal and rename the CLI applies.** Bullet-form removals (``* `### Requirement: Name` ``) were silently skipped. Renames written in the CLI's own format (``FROM: `### Requirement: Old` ``) never found their target.
