@@ -3,6 +3,7 @@ package com.johnnyblabs.openspec.integration;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.johnnyblabs.openspec.util.CliVersion;
 import org.junit.jupiter.api.Test;
 
 import java.io.InputStream;
@@ -41,9 +42,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * prompting the anchor to be advanced (a deliberate human decision). The known 1.6→1.8 relaxation is
  * pinned ({@link #DEMOTION_FLIPS}) so the subset check can never pass vacuously.
  *
- * <p><b>Strict arm — map-equality (unchanged).</b> Under {@code --strict} every captured generation's
- * map equals the {@code 1.6.0} default map — 1.8 re-promotes the demoted warning under strict,
- * reproducing the 1.6 anchor — a stable cross-generation invariant.
+ * <p><b>Strict arm — subset-of-the-strict-anchor.</b> Under {@code --strict} every generation through
+ * 1.13 reproduces the {@code 1.6.0} default map exactly (1.8 re-promotes the demoted warning under
+ * strict). 1.14.2 is the first generation that is STRICTER than that anchor: its new "text before the
+ * first requirement is not carried into the main spec by archive" WARNING fails {@code nameless-change}
+ * under strict. A generation rejecting more never makes the plugin (which matches the anchor) more
+ * restrictive, so the invariant is containment — every generation's strict valid-set is a subset of the
+ * anchor's — with the known divergence pinned ({@link #ARCHIVE_DROP_FLIPS} from
+ * {@link #ARCHIVE_DROP_SINCE}; earlier generations equal the anchor exactly) so the subset check can
+ * never pass on an empty or silently widened result.
  *
  * <p>Discovery is the durable part: a future {@code 1.9.0} capture is picked up with zero edits, and a
  * relaxation past 1.8 surfaces via the parity test. Pre-1.6 generations are intentionally absent from
@@ -63,7 +70,7 @@ class ValidatorVerdictVersionStabilityTest {
     private static final String STRICT = "validate-parity-corpus-strict.json";
     private static final int CORPUS_SIZE = 13;
     /** Vacuity floor — these corpora must always be present, or discovery has silently broken. */
-    private static final Set<String> FLOOR = Set.of("1.6.0", "1.7.0", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.2");
+    private static final Set<String> FLOOR = Set.of("1.6.0", "1.7.0", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.2", "1.14.3");
     /**
      * The exact, known relaxation between the {@link #STRICT_ANCHOR} default map and the
      * {@link #DEFAULT_ANCHOR} default map: 1.8 demoted the missing-SHALL rule to a default WARNING, so
@@ -71,6 +78,14 @@ class ValidatorVerdictVersionStabilityTest {
      * check below can never pass vacuously — a silent collapse of the divergence fails loudly.
      */
     private static final Set<String> DEMOTION_FLIPS = Set.of("fenced-keyword", "header-only-keyword", "should-only");
+    /** First generation whose archive-dropped-text WARNING makes {@code --strict} reject more than the anchor. */
+    private static final String ARCHIVE_DROP_SINCE = "1.14.2";
+    /**
+     * The exact, known strict divergence from {@link #ARCHIVE_DROP_SINCE} on: {@code nameless-change} carries
+     * text before its first (nameless) requirement, which 1.14.2 warns archive would drop, so {@code --strict}
+     * fails it. Pinned so a silent collapse or widening of the divergence fails loudly.
+     */
+    private static final Set<String> ARCHIVE_DROP_FLIPS = Set.of("nameless-change");
 
     /** id → valid map parsed from a captured {@code validate --all [--strict] --json} fixture. */
     private static Map<String, Boolean> verdicts(String resourcePath) {
@@ -166,7 +181,7 @@ class ValidatorVerdictVersionStabilityTest {
     }
 
     @Test
-    void strictCliVerdictsAreStableAcrossAllCapturedGenerations() throws Exception {
+    void strictCliVerdictsAreNeverStricterThanTheStrictAnchor() throws Exception {
         Map<String, String> strictCorpora = discover(STRICT);
         assertFalse(strictCorpora.isEmpty(), "expected at least one captured strict corpus (" + STRICT + ")");
 
@@ -179,17 +194,36 @@ class ValidatorVerdictVersionStabilityTest {
                 "every generation with a non-strict parity corpus (other than the strict anchor " + STRICT_ANCHOR
                         + ") must also have a strict twin (" + STRICT + ") — capture both per the fixtures README");
 
-        // Under --strict every generation reproduces the 1.6.0 default map: a demoted warning re-promotes
-        // and nothing else on this corpus is valid-with-only-a-CLI-warning. Map-equality holds.
+        // Subset-of-the-strict-anchor: no generation may be valid under --strict on an item the anchor
+        // (== the plugin's proven strict verdict) rejects. Generations that reject MORE are allowed, but only
+        // by the pinned divergence below.
         Map<String, Boolean> strictAnchor = verdicts(CLI_DIR + "/" + STRICT_ANCHOR + "/" + NON_STRICT);
+        Set<String> anchorValid = validIds(strictAnchor);
+        Set<String> anchorMinusArchiveDrop = new TreeSet<>(anchorValid);
+        anchorMinusArchiveDrop.removeAll(ARCHIVE_DROP_FLIPS);
+        assertTrue(anchorValid.containsAll(ARCHIVE_DROP_FLIPS),
+                "the pinned strict divergence " + ARCHIVE_DROP_FLIPS + " must be valid in the " + STRICT_ANCHOR + " anchor");
+        boolean sawArchiveDropGeneration = false;
         for (Map.Entry<String, String> e : strictCorpora.entrySet()) {
             Map<String, Boolean> strict = verdicts(e.getValue());
             assertEquals(strictAnchor.keySet(), strict.keySet(),
                     "strict corpus " + e.getKey() + " has a different item-id set than the " + STRICT_ANCHOR + " anchor");
-            assertEquals(strictAnchor, strict,
-                    "strict CLI verdicts for " + e.getKey() + " differ from the " + STRICT_ANCHOR + " default verdicts — "
-                            + "an item became valid-with-only-a-CLI-warning under strict, or a verdict drifted; "
-                            + "investigate before shipping");
+            Set<String> genValid = validIds(strict);
+            Set<String> stricterThanPlugin = new TreeSet<>(genValid);
+            stricterThanPlugin.removeAll(anchorValid);
+            assertTrue(stricterThanPlugin.isEmpty(),
+                    "generation " + e.getKey() + " reports items valid under --strict that the " + STRICT_ANCHOR
+                            + " anchor rejects: " + stricterThanPlugin + " — the plugin (matching the anchor) would be "
+                            + "MORE restrictive than " + e.getKey() + "; investigate before shipping");
+            boolean archiveDrop = CliVersion.atLeast(e.getKey(), ARCHIVE_DROP_SINCE);
+            sawArchiveDropGeneration |= archiveDrop;
+            assertEquals(archiveDrop ? anchorMinusArchiveDrop : anchorValid, genValid,
+                    "strict valid-set for " + e.getKey() + " must equal the " + STRICT_ANCHOR + " anchor's"
+                            + (archiveDrop ? " minus exactly " + ARCHIVE_DROP_FLIPS + " (the " + ARCHIVE_DROP_SINCE
+                            + " archive-dropped-text WARNING)" : "") + " — a strict verdict drifted; re-verify against "
+                            + "the real CLI, don't edit the fixture");
         }
+        assertTrue(sawArchiveDropGeneration, "expected at least one captured generation >= " + ARCHIVE_DROP_SINCE
+                + " so the pinned strict divergence is exercised");
     }
 }

@@ -4,6 +4,10 @@
 
 ## Unreleased
 
+### Added
+
+- **OpenSpec CLI 1.14.x is now a supported line.** The plugin reads 1.14's output as before; the new fields it adds are simply ignored. 1.14's new warnings (an unrecognized key in a change's `.openspec.yaml`, a very long requirement, and text that archiving would not carry into the main spec) appear when the CLI validates, and only fail validation in strict mode. They are deliberately not copied into the built-in validator, so it never rejects a change that an older supported CLI would accept. The plugin targets CLI 1.14.3 (minimum CLI remains 1.3.0).
+
 ## v0.13.0
 
 ### Added

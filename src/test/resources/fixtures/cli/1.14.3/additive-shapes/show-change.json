@@ -1,0 +1,65 @@
+{
+  "id": "c",
+  "title": "C",
+  "deltaCount": 2,
+  "deltas": [
+    {
+      "spec": "demo",
+      "operation": "ADDED",
+      "description": "Add requirement: The system SHALL provide a thing.",
+      "requirement": {
+        "name": "Thing",
+        "text": "The system SHALL provide a thing.",
+        "scenarios": [
+          {
+            "name": "Thing exists",
+            "rawText": "- **WHEN** asked\n- **THEN** the thing is there"
+          }
+        ]
+      },
+      "requirements": [
+        {
+          "name": "Thing",
+          "text": "The system SHALL provide a thing.",
+          "scenarios": [
+            {
+              "name": "Thing exists",
+              "rawText": "- **WHEN** asked\n- **THEN** the thing is there"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "spec": "demo",
+      "operation": "MODIFIED",
+      "description": "Modify requirement: The system SHALL work reliably.",
+      "requirement": {
+        "name": "Works",
+        "text": "The system SHALL work reliably.",
+        "scenarios": [
+          {
+            "name": "Happy path",
+            "rawText": "- **WHEN** it runs\n- **THEN** it works reliably"
+          }
+        ]
+      },
+      "requirements": [
+        {
+          "name": "Works",
+          "text": "The system SHALL work reliably.",
+          "scenarios": [
+            {
+              "name": "Happy path",
+              "rawText": "- **WHEN** it runs\n- **THEN** it works reliably"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "root": {
+    "path": "/fixture",
+    "source": "nearest"
+  }
+}

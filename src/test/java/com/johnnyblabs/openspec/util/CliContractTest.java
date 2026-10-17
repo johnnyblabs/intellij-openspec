@@ -64,6 +64,10 @@ class CliContractTest {
         return loadFixture("1.13.2/" + name);
     }
 
+    private static String fixture114(String name) {
+        return loadFixture("1.14.3/" + name);
+    }
+
     /** Look an artifact up by id — 1.7 reorders {@code artifacts[]} to schema order, so index-based
      * status assertions would be fragile; keying by id makes the reorder inert. */
     private static ArtifactInfo byId(ChangeArtifactDag dag, String id) {
@@ -1370,6 +1374,173 @@ class CliContractTest {
 
             assertEquals(CliOutputParser.parseJsonOutput(fixture113("validate-parity-corpus.json")).passed(),
                     grafted.passed());
+        }
+    }
+
+    /**
+     * 1.14's three new validation WARNINGs, each from a real 1.14.3 positive control captured with
+     * {@code validate --all --json} in default and {@code --strict} mode. All are non-failing by default and fail
+     * the item under {@code --strict}; the built-in fallback adopts none of them (see
+     * {@code BuiltInValidatorWarningControlsV1_14Test}). {@code xkey-only} pins the 1.14.2 exemption: an
+     * {@code x-*} key in {@code .openspec.yaml} draws no warning in either mode.
+     */
+    @Nested
+    class NewWarningControlsContractV1_14 {
+
+        /** A control: its fixture dir, the change item's warning path, and the stem of the captured message. */
+        private record Control(String dir, String path, String messageStem) {}
+
+        private static final List<Control> CONTROLS = List.of(
+                new Control("unknown-meta", ".openspec.yaml", "Unrecognized key name(s) in .openspec.yaml"),
+                new Control("too-long", "demo/spec.md", "Requirement text is very long (>500 characters)"),
+                new Control("archive-dropped-text", "demo/spec.md", "is not carried into the main spec by archive"));
+
+        private com.google.gson.JsonObject item(String fixture, String id) {
+            for (var el : com.google.gson.JsonParser.parseString(fixture).getAsJsonObject().getAsJsonArray("items")) {
+                if (id.equals(el.getAsJsonObject().get("id").getAsString())) return el.getAsJsonObject();
+            }
+            throw new AssertionError("no item " + id);
+        }
+
+        private List<com.google.gson.JsonObject> issues(com.google.gson.JsonObject item) {
+            List<com.google.gson.JsonObject> out = new java.util.ArrayList<>();
+            item.getAsJsonArray("issues").forEach(el -> out.add(el.getAsJsonObject()));
+            return out;
+        }
+
+        @Test
+        void eachWarningIsCapturedOnAValidChangeInDefaultMode() {
+            for (Control c : CONTROLS) {
+                com.google.gson.JsonObject change = item(fixture114(c.dir() + "/validate-all.json"), "c");
+                assertTrue(change.get("valid").getAsBoolean(), c.dir() + ": a 1.14 warning does not fail the default verdict");
+                List<com.google.gson.JsonObject> issues = issues(change);
+                assertEquals(1, issues.size(), c.dir() + ": exactly the one new warning");
+                assertEquals("WARNING", issues.get(0).get("level").getAsString(), c.dir());
+                assertEquals(c.path(), issues.get(0).get("path").getAsString(), c.dir());
+                assertTrue(issues.get(0).get("message").getAsString().contains(c.messageStem()), c.dir());
+            }
+        }
+
+        @Test
+        void eachWarningFailsTheChangeUnderStrictWithTheLevelUnchanged() {
+            for (Control c : CONTROLS) {
+                com.google.gson.JsonObject change = item(fixture114(c.dir() + "/validate-all-strict.json"), "c");
+                assertFalse(change.get("valid").getAsBoolean(), c.dir() + ": --strict fails on the warning");
+                assertTrue(issues(change).stream().allMatch(i -> "WARNING".equals(i.get("level").getAsString())),
+                        c.dir() + ": the level stays WARNING; only the verdict flips");
+            }
+        }
+
+        @Test
+        void aLongMainSpecRequirementIsNowAWarningRatherThanInfo() {
+            // 1.14.1 promoted the main-spec rule from INFO to WARNING (the delta rule above is new).
+            com.google.gson.JsonObject spec = item(fixture114("too-long/validate-all.json"), "demo");
+            assertTrue(spec.get("valid").getAsBoolean());
+            com.google.gson.JsonObject issue = issues(spec).get(0);
+            assertEquals("WARNING", issue.get("level").getAsString());
+            assertEquals("requirements[1]", issue.get("path").getAsString());
+            assertFalse(item(fixture114("too-long/validate-all-strict.json"), "demo").get("valid").getAsBoolean());
+        }
+
+        @Test
+        void parserPassesEachControlInDefaultMode() {
+            for (Control c : CONTROLS) {
+                ValidationResult r = CliOutputParser.parseJsonOutput(fixture114(c.dir() + "/validate-all.json"));
+                assertTrue(r.passed(), c.dir() + ": default verdict passes");
+                assertTrue(r.issues().isEmpty(), c.dir() + ": a WARNING on a valid item is not extracted");
+            }
+        }
+
+        @Test
+        void parserFailsEachControlUnderStrictFromTheValidFieldAndSurfacesTheWarnings() {
+            for (Control c : CONTROLS) {
+                String captured = fixture114(c.dir() + "/validate-all-strict.json");
+                long expectedWarnings = 0;
+                for (var el : com.google.gson.JsonParser.parseString(captured).getAsJsonObject().getAsJsonArray("items")) {
+                    if (!el.getAsJsonObject().get("valid").getAsBoolean()) {
+                        expectedWarnings += issues(el.getAsJsonObject()).size();
+                    }
+                }
+                ValidationResult r = CliOutputParser.parseJsonOutput(captured);
+                assertFalse(r.passed(), c.dir() + ": a warning-only valid:false item is read as failing from `valid`");
+                assertEquals(0, r.errorCount(), c.dir() + ": no ERROR — every 1.14 rule is a WARNING");
+                assertEquals(expectedWarnings, r.warningCount(), c.dir() + ": every captured warning surfaces as WARNING");
+                assertTrue(r.issues().stream().anyMatch(i -> i.message().contains(c.messageStem())), c.dir());
+            }
+        }
+
+        @Test
+        void anXKeyAloneDrawsNoWarningInEitherMode() {
+            for (String mode : List.of("validate-all.json", "validate-all-strict.json")) {
+                String captured = fixture114("xkey-only/" + mode);
+                com.google.gson.JsonObject change = item(captured, "c");
+                assertTrue(change.get("valid").getAsBoolean(), mode + ": x-* keys are exempt (1.14.2)");
+                assertTrue(issues(change).isEmpty(), mode);
+                assertTrue(CliOutputParser.parseJsonOutput(captured).passed(), mode);
+            }
+        }
+    }
+
+    /**
+     * 1.14's additive output, from one real 1.14.3 capture project whose {@code .openspec.yaml} carries unknown keys
+     * (so the new optional {@code warnings[]} is populated). The plugin's parsers ignore the new keys and still read
+     * what they read before.
+     */
+    @Nested
+    class AdditiveShapesToleranceContractV1_14 {
+
+        private com.google.gson.JsonObject raw(String name) {
+            return com.google.gson.JsonParser.parseString(fixture114("additive-shapes/" + name)).getAsJsonObject();
+        }
+
+        @Test
+        void statusWithWarningsParsesTheDagAsBefore() {
+            com.google.gson.JsonObject raw = raw("status.json");
+            assertFalse(raw.getAsJsonArray("warnings").isEmpty(), "capture must carry the 1.14 warnings[] key");
+
+            ChangeArtifactDag dag = CliOutputParser.parseChangeStatus(fixture114("additive-shapes/status.json"));
+
+            assertEquals(raw.get("changeName").getAsString(), dag.getChangeName());
+            assertEquals(raw.get("schemaName").getAsString(), dag.getSchemaName());
+            assertEquals(raw.get("isComplete").getAsBoolean(), dag.isComplete());
+            com.google.gson.JsonArray rawArtifacts = raw.getAsJsonArray("artifacts");
+            assertEquals(rawArtifacts.size(), dag.getArtifacts().size());
+            for (var el : rawArtifacts) {
+                com.google.gson.JsonObject a = el.getAsJsonObject();
+                assertEquals(ArtifactStatus.valueOf(a.get("status").getAsString().toUpperCase(java.util.Locale.ROOT)),
+                        byId(dag, a.get("id").getAsString()).status(), a.get("id").getAsString());
+            }
+        }
+
+        @Test
+        void artifactInstructionsWithWarningsParseAsBefore() {
+            com.google.gson.JsonObject raw = raw("instructions-proposal.json");
+            assertFalse(raw.getAsJsonArray("warnings").isEmpty(), "capture must carry the 1.14 warnings[] key");
+
+            ArtifactInstruction inst = CliOutputParser.parseArtifactInstruction(
+                    fixture114("additive-shapes/instructions-proposal.json"));
+
+            assertEquals(raw.get("changeName").getAsString(), inst.changeName());
+            assertEquals(raw.get("artifactId").getAsString(), inst.artifactId());
+            assertEquals(raw.get("instruction").getAsString(), inst.instruction());
+            assertEquals(raw.get("template").getAsString(), inst.template());
+            assertEquals(raw.getAsJsonArray("unlocks").size(), inst.unlocks().size());
+        }
+
+        @Test
+        void applyTaskCountsMatchThePluginsOwnTaskGrammar() {
+            // The plugin has no `instructions apply` reader; it counts tasks from tasks.md itself. The new
+            // tasks[].sourcePath/line keys are therefore inert, and this cross-checks the plugin's count against
+            // the CLI's own progress for the same tasks.md.
+            com.google.gson.JsonObject raw = raw("instructions-apply.json");
+            com.google.gson.JsonObject task0 = raw.getAsJsonArray("tasks").get(0).getAsJsonObject();
+            assertTrue(task0.has("sourcePath") && task0.has("line"), "capture must carry the 1.14 task location keys");
+            com.google.gson.JsonObject progress = raw.getAsJsonObject("progress");
+
+            int[] counted = TaskLines.count(fixture114("additive-shapes/openspec/changes/c/tasks.md"));
+
+            assertEquals(progress.get("complete").getAsInt(), counted[0]);
+            assertEquals(progress.get("total").getAsInt(), counted[1]);
         }
     }
 }

@@ -1,0 +1,173 @@
+{
+  "items": [
+    {
+      "id": "clean-spec",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 3
+    },
+    {
+      "id": "fenced-keyword",
+      "type": "spec",
+      "valid": true,
+      "issues": [
+        {
+          "level": "WARNING",
+          "path": "requirements[0]",
+          "message": "Requirement \"Fenced\" should contain SHALL or MUST (RFC 2119 best practice for English specs)"
+        }
+      ],
+      "durationMs": 1
+    },
+    {
+      "id": "fenced-scenario",
+      "type": "spec",
+      "valid": false,
+      "issues": [
+        {
+          "level": "ERROR",
+          "path": "requirements.0.scenarios",
+          "message": "Requirement must have at least one scenario"
+        },
+        {
+          "level": "WARNING",
+          "path": "requirements[0].scenarios",
+          "message": "Requirement must have at least one scenario. Scenarios must use level-4 headers. Convert bullet lists into:\n#### Scenario: Short name\n- **WHEN** ...\n- **THEN** ...\n- **AND** ..."
+        }
+      ],
+      "durationMs": 0
+    },
+    {
+      "id": "header-only-keyword",
+      "type": "spec",
+      "valid": true,
+      "issues": [
+        {
+          "level": "WARNING",
+          "path": "requirements[0]",
+          "message": "Requirement \"It SHALL work\" should contain SHALL or MUST in the requirement body, not only in the header. Move the SHALL/MUST statement to the line immediately after the \"### Requirement: ...\" header. (RFC 2119 best practice for English specs)"
+        }
+      ],
+      "durationMs": 0
+    },
+    {
+      "id": "html-comment-req",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 1
+    },
+    {
+      "id": "indented-code",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 1
+    },
+    {
+      "id": "info-change",
+      "type": "change",
+      "valid": true,
+      "issues": [
+        {
+          "level": "INFO",
+          "path": "demo/spec.md",
+          "line": 10,
+          "message": "Header \"### Implementation notes\" in ADDED Requirements is not a \"### Requirement:\" header and is ignored by validation. Use \"### Requirement: Implementation notes\" if it should be validated as a requirement."
+        }
+      ],
+      "durationMs": 15
+    },
+    {
+      "id": "nameless-change",
+      "type": "change",
+      "valid": true,
+      "issues": [
+        {
+          "level": "INFO",
+          "path": "demo/spec.md",
+          "line": 3,
+          "message": "Header \"### Requirement:\" in MODIFIED Requirements is missing a requirement name and is ignored by validation. Add a name, e.g. \"### Requirement: <name>\"."
+        },
+        {
+          "level": "WARNING",
+          "path": "demo/spec.md",
+          "line": 4,
+          "message": "Text before the first requirement in \"## MODIFIED Requirements\" is not carried into the main spec by archive. Move it into a requirement, or into proposal.md or design.md."
+        },
+        {
+          "level": "INFO",
+          "path": "demo/spec.md",
+          "message": "Archive would refuse this delta: demo: target spec does not exist; only ADDED requirements are allowed for new specs. MODIFIED and RENAMED operations require an existing spec."
+        }
+      ],
+      "durationMs": 15
+    },
+    {
+      "id": "nested-list-scenario",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 1
+    },
+    {
+      "id": "second-line-keyword",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 0
+    },
+    {
+      "id": "setext-header",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 0
+    },
+    {
+      "id": "should-only",
+      "type": "spec",
+      "valid": true,
+      "issues": [
+        {
+          "level": "WARNING",
+          "path": "requirements[0]",
+          "message": "Requirement \"Soft\" should contain SHALL or MUST (RFC 2119 best practice for English specs)"
+        }
+      ],
+      "durationMs": 0
+    },
+    {
+      "id": "table-keyword",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 0
+    }
+  ],
+  "summary": {
+    "totals": {
+      "items": 13,
+      "passed": 12,
+      "failed": 1
+    },
+    "byType": {
+      "change": {
+        "items": 2,
+        "passed": 2,
+        "failed": 0
+      },
+      "spec": {
+        "items": 11,
+        "passed": 10,
+        "failed": 1
+      }
+    }
+  },
+  "version": "1.0",
+  "root": {
+    "path": "/fixture/parity-corpus",
+    "source": "nearest"
+  }
+}
