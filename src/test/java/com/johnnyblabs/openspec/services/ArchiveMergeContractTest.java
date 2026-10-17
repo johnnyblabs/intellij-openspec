@@ -57,15 +57,20 @@ class ArchiveMergeContractTest {
                 String capName = cap.getFileName().toString();
                 byCap.put(capName, SpecMerge.merge(capName, change, delta, main, "/fixture/openspec/specs/" + capName + "/spec.md"));
                 Path after = cap.resolve("main-after.md");
-                if (Files.exists(after)) expected.put(capName, Files.readString(after));
+                if (Files.exists(after)) expected.put(capName, lf(Files.readString(after)));
             }
         }
         return new Merged(byCap, expected);
     }
 
+    /** The fixture as LF (whatever git did on checkout), then as CRLF for the CRLF pass. */
     private static String read(Path p, boolean crlf) throws IOException {
-        String s = Files.readString(p);
+        String s = lf(Files.readString(p));
         return crlf ? s.replace("\n", "\r\n") : s;
+    }
+
+    private static String lf(String s) {
+        return s.replace("\r\n", "\n");
     }
 
     /** The archive run's JSON: the no-validate run when validation refused, since that carries the merge's own wording. */
