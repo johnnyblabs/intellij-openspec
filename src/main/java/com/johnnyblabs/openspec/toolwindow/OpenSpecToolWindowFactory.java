@@ -1,8 +1,10 @@
 package com.johnnyblabs.openspec.toolwindow;
 
+import com.intellij.openapi.application.ApplicationActivationListener;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.wm.IdeFrame;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowFactory;
 import com.intellij.openapi.wm.ToolWindowManager;
@@ -23,6 +25,61 @@ import org.jetbrains.annotations.NotNull;
 import java.awt.*;
 
 public class OpenSpecToolWindowFactory implements ToolWindowFactory, DumbAware {
+
+    /**
+     * Whether an IDE-window activation should refresh {@code project}'s CLI status: only when the window that
+     * regained focus is this project's (another project's window, or the welcome frame, refreshes nothing here).
+     */
+    static boolean refreshesOnActivation(IdeFrame ideFrame, Project project) {
+        return ideFrame != null && project != null && ideFrame.getProject() == project;
+    }
+
+    /**
+     * Subscribes to the IDE window regaining focus on the application message bus, for {@code parent}'s lifetime,
+     * running {@code refresh} when the activated window is {@code project}'s.
+     */
+    static void subscribeActivation(Project project, com.intellij.openapi.Disposable parent, Runnable refresh) {
+        ApplicationManager.getApplication().getMessageBus().connect(parent)
+                .subscribe(ApplicationActivationListener.TOPIC, new ApplicationActivationListener() {
+                    @Override
+                    public void applicationActivated(@NotNull IdeFrame ideFrame) {
+                        if (refreshesOnActivation(ideFrame, project)) {
+                            refresh.run();
+                        }
+                    }
+                });
+    }
+
+    /**
+     * Re-detects the CLI off the EDT (throttled to once per 30s by {@code detectIfStale}) and, if detection ran,
+     * refreshes the tool window's CLI status on the EDT; also a best-effort workflow-profile refresh. Shared by the
+     * tool-window-shown and IDE-focus-regained triggers so the two paths cannot drift.
+     */
+    private static void refreshCliStatus(Project project, ToolWindow tw) {
+        ApplicationManager.getApplication().executeOnPooledThread(() -> {
+            CliDetectionService detection = project.getService(CliDetectionService.class);
+            if (detection != null && detection.detectIfStale()) {
+                ApplicationManager.getApplication().invokeLater(() -> {
+                    if (project.isDisposed()) return;
+                    Content browseContent = tw.getContentManager().findContent("Browse");
+                    if (browseContent != null) {
+                        Component component = browseContent.getComponent();
+                        if (component instanceof OpenSpecToolWindowPanel panel) {
+                            panel.updateCliStatus();
+                        }
+                    }
+                });
+            }
+            WorkflowProfileService profileService = project.getService(WorkflowProfileService.class);
+            if (profileService != null) {
+                try {
+                    profileService.refresh();
+                } catch (Throwable ignored) {
+                    // Best-effort; silent failure is acceptable for fallback triggers.
+                }
+            }
+        });
+    }
 
     @Override
     public void createToolWindowContent(@NotNull Project project, @NotNull ToolWindow toolWindow) {
@@ -46,30 +103,15 @@ public class OpenSpecToolWindowFactory implements ToolWindowFactory, DumbAware {
             @Override
             public void toolWindowShown(@NotNull ToolWindow tw) {
                 if (!"OpenSpec".equals(tw.getId())) return;
-                ApplicationManager.getApplication().executeOnPooledThread(() -> {
-                    CliDetectionService detection = project.getService(CliDetectionService.class);
-                    if (detection != null && detection.detectIfStale()) {
-                        ApplicationManager.getApplication().invokeLater(() -> {
-                            Content browseContent = tw.getContentManager().findContent("Browse");
-                            if (browseContent != null) {
-                                Component component = browseContent.getComponent();
-                                if (component instanceof OpenSpecToolWindowPanel panel) {
-                                    panel.updateCliStatus();
-                                }
-                            }
-                        });
-                    }
-                    WorkflowProfileService profileService = project.getService(WorkflowProfileService.class);
-                    if (profileService != null) {
-                        try {
-                            profileService.refresh();
-                        } catch (Throwable ignored) {
-                            // Best-effort; silent failure is acceptable for fallback triggers.
-                        }
-                    }
-                });
+                refreshCliStatus(project, tw);
             }
         });
+
+        // Also re-detect when this project's IDE window regains focus: a tool window that stays visible never
+        // fires toolWindowShown again, so a CLI upgraded mid-session would otherwise go unnoticed. Same routine,
+        // same 30s throttle (inside detectIfStale), so window switching never spawns repeated CLI runs. Scoped to
+        // the tool window's lifetime.
+        subscribeActivation(project, toolWindow.getDisposable(), () -> refreshCliStatus(project, toolWindow));
 
         // Auto-launch wizard on first open if setup has never been completed
         // Skip for any initialized project — the tree view is more valuable

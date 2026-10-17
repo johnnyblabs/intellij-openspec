@@ -15,43 +15,63 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class CliDetectionServiceTest {
 
-    private static final Duration STALENESS = Duration.ofSeconds(30);
+    // ---------- Staleness check: the real detectIfStale(), not a test-local copy ----------
+    // (These previously exercised a private isStale() mirror in this file, so deleting the service's throttle could
+    // not fail them.) Each counts CLI process runs to prove whether detection actually ran.
 
-    // ---------- Staleness check (pre-existing) ----------
-
-    @Test
-    void stalenessCheck_nullTimestamp_isStale() {
-        boolean stale = isStale(null);
-        assertTrue(stale, "Null timestamp (never detected) should be considered stale");
+    private static CliDetectionService serviceCountingRuns(java.util.concurrent.atomic.AtomicInteger runs) {
+        CliDetectionService svc = new CliDetectionService((Project) null);
+        svc.setIsWindowsForTest(false);
+        svc.setProcessRunnerForTest(cmd -> {
+            runs.incrementAndGet();
+            return null;
+        });
+        return svc;
     }
 
     @Test
-    void stalenessCheck_recentTimestamp_isNotStale() {
-        Instant last = Instant.now().minus(Duration.ofSeconds(10));
-        assertFalse(isStale(last), "Detection 10s ago should not be stale (threshold is 30s)");
+    void stalenessCheck_neverDetected_runsDetection() {
+        java.util.concurrent.atomic.AtomicInteger runs = new java.util.concurrent.atomic.AtomicInteger();
+        CliDetectionService svc = serviceCountingRuns(runs);
+        assertTrue(svc.detectIfStale(), "never detected → stale → detection runs");
+        assertTrue(runs.get() > 0);
     }
 
     @Test
-    void stalenessCheck_oldTimestamp_isStale() {
-        Instant last = Instant.now().minus(Duration.ofSeconds(45));
-        assertTrue(isStale(last), "Detection 45s ago should be stale (threshold is 30s)");
+    void stalenessCheck_recentDetection_isSkipped() {
+        java.util.concurrent.atomic.AtomicInteger runs = new java.util.concurrent.atomic.AtomicInteger();
+        CliDetectionService svc = serviceCountingRuns(runs);
+        svc.setLastDetectionTimeForTest(Instant.now().minus(Duration.ofSeconds(10)));
+        assertFalse(svc.detectIfStale(), "detection 10s ago is within the 30s window");
+        assertEquals(0, runs.get());
     }
 
     @Test
-    void stalenessCheck_exactlyAtThreshold_isNotStale() {
-        Instant last = Instant.now().minus(Duration.ofSeconds(30));
-        assertTrue(isStale(last), "Detection exactly at threshold should be considered stale");
+    void stalenessCheck_justUnderThreshold_isSkipped() {
+        java.util.concurrent.atomic.AtomicInteger runs = new java.util.concurrent.atomic.AtomicInteger();
+        CliDetectionService svc = serviceCountingRuns(runs);
+        svc.setLastDetectionTimeForTest(Instant.now().minus(Duration.ofSeconds(29)));
+        assertFalse(svc.detectIfStale(), "detection 29s ago is still fresh");
+        assertEquals(0, runs.get());
     }
 
     @Test
-    void stalenessCheck_justUnderThreshold_isNotStale() {
-        Instant last = Instant.now().minus(Duration.ofSeconds(29));
-        assertFalse(isStale(last), "Detection 29s ago should not be stale");
+    void stalenessCheck_oldDetection_runsDetection() {
+        java.util.concurrent.atomic.AtomicInteger runs = new java.util.concurrent.atomic.AtomicInteger();
+        CliDetectionService svc = serviceCountingRuns(runs);
+        svc.setLastDetectionTimeForTest(Instant.now().minus(Duration.ofSeconds(45)));
+        assertTrue(svc.detectIfStale(), "detection 45s ago is stale");
+        assertTrue(runs.get() > 0);
     }
 
-    private boolean isStale(Instant last) {
-        if (last == null) return true;
-        return Duration.between(last, Instant.now()).compareTo(STALENESS) >= 0;
+    @Test
+    void stalenessCheck_atThreshold_runsDetection() {
+        // The service's check is "younger than 30s → skip", so a detection 30s (or more) ago is stale.
+        java.util.concurrent.atomic.AtomicInteger runs = new java.util.concurrent.atomic.AtomicInteger();
+        CliDetectionService svc = serviceCountingRuns(runs);
+        svc.setLastDetectionTimeForTest(Instant.now().minus(Duration.ofSeconds(30)));
+        assertTrue(svc.detectIfStale(), "detection 30s ago is stale");
+        assertTrue(runs.get() > 0);
     }
 
     // ---------- Windows suffix fallback (task 2.1) ----------
@@ -298,5 +318,59 @@ class CliDetectionServiceTest {
         } catch (java.io.IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    // ---------- Re-detection picks up a mid-session CLI upgrade (redetect-cli-on-focus) ----------
+    // The faked `openspec --version` output is the CLI's real captured output (fixtures/cli/<ver>/version.txt).
+
+    private static String capturedVersionOutput(String version) {
+        try (java.io.InputStream in = CliDetectionServiceTest.class.getResourceAsStream(
+                "/fixtures/cli/" + version + "/version.txt")) {
+            assertNotNull(in, "missing captured version.txt for " + version);
+            return new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+        } catch (java.io.IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /** A runner that answers `openspec --version` with the given captured output, and nothing else. */
+    private static void fakeInstalledCli(CliDetectionService svc, String version) {
+        String output = capturedVersionOutput(version);
+        svc.setProcessRunnerForTest(cmd -> cmd.getExePath().contains("openspec") ? output : null);
+    }
+
+    @Test
+    void staleDetection_picksUpAnUpgradedCli() {
+        CliDetectionService svc = new CliDetectionService((Project) null);
+        svc.setIsWindowsForTest(false);
+        fakeInstalledCli(svc, "1.12.0");
+        svc.detect();
+        assertEquals("1.12.0", svc.getDetectedVersion());
+
+        fakeInstalledCli(svc, "1.13.2"); // the CLI is upgraded underneath the running IDE
+        svc.setLastDetectionTimeForTest(java.time.Instant.now().minusSeconds(31));
+
+        assertTrue(svc.detectIfStale(), "a detection older than 30s must re-run");
+        assertEquals("1.13.2", svc.getDetectedVersion(), "the upgraded CLI must be picked up");
+    }
+
+    @Test
+    void freshDetection_isThrottled_soWindowSwitchingDoesNotRerunTheCli() {
+        CliDetectionService svc = new CliDetectionService((Project) null);
+        svc.setIsWindowsForTest(false);
+        fakeInstalledCli(svc, "1.12.0");
+        svc.detect();
+
+        java.util.concurrent.atomic.AtomicInteger runs = new java.util.concurrent.atomic.AtomicInteger();
+        String upgraded = capturedVersionOutput("1.13.2");
+        svc.setProcessRunnerForTest(cmd -> {
+            runs.incrementAndGet();
+            return cmd.getExePath().contains("openspec") ? upgraded : null;
+        });
+        svc.setLastDetectionTimeForTest(java.time.Instant.now().minusSeconds(5));
+
+        assertFalse(svc.detectIfStale(), "a detection within 30s must be skipped");
+        assertEquals(0, runs.get(), "no CLI process may run inside the throttle window");
+        assertEquals("1.12.0", svc.getDetectedVersion());
     }
 }

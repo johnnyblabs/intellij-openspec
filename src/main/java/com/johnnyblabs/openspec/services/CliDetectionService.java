@@ -71,6 +71,12 @@ public final class CliDetectionService {
         this.processRunner = runner;
     }
 
+    /** Sets when detection last ran, so tests can exercise the 30s staleness throttle without sleeping. */
+    @TestOnly
+    public void setLastDetectionTimeForTest(@Nullable Instant time) {
+        this.lastDetectionTime = time;
+    }
+
     private boolean isWindows() {
         Boolean override = isWindowsOverride;
         return override != null ? override : SystemInfo.isWindows;

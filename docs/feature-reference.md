@@ -333,6 +333,10 @@ Access via **Settings > Tools > OpenSpec** (or **Preferences > Tools > OpenSpec*
 | **Status** | Shows CLI version when detected, or "not found". |
 | **Version override** | Force a specific OpenSpec schema version. Leave blank to use your project's `config.yaml`. |
 
+The plugin re-checks the CLI automatically when the project opens, when the OpenSpec tool window is shown, and
+when you switch back to the project's IDE window. So a CLI you upgrade while the IDE is running is picked up when
+you return to the IDE, without reopening the project. Re-checks happen at most once every 30 seconds.
+
 ### General
 
 | Setting | Purpose |
@@ -385,6 +389,7 @@ The plugin works without the CLI, but some features (schema management, CLI-enha
 1. Install: `npm i -g @fission-ai/openspec`
 2. If installed but not detected: **Settings > Tools > OpenSpec > Detect**, or set the path manually
 3. On macOS, GUI apps don't inherit your terminal's PATH — the plugin tries your login shell, Homebrew paths, and `/usr/local/bin` automatically
+4. Just installed or upgraded the CLI? Switch away from the IDE and back (after 30 seconds) and the status updates on its own
 
 ### "Fast-Forward", "Continue", or other actions are grayed out
 
