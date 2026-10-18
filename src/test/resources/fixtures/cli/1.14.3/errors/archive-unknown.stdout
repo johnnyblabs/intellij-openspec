@@ -1,0 +1,14 @@
+{
+  "archive": null,
+  "root": {
+    "path": "/fixture/proj",
+    "source": "nearest"
+  },
+  "status": [
+    {
+      "severity": "error",
+      "code": "archive_change_not_found",
+      "message": "Change 'nosuch' not found. Available changes: badyaml, good, noproposal"
+    }
+  ]
+}

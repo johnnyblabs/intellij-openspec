@@ -1,0 +1,9 @@
+{
+  "status": [
+    {
+      "severity": "error",
+      "code": "change_error",
+      "message": "Change 'nosuch' not found. Available changes:\n  badyaml\n  good\n  noproposal"
+    }
+  ]
+}

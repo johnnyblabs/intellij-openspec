@@ -14,6 +14,7 @@ import com.intellij.openapi.ui.popup.JBPopup;
 import com.intellij.openapi.ui.popup.JBPopupFactory;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
+import org.jetbrains.annotations.Nullable;
 import com.intellij.icons.AllIcons;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.components.JBLabel;
@@ -94,6 +95,7 @@ public class WorkflowActionPanel extends JPanel {
     private static final String CARD_NO_CHANGES = "noChanges";
     private static final String CARD_FF_INPUT = "ffInput";
     private static final String CARD_PIPELINE = "pipeline";
+    private static final String CARD_STATUS_ERROR = "statusError";
 
     private final Project project;
 
@@ -376,6 +378,9 @@ public class WorkflowActionPanel extends JPanel {
         JPanel noChangesCard = buildNoChangesCard();
         contentCards.add(noChangesCard, CARD_NO_CHANGES);
 
+        // The selected change exists, but the CLI rejected it (shows the CLI's reason, never "No changes yet")
+        contentCards.add(buildStatusErrorCard(), CARD_STATUS_ERROR);
+
         // Card 2: FF input
         JPanel ffInputCard = buildFfInputCard();
         contentCards.add(ffInputCard, CARD_FF_INPUT);
@@ -440,7 +445,7 @@ public class WorkflowActionPanel extends JPanel {
 
             if (active.isEmpty()) {
                 updateChangeSelector(names);
-                updatePipelineAndButton(null, null, Set.of());
+                updatePipelineAndButton(null, null, Set.of(), null, null);
                 return;
             }
 
@@ -790,7 +795,8 @@ public class WorkflowActionPanel extends JPanel {
         WorkflowSchemaContext ctx = contextService != null ? contextService.getContext(changeName) : null;
         // Done files that still look like templates: a hint on their chips only (the CLI's status stands).
         Set<String> hints = orchestration.templateLookingArtifacts(changeName, dag);
-        updatePipelineAndButton(dag, ctx, hints);
+        String statusError = dag == null ? orchestration.statusError(changeName) : null;
+        updatePipelineAndButton(dag, ctx, hints, changeName, statusError);
     }
 
     /**
@@ -809,7 +815,8 @@ public class WorkflowActionPanel extends JPanel {
         }
     }
 
-    private void updatePipelineAndButton(ChangeArtifactDag dag, WorkflowSchemaContext ctx, Set<String> hints) {
+    private void updatePipelineAndButton(ChangeArtifactDag dag, WorkflowSchemaContext ctx, Set<String> hints,
+                                         @Nullable String changeName, @Nullable String statusError) {
         ApplicationManager.getApplication().invokeLater(() -> {
             templateHintIds = hints;
             pipelinePanel.removeAll();
@@ -828,13 +835,19 @@ public class WorkflowActionPanel extends JPanel {
             }
 
             if (dag == null) {
-                activeChangeName = null;
+                // A change the CLI rejected stays selected, so the next refresh asks about it again instead of
+                // moving to the first change; with no status at all there is no selection to keep.
+                activeChangeName = statusError != null ? changeName : null;
                 allArtifactsComplete = false;
                 hasTasksRemaining = false;
                 hasDeltaSpecs = false;
                 updateIconBarState();
                 schemaModeStatusLabel.setVisible(false);
-                contentCardLayout.show(contentCards, CARD_NO_CHANGES);
+                if (changeName != null && statusError != null) {
+                    showStatusError(changeName, statusError);
+                } else {
+                    contentCardLayout.show(contentCards, CARD_NO_CHANGES);
+                }
                 return;
             }
 
@@ -1452,6 +1465,67 @@ public class WorkflowActionPanel extends JPanel {
         }
 
         return card;
+    }
+
+    private final JBLabel statusErrorLabel = new JBLabel();
+    private final com.intellij.ui.HyperlinkLabel statusErrorOpenMetadata = new com.intellij.ui.HyperlinkLabel("Open .openspec.yaml");
+    private @Nullable String statusErrorChange;
+
+    private JPanel buildStatusErrorCard() {
+        JPanel card = new JPanel(new FlowLayout(FlowLayout.LEFT, JBUI.scale(6), JBUI.scale(4)));
+        card.setOpaque(false);
+        statusErrorLabel.setForeground(JBColor.GRAY);
+        // A theme-aware icon rather than a coloured glyph baked into the HTML, so a theme switch can't leave it stale.
+        statusErrorLabel.setIcon(AllIcons.General.Warning);
+        card.add(statusErrorLabel);
+
+        statusErrorOpenMetadata.addHyperlinkListener(ev -> {
+            VirtualFile metadata = statusErrorMetadataFile();
+            if (metadata != null) {
+                new OpenFileDescriptor(project, metadata).navigate(true);
+            }
+        });
+        card.add(statusErrorOpenMetadata);
+
+        com.intellij.ui.HyperlinkLabel refreshLink = new com.intellij.ui.HyperlinkLabel("Refresh");
+        refreshLink.addHyperlinkListener(ev -> {
+            // The CLI reads the files on disk: save the user's edits first (e.g. a just-fixed .openspec.yaml),
+            // or the re-run sees the old content until the IDE's autosave catches up.
+            com.intellij.openapi.fileEditor.FileDocumentManager.getInstance().saveAllDocuments();
+            if (statusErrorChange != null) refreshForChange(statusErrorChange);
+        });
+        card.add(refreshLink);
+        return card;
+    }
+
+    private @Nullable VirtualFile statusErrorMetadataFile() {
+        String base = project.getBasePath();
+        if (base == null || statusErrorChange == null) return null;
+        return com.intellij.openapi.vfs.LocalFileSystem.getInstance()
+                .findFileByPath(base + "/openspec/changes/" + statusErrorChange + "/.openspec.yaml");
+    }
+
+    /** Shows why the CLI rejected the selected change. EDT. */
+    private void showStatusError(String changeName, String reason) {
+        statusErrorChange = changeName;
+        statusErrorLabel.setText(statusErrorSummary(changeName, reason));
+        statusErrorLabel.setToolTipText(statusErrorTooltip(reason));
+        statusErrorOpenMetadata.setVisible(statusErrorMetadataFile() != null);
+        contentCardLayout.show(contentCards, CARD_STATUS_ERROR);
+    }
+
+    /** One line: the change and the first line of the CLI's reason. Package-private for tests. */
+    static String statusErrorSummary(String changeName, String reason) {
+        String first = reason.strip().lines().findFirst().orElse("").strip();
+        if (first.endsWith(":")) first = first.substring(0, first.length() - 1);
+        return "<html>Can't read change '"
+                + com.intellij.openapi.util.text.StringUtil.escapeXmlEntities(changeName) + "': "
+                + com.intellij.openapi.util.text.StringUtil.escapeXmlEntities(first) + "</html>";
+    }
+
+    /** The CLI's full reason, preformatted so a YAML error's caret stays under its column. Package-private for tests. */
+    static String statusErrorTooltip(String reason) {
+        return "<html><pre>" + com.intellij.openapi.util.text.StringUtil.escapeXmlEntities(reason.strip()) + "</pre></html>";
     }
 
     private JPanel buildFfInputCard() {

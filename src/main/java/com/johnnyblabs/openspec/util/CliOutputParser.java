@@ -41,79 +41,64 @@ public final class CliOutputParser {
      * item (possible under {@code --strict}) as passing, since such an item carries no ERROR.
      */
     public static ValidationResult parseJsonOutput(String jsonOutput) {
+        return parseJsonOutput(new CliRunner.CliResult(0, jsonOutput == null ? "" : jsonOutput, ""));
+    }
+
+    /**
+     * Parses a {@code validate --json} run. Exit 1 with an {@code items} report is a normal answer (some item is
+     * invalid), so the run is read with {@link CliJson#readReport}. Anything that is not a verdict is thrown as
+     * {@link CliErrorResponseException}, so the caller falls back to the built-in validator rather than reporting a
+     * pass: an error envelope (CLI 1.13.1+ {@code invalid_item}/{@code unknown_item}, 1.9+ {@code no_openspec_root}),
+     * malformed or truncated JSON, and a JSON response without an {@code items} array.
+     */
+    public static ValidationResult parseJsonOutput(CliRunner.CliResult result) {
         List<ValidationIssue> issues = new ArrayList<>();
 
-        JsonObject root = null;
-        try {
-            JsonElement parsed = JsonParser.parseString(
-                    CliJson.extractJsonPayload(jsonOutput == null ? "" : jsonOutput));
-            if (parsed.isJsonObject()) {
-                root = parsed.getAsJsonObject();
-            }
-        } catch (JsonSyntaxException ignored) {
-            // Not JSON at all — treat as no reported items, matching the previous
-            // regex behavior of finding nothing.
-        }
-
-        if (root != null && !(root.has("items") && root.get("items").isJsonArray())) {
-            String error = firstErrorStatus(root);
-            if (error != null) {
-                // An item-less error response (CLI 1.13.1+ `invalid_item`, `unknown_item`): the CLI rejected the
-                // run itself, so there is no verdict to trust — never report it as a pass with zero items.
-                throw new CliErrorResponseException(error);
-            }
+        JsonObject root = switch (CliJson.readReport(result)) {
+            // A report's items stay authoritative even beside an error status entry.
+            case CliJson.Failed failed when hasItems(failed.payload()) -> failed.payload();
+            case CliJson.Failed failed -> throw new CliErrorResponseException(failed.describe());
+            case CliJson.Ok ok -> ok.object();
+        };
+        if (!hasItems(root)) {
+            throw new CliErrorResponseException("The OpenSpec CLI's validate output has no verdict.");
         }
 
         boolean allValid = true;
-        if (root != null && root.has("items") && root.get("items").isJsonArray()) {
-            for (JsonElement element : root.getAsJsonArray("items")) {
-                if (!element.isJsonObject()) {
+        for (JsonElement element : root.getAsJsonArray("items")) {
+            if (!element.isJsonObject()) {
+                continue;
+            }
+            JsonObject item = element.getAsJsonObject();
+            boolean valid = item.has("valid") && item.get("valid").getAsBoolean();
+            if (!valid) {
+                allValid = false;
+            }
+            if (valid || !item.has("issues") || !item.get("issues").isJsonArray()) {
+                continue;
+            }
+            String id = item.has("id") ? item.get("id").getAsString() : "";
+            String type = item.has("type") ? item.get("type").getAsString() : "";
+            for (JsonElement issueElement : item.getAsJsonArray("issues")) {
+                if (!issueElement.isJsonObject()) {
                     continue;
                 }
-                JsonObject item = element.getAsJsonObject();
-                boolean valid = item.has("valid") && item.get("valid").getAsBoolean();
-                if (!valid) {
-                    allValid = false;
-                }
-                if (valid || !item.has("issues") || !item.get("issues").isJsonArray()) {
-                    continue;
-                }
-                String id = item.has("id") ? item.get("id").getAsString() : "";
-                String type = item.has("type") ? item.get("type").getAsString() : "";
-                for (JsonElement issueElement : item.getAsJsonArray("issues")) {
-                    if (!issueElement.isJsonObject()) {
-                        continue;
-                    }
-                    JsonObject issue = issueElement.getAsJsonObject();
-                    String level = issue.has("level") ? issue.get("level").getAsString() : null;
-                    String message = issue.has("message") ? issue.get("message").getAsString() : "";
-                    // Use just the first line of the message for display
-                    String shortMessage = message.contains("\n")
-                            ? message.substring(0, message.indexOf("\n")) : message;
-                    issues.add(new ValidationIssue(parseSeverity(level), type + "/" + id, 0,
-                            shortMessage, "cli"));
-                }
+                JsonObject issue = issueElement.getAsJsonObject();
+                String level = issue.has("level") ? issue.get("level").getAsString() : null;
+                String message = issue.has("message") ? issue.get("message").getAsString() : "";
+                // Use just the first line of the message for display
+                String shortMessage = message.contains("\n")
+                        ? message.substring(0, message.indexOf("\n")) : message;
+                issues.add(new ValidationIssue(parseSeverity(level), type + "/" + id, 0,
+                        shortMessage, "cli"));
             }
         }
 
         return new ValidationResult(allValid, issues, "cli");
     }
 
-    /** The message of the first {@code status} entry with severity {@code error}, or {@code null}. */
-    private static String firstErrorStatus(JsonObject root) {
-        if (!root.has("status") || !root.get("status").isJsonArray()) {
-            return null;
-        }
-        for (JsonElement element : root.getAsJsonArray("status")) {
-            if (!element.isJsonObject()) {
-                continue;
-            }
-            JsonObject entry = element.getAsJsonObject();
-            if (entry.has("severity") && "error".equalsIgnoreCase(entry.get("severity").getAsString())) {
-                return entry.has("message") ? entry.get("message").getAsString() : "CLI reported an error";
-            }
-        }
-        return null;
+    private static boolean hasItems(JsonObject root) {
+        return root != null && root.has("items") && root.get("items").isJsonArray();
     }
 
     /**
@@ -184,17 +169,28 @@ public final class CliOutputParser {
             .create();
 
     /**
-     * Parses the output of {@code openspec status --change <name> --json}.
+     * Parses the output of {@code openspec status --change <name> --json}, tolerating text before the JSON.
      */
     public static ChangeArtifactDag parseChangeStatus(String json) {
-        return GSON.fromJson(json, ChangeArtifactDag.class);
+        return GSON.fromJson(CliJson.extractJsonPayload(json), ChangeArtifactDag.class);
+    }
+
+    /** Parses an already-read {@code status --change <name> --json} payload ({@link CliJson#read}). */
+    public static ChangeArtifactDag parseChangeStatus(JsonElement payload) {
+        return GSON.fromJson(payload, ChangeArtifactDag.class);
     }
 
     /**
-     * Parses the output of {@code openspec instructions <artifact> --change <name> --json}.
+     * Parses the output of {@code openspec instructions <artifact> --change <name> --json}, tolerating text before
+     * the JSON.
      */
     public static ArtifactInstruction parseArtifactInstruction(String json) {
-        return GSON.fromJson(json, ArtifactInstruction.class);
+        return GSON.fromJson(CliJson.extractJsonPayload(json), ArtifactInstruction.class);
+    }
+
+    /** Parses an already-read {@code instructions} payload ({@link CliJson#read}). */
+    public static ArtifactInstruction parseArtifactInstruction(JsonElement payload) {
+        return GSON.fromJson(payload, ArtifactInstruction.class);
     }
 
 }

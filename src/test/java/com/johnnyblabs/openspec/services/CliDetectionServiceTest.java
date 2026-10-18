@@ -30,6 +30,28 @@ class CliDetectionServiceTest {
     }
 
     @Test
+    void versionProbe_asksForPlainOutput() {
+        List<Map<String, String>> probeEnvs = new ArrayList<>();
+        CliDetectionService svc = new CliDetectionService((Project) null);
+        svc.setIsWindowsForTest(false);
+        svc.setProcessRunnerForTest(cmd -> {
+            if (cmd.getParametersList().getList().contains("--version")) {
+                probeEnvs.add(Map.copyOf(cmd.getEnvironment()));
+                return "openspec 1.14.3";
+            }
+            return null;
+        });
+        svc.detect();
+        assertFalse(probeEnvs.isEmpty(), "a --version probe ran");
+        for (Map<String, String> env : probeEnvs) {
+            assertEquals("1", env.get("NO_COLOR"));
+            assertEquals("0", env.get("FORCE_COLOR"));
+            assertEquals("1", env.get("OPENSPEC_NO_UPDATE_CHECK"));
+            assertEquals("0", env.get("OPENSPEC_TELEMETRY"));
+        }
+    }
+
+    @Test
     void stalenessCheck_neverDetected_runsDetection() {
         java.util.concurrent.atomic.AtomicInteger runs = new java.util.concurrent.atomic.AtomicInteger();
         CliDetectionService svc = serviceCountingRuns(runs);

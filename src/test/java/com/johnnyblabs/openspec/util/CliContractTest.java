@@ -1352,13 +1352,16 @@ class CliContractTest {
         }
 
         @Test
-        void aWarningOnlyStatusIsNotTreatedAsAnError() {
-            // Derived from the capture (severity mutated), not authored: only error-severity entries fail the run.
+        void aWarningOnlyStatusWithoutItemsIsStillNoVerdict() {
+            // Derived from the capture (severity mutated), not authored. A warning is not an error envelope, but a
+            // response without items carries no verdict either, so the caller falls back (it used to read as PASS).
             com.google.gson.JsonObject raw = com.google.gson.JsonParser
                     .parseString(fixture113("validate-invalid-item.json")).getAsJsonObject();
             raw.getAsJsonArray("status").get(0).getAsJsonObject().addProperty("severity", "warning");
 
-            assertDoesNotThrow(() -> CliOutputParser.parseJsonOutput(raw.toString()));
+            CliOutputParser.CliErrorResponseException e = assertThrows(CliOutputParser.CliErrorResponseException.class,
+                    () -> CliOutputParser.parseJsonOutput(raw.toString()));
+            assertTrue(e.getMessage().contains("no verdict"), "rejected for having no items, not as an error status");
         }
 
         @Test

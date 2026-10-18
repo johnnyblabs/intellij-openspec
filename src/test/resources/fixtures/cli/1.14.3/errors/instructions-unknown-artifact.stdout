@@ -1,0 +1,9 @@
+{
+  "status": [
+    {
+      "severity": "error",
+      "code": "change_error",
+      "message": "Artifact 'bogusart' not found in schema 'spec-driven'. Valid artifacts:\n  proposal\n  specs\n  design\n  tasks"
+    }
+  ]
+}

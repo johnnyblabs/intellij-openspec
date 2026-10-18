@@ -54,7 +54,8 @@ public final class ArchiveJson {
     private static @Nullable JsonObject object(String stdout) {
         if (stdout == null || stdout.isBlank()) return null;
         try {
-            JsonElement e = JsonParser.parseString(stdout);
+            // Tolerates text before the JSON, so a completed archive is never read as a refusal.
+            JsonElement e = JsonParser.parseString(com.johnnyblabs.openspec.util.CliJson.extractJsonPayload(stdout));
             return e.isJsonObject() ? e.getAsJsonObject() : null;
         } catch (RuntimeException e) {
             return null;

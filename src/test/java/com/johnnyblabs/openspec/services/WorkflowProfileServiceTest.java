@@ -37,47 +37,47 @@ class WorkflowProfileServiceTest {
         }
 
         @Test
-        void coreWorkflowsEnabled_whenCliReturnsFullConfig() {
-            String json = """
-                    {
-                      "profile": "custom",
-                      "workflows": ["propose", "explore", "apply", "archive", "ff", "continue", "verify", "sync", "bulk-archive"]
-                    }
-                    """;
+        void customProfileEnablesExactlyTheWorkflowsTheCliLists() {
+            // Real 1.14.3 `config list --json` after `config set profile custom` + `config set workflows [...]`.
+            String json = fixture("1.14.3/errors/config-list-custom.stdout");
             try (MockedStatic<CliRunner> cliStatic = mockStatic(CliRunner.class)) {
                 cliStatic.when(() -> CliRunner.run(project, "config", "list", "--json"))
                         .thenReturn(new CliRunner.CliResult(0, json, ""));
 
                 assertTrue(service.isWorkflowEnabled("propose"));
-                assertTrue(service.isWorkflowEnabled("ff"));
                 assertTrue(service.isWorkflowEnabled("verify"));
-                assertTrue(service.isWorkflowEnabled("bulk-archive"));
+                assertFalse(service.isWorkflowEnabled("ff"), "not in the captured list");
+                assertFalse(service.isWorkflowEnabled("sync"), "not in the captured list, though in the core fallback");
+                assertEquals("custom", service.getActiveProfileName());
             }
         }
 
         @Test
-        void expandedWorkflowsDisabled_whenCliReturnsCoreOnly() {
-            // Note: this test simulates a hypothetical CLI returning only the
-            // pre-1.2.0 core set (no sync). The plugin's CORE_DEFAULTS fallback
-            // includes sync (post-1.2.0); the assertions here reflect what the
-            // CLI returned, not the fallback.
-            String json = """
-                    {
-                      "profile": "core",
-                      "workflows": ["propose", "explore", "apply", "archive"]
-                    }
-                    """;
+        void defaultProfileOmitsWorkflowsSoTheCoreSetApplies() {
+            // Real 1.14.3 `config list --json` on a fresh config: profile core and NO workflows key at all (the inline
+            // JSON this replaced assumed one).
+            String json = fixture("1.14.3/errors/config-list-default.stdout");
+            assertFalse(json.contains("workflows"), "capture precondition: no workflows key");
             try (MockedStatic<CliRunner> cliStatic = mockStatic(CliRunner.class)) {
                 cliStatic.when(() -> CliRunner.run(project, "config", "list", "--json"))
                         .thenReturn(new CliRunner.CliResult(0, json, ""));
 
-                assertTrue(service.isWorkflowEnabled("propose"));
-                assertTrue(service.isWorkflowEnabled("explore"));
+                for (String id : WorkflowProfileService.CORE_DEFAULTS) {
+                    assertTrue(service.isWorkflowEnabled(id), id);
+                }
                 assertFalse(service.isWorkflowEnabled("ff"));
-                assertFalse(service.isWorkflowEnabled("continue"));
                 assertFalse(service.isWorkflowEnabled("verify"));
-                assertFalse(service.isWorkflowEnabled("sync"));
-                assertFalse(service.isWorkflowEnabled("bulk-archive"));
+                assertEquals("core", service.getActiveProfileName());
+            }
+        }
+
+        @Test
+        void textBeforeTheConfigJsonIsTolerated() {
+            String json = fixture("1.14.3/errors/config-list-custom.stdout");
+            try (MockedStatic<CliRunner> cliStatic = mockStatic(CliRunner.class)) {
+                cliStatic.when(() -> CliRunner.run(project, "config", "list", "--json"))
+                        .thenReturn(new CliRunner.CliResult(0, "Note: printed first\n" + json, ""));
+                assertTrue(service.isWorkflowEnabled("verify"), "used to fail to parse and fall back to core");
             }
         }
     }

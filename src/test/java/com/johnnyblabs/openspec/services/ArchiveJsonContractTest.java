@@ -95,4 +95,21 @@ class ArchiveJsonContractTest {
         assertEquals("openspec archive exited with code 2",
                 assertThrows(ArchiveRefusedException.class, () -> ArchiveJson.parse("", "", 2)).getMessage());
     }
+
+    @Test
+    void aCompletedArchiveWithTextBeforeItsJsonIsACompletion() throws IOException {
+        // Used to read as "reported success without an archive result", after the archive had happened on disk.
+        String success = Files.readString(FIXTURES.resolve("archive-1.14.3/added-ok/archive.json"));
+        ArchiveJson.Outcome plain = ArchiveJson.parse(success, "", 0);
+        ArchiveJson.Outcome prefixed = ArchiveJson.parse("Note: printed first\n" + success, "", 0);
+        assertEquals(plain, prefixed);
+    }
+
+    @Test
+    void theCapturedUnknownChangeRefusalCarriesTheCliMessage() {
+        com.johnnyblabs.openspec.util.CliRunner.CliResult r = com.johnnyblabs.openspec.util.CliFixtures.error("archive-unknown");
+        ArchiveRefusedException e = assertThrows(ArchiveRefusedException.class,
+                () -> ArchiveJson.parse(r.stdout(), r.stderr(), r.exitCode()));
+        assertTrue(e.getMessage().startsWith("Change 'nosuch' not found"), e.getMessage());
+    }
 }

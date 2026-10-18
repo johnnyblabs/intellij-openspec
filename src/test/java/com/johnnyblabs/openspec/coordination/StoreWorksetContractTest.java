@@ -191,4 +191,20 @@ class StoreWorksetContractTest {
         assertTrue(fresh.diagnostics().isEmpty(),
                 "a healthy-empty store has no diagnostics — absence of planning dirs is not an issue");
     }
+
+    @Test
+    void storeListingKeepsTheMissingRootErrorOnce() {
+        // Regression lock on real 1.14.3 store doctor output for a store whose root was removed: exit 0, top-level
+        // status empty, and the root error repeated in the store's own status (where the plugin reads it).
+        String captured = com.johnnyblabs.openspec.util.CliFixtures.text("1.14.3/errors/store-doctor-missing-root.stdout");
+        com.google.gson.JsonObject raw = com.google.gson.JsonParser.parseString(captured).getAsJsonObject();
+        assertTrue(raw.getAsJsonArray("status").isEmpty(), "capture precondition: top-level status is empty");
+
+        List<StoreEntry> stores = CoordinationService.parseStoreDoctor(captured);
+
+        assertEquals(1, stores.size());
+        assertEquals(1, stores.get(0).diagnostics().stream()
+                .filter(d -> "openspec_root_missing".equals(d.code()) && "error".equals(d.severity())).count());
+        assertEquals(Boolean.FALSE, stores.get(0).openspecRootHealthy());
+    }
 }

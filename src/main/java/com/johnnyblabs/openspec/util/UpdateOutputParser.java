@@ -77,6 +77,8 @@ public final class UpdateOutputParser {
         if (stdout == null || stdout.isEmpty()) {
             return LegacyCleanup.NONE;
         }
+        // The CLI is asked for plain output, but colour forced by a wrapper would break the anchored patterns.
+        stdout = CliText.stripAnsi(stdout);
         Matcher header = FILES_TO_REMOVE_HEADER.matcher(stdout);
         if (!header.find()) {
             return LegacyCleanup.NONE;

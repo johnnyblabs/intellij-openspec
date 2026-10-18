@@ -1,0 +1,13 @@
+{
+  "changes": [],
+  "root": null,
+  "status": [
+    {
+      "severity": "error",
+      "code": "no_root_with_registered_stores",
+      "message": "No OpenSpec root found in the current directory or its ancestors. Registered stores: storea. Pass --store <id> to use one, or run openspec init to create a local root.",
+      "target": "openspec.root",
+      "fix": "Rerun with --store <id> (registered: storea) or run openspec init."
+    }
+  ]
+}

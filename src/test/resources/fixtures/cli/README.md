@@ -358,8 +358,8 @@ laxer).
 through the plugin, and are not adopted this cycle): the new `validate --archived` flag and the
 task-numbering WARNING (both make the CLI stricter → the lenient fallback stays safe by being laxer),
 and the `no_openspec_root` error envelope returned when `validate`/`list --json` run outside a root
-(the plugin gates CLI invocation on the on-disk `openspec/` root). Optional fixture locks for these are
-a separate follow-up. Re-capture recipe: the generic "Durable next-generation capture" block above,
+(the plugin gates CLI invocation on the on-disk `openspec/` root). The envelope was later captured from
+1.14.3 in `1.14.3/errors/`; the flag and the WARNING remain uncaptured. Re-capture recipe: the generic "Durable next-generation capture" block above,
 with `<gen>` = `1.9.0`.
 
 ## `1.10.0/` — parity corpus (strict additive superset of 1.9)
@@ -625,3 +625,24 @@ Captured by `scripts/capture-ai-tools-fixtures.py`. No CLI command lists the too
 `init-help.txt` is `openspec init --help` from 1.14.3, the CLI's own list of `--tools` ids.
 
 Each `detect/<case>/` is a project built by real `openspec init --tools …` runs (the `*-from-1.6` cases with CLI 1.6.0, for the directories tools used before) or by hand for edge cases (`bare-github`, `hermes-file`, the unmarked `.agents` roots). `detected.json` is what upstream's own `getAvailableTools` (`dist/core/available-tools.js`) returned for it. `layout.json` lists every file under the project and the isolated `HOME`, except the `openspec/` tree and the CLI's XDG state. Content is kept for `.openspec-target` ownership markers and, in generated `SKILL.md` files, only for the lines naming a skill (`$openspec-…` or `/openspec-…`), which is what upstream reads to infer an unmarked shared root's owner; other files are empty. All runs use an isolated `HOME`/`XDG_*`.
+
+## `1.14.3/errors/` — failure output the CLI response reader is tested against
+
+Captured by `scripts/capture-error-fixtures.py` from the installed CLI 1.14.3. Each case is `<case>.stdout`, `<case>.stderr` and `<case>.exit`. Every run uses an isolated `HOME`/`XDG_*` under one temp dir and the environment the plugin gives the CLI (`OPENSPEC_TELEMETRY=0`, `NO_COLOR=1`, `FORCE_COLOR=0`, `OPENSPEC_NO_UPDATE_CHECK=1`), except the coloured `update` case. Temp paths are `/fixture`, and `config list`'s anonymous id is a zero UUID. Most `--json` failures exit 1 with a `status: [{severity, code, message, target?, fix?}]` envelope on stdout and empty stderr.
+
+| Case | Run from | Shape |
+|---|---|---|
+| `validate-noroot`, `list-noroot` | an empty dir, no stores registered | `no_openspec_root` envelope (`list` also has `root: null`) |
+| `validate-noroot-withstores`, `list-noroot-withstores` | an empty dir, one store registered | the same failure under the code `no_root_with_registered_stores`, with a `fix` |
+| `validate-unknown` | a root | `unknown_item` |
+| `show-error` | a root, change without `proposal.md` | `show_error` |
+| `status-unknown`, `status-badyaml`, `instructions-unknown-artifact` | a root | `change_error`, whatever the cause |
+| `archive-unknown` | a root, `archive nosuch --yes --json` | `{archive: null, root, status: [archive_change_not_found]}` |
+| `doctor-store-missing-root` | a root, `doctor --store <id> --json` after the store's `openspec/` was removed | top-level `unhealthy_store_root` with `fix`, exit 1 (the Store Doctor action's command) |
+| `store-doctor-missing-root` | the same, `store doctor <id> --json` | **exit 0**, top-level `status: []`, the error nested in `stores[].openspec_root.status` (the store listing's command) |
+| `update-fail` | an empty dir, `update` | text only: exit 1, empty stdout, `✖ Error: …` on stderr |
+| `update-legacy-pending-plain`, `update-legacy-pending-ansi` | the same seeded legacy project (`init --tools cursor .` plus three `.cursor/commands/openspec-*.md`), each with its own fresh global state | the legacy-cleanup block. The `-ansi` run sets `FORCE_COLOR=1` and no `NO_COLOR`; with its escape sequences removed it equals `-plain` byte for byte, and they wrap the anchored `Files to remove` line |
+| `config-list-default` | fresh global config | `{featureFlags, profile: "core", delivery}`, **no `workflows` key** |
+| `config-list-custom` | after `config set profile custom` and `config set workflows '[…]'` | adds `workflows: [...]` |
+
+Each legacy variant has its own global state because the first `update` also migrates the global config and prints that, which a second run would not.

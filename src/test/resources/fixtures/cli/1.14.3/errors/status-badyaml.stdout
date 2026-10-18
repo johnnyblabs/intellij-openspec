@@ -1,0 +1,9 @@
+{
+  "status": [
+    {
+      "severity": "error",
+      "code": "change_error",
+      "message": "Invalid YAML in metadata file: Implicit keys of flow sequence pairs need to be on a single line at line 1, column 10:\n\nschema: [spec-driven\n         ^\n"
+    }
+  ]
+}

@@ -41,6 +41,20 @@ class UpdateOutputParserContractTest {
     class RealOutputContract {
 
         @Test
+        void colouredOutputParsesLikeThePlainCapture() {
+            String ansi = loadFixture("1.14.3/errors/update-legacy-pending-ansi.stdout");
+            String plain = loadFixture("1.14.3/errors/update-legacy-pending-plain.stdout");
+            // The escape codes sit on the anchored header line itself, so unstripped matching misses the block.
+            assertTrue(ansi.lines().anyMatch(l -> l.contains("\u001B[") && l.contains("Files to remove")),
+                    "capture precondition: the header line is coloured");
+            UpdateOutputParser.LegacyCleanup coloured = UpdateOutputParser.parseLegacyCleanupBlock(ansi);
+            UpdateOutputParser.LegacyCleanup expected = UpdateOutputParser.parseLegacyCleanupBlock(plain);
+            assertEquals(3, expected.files().size());
+            assertEquals(expected.files(), coloured.files());
+            assertEquals(expected.guidance(), coloured.guidance());
+        }
+
+        @Test
         void parsesPendingBlock() {
             List<String> files = UpdateOutputParser.parseLegacyCleanup(loadFixture("update-legacy-pending.txt"));
             assertEquals(List.of(

@@ -1,0 +1,9 @@
+{
+  "status": [
+    {
+      "severity": "error",
+      "code": "unknown_item",
+      "message": "Unknown item 'nosuch'. Did you mean: auth, good, badyaml, noproposal?"
+    }
+  ]
+}

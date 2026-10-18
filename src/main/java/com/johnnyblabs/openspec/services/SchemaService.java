@@ -57,12 +57,13 @@ public final class SchemaService {
 
         try {
             CliRunner.CliResult result = CliRunner.run(project, "schemas", "--json");
-            if (!result.isSuccess()) {
-                LOG.warn("openspec schemas --json failed: " + result.stderr());
+            // Only a readable list is cached; a failed or unreadable run is retried on the next call.
+            if (!(CliJson.read(result) instanceof CliJson.Ok ok) || !ok.payload().isJsonArray()) {
+                LOG.warn("openspec schemas --json gave no readable list: " + result.stderr());
                 return Collections.emptyList();
             }
 
-            cachedSchemas = parseSchemaList(result.stdout());
+            cachedSchemas = parseSchemaList(ok.payload().toString());
             return cachedSchemas;
         } catch (CliRunner.CliException e) {
             LOG.warn("Failed to list schemas", e);
