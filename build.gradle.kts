@@ -206,6 +206,11 @@ tasks.jacocoTestReport {
 // runs plus unit tests, and the remaining v0.14.0 changes (legacy-cleanup dialog, CLI detection topic) added real-
 // code tests. Measured 0.5454/0.5223/0.4598; floors held ~0.01 below (more than the usual 0.006 because this is a
 // large step measured locally; LINE/BRANCH keep the documented runner wobble headroom).
+// RAISED 2026-10-17 (harden-cli-integration): 0.535/0.510/0.448 → 0.567/0.537/0.482. The shared CLI response
+// reader (CliJson.read/readReport), CliText and every caller's failure branch (validate fallback, status/instructions
+// rejection, store doctor unknown health, cleanup verification, schema list, archive) are contract-tested against 19
+// captured 1.14.3 failure runs. Measured 0.5773/0.5471/0.4924; floors held ~0.01 below (LINE/BRANCH keep the
+// documented runner wobble headroom).
 tasks.jacocoTestCoverageVerification {
     dependsOn(tasks.test)
     // Match the report: instrumented classes + the test JVM's execution data.
@@ -220,21 +225,21 @@ tasks.jacocoTestCoverageVerification {
             limit {
                 counter = "INSTRUCTION"
                 value = "COVEREDRATIO"
-                minimum = "0.535".toBigDecimal()
+                minimum = "0.567".toBigDecimal()
             }
         }
         rule {
             limit {
                 counter = "LINE"
                 value = "COVEREDRATIO"
-                minimum = "0.510".toBigDecimal()
+                minimum = "0.537".toBigDecimal()
             }
         }
         rule {
             limit {
                 counter = "BRANCH"
                 value = "COVEREDRATIO"
-                minimum = "0.448".toBigDecimal()
+                minimum = "0.482".toBigDecimal()
             }
         }
     }

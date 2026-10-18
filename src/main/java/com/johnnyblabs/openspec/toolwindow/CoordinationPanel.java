@@ -549,12 +549,26 @@ public final class CoordinationPanel extends JPanel {
             ApplicationManager.getApplication().invokeLater(() -> {
                 if (top == null) {
                     Messages.showInfoMessage(project, "Store '" + store.id() + "' is healthy.", "Store Doctor");
+                } else if (top.isUnknown()) {
+                    Messages.showInfoMessage(project, unknownHealthMessage(store.id(), top), "Store Doctor");
                 } else {
                     Messages.showWarningDialog(project, formatDiagnostic(top), "Store Doctor");
                 }
                 reload();
             });
         });
+    }
+
+    /** The Store Doctor result when the check itself failed: not known to be broken, so informational. */
+    static String unknownHealthMessage(String id, Diagnostic unknown) {
+        StringBuilder text = new StringBuilder("Couldn't determine the health of store '").append(id)
+                .append("': the doctor check didn't return a readable result.");
+        String reason = unknown.message();
+        if (reason != null && !reason.isBlank()) {
+            text.append("\n\n").append(reason.lines().findFirst().orElse(reason));
+        }
+        return text.append("\n\nTry again, or run 'openspec store doctor ").append(id).append("' in a terminal.")
+                .toString();
     }
 
     private void onOpenStoreRoot(StoreEntry store) {

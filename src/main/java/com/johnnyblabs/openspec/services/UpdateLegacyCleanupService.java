@@ -10,6 +10,7 @@ import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.johnnyblabs.openspec.dialogs.LegacyCleanupDialog;
 import com.johnnyblabs.openspec.util.CliRunner;
+import com.johnnyblabs.openspec.util.CliText;
 import com.johnnyblabs.openspec.util.OpenSpecNotifier;
 import com.johnnyblabs.openspec.util.OpenSpecTerminalLauncher;
 import com.johnnyblabs.openspec.util.UpdateOutputParser;
@@ -107,22 +108,73 @@ public final class UpdateLegacyCleanupService {
             }
         });
 
+        verifyCleanup(reported);
+    }
+
+    /** Re-runs {@code openspec update} off the EDT and reports what it established. Package-private for tests. */
+    void verifyCleanup(List<String> reported) {
         // Verification re-run: the CLI is the judge of whether the cleanup stuck.
         ApplicationManager.getApplication().executeOnPooledThread(() -> {
-            List<String> after;
+            Verification verification;
             try {
-                CliRunner.CliResult rerun = CliRunner.run(project, "update");
-                after = UpdateOutputParser.parseLegacyCleanup(rerun.stdout());
+                verification = classifyVerification(updateCli.run(project, "update"), null);
             } catch (CliRunner.CliException e) {
                 LOG.warn("Verification re-run failed", e);
-                after = List.of();
+                verification = classifyVerification(null, e);
             }
-            List<String> finalAfter = after;
-            ApplicationManager.getApplication().invokeLater(() -> reportVerification(reported, finalAfter));
+            Verification outcome = verification;
+            ApplicationManager.getApplication().invokeLater(() -> reportVerification(reported, outcome));
         });
     }
 
-    private void reportVerification(List<String> removedSet, List<String> reportedAfter) {
+    /** Runs {@code openspec update}; a seam so tests can feed the verification re-run captured output. */
+    interface UpdateCli {
+        CliRunner.CliResult run(Project project, String... args) throws CliRunner.CliException;
+    }
+
+    private UpdateCli updateCli = CliRunner::run;
+
+    @org.jetbrains.annotations.TestOnly
+    void setUpdateCliForTest(UpdateCli cli) {
+        this.updateCli = cli == null ? CliRunner::run : cli;
+    }
+
+    /**
+     * What the verification re-run established: the files {@code openspec update} still reports, or, when the re-run
+     * failed, why the cleanup could not be verified ({@code unverifiedReason} non-null, {@code after} empty).
+     */
+    record Verification(List<String> after, @org.jetbrains.annotations.Nullable String unverifiedReason) {
+        boolean verified() {
+            return unverifiedReason == null;
+        }
+    }
+
+    /**
+     * Classifies the verification re-run. Only a run that exits 0 is read for pending files; a non-zero exit, a run
+     * that could not start or timed out is "could not verify", never "clean". Pure; package-private for tests.
+     */
+    static Verification classifyVerification(@org.jetbrains.annotations.Nullable CliRunner.CliResult rerun,
+                                             @org.jetbrains.annotations.Nullable CliRunner.CliException failure) {
+        if (rerun == null) {
+            return new Verification(List.of(), failure != null && failure.getMessage() != null
+                    ? failure.getMessage() : "the OpenSpec CLI could not be run");
+        }
+        if (!rerun.isSuccess()) {
+            String stderr = CliText.stripAnsi(rerun.stderr() == null ? "" : rerun.stderr()).strip();
+            return new Verification(List.of(), stderr.isEmpty()
+                    ? "openspec update exited with code " + rerun.exitCode() : stderr);
+        }
+        return new Verification(UpdateOutputParser.parseLegacyCleanup(rerun.stdout()), null);
+    }
+
+    private void reportVerification(List<String> removedSet, Verification verification) {
+        if (!verification.verified()) {
+            OpenSpecNotifier.warn(project, "OpenSpec update",
+                    "Legacy files were removed, but the cleanup couldn't be verified: "
+                            + verification.unverifiedReason() + ". Run Update again to check.");
+            return;
+        }
+        List<String> reportedAfter = verification.after();
         PropertiesComponent state = PropertiesComponent.getInstance(project);
         if (isRegenerationLoop(removedSet, reportedAfter)) {
             // Truthful terminal state: this CLI version's tool integration both

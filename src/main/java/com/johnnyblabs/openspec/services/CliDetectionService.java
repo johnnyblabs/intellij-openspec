@@ -1,6 +1,7 @@
 package com.johnnyblabs.openspec.services;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
+import com.johnnyblabs.openspec.util.CliRunner;
 import com.intellij.openapi.components.Service;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
@@ -181,6 +182,7 @@ public final class CliDetectionService {
         try {
             GeneralCommandLine cmd = new GeneralCommandLine(path, "--version");
             cmd.setCharset(StandardCharsets.UTF_8);
+            CliRunner.applyPlainOutputEnvironment(cmd);
             applyLoginShellPath(cmd);
 
             String output = processRunner.runAndCapture(cmd);

@@ -13,9 +13,8 @@ import java.awt.*;
 /**
  * Refreshes the tool window tree view by re-scanning the VFS.
  *
- * <p><b>Strategy: Built-in only.</b> Refresh is a UI operation that re-reads
- * the {@code openspec/} directory tree from the IntelliJ VFS. No CLI
- * interaction is needed.</p>
+ * <p>Refresh re-reads the {@code openspec/} directory tree from the IntelliJ VFS, and the workflow panel re-asks
+ * {@code openspec status}. Open documents are saved first, because the CLI reads the files on disk.</p>
  */
 public class OpenSpecRefreshAction extends OpenSpecBaseAction {
 
@@ -26,6 +25,10 @@ public class OpenSpecRefreshAction extends OpenSpecBaseAction {
 
         ToolWindow toolWindow = ToolWindowManager.getInstance(project).getToolWindow("OpenSpec");
         if (toolWindow == null) return;
+
+        // The workflow panel's refresh asks `openspec status`, which reads the files on disk: save the user's edits
+        // first, or a just-edited .openspec.yaml or artifact shows its old state until the IDE's autosave runs.
+        com.intellij.openapi.fileEditor.FileDocumentManager.getInstance().saveAllDocuments();
 
         // Find the Browse tab (first content, or any content that is an OpenSpecToolWindowPanel)
         for (Content content : toolWindow.getContentManager().getContents()) {

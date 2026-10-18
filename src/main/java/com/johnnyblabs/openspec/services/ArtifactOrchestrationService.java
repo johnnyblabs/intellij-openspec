@@ -9,6 +9,7 @@ import com.johnnyblabs.openspec.model.ArtifactInfo;
 import com.johnnyblabs.openspec.model.ArtifactInstruction;
 import com.johnnyblabs.openspec.model.ArtifactStatus;
 import com.johnnyblabs.openspec.model.ChangeArtifactDag;
+import com.johnnyblabs.openspec.util.CliJson;
 import com.johnnyblabs.openspec.util.CliOutputParser;
 import com.johnnyblabs.openspec.util.CliRunner;
 
@@ -40,6 +41,8 @@ public final class ArtifactOrchestrationService {
 
     private final Project project;
     private final Map<String, ChangeArtifactDag> dagCache = new ConcurrentHashMap<>();
+    /** The CLI's reason for rejecting a change's last {@code status} run, while it keeps rejecting it. */
+    private final Map<String, String> statusErrors = new ConcurrentHashMap<>();
     private final AtomicBoolean generateAllCancelled = new AtomicBoolean(false);
 
     public ArtifactOrchestrationService(Project project) {
@@ -59,7 +62,7 @@ public final class ArtifactOrchestrationService {
      * <b>Must NOT be called on EDT</b> — spawns an external process.
      * Falls back to cache on failure.
      */
-    /** Runs the OpenSpec CLI; a seam so tests can feed captured {@code status} output. */
+    /** Runs the OpenSpec CLI; a seam so tests can feed captured {@code status} and {@code instructions} output. */
     public interface StatusCli {
         CliRunner.CliResult run(Project project, String... args) throws CliRunner.CliException;
     }
@@ -67,7 +70,7 @@ public final class ArtifactOrchestrationService {
     private static final StatusCli REAL_STATUS_CLI = CliRunner::run;
     private StatusCli statusCli = REAL_STATUS_CLI;
 
-    /** Replaces the CLI runner for {@code status}; {@code null} restores the real one. */
+    /** Replaces the CLI runner for {@code status} and {@code instructions}; {@code null} restores the real one. */
     @org.jetbrains.annotations.TestOnly
     public void setStatusCliForTest(@org.jetbrains.annotations.Nullable StatusCli cli) {
         this.statusCli = cli == null ? REAL_STATUS_CLI : cli;
@@ -77,21 +80,45 @@ public final class ArtifactOrchestrationService {
      * The change's artifact status exactly as {@code openspec status --change <name> --json} reports it. Upstream
      * decides done-ness by the file existing, and the plugin doesn't second-guess it; a done file that still looks
      * like a template is only pointed out ({@link #templateLookingArtifacts}).
+     *
+     * <p>When the CLI rejects the change (an error envelope, e.g. the change was renamed or deleted), the cached
+     * status is dropped, {@link #statusError} holds the CLI's reason, and this returns null: the CLI's answer about
+     * the change is "no". When the CLI gives no answer (it could not run, timed out, or printed nothing readable),
+     * the last known status is returned.
      */
     public ChangeArtifactDag getArtifactStatus(String changeName) {
         try {
             CliRunner.CliResult result = statusCli.run(project, "status", "--change", changeName, "--json");
-            if (result.isSuccess() && !result.stdout().isBlank()) {
-                ChangeArtifactDag dag = CliOutputParser.parseChangeStatus(result.stdout());
-                if (dag != null) {
-                    dagCache.put(changeName, dag);
-                    return dag;
+            switch (CliJson.read(result)) {
+                case CliJson.Ok ok -> {
+                    ChangeArtifactDag dag = CliOutputParser.parseChangeStatus(ok.payload());
+                    if (dag != null) {
+                        dagCache.put(changeName, dag);
+                        statusErrors.remove(changeName);
+                        return dag;
+                    }
                 }
+                case CliJson.Failed failed when failed.kind() == CliJson.Kind.ENVELOPE -> {
+                    LOG.info("openspec status rejected change " + changeName + ": " + failed.message());
+                    dagCache.remove(changeName);
+                    statusErrors.put(changeName, failed.describe());
+                    return null;
+                }
+                case CliJson.Failed failed ->
+                        LOG.warn("Unreadable openspec status output for change " + changeName + ": " + failed.message());
             }
-        } catch (CliRunner.CliException e) {
+        } catch (CliRunner.CliException | com.google.gson.JsonParseException e) {
             LOG.warn("Failed to get artifact status for change: " + changeName, e);
         }
         return dagCache.get(changeName);
+    }
+
+    /**
+     * Why the CLI rejected this change's last {@code status} run, or null when it last answered normally (or has not
+     * been asked). Cleared by the next successful status.
+     */
+    public @org.jetbrains.annotations.Nullable String statusError(String changeName) {
+        return statusErrors.get(changeName);
     }
 
     /**
@@ -119,13 +146,18 @@ public final class ArtifactOrchestrationService {
      * Gets generation instructions for a specific artifact.
      */
     public ArtifactInstruction getInstruction(String changeName, String artifactId) throws CliRunner.CliException {
-        CliRunner.CliResult result = CliRunner.run(project,
+        CliRunner.CliResult result = statusCli.run(project,
                 "instructions", artifactId, "--change", changeName, "--json");
-        if (result.isSuccess() && !result.stdout().isBlank()) {
-            return CliOutputParser.parseArtifactInstruction(result.stdout());
-        }
-        throw new CliRunner.CliException(
-                "Failed to get instructions: " + (result.stderr().isBlank() ? "empty response" : result.stderr()));
+        return switch (CliJson.read(result)) {
+            case CliJson.Ok ok -> {
+                try {
+                    yield CliOutputParser.parseArtifactInstruction(ok.payload());
+                } catch (com.google.gson.JsonParseException e) {
+                    throw new CliRunner.CliException("Failed to get instructions: " + e.getMessage(), e);
+                }
+            }
+            case CliJson.Failed failed -> throw new CliRunner.CliException("Failed to get instructions: " + failed.describe());
+        };
     }
 
     /**
@@ -215,6 +247,7 @@ public final class ArtifactOrchestrationService {
      */
     public void invalidateCache(String changeName) {
         dagCache.remove(changeName);
+        statusErrors.remove(changeName);
         WorkflowSchemaContextService contextService = project.getService(WorkflowSchemaContextService.class);
         if (contextService != null) {
             contextService.invalidateCache(changeName);
@@ -226,6 +259,7 @@ public final class ArtifactOrchestrationService {
      */
     public void invalidateAllCaches() {
         dagCache.clear();
+        statusErrors.clear();
         WorkflowSchemaContextService contextService = project.getService(WorkflowSchemaContextService.class);
         if (contextService != null) {
             contextService.invalidateAllCaches();

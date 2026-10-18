@@ -127,4 +127,32 @@ public class UpdateLegacyCleanupFlowTest extends OpenSpecIntegrationTestBase {
                 notice.getContent().contains("safe to remove"));
         assertTrue(notice.getContent().contains("never runs --force"));
     }
+
+    private void verifyWith(com.johnnyblabs.openspec.util.CliRunner.CliResult rerun) throws Exception {
+        UpdateLegacyCleanupService service = service();
+        service.setUpdateCliForTest((p, args) -> rerun);
+        try {
+            service.verifyCleanup(List.of(".cursor/commands/openspec-apply.md"));
+            long deadline = System.currentTimeMillis() + 10_000;
+            while (raised.isEmpty() && System.currentTimeMillis() < deadline) {
+                com.intellij.testFramework.PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
+                Thread.sleep(20);
+            }
+        } finally {
+            service.setUpdateCliForTest(null);
+        }
+    }
+
+    public void testFailedVerificationIsNotReportedClean() throws Exception {
+        // Real 1.14.3 `update` failure (exit 1, empty stdout) as the re-run: used to say "a clean state".
+        verifyWith(com.johnnyblabs.openspec.util.CliFixtures.error("update-fail"));
+        assertFalse("must not claim a clean state", raised.stream().anyMatch(n -> n.getContent().contains("clean state")));
+        assertTrue("must say the cleanup couldn't be verified",
+                raised.stream().anyMatch(n -> n.getContent().contains("couldn't be verified")));
+    }
+
+    public void testSuccessfulCleanVerificationStillReportsClean() throws Exception {
+        verifyWith(new com.johnnyblabs.openspec.util.CliRunner.CliResult(0, loadFixture("update-clean.txt"), ""));
+        assertTrue(raised.stream().anyMatch(n -> n.getContent().contains("clean state")));
+    }
 }

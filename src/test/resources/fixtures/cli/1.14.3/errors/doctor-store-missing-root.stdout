@@ -1,0 +1,14 @@
+{
+  "root": null,
+  "store": null,
+  "references": [],
+  "status": [
+    {
+      "severity": "error",
+      "code": "unhealthy_store_root",
+      "message": "Store 'storea' does not have a healthy OpenSpec root at /fixture/storeA: Missing openspec/ directory. Run openspec store doctor storea to inspect it.",
+      "target": "openspec.root",
+      "fix": "Run openspec store doctor storea to inspect it."
+    }
+  ]
+}

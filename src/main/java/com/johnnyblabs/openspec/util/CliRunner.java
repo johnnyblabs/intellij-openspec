@@ -4,9 +4,11 @@ import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.project.Project;
 import com.johnnyblabs.openspec.services.CliDetectionService;
 import com.johnnyblabs.openspec.settings.OpenSpecSettings;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -23,22 +25,7 @@ public final class CliRunner {
     }
 
     public static CliResult run(Project project, int timeoutMs, String... args) throws CliException {
-        String exePath = resolveCliPath(project);
-
-        GeneralCommandLine cmd = new GeneralCommandLine();
-        cmd.setExePath(exePath);
-        cmd.addParameters(args);
-        cmd.setCharset(StandardCharsets.UTF_8);
-
-        // Opt this process out of the CLI's telemetry notice. On its first run in a fresh
-        // environment the CLI prepends a one-time "Note: OpenSpec collects anonymous usage stats"
-        // line to stdout, which corrupts --json parsing (see CliJson). Setting this keeps stdout
-        // clean for every invocation.
-        cmd.getEnvironment().put("OPENSPEC_TELEMETRY", "0");
-
-        if (project.getBasePath() != null) {
-            cmd.setWorkDirectory(project.getBasePath());
-        }
+        GeneralCommandLine cmd = buildCommandLine(resolveCliPath(project), project.getBasePath(), args);
 
         // Apply login shell PATH so node-based CLI scripts can resolve their interpreter
         CliDetectionService detection = project.getService(CliDetectionService.class);
@@ -58,12 +45,45 @@ public final class CliRunner {
                 throw new CliException("OpenSpec CLI command timed out after " + (timeoutMs / 1000) + "s");
             }
 
-            return new CliResult(process.exitValue(), stdoutFuture.join(), stderrFuture.join());
+            return capturedResult(process.exitValue(), stdoutFuture.join(), stderrFuture.join());
         } catch (CliException e) {
             throw e;
         } catch (Exception e) {
             throw new CliException("Failed to run OpenSpec CLI: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * The result of a finished run. Colour codes are removed here once, for every caller: the run asks for none, but
+     * a wrapper can force them, and a raw escape byte never belongs to JSON (which encodes it as {@code \u001b}).
+     */
+    static CliResult capturedResult(int exitCode, String stdout, String stderr) {
+        return new CliResult(exitCode, CliText.stripAnsi(stdout), CliText.stripAnsi(stderr));
+    }
+
+    /** The command line for one CLI run: the executable, its arguments, the plain-output environment and the project dir. */
+    static GeneralCommandLine buildCommandLine(String exePath, @Nullable String workDir, String... args) {
+        GeneralCommandLine cmd = new GeneralCommandLine();
+        cmd.setExePath(exePath);
+        cmd.addParameters(args);
+        cmd.setCharset(StandardCharsets.UTF_8);
+        applyPlainOutputEnvironment(cmd);
+        if (workDir != null) {
+            cmd.setWorkDirectory(workDir);
+        }
+        return cmd;
+    }
+
+    /**
+     * Asks the CLI for output the plugin can read and show: no telemetry notice (CLI 1.3–1.9 printed it on stdout,
+     * before the JSON), no update notice (`update` prints it on stdout), and no colour codes in text output.
+     */
+    public static void applyPlainOutputEnvironment(GeneralCommandLine cmd) {
+        Map<String, String> env = cmd.getEnvironment();
+        env.put("OPENSPEC_TELEMETRY", "0");
+        env.put("OPENSPEC_NO_UPDATE_CHECK", "1");
+        env.put("NO_COLOR", "1");
+        env.put("FORCE_COLOR", "0");
     }
 
     private static CompletableFuture<String> drainStreamAsync(InputStream stream) {

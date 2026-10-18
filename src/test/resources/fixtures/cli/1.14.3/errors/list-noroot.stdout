@@ -1,0 +1,13 @@
+{
+  "changes": [],
+  "root": null,
+  "status": [
+    {
+      "severity": "error",
+      "code": "no_openspec_root",
+      "message": "No OpenSpec root found from the current directory.",
+      "target": "openspec.root",
+      "fix": "Run openspec init to create a root here."
+    }
+  ]
+}

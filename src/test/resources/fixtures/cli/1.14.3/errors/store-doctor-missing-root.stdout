@@ -1,0 +1,55 @@
+{
+  "stores": [
+    {
+      "id": "storea",
+      "root": "/fixture/storeA",
+      "metadata_path": "/fixture/storeA/.openspec-store/store.yaml",
+      "openspec_root": {
+        "present": false,
+        "config": {
+          "present": null
+        },
+        "specs": {
+          "present": null
+        },
+        "changes": {
+          "present": null
+        },
+        "archive": {
+          "present": null
+        },
+        "healthy": false,
+        "status": [
+          {
+            "severity": "error",
+            "code": "openspec_root_missing",
+            "message": "Missing openspec/ directory.",
+            "target": "openspec.root"
+          }
+        ]
+      },
+      "metadata": {
+        "present": true,
+        "valid": true,
+        "id": "storea",
+        "remote": null
+      },
+      "git": {
+        "is_repository": true,
+        "has_commits": true,
+        "has_uncommitted_changes": true,
+        "has_remote": false,
+        "origin_url": null
+      },
+      "status": [
+        {
+          "severity": "error",
+          "code": "openspec_root_missing",
+          "message": "Missing openspec/ directory.",
+          "target": "openspec.root"
+        }
+      ]
+    }
+  ],
+  "status": []
+}

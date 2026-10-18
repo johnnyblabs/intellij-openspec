@@ -112,6 +112,26 @@ class SchemaServiceTest {
         }
 
         @Test
+        void anUnreadableListIsNotCachedSoTheNextCallRetries() {
+            when(project.getService(CliDetectionService.class)).thenReturn(cliDetection);
+            when(cliDetection.isAvailable()).thenReturn(true);
+            when(cliDetection.getDetectedVersion()).thenReturn("1.14.3");
+            String captured = com.johnnyblabs.openspec.util.CliFixtures.text("1.14.3/schema-commands/schemas.json");
+
+            try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
+                // Exit 0 with a truncated cut of the real list: the path that used to cache an empty list.
+                cli.when(() -> CliRunner.run(eq(project), eq("schemas"), eq("--json")))
+                        .thenReturn(new CliRunner.CliResult(0, com.johnnyblabs.openspec.util.CliFixtures.truncated(captured), ""))
+                        .thenReturn(new CliRunner.CliResult(0, captured, ""));
+
+                assertTrue(service.listSchemas().isEmpty(), "nothing readable on the first call");
+                List<SchemaInfo> second = service.listSchemas();
+                assertFalse(second.isEmpty(), "the second call re-runs the CLI instead of returning a cached empty list");
+                assertEquals(SchemaService.parseSchemaList(captured), second);
+            }
+        }
+
+        @Test
         void returnsEmptyList_whenCliUnsupported() {
             when(project.getService(CliDetectionService.class)).thenReturn(cliDetection);
             when(cliDetection.isAvailable()).thenReturn(true);

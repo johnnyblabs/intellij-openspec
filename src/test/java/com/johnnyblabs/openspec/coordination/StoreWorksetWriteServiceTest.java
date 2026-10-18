@@ -3,6 +3,7 @@ package com.johnnyblabs.openspec.coordination;
 import com.intellij.openapi.project.Project;
 import com.johnnyblabs.openspec.coordination.CoordinationService.WriteResult;
 import com.johnnyblabs.openspec.services.CliDetectionService;
+import com.johnnyblabs.openspec.util.CliFixtures;
 import com.johnnyblabs.openspec.util.CliRunner;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,6 +18,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
@@ -82,6 +84,58 @@ class StoreWorksetWriteServiceTest {
         assertNull(service.storeDoctor("s"), "doctor must not run below the store floor");
         // Never asks the CLI for a path (which would be the first step of a shell-out).
         verify(detection, never()).getDetectedPath();
+    }
+
+    // ---- Store Doctor: a failed check is never "healthy" -----------------------
+
+    private Diagnostic doctorAnswering(CliRunner.CliResult answer) {
+        CoordinationService service = serviceWith("1.14.3", true);
+        try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
+            cli.when(() -> CliRunner.run(eq(project), eq("doctor"), eq("--store"), eq("storea"), eq("--json")))
+                    .thenReturn(answer);
+            return service.storeDoctor("storea");
+        }
+    }
+
+    @Test
+    void storeDoctorReportsTheCapturedRootEnvelopeWithItsFix() {
+        // Regression lock: real 1.14.3 doctor --store for a store whose root was removed (exit 1, top-level error).
+        Diagnostic top = doctorAnswering(CliFixtures.error("doctor-store-missing-root"));
+        assertNotNull(top);
+        assertEquals("unhealthy_store_root", top.code());
+        assertNotNull(top.fix());
+        assertFalse(top.isUnknown());
+    }
+
+    @Test
+    void storeDoctorTimeoutIsUnknownNotHealthy() {
+        CoordinationService service = serviceWith("1.14.3", true);
+        try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
+            cli.when(() -> CliRunner.run(eq(project), eq("doctor"), eq("--store"), eq("storea"), eq("--json")))
+                    .thenThrow(new CliRunner.CliException("OpenSpec CLI command timed out after 30s"));
+            Diagnostic top = service.storeDoctor("storea");
+            assertNotNull(top, "a timed-out check used to return null, which the action shows as healthy");
+            assertTrue(top.isUnknown());
+        }
+    }
+
+    @Test
+    void storeDoctorFailingWithoutAnEnvelopeIsUnknownNotHealthy() {
+        // Derived from the capture (its status emptied): a non-zero exit whose JSON gives no reason.
+        com.google.gson.JsonObject raw = com.google.gson.JsonParser.parseString(
+                CliFixtures.error("doctor-store-missing-root").stdout()).getAsJsonObject();
+        raw.add("status", new com.google.gson.JsonArray());
+        Diagnostic top = doctorAnswering(new CliRunner.CliResult(1, raw.toString(), ""));
+        assertNotNull(top);
+        assertTrue(top.isUnknown());
+    }
+
+    @Test
+    void storeDoctorUnreadableOutputIsUnknownNotHealthy() {
+        String captured = CliFixtures.error("doctor-store-missing-root").stdout();
+        Diagnostic top = doctorAnswering(new CliRunner.CliResult(0, CliFixtures.truncated(captured), ""));
+        assertNotNull(top, "unreadable output used to return null, which the action shows as healthy");
+        assertTrue(top.isUnknown());
     }
 
     // ---- T.2: status[].fix surfaced verbatim; stderr never surfaced ---------

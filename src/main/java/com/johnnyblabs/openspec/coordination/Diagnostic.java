@@ -23,4 +23,16 @@ public record Diagnostic(
         @Nullable String message,
         @Nullable String target,
         @Nullable String fix) {
+    /** The severity of {@link #unknown}: the plugin's own, never one the CLI emits. */
+    public static final String UNKNOWN = "unknown";
+
+    /** Health could not be determined: the doctor run failed or printed nothing readable. */
+    public static Diagnostic unknown(String reason) {
+        return new Diagnostic(UNKNOWN, null, reason, null, null);
+    }
+
+    /** Whether this is {@link #unknown} health rather than a diagnostic the CLI reported. */
+    public boolean isUnknown() {
+        return UNKNOWN.equals(severity);
+    }
 }

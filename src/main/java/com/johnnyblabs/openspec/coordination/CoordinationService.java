@@ -830,19 +830,27 @@ public final class CoordinationService {
 
     /**
      * Runs {@code doctor --store <id> --json} and returns the highest-severity entry of the uniform
-     * {@code status[]} array (with its {@code fix} intact), or null when the store is healthy /
-     * unavailable. Off-EDT. Never surfaces raw stderr.
+     * {@code status[]} array (with its {@code fix} intact), or null when the store is healthy. When the run fails or
+     * prints nothing readable, returns {@link Diagnostic#unknown}: a failed check is never reported as healthy.
+     * Below the store CLI floor returns null without running anything. Off-EDT. Never surfaces raw stderr.
      */
     @Nullable
     public Diagnostic storeDoctor(String id) {
         if (!cliStoreAvailable()) return null;
         try {
             CliRunner.CliResult r = CliRunner.run(project, "doctor", "--store", id, "--json");
-            JsonObject root = GSON.fromJson(CliJson.extractJsonPayload(r.stdout()), JsonObject.class);
-            return highestSeverity(parseDiagnostics(root));
+            return switch (CliJson.read(r)) {
+                // An envelope's own status is the diagnosis (CLI 1.14.3 answers a store whose root is gone with a
+                // top-level unhealthy_store_root error and exit 1).
+                case CliJson.Failed failed when failed.kind() == CliJson.Kind.ENVELOPE ->
+                        highestSeverity(parseDiagnostics(failed.payload()));
+                case CliJson.Failed failed -> Diagnostic.unknown(
+                        "Couldn't check store '" + id + "': the OpenSpec CLI returned no readable result.");
+                case CliJson.Ok ok -> highestSeverity(parseDiagnostics(ok.object()));
+            };
         } catch (Exception e) {
             LOG.debug("doctor --store failed for " + id, e);
-            return null;
+            return Diagnostic.unknown("Couldn't check store '" + id + "': " + e.getMessage());
         }
     }
 

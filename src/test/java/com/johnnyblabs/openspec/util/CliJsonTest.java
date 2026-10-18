@@ -30,6 +30,20 @@ class CliJsonTest {
     }
 
     @Test
+    void bracketedPreambleLineIsSkipped() {
+        // A real captured payload behind a "[WARN] ..." line: the old first-bracket rule returned the [WARN] line.
+        String payload = CliFixtures.text("1.14.3/errors/status-unknown.stdout");
+        assertEquals(payload, CliJson.extractJsonPayload("[WARN] deprecated option\n" + payload));
+        assertEquals(payload, CliJson.extractJsonPayload("{note} not json\n[note] neither\n" + payload));
+    }
+
+    @Test
+    void indentedPayloadLineIsFound() {
+        String payload = CliFixtures.text("1.14.3/errors/validate-noroot.stdout");
+        assertEquals(payload, CliJson.extractJsonPayload("banner\n" + payload));
+    }
+
+    @Test
     void cleanJsonIsReturnedUnchanged() {
         String clean = "{\"stores\":[],\"status\":[]}";
         assertEquals(clean, CliJson.extractJsonPayload(clean));

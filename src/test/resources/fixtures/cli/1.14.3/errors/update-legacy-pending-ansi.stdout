@@ -1,0 +1,23 @@
+Migrated: custom profile with 6 workflows
+New in this version: /opsx-propose. Try 'openspec config profile core' for the streamlined experience.
+
+[1mUpgrading to the new OpenSpec[22m
+
+OpenSpec now uses agent skills, the emerging standard across coding
+agents. This simplifies your setup while keeping everything working
+as before.
+
+[1mFiles to remove[22m
+[2mThese files will be deleted entirely. Back up any custom content before proceeding:[22m
+  • .cursor/commands/openspec-apply.md
+  • .cursor/commands/openspec-archive.md
+  • .cursor/commands/openspec-proposal.md
+
+[33m⚠ Run with --force to auto-cleanup legacy files, or run interactively.[39m
+
+[32m✓ All 1 tool(s) up to date (v1.14.3)[39m
+[2m  Tools: cursor[22m
+
+[2mUse --force to refresh files anyway.[22m
+[2mNote: 6 more workflows are available (new, continue, ff, bulk-archive, verify, onboard).[22m
+[2mAdd them with `openspec config profile`.[22m

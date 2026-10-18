@@ -88,10 +88,9 @@ class CliOutputParserTest {
         }
 
         @Test
-        void handlesEmptyJson() {
-            ValidationResult result = CliOutputParser.parseJsonOutput("{}");
-            assertTrue(result.passed());
-            assertEquals(0, result.issues().size());
+        void emptyJsonIsNotAVerdict() {
+            // Was asserted to pass with 0 issues; a response without items is no verdict, so the caller falls back.
+            assertThrows(CliOutputParser.CliErrorResponseException.class, () -> CliOutputParser.parseJsonOutput("{}"));
         }
     }
 

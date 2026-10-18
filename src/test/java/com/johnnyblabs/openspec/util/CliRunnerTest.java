@@ -11,6 +11,60 @@ import static org.junit.jupiter.api.Assertions.*;
 class CliRunnerTest {
 
     @Nested
+    class CommandLineTest {
+
+        @Test
+        void everyRunAsksForPlainOutput() {
+            var cmd = CliRunner.buildCommandLine("/usr/local/bin/openspec", "/work", "status", "--json");
+            var env = cmd.getEnvironment();
+            assertEquals("1", env.get("NO_COLOR"));
+            assertEquals("0", env.get("FORCE_COLOR"));
+            assertEquals("1", env.get("OPENSPEC_NO_UPDATE_CHECK"));
+            assertEquals("0", env.get("OPENSPEC_TELEMETRY"));
+            assertEquals("/usr/local/bin/openspec", cmd.getExePath());
+            assertEquals(java.util.List.of("status", "--json"), cmd.getParametersList().getList());
+            assertEquals("/work", cmd.getWorkDirectory().getPath());
+        }
+
+        @Test
+        void runBuildsThroughTheHelper() throws Exception {
+            // Guard against a second, environment-less command line creeping back into run().
+            String source = java.nio.file.Files.readString(java.nio.file.Path.of(
+                    "src/main/java/com/johnnyblabs/openspec/util/CliRunner.java"));
+            assertEquals(1, source.split("new GeneralCommandLine", -1).length - 1);
+            assertTrue(source.contains("buildCommandLine(resolveCliPath(project)"));
+            assertTrue(source.contains("return capturedResult(process.exitValue()"), "run() strips colour on capture");
+        }
+
+        @Test
+        void capturedOutputHasNoColourCodes() {
+            String ansi = CliFixtures.text("1.14.3/errors/update-legacy-pending-ansi.stdout");
+            var r = CliRunner.capturedResult(1, ansi, "\u001B[31m✖\u001B[39m Error: boom");
+            assertEquals(CliFixtures.text("1.14.3/errors/update-legacy-pending-plain.stdout"), r.stdout());
+            assertEquals("✖ Error: boom", r.stderr());
+            assertEquals(1, r.exitCode());
+        }
+    }
+
+    @Nested
+    class StripAnsiTest {
+
+        @Test
+        void colouredCaptureEqualsThePlainOneOnceStripped() {
+            String ansi = CliFixtures.text("1.14.3/errors/update-legacy-pending-ansi.stdout");
+            String plain = CliFixtures.text("1.14.3/errors/update-legacy-pending-plain.stdout");
+            assertTrue(ansi.contains("\u001B["), "capture precondition: the coloured run has escape codes");
+            assertEquals(plain, CliText.stripAnsi(ansi));
+        }
+
+        @Test
+        void plainTextAndNullAreUnchanged() {
+            assertEquals("plain", CliText.stripAnsi("plain"));
+            assertNull(CliText.stripAnsi(null));
+        }
+    }
+
+    @Nested
     class CliResultTest {
 
         @Test

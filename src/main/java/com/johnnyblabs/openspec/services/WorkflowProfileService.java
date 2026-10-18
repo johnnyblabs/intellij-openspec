@@ -3,10 +3,10 @@ package com.johnnyblabs.openspec.services;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import com.intellij.openapi.components.Service;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
+import com.johnnyblabs.openspec.util.CliJson;
 import com.johnnyblabs.openspec.util.CliRunner;
 
 import java.util.Collections;
@@ -116,19 +116,18 @@ public final class WorkflowProfileService {
     private Snapshot resolve() {
         try {
             CliRunner.CliResult result = CliRunner.run(project, "config", "list", "--json");
-            if (result.isSuccess()) {
-                return parseSnapshot(result.stdout());
+            if (CliJson.read(result) instanceof CliJson.Ok ok && ok.object() != null) {
+                return parseSnapshot(ok.object());
             }
-            LOG.info("CLI config list failed (exit " + result.exitCode() + "), using core defaults");
+            LOG.info("CLI config list gave no readable config (exit " + result.exitCode() + "), using core defaults");
         } catch (CliRunner.CliException e) {
             LOG.info("CLI unavailable for workflow resolution, using core defaults");
         }
         return Snapshot.fallback();
     }
 
-    private static Snapshot parseSnapshot(String json) {
+    private static Snapshot parseSnapshot(JsonObject config) {
         try {
-            JsonObject config = JsonParser.parseString(json).getAsJsonObject();
             String profileName = null;
             JsonElement profileEl = config.get("profile");
             if (profileEl != null && !profileEl.isJsonNull()) {

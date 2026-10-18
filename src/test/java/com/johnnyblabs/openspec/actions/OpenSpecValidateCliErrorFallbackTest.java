@@ -1,6 +1,7 @@
 package com.johnnyblabs.openspec.actions;
 
 import com.johnnyblabs.openspec.integration.OpenSpecIntegrationTestBase;
+import com.johnnyblabs.openspec.util.CliFixtures;
 import com.johnnyblabs.openspec.util.CliRunner;
 import com.johnnyblabs.openspec.validation.BuiltInValidator;
 import com.johnnyblabs.openspec.validation.ValidationResult;
@@ -81,5 +82,48 @@ public class OpenSpecValidateCliErrorFallbackTest extends OpenSpecIntegrationTes
 
         assertTrue(r.passed());
         assertEquals("cli", r.source());
+    }
+
+    private void addChangeTheBuiltInFails() {
+        myFixture.addFileToProject("openspec/changes/test-change/specs/broken/spec.md",
+                "## ADDED Requirements\n\n### Requirement: Broken\nThe system SHALL break.\n");
+        refreshVfs();
+    }
+
+    private void assertBuiltInFailingVerdict(ValidationResult r) {
+        assertFalse("unreadable CLI output must not report a pass", r.passed());
+        assertFalse("the verdict must be the built-in fallback, not the CLI's", "cli".equals(r.source()));
+    }
+
+    public void testNoRootResponseFallsBack() {
+        // Regression lock: the 1.14.3 no-root envelope already fell back through the error-response path.
+        addChangeTheBuiltInFails();
+        CliRunner.CliResult noRoot = CliFixtures.error("validate-noroot");
+        assertBuiltInFailingVerdict(route(ValidateTarget.change("test-change"), noRoot.stdout(), noRoot.exitCode()));
+    }
+
+    public void testTruncatedJsonFallsBack() {
+        // Used to swallow the parse error and report PASS with zero issues.
+        addChangeTheBuiltInFails();
+        String report = CliFixtures.text("1.14.3/validate-parity-corpus.json");
+        assertBuiltInFailingVerdict(route(ValidateTarget.change("test-change"), CliFixtures.truncated(report), 0));
+    }
+
+    public void testJsonWithoutAVerdictFallsBack() {
+        // Synthetic: any JSON object with neither items nor an error status. Used to report PASS with zero issues.
+        addChangeTheBuiltInFails();
+        assertBuiltInFailingVerdict(route(ValidateTarget.change("test-change"), "{}", 0));
+    }
+
+    public void testTextBeforeTheJsonKeepsTheCliIssues() {
+        // Used to route anything not starting with "{" to the text parser, which found none of the issues.
+        String report = CliFixtures.text("1.14.3/validate-parity-corpus.json");
+        ValidationResult plain = route(ValidateTarget.wholeProject(), report, 1);
+        ValidationResult prefixed = route(ValidateTarget.wholeProject(), "Note: something printed first\n" + report, 1);
+        assertTrue("the plain run used the CLI's report", "cli".equals(plain.source()) || "merged".equals(plain.source()));
+        assertTrue("capture precondition: the report has issues", plain.issues().size() > 0);
+        assertEquals(plain.source(), prefixed.source());
+        assertEquals(plain.issues().size(), prefixed.issues().size());
+        assertEquals(plain.passed(), prefixed.passed());
     }
 }
