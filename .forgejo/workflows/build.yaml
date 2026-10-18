@@ -74,8 +74,12 @@ jobs:
       # Reports coverage + JUnit results to the analysis server. Runs after Build
       # and Test so the JaCoCo XML + test results exist. Host/token come from CI
       # secrets — no internal host is hardcoded (safe for the public mirror).
+      # main only: the server keeps a single branch, so a PR analysis would overwrite
+      # main's snapshot with unmerged code. Non-blocking like the Dependency-Track step:
+      # `|| echo` keeps server downtime from ever reddening the build.
       - name: SonarQube analysis
-        run: gradle sonar
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        run: gradle sonar || echo "SonarQube analysis skipped (non-fatal)"
         env:
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
