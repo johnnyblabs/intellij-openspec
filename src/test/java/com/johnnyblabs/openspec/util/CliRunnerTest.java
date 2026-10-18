@@ -23,7 +23,8 @@ class CliRunnerTest {
             assertEquals("0", env.get("OPENSPEC_TELEMETRY"));
             assertEquals("/usr/local/bin/openspec", cmd.getExePath());
             assertEquals(java.util.List.of("status", "--json"), cmd.getParametersList().getList());
-            assertEquals("/work", cmd.getWorkDirectory().getPath());
+            // Compare Files, not strings: Windows reports this directory as \work.
+            assertEquals(new java.io.File("/work"), cmd.getWorkDirectory());
         }
 
         @Test
