@@ -38,7 +38,7 @@ The [**Version support**](openspec-support.md#version-support) block in `openspe
 | [direct-api-workflow.md](direct-api-workflow.md) | Direct API delivery: setup, a worked generation example, and workflow diagrams | Users | Reference |
 | [feature-comparison-matrix.md](feature-comparison-matrix.md) | Competitive comparison vs. VS Code OpenSpec extensions | Evaluators, maintainers | Snapshot |
 | [getting-started-browser.md](getting-started-browser.md) | Setup guide: browse specs, no AI setup | Reviewers, leads, PMs | Reference |
-| [getting-started-copilot.md](getting-started-copilot.md) | Setup guide: IDE-first developer (Copilot / Cursor / Windsurf / Cline) | IDE-AI developers | Reference |
+| [getting-started-copilot.md](getting-started-copilot.md) | Setup guide: IDE-first developer (Copilot / Cursor / Devin Desktop / Cline) | IDE-AI developers | Reference |
 | [getting-started-cli-companion.md](getting-started-cli-companion.md) | Setup guide: terminal AI companion (Claude Code, Gemini CLI, …) | CLI-AI developers | Reference |
 | [getting-started-api.md](getting-started-api.md) | Setup guide: standalone API-key workflow | API-key developers | Reference |
 | [marketplace-page.md](marketplace-page.md) | Source copy for the JetBrains Marketplace listing | Maintainers | Reference |

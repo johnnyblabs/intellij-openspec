@@ -25,7 +25,7 @@ A comprehensive comparison of the OpenSpec IntelliJ plugin against known VS Code
 | Initialize project (`openspec init`) | Yes (menu + toolbar) | No | No | No | No |
 | Propose change (create + scaffold) | Yes (dialog with name/desc) | No | Yes | No | No |
 | Apply change | Yes (panel action) | No | No | No | No |
-| Archive change | Yes (panel action) | No | Yes | No | No |
+| Archive change | Yes (panel action; via `openspec archive` on CLI 1.5+) | No | Yes | No | No |
 | List specs/changes | Yes (tree + menu) | No | Partial | Yes | Yes |
 | Full lifecycle (init -> archive) | Yes | No | Partial | No | No |
 | Fast-Forward (create + generate all) | Yes (one-click) | No | No | No | No |
@@ -53,7 +53,7 @@ A comprehensive comparison of the OpenSpec IntelliJ plugin against known VS Code
 | Split button (method dropdown) | Yes | No | No | No | No |
 | Post-generation guidance card | Yes (tool-aware) | No | No | No | No |
 | Next artifact indicator | Yes | No | No | No | No |
-| Scaffolding detection (content-aware) | Yes | No | No | No | No |
+| Unfilled-template flag on done artifacts | Yes ("template" chip, points to Regenerate) | No | No | No | No |
 
 ---
 
@@ -148,9 +148,9 @@ A comprehensive comparison of the OpenSpec IntelliJ plugin against known VS Code
 | Feature | IntelliJ | Codder13 | atman-dev | AngDrew | AvantMedia |
 |---|---|---|---|---|---|
 | Init creates full directory structure | Yes | No | No | No | No |
-| Propose creates all artifact scaffolds | Yes (proposal + design + tasks + specs/) | No | Yes | No | No |
+| Propose creates the change (as `openspec new change` does) | Yes (settings + proposal + empty specs/; design and tasks generated next) | No | Yes | No | No |
 | Template-based file generation | Yes | No | No | No | No |
-| Scaffolding content detection | Yes (strips headings, comments, placeholders) | No | No | No | No |
+| Scaffolding content detection | Yes (flags unfilled templates; status follows `openspec status`) | No | No | No | No |
 | Version-aware scaffolding | Yes (adapts to schema version) | No | No | No | No |
 
 ---
@@ -165,7 +165,7 @@ A comprehensive comparison of the OpenSpec IntelliJ plugin against known VS Code
 - Grouped, navigable validation console (by file, clickable file:line links, per-severity color) plus a Project-View context-menu Validate scoped to the clicked change or spec
 - Multi-provider Direct API generation with secure credential storage (Claude, OpenAI, Gemini), live discovery of your account's models, and an operation-time model selector in the tool window
 - Visual artifact pipeline with DAG-driven workflow
-- Scaffolding detection preventing false "complete" status
+- Artifact status exactly as `openspec status` reports it, with unfilled templates flagged for regeneration
 - AI tool detection with type-aware guidance (CLI vs IDE panel)
 - Built-in + CLI-enhanced validation with inline results
 - Works fully offline without CLI (built-in fallback mode)

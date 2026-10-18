@@ -108,7 +108,7 @@ A version-oriented view of what each OpenSpec CLI line offers and whether the pl
 | `goal` / `affected_areas` / `initiative` metadata | n-a | core | core | core | core | core | ✅ read-only (display) |
 | `skip_specs: true` | n-a | n-a | n-a | n-a | core | core | ✅ read-only (parsed; archive honoring deferred) |
 | `.openspec.yaml` `retire_capabilities` | n-a | n-a | n-a | n-a | n-a | core | 🟡 tolerated (ignored); archive is CLI-delegated |
-| `instructions apply` / `instructions archive` | n-a | n-a | n-a | n-a | core | core | ⬜ out-of-model (plugin archive is built-in VFS) |
+| `instructions apply` / `instructions archive` | n-a | n-a | n-a | n-a | core | core | ⬜ out-of-model (archive delegates to `openspec archive` on 1.5+, built-in otherwise) |
 | `status --json` per-artifact `requires` edges | n-a | n-a | n-a | n-a | core | core | 🟡 parses additively; DAG-from-`requires` is a follow-up |
 | `status --json` `isPlanningComplete` (alias of `isComplete`) | n-a | n-a | n-a | n-a | n-a | core | ✅ tolerated; plugin reads `isComplete` |
 
@@ -120,14 +120,14 @@ A version-oriented view of what each OpenSpec CLI line offers and whether the pl
 
 | Workflow | Status | CLI | Notes |
 |----------|--------|-----|-------|
-| propose / new | ✅ | built-in | Built-in scaffolding (full artifact set) + AI skill |
+| propose / new | ✅ | built-in | Without the CLI, writes what `openspec new change` creates (settings, proposal, empty `specs/`) + AI skill |
 | explore | ✅ | built-in · `instructions` | Thinking-space panel + AI skill |
 | apply-change | ✅ | built-in · `status` | Implement-tasks action + AI skill |
 | continue-change | ✅ | built-in · `status` | Resume action |
 | ff-change | ✅ | built-in | Fast-forward action |
 | sync-specs | ✅ | built-in | Built-in delta→main spec sync + AI skill |
-| archive-change | ✅ | built-in | Archive action (applies deltas + moves via VFS, no CLI call) + AI skill |
-| bulk-archive | ✅ | built-in | Bulk archive action |
+| archive-change | ✅ | `1.5+` · `delegated` | Archive action runs `openspec archive` on CLI 1.5+; otherwise built-in (applies deltas, moves to `changes/archive/YYYY-MM-DD-<name>/`) + AI skill |
+| bulk-archive | ✅ | `1.5+` · `delegated` | Bulk archive action; one `openspec archive` per change on CLI 1.5+; changes OpenSpec would refuse are held back as Blocked |
 | **verify-change** | 🟡 | `1.3+` · `delegated` | Rebuilt to be schema/mode-aware (drives off `openspec status` — the `actionContext.mode` gate *and* the artifact-level completeness check, which reads the status DAG's own artifact set instead of assuming a fixed spec-driven layout; task-checkbox granularity stays locally parsed from `tasks.md`, and a filesystem fallback covers CLI-less environments) and **language-agnostic**: semantic correctness/coherence is delegated to the AI bridge. Non-default modes (e.g. `workspace-planning`) explain and stop. The old Java-only code heuristic is retired. |
 | onboard | 🟡 | built-in | Plugin's own Setup Wizard, not the OpenSpec `onboard` workflow |
 | feedback | — | n/a | **Deliberately not surfaced** (decision 2026-07-04): `openspec feedback` reaches the upstream framework maintainers, but an in-IDE button reads as plugin feedback — channel confusion in both directions. Terminal users run `openspec feedback` directly; plugin feedback belongs on the plugin's issue tracker. Do not re-propose without revisiting the recorded decision. |
