@@ -5,6 +5,7 @@
 Resolve and present OpenSpec's 1.5.0+ store/workset model in the IDE — locating the on-disk store registry and workset files under the global data directory and reading them with a CLI-backed path plus an on-disk fallback — so the Coordination tab reflects the model that replaced the 1.4 collections.
 
 ## Requirements
+
 ### Requirement: Store and workset path resolution
 
 The plugin SHALL resolve the OpenSpec 1.5.0 on-disk store and workset locations under the same global data dir it already resolves for the 1.4 collections: `stores/` with a `registry.yaml`, and `worksets/` with a `worksets.yaml`. The store registry SHALL be parsed with the same backend-local-path logic used for the existing context-store registry, because the two files are byte-identical in shape (`version: 1` / `stores: {<id>: {backend: {type, local_path}}}`) and differ only in directory name. The global data dir SHALL continue to resolve as `$XDG_DATA_HOME/openspec` when set, otherwise `~/.local/share/openspec` on Unix/macOS and `%LOCALAPPDATA%\openspec` on Windows.
@@ -128,3 +129,23 @@ The store and workset surface SHALL be read-only in this change: it SHALL reuse 
 #### Scenario: Resolution runs off the EDT
 - **WHEN** stores and worksets are resolved via the CLI or by reading the global data dir
 - **THEN** the work SHALL execute on a background thread and the resulting UI update SHALL be applied via `invokeLater`
+
+### Requirement: Store health reflects every doctor diagnostic
+
+When a store's doctor check fails to run or its output cannot be read, the store's health SHALL be reported as unknown, and SHALL NOT be reported as healthy. Error diagnostics the CLI reports inside a store's own `status` SHALL count towards that store's health even when the top-level `status` is empty and the command exits 0.
+
+#### Scenario: Doctor run fails
+- **WHEN** the store doctor command times out, or prints output that is not JSON
+- **THEN** the store SHALL be shown with health unknown, not as healthy
+
+#### Scenario: Nested errors with exit 0
+- **WHEN** the store listing's doctor output is the captured 1.14.3 `store doctor` response for a store whose root was removed (top-level `status` empty, the error in the store's own `status` and its `openspec_root.status`, exit 0)
+- **THEN** that store's diagnostics SHALL include the error exactly once, with its message
+
+#### Scenario: Root-level envelope from the Store Doctor action
+- **WHEN** the Store Doctor action's `doctor --store <id> --json` returns the captured 1.14.3 `unhealthy_store_root` response (exit 1)
+- **THEN** the action SHALL show that diagnostic with its `fix` text, and SHALL NOT say the store is healthy
+
+#### Scenario: Healthy store is unchanged
+- **WHEN** the doctor output reports no error or warning diagnostics at any level
+- **THEN** the store SHALL be shown as healthy as before
