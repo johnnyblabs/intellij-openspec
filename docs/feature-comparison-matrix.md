@@ -2,7 +2,7 @@
 
 A comprehensive comparison of the OpenSpec IntelliJ plugin against known VS Code extensions.
 
-> **Maintenance: Snapshot** — reviewed per release, not per-change. This plugin's own row is kept current; the VS Code extension data (versions, install counts, features) is a point-in-time competitive survey and may lag reality. **Last reviewed: 2026-10-17** (plugin v0.13.0 — the OpenSpec 1.13.x-support release plus an archive-ready highlight in the Changes tree; 1.13.x keeps parity-corpus verdicts identical to 1.12 while accepting any bullet in RENAMED/REMOVED and widening task counting, which the plugin mirrors; competitive change: the archive-ready badge row). For the version-by-version support matrix (what the plugin covers vs. the OpenSpec client), see [OpenSpec Client Coverage](openspec-support.md) instead.
+> **Maintenance: Snapshot** — reviewed per release, not per-change. This plugin's own row is kept current; the VS Code extension data (versions, install counts, features) is a point-in-time competitive survey and may lag reality. **Last reviewed: 2026-10-19** (plugin v0.14.0 — the OpenSpec 1.14.x-support release; archiving runs through `openspec archive` on CLI 1.5+, the plugin's own merge follows 1.14's archive rules, artifact status follows `openspec status`, and all 50 AI tools OpenSpec supports are known; 1.14's new warnings surface through CLI validation and are deliberately not copied into the built-in validator; competitive changes: the archive, unfilled-template and propose rows). For the version-by-version support matrix (what the plugin covers vs. the OpenSpec client), see [OpenSpec Client Coverage](openspec-support.md) instead.
 
 ---
 

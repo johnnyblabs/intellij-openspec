@@ -4,32 +4,30 @@
 
 ## Unreleased
 
+## v0.14.0
+
 ### Added
 
 - **OpenSpec CLI 1.14.x is now a supported line.** The plugin reads 1.14's output as before; the new fields it adds are simply ignored. 1.14's new warnings (an unrecognized key in a change's `.openspec.yaml`, a very long requirement, and text that archiving would not carry into the main spec) appear when the CLI validates, and only fail validation in strict mode. They are deliberately not copied into the built-in validator, so it never rejects a change that an older supported CLI would accept. The plugin targets CLI 1.14.3 (minimum CLI remains 1.3.0).
-
 - **All 50 AI coding tools OpenSpec supports.** The plugin knew 30. The 20 added since include Amp, Zed Agent, Warp, Grok Build, Hermes Agent and Rovo Dev CLI. Tools appear under the names OpenSpec's tool picker uses (for example "Devin Desktop (formerly Windsurf)", "Gemini CLI", "Zoo Code"); a preferred tool saved under an old name still works. A tool is only offered or passed to `openspec init` when your installed CLI accepts it.
 
 ### Changed
 
 - **Ready for IntelliJ IDEA 2026.x.** The plugin no longer calls platform methods that IntelliJ IDEA 2026.1 and later mark as deprecated where a replacement works on every supported IDE, so it keeps working as those methods are retired. Files open from links, buttons and notifications exactly as before. Compatibility is now checked against IntelliJ IDEA 2026.1 and 2026.2 as well, alongside 2024.2 and 2025.x.
-
 - **Archiving uses your OpenSpec CLI when it's version 1.5 or later.** Archive (from the tool window, the menu, or Verify) and Bulk Archive now run `openspec archive`, so a change is checked and archived by your CLI's own rules, and a refusal shows the CLI's reason and suggested fix, with the change left active. "Archive Without Syncing" archives without touching your main specs. Without the CLI, or with an older one, the plugin archives the change itself as before. Archiving now also runs in the background, so the IDE stays responsive.
 - **Archive and Verify now apply a change's spec updates when they archive it,** as `openspec archive` does. They used to move the change and leave its delta specs unapplied unless you had synced them first. Changes you already synced are unaffected.
-
 - **Artifact status now matches OpenSpec exactly.** The workflow panel, Apply, Verify, Archive and Generate All use each artifact's status as `openspec status` reports it. The plugin used to treat a short file as unwritten, which could leave Apply, Verify and Archive disabled for a change OpenSpec considered complete, with no explanation. A done file that still looks like an unfilled template now shows as `design · template` on its chip, with a tooltip pointing to Regenerate, and nothing is disabled.
 - **Propose creates what `openspec new change` creates.** Proposing a change without the CLI now writes the change's settings, the proposal you entered and an empty `specs` folder, but no template design or task files. Those are generated or written next, and the panel shows them as ready or waiting until they exist.
-
 - **Settings no longer shows a "Version override" field.** It only offered the one config format the plugin supports, so it had no effect. A value saved by an earlier version is ignored; the config format still comes from your `openspec/config.yaml`.
 
 ### Fixed
+
 - **Validate no longer passes when the CLI's answer can't be read.** If `openspec validate` printed malformed or cut-off JSON, or JSON without results, the plugin reported a pass with no issues. It now uses the built-in validator's verdict, as it does when the CLI isn't installed. A line printed before the JSON no longer hides the CLI's issues either.
 - **The workflow panel says why OpenSpec can't read a change.** When `openspec status` rejects the selected change (renamed, deleted, or an invalid `.openspec.yaml`), the panel shows "Can't read change" with OpenSpec's reason and links to open `.openspec.yaml` or refresh. The change stays selected, and Refresh (here and in the tool window toolbar) saves your open edits first, so a fix you just typed is seen straight away instead of after the IDE's autosave. Before, it kept showing the change's old status, or "No changes yet". Generating an artifact OpenSpec rejects now shows its reason instead of "empty response".
 - **Legacy cleanup no longer claims success it couldn't check.** If the follow-up `openspec update` failed or timed out, the plugin still said "openspec update reports a clean state". It now says the cleanup couldn't be verified.
 - **Store Doctor no longer calls a store healthy when the check failed.** If the check timed out or returned nothing readable, it now says the store's health couldn't be determined.
 - **A completed archive is no longer reported as refused** when the CLI printed anything before its result.
 - **No colour codes in CLI messages.** The plugin asks the OpenSpec CLI for plain output and removes any colour codes that still appear, so messages read cleanly and the legacy-cleanup review is still recognized when colour is forced on.
-
 - **AI tools set up by OpenSpec are recognised where it now puts them.** Devin Desktop (formerly Windsurf) in `.devin/`, Codex and Antigravity in `.agents/`, and Kimi Code in `.kimi-code/` used to stay "not configured" after `openspec init`. Detection now follows the OpenSpec CLI's own rules, including the older directories.
 - **GitHub Copilot is no longer reported in every GitHub repository.** Like the OpenSpec CLI, the plugin detects Copilot from its own files (such as `.github/copilot-instructions.md` or `.github/prompts/`), not from any `.github/` folder. If Copilot isn't detected, choose it in the setup wizard or Manage AI Tools.
 - **The schema section of Settings now works while Settings is open.** The schema list was always empty, and Validate, Open Templates and the config/profile sections seemed to do nothing, because their results only arrived after you closed the Settings dialog. They now appear straight away.
@@ -59,11 +57,15 @@
 
 - **Task progress now matches the CLI's counts.** Tasks written with `*`, `+` or numbered markers (`1.`, `1)`), or with boxes like `[]` or `[ x ]`, were not counted. The tree's `X/Y`, the workflow panel, Apply and Verify could show a change as finished while the CLI still listed open tasks, and Verify could allow archiving with work left.
 - **Create Delta Spec now scaffolds a delta the OpenSpec CLI can read.** The scaffold used `## ADDED`, `## MODIFIED` and `## REMOVED` headings, but the CLI only recognizes `## ADDED Requirements` and its siblings. So a delta you wrote into the scaffold was invisible to it, and validation failed with "No deltas found". The scaffold now uses the CLI's headings, and its rename guidance shows the CLI's ``FROM: `### Requirement: Old` `` / ``TO: `### Requirement: New` `` format.
+
 - **The plugin now notices an OpenSpec CLI you upgrade while the IDE is running.** When you switch back to the project's IDE window, the plugin re-checks the CLI (at most once every 30 seconds) and the tool window shows the new version. Before, it kept showing the version from when the project opened until you reopened the project or re-showed the tool window.
 - **Propose and the delta-spec diff links now also work while the IDE is indexing.** The "Propose a Change" button and links in the tool window, the workflow panel and the Setup Wizard, and the diff links in the deltas preview, now launch their action through the IDE's standard action pipeline. They keep working during indexing instead of showing a "not available while indexing" message.
 - **Renames written with `*` or `+` bullets are no longer reported as errors.** OpenSpec CLI 1.13 accepts any list bullet in `## RENAMED Requirements`, but the built-in validator and the delta spec inspection only accepted `-`, so a valid rename was flagged in the editor and failed validation when the CLI wasn't installed.
+
 - **An empty `## RENAMED Requirements` section is no longer reported as an error** by the built-in validator or the delta spec inspection. The CLI accepts an empty RENAMED section, so a correctly filled-in scaffold no longer shows a red error in the editor or fails validation when the CLI isn't installed. A RENAMED section with `FROM:`/`TO:` lines that don't form a pair is still an error.
+
 - **Spec sync now applies every removal and rename the CLI applies.** Bullet-form removals (``* `### Requirement: Name` ``) were silently skipped. Renames written in the CLI's own format (``FROM: `### Requirement: Old` ``) never found their target.
+
 - **Validating with a rejected item name no longer reports a pass.** OpenSpec CLI 1.13 answers some invalid requests with an error instead of a result; the plugin read that as "passed". It now falls back to the built-in validator.
 
 ## v0.12.0
