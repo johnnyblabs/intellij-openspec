@@ -39,7 +39,13 @@ Two related surfaces, checked whenever a CLI line is assessed, an AI-tool or Dir
   - error, rate-limit and retry handling against the documented status codes;
   - compliance: keys stored only in the IDE's secure storage and never logged or sent elsewhere, requests going only to the provider the user chose, behaviour matching the published privacy policy and the provider's usage terms for third-party clients.
 
-  Cite the provider page and date checked for every finding. Use the captured provider fixtures in `src/test/resources/fixtures/` for shape questions, and say so when a check needs a live key you don't have.
+  - **request headers, per key type**: every header that is required or conditionally required (for example, a workspace, organization or project selector for keys not bound to one), versioning headers, and the recommended auth header. For each, say whether the plugin sends it. Then state the **settings-form implications**: which per-provider fields the Direct API panel needs (optional or required, when shown, validation) and how Test uses them;
+  - **authentication and key model**: key types, scoping (for example, workspace- or project-scoped keys), and any header a key type requires. Read the provider's live authentication page every time. An auth change breaks requests even when endpoints, versions and models are unchanged (Anthropic's `anthropic-workspace-id` requirement, 2026-08-27, slipped past an audit that checked everything else);
+  - **planned changes**: announced deprecations, sunset dates, and scheduled auth, header or version changes, not only what has already shipped. Read each provider's release notes / changelog **since the last release tag's date** plus its deprecations page, and flag anything effective before the next release is likely to ship.
+
+  **Release gate.** At every release (CLAUDE.md → "Direct API provider gate"), audit **every** provider in `AiProvider`, not only ones touched by the release. Fetch the live pages; a skill reference, memory or prior audit is not evidence. Report one row per provider per dimension: covered / not applicable / gap, with severity (BLOCKER if it breaks a supported key type or the default model) and the page URL and date checked.
+
+  Cite the provider page and date checked for every finding. Use the captured provider fixtures in `src/test/resources/fixtures/` for shape questions, and say so when a check needs a live key you don't have. Note which fixtures are doc-sourced rather than live-captured: a doc-sourced fixture can't catch a behavior the docs example doesn't show.
 
 # How to investigate (never answer from memory alone)
 
