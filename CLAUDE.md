@@ -8,7 +8,7 @@ OpenSpec changes are mirrored to project trackers via project-level custom skill
 
 | When | Skill | Plane state |
 |---|---|---|
-| After `openspec-propose` or `openspec-new-change` | `/mirror-change-trackers <name>` | → Todo |
+| After `openspec-propose` | `/mirror-change-trackers <name>` | → Todo |
 | At the start of `openspec-apply-change` (implementation begins) | `/advance-change-trackers <name>` | → In Progress |
 | After `openspec-archive-change` | `/close-change-trackers <archive-dir>` | → Done |
 
@@ -60,6 +60,7 @@ Default workflow (adopted 2026-06-27): non-trivial work goes through a **pull re
 - Branch from `main` → push the branch to `origin` → open a PR on `origin` → let CI run → self-merge → then mirror with `git push github main`.
 - **GitHub is a read-only mirror** of `main`. Review/PRs live on `origin`. GitHub's classic branch protection no longer requires PRs (removed 2026-06-27 — you can't PR a mirror) but still blocks force-push and deletion of public `main`.
 - The `pre-push` leak guard (`.githooks/pre-push`, activated via `git config core.hooksPath .githooks`) vets every push to the GitHub mirror. Never weaken its pattern back to `\b` — git grep ignores it.
+- The `commit-msg` hook (same `core.hooksPath`) blocks the same patterns in commit messages — `pre-push` scans only the pushed tree, never `git log`. Keep the two `PATTERN`s in sync.
 - **Trivial changes** (doc/tracker/comment tweaks) may still go direct to `main` on `origin` — use judgement.
 - After a PR merges, delete the branch locally (`git branch -d`) and on `origin` (`git push origin --delete <name>`), per the standing workflow preference.
 

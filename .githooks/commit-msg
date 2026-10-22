@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# commit-msg — block homelab-internal references in commit messages.
+#
+# `git log` is published with the GitHub mirror, and the pre-push guard only scans
+# the pushed tree, not commit messages. This hook closes that gap at commit time.
+# Activate per clone with: git config core.hooksPath .githooks
+# Emergency bypass: git commit --no-verify
+set -euo pipefail
+
+msg_file="$1"
+
+# Keep in sync with PATTERN in .githooks/pre-push. \b is avoided there because
+# git grep ignores it; the same char-class boundaries are used here for parity.
+PATTERN='\.geek|git@geek|geek:222|johnb([^a-z]|$)|mcp__homelab|(^|[^[:alnum:]])(OSPEC|OSP|OS)-[0-9]|Forgejo #'
+
+# Ignore comment lines git adds to the editor template, and everything below the
+# verbose-commit scissors line (the staged diff, not the message).
+hits=$(sed -e '/^# -\{24\} >8 -\{24\}$/,$d' -e '/^#/d' "$msg_file" | grep -nE "$PATTERN" || true)
+
+if [ -n "$hits" ]; then
+  echo "" >&2
+  echo "✖ commit-msg BLOCKED: homelab-internal references in the commit message." >&2
+  echo "$hits" | sed 's/^/    /' >&2
+  echo "" >&2
+  echo "Commit messages reach the public GitHub mirror. Use vendor-neutral wording" >&2
+  echo "(\"the linked issue\", \"tracker entry\") — tracker IDs belong in .tracking.yaml." >&2
+  exit 1
+fi

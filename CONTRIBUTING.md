@@ -26,13 +26,15 @@ Or use the Makefile shortcuts: `make build`, `make test`, `make install`.
 
 ### Git hooks (do this once per clone)
 
-Activate the repo's pre-push hook — it is **off by default** until you point Git at it:
+Activate the repo's hooks — they are **off by default** until you point Git at them:
 
 ```bash
 git config core.hooksPath .githooks
 ```
 
 Once active, the hook runs before any push that touches `src/`: it runs the test suite, runs the Plugin Verifier when a change adds a platform API reference, and scans the outgoing push for secrets and internal identifiers. Bypass it in an emergency with `git push --no-verify` (or skip only the verifier with `SKIP_VERIFY_PLUGIN=1 git push`).
+
+A `commit-msg` hook also checks each commit message for internal identifiers, because commit messages are published with the repository history. Bypass it with `git commit --no-verify`.
 
 ### Project Structure
 
