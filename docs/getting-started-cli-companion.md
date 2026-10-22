@@ -17,6 +17,8 @@
 
 No API key or plugin-side AI configuration is needed — you'll use your existing terminal AI tool.
 
+> **Note on Gemini CLI:** install Gemini CLI from npm (`npm install -g @google/gemini-cli`). Google now directs free and consumer-tier users to Antigravity CLI instead. Antigravity is a separate tool, which OpenSpec supports under the `antigravity` tool ID (configured in `.agents/`), and it does not read `.gemini/`. The plugin follows OpenSpec's tool list, so both tools are detected as they are configured.
+
 ---
 
 ## How It Works
