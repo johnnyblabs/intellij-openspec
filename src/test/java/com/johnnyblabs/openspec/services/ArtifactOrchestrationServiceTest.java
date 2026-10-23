@@ -591,7 +591,11 @@ class ArtifactOrchestrationServiceTest {
             assertEquals(List.of(spec), written);
             String content = Files.readString(spec);
             assertTrue(content.startsWith("# Spec Delta\n") && content.contains("### Requirement: Farewell message"), content);
-            assertFalse(Files.exists(changeDir.resolve("specs/**")), "the glob is never used as a file or directory name");
+            // List the directory rather than resolve("specs/**"): Windows rejects '*' in a path, so the resolve itself throws.
+            try (var entries = Files.list(changeDir.resolve("specs"))) {
+                assertEquals(List.of("greeting"), entries.map(p -> p.getFileName().toString()).toList(),
+                        "the glob is never used as a file or directory name");
+            }
         }
 
         @Test
