@@ -9,6 +9,7 @@ import com.johnnyblabs.openspec.model.ArtifactInfo;
 import com.johnnyblabs.openspec.model.ArtifactInstruction;
 import com.johnnyblabs.openspec.model.ArtifactStatus;
 import com.johnnyblabs.openspec.model.ChangeArtifactDag;
+import com.johnnyblabs.openspec.model.MultiFileArtifact;
 import com.johnnyblabs.openspec.util.CliJson;
 import com.johnnyblabs.openspec.util.CliOutputParser;
 import com.johnnyblabs.openspec.util.CliRunner;
@@ -349,16 +350,33 @@ public final class ArtifactOrchestrationService {
     }
 
     /**
-     * Writes generated artifact content to the file specified by the instruction.
+     * Writes generated artifact content to the instruction's output path and returns the files written. A glob output
+     * path (the CLI declares {@code specs} as {@code specs/**}{@code /*.md}) is a set of files: the content is parsed as
+     * a multi-file response and every file is written, or none if the response is rejected (see
+     * {@link MultiFileArtifact}). Call off the EDT; the VFS write hops to the EDT itself.
      */
-    public void writeArtifactResult(ArtifactInstruction instruction, String content) throws IOException {
+    public List<Path> writeArtifactResult(ArtifactInstruction instruction, String content) throws IOException {
         String changeDir = instruction.changeDir();
         String outputPath = instruction.outputPath();
         if (changeDir == null || outputPath == null) {
             throw new IOException("Missing changeDir or outputPath in instruction");
         }
-
+        if (MultiFileArtifact.isGlob(outputPath)) {
+            List<MultiFileArtifact.FileEntry> files = MultiFileArtifact.parse(content, outputPath);
+            List<Path> written = new java.util.ArrayList<>();
+            for (MultiFileArtifact.FileEntry file : files) {
+                Path target = Path.of(changeDir, file.path().split("/"));
+                writeFile(target, file.content());
+                written.add(target);
+            }
+            return written;
+        }
         Path filePath = Path.of(changeDir, outputPath);
+        writeFile(filePath, content);
+        return List.of(filePath);
+    }
+
+    private static void writeFile(Path filePath, String content) throws IOException {
         byte[] bytes = content.getBytes(StandardCharsets.UTF_8);
 
         if (ApplicationManager.getApplication() == null) {
@@ -377,7 +395,7 @@ public final class ArtifactOrchestrationService {
             String fileName = filePath.getFileName().toString();
             VirtualFile file = parentDir.findChild(fileName);
             if (file == null) {
-                file = parentDir.createChildData(this, fileName);
+                file = parentDir.createChildData(ArtifactOrchestrationService.class, fileName);
             }
             file.setBinaryContent(bytes);
         });

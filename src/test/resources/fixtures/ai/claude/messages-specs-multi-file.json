@@ -1,0 +1,33 @@
+{
+  "model": "claude-sonnet-5-5",
+  "id": "msg_SANITIZED",
+  "type": "message",
+  "role": "assistant",
+  "content": [
+    {
+      "type": "text",
+      "text": "<!-- file: specs/greeting/spec.md -->\n# Spec Delta\n\n## ADDED Requirements\n\n### Requirement: Farewell message\nThe system SHALL present a farewell message to the user by name when the user departs, in addition to the greeting shown on arrival.\n\n#### Scenario: Farewell on departure\n- **WHEN** the user departs\n- **THEN** the system bids them farewell by name\n\n#### Scenario: Greeting unaffected\n- **WHEN** the user arrives\n- **THEN** the system greets them by name and does not show a farewell message"
+    }
+  ],
+  "container": null,
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "stop_details": null,
+  "usage": {
+    "input_tokens": 2932,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "cache_creation": {
+      "ephemeral_5m_input_tokens": 0,
+      "ephemeral_1h_input_tokens": 0
+    },
+    "output_tokens": 186,
+    "output_tokens_details": {
+      "thinking_tokens": 0
+    },
+    "service_tier": "standard",
+    "inference_geo": "global",
+    "speed": "standard"
+  },
+  "diagnostics": null
+}

@@ -252,12 +252,15 @@ tasks.check {
 // runIde sandbox: disable the bundled Gradle plugins. On the 2024.2 target their startup activity downloads a
 // Gradle↔JVM compatibility table that now lists Java 25, which the 2024.2 parser rejects with an
 // `IllegalArgumentException: 25` error balloon on every launch. This plugin depends only on platform + yaml, so
-// the Gradle plugins are noise in the sandbox. prepareSandbox writes the sandbox's disabled_plugins.txt from this
-// set on every run (a hand-written file there is overwritten). uiSmoke and the test sandbox boot their own IDEs
-// and are unaffected.
-tasks.prepareSandbox {
-    disabledPlugins.addAll("com.intellij.gradle", "org.jetbrains.plugins.gradle", "org.jetbrains.plugins.gradle.maven")
-}
+// the Gradle plugins are noise in the sandbox. Each prepare task writes its sandbox's disabled_plugins.txt from this
+// set on every run (a hand-written file there is overwritten). runIde has its own sandbox (config_runIde, prepared by
+// prepareSandbox_runIde), so configuring only prepareSandbox left the balloon in place. uiSmoke and the test sandbox
+// boot their own IDEs and are unaffected.
+tasks.matching { it.name == "prepareSandbox" || it.name == "prepareSandbox_runIde" }
+    .withType<org.jetbrains.intellij.platform.gradle.tasks.PrepareSandboxTask>()
+    .configureEach {
+        disabledPlugins.addAll("com.intellij.gradle", "org.jetbrains.plugins.gradle", "org.jetbrains.plugins.gradle.maven")
+    }
 
 // UI smoke journeys (see openspec/specs/ui-smoke-journeys): a real IDE booted by the
 // Starter framework with the built plugin installed, driven over the Driver SDK.

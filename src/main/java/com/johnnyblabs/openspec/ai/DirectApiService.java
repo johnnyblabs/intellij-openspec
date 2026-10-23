@@ -10,6 +10,7 @@ import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.johnnyblabs.openspec.model.ArtifactInstruction;
 import com.johnnyblabs.openspec.settings.OpenSpecSettings;
+import org.jetbrains.annotations.Nullable;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -86,10 +87,10 @@ public final class DirectApiService {
         }
 
         String model = getModel(provider);
-        String prompt = instruction.buildPrompt();
+        String prompt = instruction.buildDirectApiPrompt();
 
         return switch (provider) {
-            case CLAUDE -> callClaude(apiKey, model, prompt);
+            case CLAUDE -> callClaude(apiKey, model, prompt, getWorkspaceId());
             case OPENAI -> callOpenAi(apiKey, model, prompt);
             case GEMINI -> callGemini(apiKey, model, prompt);
             case NONE -> throw new AiApiException("No AI provider configured");
@@ -114,7 +115,7 @@ public final class DirectApiService {
         String model = getModel(provider);
 
         return switch (provider) {
-            case CLAUDE -> callClaude(apiKey, model, prompt);
+            case CLAUDE -> callClaude(apiKey, model, prompt, getWorkspaceId());
             case OPENAI -> callOpenAi(apiKey, model, prompt);
             case GEMINI -> callGemini(apiKey, model, prompt);
             case NONE -> throw new AiApiException("No AI provider configured");
@@ -152,7 +153,7 @@ public final class DirectApiService {
 
         try {
             String response = switch (provider) {
-                case CLAUDE -> callClaude(apiKey, model, testPrompt);
+                case CLAUDE -> callClaude(apiKey, model, testPrompt, getWorkspaceId());
                 case OPENAI -> callOpenAi(apiKey, model, testPrompt);
                 case GEMINI -> callGemini(apiKey, model, testPrompt);
                 case NONE -> throw new AiApiException("No provider");
@@ -164,16 +165,22 @@ public final class DirectApiService {
     }
 
     /**
-     * The required Anthropic API version. This is a fixed, enumerated header value — feature
-     * opt-ins ship via {@code anthropic-beta}, not new version dates — so it is stable.
+     * The Anthropic API version the request and response shapes here were written against. Newer
+     * versions exist (2026-10-21), but no end date for this one is announced and the plugin uses
+     * none of the fields they changed. Move to a newer version deliberately, not as a routine bump.
      */
     static final String ANTHROPIC_VERSION = "2023-06-01";
 
+    /** Header that selects the workspace for a Claude key that isn't scoped to one. */
+    static final String ANTHROPIC_WORKSPACE_HEADER = "anthropic-workspace-id";
+
     /**
      * Builds a Claude Messages API request. Extracted (mirroring {@link #buildGeminiRequest})
-     * so the required {@code anthropic-version} header value is assertable in a unit test.
+     * so the auth, {@code anthropic-version} and workspace headers are assertable in a unit test.
+     * The workspace header is sent only when {@code workspaceId} is non-blank.
      */
-    static HttpRequest buildClaudeRequest(String model, String apiKey, String prompt) {
+    static HttpRequest buildClaudeRequest(String model, String apiKey, String prompt,
+                                          @Nullable String workspaceId) {
         JsonObject body = new JsonObject();
         body.addProperty("model", model);
         body.addProperty("max_tokens", MAX_TOKENS);
@@ -185,32 +192,69 @@ public final class DirectApiService {
         messages.add(message);
         body.add("messages", messages);
 
-        return HttpRequest.newBuilder()
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
                 .uri(URI.create(CLAUDE_API_URL))
                 .header("Content-Type", "application/json")
-                .header("x-api-key", apiKey)
-                .header("anthropic-version", ANTHROPIC_VERSION)
                 .timeout(TIMEOUT)
-                .POST(HttpRequest.BodyPublishers.ofString(new Gson().toJson(body)))
-                .build();
+                .POST(HttpRequest.BodyPublishers.ofString(new Gson().toJson(body)));
+        addClaudeAuthHeaders(builder, apiKey, workspaceId);
+        return builder.build();
     }
 
     /**
-     * Extracts the generated text from a Claude Messages API response body. Extracted for
-     * contract-testing against captured provider example output.
+     * Claude auth headers shared by generation and list-models: {@code Authorization: Bearer} (the
+     * legacy {@code x-api-key} is not sent), the API version, and the workspace when one is set.
+     */
+    private static void addClaudeAuthHeaders(HttpRequest.Builder builder, String apiKey,
+                                             @Nullable String workspaceId) {
+        builder.header("Authorization", "Bearer " + apiKey)
+                .header("anthropic-version", ANTHROPIC_VERSION);
+        if (workspaceId != null && !workspaceId.isBlank()) {
+            builder.header(ANTHROPIC_WORKSPACE_HEADER, workspaceId.trim());
+        }
+    }
+
+    /**
+     * Extracts the generated text from a Claude Messages API response body: the concatenated text of
+     * every {@code text} content block. Every other block type ({@code thinking},
+     * {@code redacted_thinking}, anything newer) is skipped, because models with thinking on by
+     * default return a thinking block before the text. Extracted for contract-testing against
+     * live-captured responses.
      */
     static String parseClaudeResponse(String body) throws AiApiException {
         JsonObject responseJson = JsonParser.parseString(body).getAsJsonObject();
         JsonArray content = responseJson.getAsJsonArray("content");
-        if (content != null && content.size() > 0) {
-            return content.get(0).getAsJsonObject().get("text").getAsString();
+        StringBuilder text = new StringBuilder();
+        boolean foundText = false;
+        if (content != null) {
+            for (var el : content) {
+                if (!el.isJsonObject()) {
+                    continue;
+                }
+                JsonObject block = el.getAsJsonObject();
+                if (block.has("type") && "text".equals(block.get("type").getAsString()) && block.has("text")) {
+                    text.append(block.get("text").getAsString());
+                    foundText = true;
+                }
+            }
         }
-        throw new AiApiException("Empty response from Claude API");
+        if (foundText) {
+            return text.toString();
+        }
+        String stopReason = responseJson.has("stop_reason") && !responseJson.get("stop_reason").isJsonNull()
+                ? responseJson.get("stop_reason").getAsString()
+                : "unknown";
+        String message = "Claude returned no text (stop_reason: " + stopReason + ")";
+        if ("max_tokens".equals(stopReason)) {
+            message += " \u2014 the token limit was reached before any text was written";
+        }
+        throw new AiApiException(message);
     }
 
-    private String callClaude(String apiKey, String model, String prompt) throws AiApiException {
+    private String callClaude(String apiKey, String model, String prompt, @Nullable String workspaceId)
+            throws AiApiException {
         try {
-            HttpRequest request = buildClaudeRequest(model, apiKey, prompt);
+            HttpRequest request = buildClaudeRequest(model, apiKey, prompt, workspaceId);
             HttpResponse<String> response = createHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() != 200) {
@@ -225,20 +269,26 @@ public final class DirectApiService {
     }
 
     /**
-     * Returns the token-limit parameter name for the given OpenAI model. The reasoning family
-     * ({@code o1}/{@code o3}/{@code o4}/{@code gpt-5}) rejects {@code max_tokens} and requires
-     * {@code max_completion_tokens}; non-reasoning chat models use {@code max_tokens}.
+     * Returns the token-limit parameter name for the given OpenAI model. OpenAI deprecated
+     * {@code max_tokens} in favor of {@code max_completion_tokens}, and reasoning models
+     * ({@code o}-series, {@code gpt-5}, {@code gpt-6} and later) reject it. So only the legacy
+     * non-reasoning chat families keep {@code max_tokens}; every other model, including families
+     * released after this code, gets {@code max_completion_tokens}. Fine-tunes ({@code ft:<base>:…})
+     * follow their base model.
      */
     static String openAiTokenParam(String model) {
-        if (model == null) return "max_tokens";
-        for (String prefix : REASONING_MODEL_PREFIXES) {
-            if (model.startsWith(prefix)) return "max_completion_tokens";
+        if (model != null) {
+            String base = model.startsWith("ft:") ? model.substring(3) : model;
+            for (String prefix : LEGACY_MAX_TOKENS_PREFIXES) {
+                if (base.startsWith(prefix)) return "max_tokens";
+            }
         }
-        return "max_tokens";
+        return "max_completion_tokens";
     }
 
-    private static final java.util.List<String> REASONING_MODEL_PREFIXES =
-            java.util.List.of("o1", "o3", "o4", "gpt-5");
+    /** {@code gpt-4} covers gpt-4, gpt-4-turbo, gpt-4o and gpt-4.1. */
+    private static final java.util.List<String> LEGACY_MAX_TOKENS_PREFIXES =
+            java.util.List.of("gpt-3.5", "gpt-4", "chatgpt-4o");
 
     /**
      * Builds an OpenAI Chat Completions request. Extracted (mirroring {@link #buildGeminiRequest})
@@ -266,18 +316,42 @@ public final class DirectApiService {
     }
 
     /**
-     * Extracts the generated text from an OpenAI Chat Completions response body. Extracted for
-     * contract-testing against captured provider example output.
+     * Extracts the generated text from an OpenAI Chat Completions response body: the first choice's
+     * {@code message.content}. When that is null or empty (a refusal, or a reasoning model that spent
+     * the token limit before writing), it throws an error naming the {@code refusal} or
+     * {@code finish_reason} instead of returning empty text. Extracted for contract-testing against
+     * captured provider example output.
      */
     static String parseOpenAiResponse(String body) throws AiApiException {
         JsonObject responseJson = JsonParser.parseString(body).getAsJsonObject();
         JsonArray choices = responseJson.getAsJsonArray("choices");
-        if (choices != null && choices.size() > 0) {
-            return choices.get(0).getAsJsonObject()
-                    .getAsJsonObject("message")
-                    .get("content").getAsString();
+        if (choices == null || choices.isEmpty() || !choices.get(0).isJsonObject()) {
+            throw new AiApiException("Empty response from OpenAI API");
         }
-        throw new AiApiException("Empty response from OpenAI API");
+        JsonObject choice = choices.get(0).getAsJsonObject();
+        JsonObject message = choice.has("message") && choice.get("message").isJsonObject()
+                ? choice.getAsJsonObject("message")
+                : new JsonObject();
+        String content = stringOrNull(message, "content");
+        if (content != null && !content.isEmpty()) {
+            return content;
+        }
+        String refusal = stringOrNull(message, "refusal");
+        if (refusal != null && !refusal.isBlank()) {
+            throw new AiApiException("OpenAI declined the request: " + refusal);
+        }
+        String finishReason = stringOrNull(choice, "finish_reason");
+        String error = "OpenAI returned no text (finish_reason: " + (finishReason != null ? finishReason : "unknown") + ")";
+        if ("length".equals(finishReason)) {
+            error += " \u2014 the token limit was reached before any text was written";
+        }
+        throw new AiApiException(error);
+    }
+
+    /** The string value of {@code key}, or {@code null} when it is absent, JSON null or not a string. */
+    private static @Nullable String stringOrNull(JsonObject json, String key) {
+        var el = json.get(key);
+        return el != null && el.isJsonPrimitive() && el.getAsJsonPrimitive().isString() ? el.getAsString() : null;
     }
 
     private String callOpenAi(String apiKey, String model, String prompt) throws AiApiException {
@@ -328,20 +402,55 @@ public final class DirectApiService {
     }
 
     /**
-     * Extracts the generated text from a Gemini generateContent response body. Extracted for
-     * contract-testing against captured provider example output.
+     * Extracts the generated text from a Gemini generateContent response body: the concatenated text
+     * of every part of the first candidate that isn't marked {@code thought: true}. When there is no
+     * such text it throws an error naming {@code promptFeedback.blockReason} (a blocked prompt has no
+     * candidates) or the candidate's {@code finishReason}, instead of returning empty text. Extracted
+     * for contract-testing against captured provider example output.
      */
     static String parseGeminiResponse(String body) throws AiApiException {
         JsonObject responseJson = JsonParser.parseString(body).getAsJsonObject();
         JsonArray candidates = responseJson.getAsJsonArray("candidates");
-        if (candidates != null && candidates.size() > 0) {
-            JsonObject content = candidates.get(0).getAsJsonObject().getAsJsonObject("content");
-            JsonArray responseParts = content.getAsJsonArray("parts");
-            if (responseParts != null && responseParts.size() > 0) {
-                return responseParts.get(0).getAsJsonObject().get("text").getAsString();
+        JsonObject candidate = candidates != null && !candidates.isEmpty() && candidates.get(0).isJsonObject()
+                ? candidates.get(0).getAsJsonObject()
+                : null;
+        if (candidate != null && candidate.has("content") && candidate.get("content").isJsonObject()) {
+            JsonArray parts = candidate.getAsJsonObject("content").getAsJsonArray("parts");
+            StringBuilder text = new StringBuilder();
+            if (parts != null) {
+                for (var el : parts) {
+                    if (!el.isJsonObject()) {
+                        continue;
+                    }
+                    JsonObject part = el.getAsJsonObject();
+                    boolean thought = part.has("thought") && part.get("thought").isJsonPrimitive()
+                            && part.get("thought").getAsBoolean();
+                    String partText = stringOrNull(part, "text");
+                    if (!thought && partText != null) {
+                        text.append(partText);
+                    }
+                }
+            }
+            if (!text.isEmpty()) {
+                return text.toString();
             }
         }
-        throw new AiApiException("Empty response from Gemini API");
+        JsonObject feedback = responseJson.has("promptFeedback") && responseJson.get("promptFeedback").isJsonObject()
+                ? responseJson.getAsJsonObject("promptFeedback")
+                : null;
+        String blockReason = feedback != null ? stringOrNull(feedback, "blockReason") : null;
+        if (blockReason != null) {
+            throw new AiApiException("Gemini blocked the prompt (blockReason: " + blockReason + ")");
+        }
+        String finishReason = candidate != null ? stringOrNull(candidate, "finishReason") : null;
+        if (finishReason == null) {
+            throw new AiApiException("Empty response from Gemini API");
+        }
+        String error = "Gemini returned no text (finishReason: " + finishReason + ")";
+        if ("MAX_TOKENS".equals(finishReason)) {
+            error += " \u2014 the token limit was reached before any text was written";
+        }
+        throw new AiApiException(error);
     }
 
     private String callGemini(String apiKey, String model, String prompt) throws AiApiException {
@@ -365,16 +474,14 @@ public final class DirectApiService {
     /**
      * Builds the list-models {@code GET} for a provider, reusing the same auth headers as generation.
      * Extracted (mirroring {@link #buildGeminiRequest}) so the endpoint/headers are assertable and so
-     * the key is verified this can never be embedded in the URL.
+     * the key is verified this can never be embedded in the URL. {@code workspaceId} applies to Claude only.
      */
-    static HttpRequest buildListModelsRequest(AiProvider provider, String apiKey) {
+    static HttpRequest buildListModelsRequest(AiProvider provider, String apiKey, @Nullable String workspaceId) {
         HttpRequest.Builder builder = HttpRequest.newBuilder().timeout(TIMEOUT).GET();
         switch (provider) {
             case OPENAI -> builder.uri(URI.create(OPENAI_MODELS_URL))
                     .header("Authorization", "Bearer " + apiKey);
-            case CLAUDE -> builder.uri(URI.create(CLAUDE_MODELS_URL))
-                    .header("x-api-key", apiKey)
-                    .header("anthropic-version", ANTHROPIC_VERSION);
+            case CLAUDE -> addClaudeAuthHeaders(builder.uri(URI.create(CLAUDE_MODELS_URL)), apiKey, workspaceId);
             case GEMINI -> builder.uri(URI.create(GEMINI_MODELS_URL))
                     .header("x-goog-api-key", apiKey);
             case NONE -> throw new IllegalArgumentException("No AI provider selected");
@@ -447,9 +554,11 @@ public final class DirectApiService {
      * Fetches the account's available models for the given provider using the configured key — a free
      * {@code GET}, no token cost, which doubles as key validation. Blocking (network I/O) — call off
      * the EDT. Non-200 throws {@link AiApiException} via {@link #buildApiError}. Callers treat any
-     * failure (or an empty list) as a signal to fall back to the static model list.
+     * failure (or an empty list) as a signal to fall back to the static model list. {@code workspaceId} is
+     * the Claude workspace to send (Settings passes the unsaved form value); other providers ignore it.
      */
-    public java.util.List<String> listModels(AiProvider provider, String apiKey) throws AiApiException {
+    public java.util.List<String> listModels(AiProvider provider, String apiKey, @Nullable String workspaceId)
+            throws AiApiException {
         if (provider == null || provider == AiProvider.NONE) {
             throw new AiApiException("No AI provider selected");
         }
@@ -457,7 +566,7 @@ public final class DirectApiService {
             throw new AiApiException("No API key provided for " + provider.getDisplayName());
         }
         try {
-            HttpRequest request = buildListModelsRequest(provider, apiKey);
+            HttpRequest request = buildListModelsRequest(provider, apiKey, workspaceId);
             HttpResponse<String> response = createHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() != 200) {
                 throw buildApiError(provider.getDisplayName(), response.statusCode(), response.body());
@@ -492,12 +601,51 @@ public final class DirectApiService {
         return provider == null ? null : discoveredModels.get(provider);
     }
 
-    private AiApiException buildApiError(String providerName, int statusCode, String responseBody) {
+    // Package-private so the mapping is testable against the live-captured error bodies.
+    static AiApiException buildApiError(String providerName, int statusCode, String responseBody) {
         LOG.warn(providerName + " API error (HTTP " + statusCode + "): " + responseBody);
         String errorMessage = extractErrorMessage(responseBody);
         String suggestion = suggestionForStatus(statusCode);
         String userMessage = providerName + " API error: " + errorMessage;
+        if (AiProvider.CLAUDE.getDisplayName().equals(providerName)) {
+            String mapped = claudeWorkspaceMessage(statusCode, responseBody);
+            if (mapped != null) {
+                userMessage = mapped;
+                suggestion = null;
+            }
+        }
         return new AiApiException(userMessage, statusCode, providerName, suggestion);
+    }
+
+    static final String UNSCOPED_KEY_MESSAGE = "This Claude API key isn't scoped to a workspace. Enter a "
+            + "Workspace ID in Settings \u2192 Tools \u2192 OpenSpec \u2192 Direct API, or use a key scoped to one workspace.";
+    static final String WORKSPACE_NOT_FOUND_MESSAGE = "Workspace ID not found, or this key can't access it.";
+    static final String INVALID_WORKSPACE_MESSAGE = "Claude doesn't recognize this Workspace ID. Copy it from "
+            + "Console \u2192 Settings \u2192 Workspaces in Settings \u2192 Tools \u2192 OpenSpec \u2192 Direct API.";
+
+    /**
+     * Maps Claude's workspace-selection errors to an actionable message, or returns {@code null} to keep
+     * the provider's own message. Matched on error type plus wording, pinned by a live-captured 400.
+     */
+    private static @Nullable String claudeWorkspaceMessage(int statusCode, String responseBody) {
+        try {
+            JsonObject error = JsonParser.parseString(responseBody).getAsJsonObject().getAsJsonObject("error");
+            if (error == null || !error.has("type") || !error.has("message")) {
+                return null;
+            }
+            String type = error.get("type").getAsString();
+            String message = error.get("message").getAsString();
+            if (statusCode == 400 && "invalid_request_error".equals(type) && message.contains(ANTHROPIC_WORKSPACE_HEADER)) {
+                // The same header name appears in two live 400s: a malformed ID, and a key with no workspace at all.
+                return message.contains("valid workspace ID") ? INVALID_WORKSPACE_MESSAGE : UNSCOPED_KEY_MESSAGE;
+            }
+            if (statusCode == 404 && "not_found_error".equals(type) && message.startsWith("Workspace")) {
+                return WORKSPACE_NOT_FOUND_MESSAGE;
+            }
+        } catch (Exception ignored) {
+            // Not JSON or an unexpected shape — keep the provider's message.
+        }
+        return null;
     }
 
     private static String extractErrorMessage(String responseBody) {
@@ -532,6 +680,10 @@ public final class DirectApiService {
     private AiProvider getProvider() {
         OpenSpecSettings settings = OpenSpecSettings.getInstance(project);
         return AiProvider.fromString(settings.getAiProvider());
+    }
+
+    private String getWorkspaceId() {
+        return OpenSpecSettings.getInstance(project).getAiWorkspaceId();
     }
 
     private String getModel(AiProvider provider) {

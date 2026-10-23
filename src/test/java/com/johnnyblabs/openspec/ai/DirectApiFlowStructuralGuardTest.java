@@ -144,6 +144,14 @@ class DirectApiFlowStructuralGuardTest {
         // Test now validates the key by listing models — and the fetch runs in the worker, not on the
         // EDT before it. The old token-costing test-prompt (testConnection) must be gone.
         assertTrue(body.contains("apiService.listModels("), "Test must validate by listing models");
+        // The Workspace ID is read from the form (on the EDT, before the worker), validated so an invalid
+        // value is never sent, and passed into the worker's listModels call.
+        int workspaceRead = body.indexOf("getAiWorkspaceId()");
+        int workspaceCheck = body.indexOf("validateWorkspaceId(");
+        assertTrue(workspaceRead >= 0 && workspaceRead < worker, "Test must read the form's Workspace ID before the worker");
+        assertTrue(workspaceCheck >= 0 && workspaceCheck < worker, "Test must validate the Workspace ID before sending it");
+        assertTrue(body.substring(worker).contains("listModels(provider, key, workspaceId)"),
+                "the worker must pass the form's Workspace ID to listModels");
         assertFalse(body.substring(0, worker).contains("listModels("),
                 "the models fetch must not run on the EDT before the worker");
         assertFalse(body.contains(".testConnection("),
@@ -226,6 +234,8 @@ class DirectApiFlowStructuralGuardTest {
                 "listModels must not run on the EDT before the pooled hop");
         assertTrue(body.substring(pooled).contains("listModels("),
                 "listModels must run inside the pooled lambda");
+        assertTrue(body.contains("getAiWorkspaceId()") && body.substring(pooled).contains("listModels(provider, key, workspaceId)"),
+                "the tool-window fetch must send the saved Claude Workspace ID");
         // The post-fetch repopulate is posted back to the EDT via invokeLater with an explicit ModalityState.
         String afterPooled = body.substring(pooled);
         int later = afterPooled.indexOf("invokeLater(");
@@ -265,6 +275,34 @@ class DirectApiFlowStructuralGuardTest {
                 "visibility must also require a configured provider, not Direct API alone");
         assertTrue(body.contains("modelSelector.setVisible(") || body.contains("modelSelector.setEnabled("),
                 "the visibility method must toggle the model selector");
+    }
+
+    @Test
+    void toolWindowGenerate_writesThroughTheSharedWriter() throws IOException {
+        // The tool window's Direct API Generate wrote its own file and used the instruction's output path as a file
+        // name, which fails for the specs glob. It must use the one writer every Direct API path shares.
+        String content = read(WORKFLOW);
+        // Anchor on the Generate branch, which calls apiService.generate (an earlier DIRECT_API case belongs to Apply).
+        int branch = content.lastIndexOf("case DIRECT_API -> {", content.indexOf("apiService.generate(instruction)"));
+        assertTrue(branch >= 0, "expected the Generate DIRECT_API branch");
+        String body = content.substring(branch, content.indexOf("} catch (AiApiException", branch));
+        assertTrue(body.contains("apiService.generate(instruction)"), "anti-vacuity: this is the generate branch");
+        assertTrue(body.contains("orchestration.writeArtifactResult(instruction, result)"),
+                "Generate must write through ArtifactOrchestrationService.writeArtifactResult");
+        assertFalse(content.contains("createChildData(this, instruction.outputPath())"),
+                "the output path (possibly a glob) must never be used as a file name");
+        // The write runs on the background thread, before the EDT hop for the notification.
+        int write = body.indexOf("writeArtifactResult(");
+        int edt = body.indexOf("invokeLater(", write);
+        assertTrue(write >= 0 && edt > write && !body.substring(0, write).contains("WriteAction"),
+                "write off the EDT first, then post only the notification and refresh");
+    }
+
+    @Test
+    void directApiGeneration_usesTheDirectApiPrompt() throws IOException {
+        String body = methodBody(read(SERVICE), "public String generate(ArtifactInstruction instruction)");
+        assertTrue(body.contains("instruction.buildDirectApiPrompt()"),
+                "Direct API generation must add the multi-file format for glob outputs");
     }
 
     @Test

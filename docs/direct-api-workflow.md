@@ -20,6 +20,7 @@ Configure the provider once in **Settings → Tools → OpenSpec → Direct API*
 
 1. **Provider** — pick Claude, OpenAI, or Gemini.
 2. **API key** — paste your key. It is stored in the OS credential store (IntelliJ PasswordSafe), never in plain project files.
+   - **Workspace ID (optional)** — shown for Claude only. A Claude key that isn't scoped to one workspace must name the workspace on every request. Copy the ID (`wrkspc_…`) from **Console → Settings → Workspaces**. Leave it blank for a key that belongs to a single workspace.
 3. **Test** — validates the key by fetching your account's **live model list** (a read-only request that costs **no tokens**) and fills the model dropdown with the models your account can actually use. A `401` means "check your API key".
 
 Then, in the OpenSpec **tool window** header, set the delivery selector to **`Direct API [API]`**. A **model selector** appears next to it — editable, populated from your live models (with a built-in list as a fallback so it's never empty).
@@ -32,6 +33,7 @@ flowchart TD
     D -->|GET models list<br/>free, no tokens| E[(Provider models endpoint)]
     E -->|200 + models| F[Key valid ✓<br/>model dropdown filled from live list]
     E -->|401 / 403| G[Check your API key ✗]
+    E -->|Claude 400: key not scoped<br/>to a workspace| W[Enter a Workspace ID ✗]
     F --> H[Tool window:<br/>set delivery = Direct API]
     H --> I[Model selector appears<br/>editable · live list · static fallback]
 
@@ -39,11 +41,13 @@ flowchart TD
     classDef bad fill:#fbe0e0,stroke:#c62828,color:#3d1b1b;
     classDef ext fill:#e8eefc,stroke:#3b5bdb,color:#12203f;
     class F,I ok;
-    class G bad;
+    class G,W bad;
     class E ext;
 ```
 
-> **Auth is header-based, never in the URL.** Claude uses `x-api-key` (+ `anthropic-version`), OpenAI uses `Authorization: Bearer …`, Gemini uses `x-goog-api-key`. Keys never appear in request URLs or query strings.
+> **Auth is header-based, never in the URL.** Claude and OpenAI use `Authorization: Bearer …` (Claude adds `anthropic-version`, plus `anthropic-workspace-id` when a Workspace ID is set), and Gemini uses `x-goog-api-key`. Keys never appear in request URLs or query strings.
+
+> **Models that think by default.** Newer Claude models return a (hidden) thinking block before their answer. The plugin skips it and uses the answer text, so these models work for generation like any other. If a response has no answer text at all, for example because the token limit was reached while thinking, the error names the reason.
 
 ---
 
@@ -52,12 +56,14 @@ flowchart TD
 **Goal:** generate the `design` artifact for a change, using Gemini, without leaving the IDE.
 
 1. Provider = **Gemini**, key tested green (say it listed 40 models).
-2. Tool window delivery = **`Direct API [API]`**; model = **`gemini-3.5-flash`** (picked from the dropdown, or typed).
-3. Status strip reads: `· gemini-3.5-flash · Direct API`.
+2. Tool window delivery = **`Direct API [API]`**; model = **`gemini-3.8-flash`** (picked from the dropdown, or typed).
+3. Status strip reads: `· gemini-3.8-flash · Direct API`.
 4. Select the change, then click its **`design`** pipeline chip (it must be **READY** — a chip that's already **DONE** just opens the file).
 5. The chip spins, the plugin calls Gemini, and `design.md` is written and turns the chip **green**.
 
 The selected model is what every Direct API operation uses — chip **Generate**, **Fast-Forward**, **Continue**, and **Explore** — because the selection persists to the model setting the operations resolve through.
+
+> **Specs are one file per capability.** The `specs` artifact isn't a single file: it's a delta spec at `specs/<capability-path>/spec.md` for each capability the proposal lists. For Direct API the plugin asks the model to mark each file with its path, and gives it what it can't look up on its own: the existing capabilities, the main specs the proposal names, and which spec files the change already has. Every path is checked before anything is written. If one is invalid, or the response marks no files, nothing is written and the error says why. Later prompts, such as `tasks`, include the spec files, whichever delivery method you use.
 
 ```mermaid
 sequenceDiagram
@@ -71,9 +77,9 @@ sequenceDiagram
 
     U->>TW: Click "design" chip (READY)
     TW->>D: generate(instruction)
-    D->>S: getModel() → "gemini-3.5-flash"
+    D->>S: getModel() → "gemini-3.8-flash"
     D->>D: build request<br/>(x-goog-api-key header, prompt, model)
-    D->>P: POST …/models/gemini-3.5-flash:generateContent
+    D->>P: POST …/models/gemini-3.8-flash:generateContent
     P-->>D: 200 · generated content
     D->>D: parse response text
     D-->>TW: artifact content

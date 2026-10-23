@@ -14,8 +14,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Contract tests for the three list-models parsers, driven by captured/documented provider example
- * responses under {@code fixtures/ai/<provider>/models-list.json} (see that dir's README for
- * provenance: Gemini live-captured, OpenAI/Anthropic doc-sourced pending a keyed re-capture). Expected
+ * responses under {@code fixtures/ai/<provider>/} (see that dir's README for
+ * provenance: Gemini and Anthropic live-captured, OpenAI doc-sourced pending a keyed re-capture). Expected
  * values are read from the committed fixtures — real contract checks against the providers' stated
  * shapes, not the hand-authored inline literals the repo's contract-test discipline forbids.
  */
@@ -49,12 +49,36 @@ class DirectApiModelsContractTest {
     @Nested
     class AnthropicModels {
         @Test
-        void extractsIdNotDisplayNameFromDocumentedShape() {
-            List<String> ids = DirectApiService.parseAnthropicModels(loadFixture("claude/models-list.json"));
-            assertEquals(List.of("claude-opus-5"), ids);
+        void everyClaudeFallbackModelIsInTheLiveList() {
+            // Catches a fabricated fallback ID (the C1 bug class): the shape regex in AiProviderTest can't.
+            List<String> live = DirectApiService.parseAnthropicModels(loadFixture("claude/models-list-live.json"));
+            for (String model : AiProvider.CLAUDE.getModels()) {
+                assertTrue(live.contains(model), model + " is not in the live Claude model list");
+            }
+        }
+
+        @Test
+        void liveListSelectsTheStaticDefaultNotItsFirstEntry() {
+            // The live list leads with claude-haiku-5-5; with no model chosen, the static default wins.
+            List<String> live = DirectApiService.parseAnthropicModels(loadFixture("claude/models-list-live.json"));
+            assertFalse(live.getFirst().equals(AiProvider.CLAUDE.getDefaultModel()), "fixture precondition");
+
+            AiModelOptions.Resolution r = AiModelOptions.resolve(live, true, AiProvider.CLAUDE.getModels(), "");
+            assertEquals(AiProvider.CLAUDE.getDefaultModel(), r.selection());
+        }
+
+        @Test
+        void extractsIdNotDisplayNameFromLiveCapture() {
+            List<String> ids = DirectApiService.parseAnthropicModels(loadFixture("claude/models-list-live.json"));
+            // Full-set equality, in response order (the live list leads with the newest model).
+            assertEquals(List.of(
+                    "claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5", "claude-fable-5-1",
+                    "claude-opus-5", "claude-sonnet-5", "claude-fable-5", "claude-opus-4-8",
+                    "claude-opus-4-7", "claude-sonnet-4-6", "claude-opus-4-6", "claude-opus-4-5-20251101",
+                    "claude-haiku-4-5-20251001", "claude-sonnet-4-5-20250929"), ids);
             // Load-bearing: the parser must read `id`, never `display_name` — a wrong-field read would
-            // surface "Claude Opus 5" here yet still pass a size-only or loose-substring check.
-            assertFalse(ids.contains("Claude Opus 5"), "must read id, not display_name");
+            // surface "Claude Sonnet 5.5"-style names here yet still pass a size-only check.
+            assertFalse(ids.stream().anyMatch(id -> id.startsWith("Claude ")), "must read id, not display_name");
         }
 
         @Test
@@ -65,6 +89,13 @@ class DirectApiModelsContractTest {
 
     @Nested
     class GeminiModels {
+        @Test
+        void geminiDefaultIsInTheLiveList() {
+            // The capture predates gemini-3.6-flash and lacks the lite model, so only the default is checked here.
+            List<String> live = DirectApiService.parseGeminiModels(loadFixture("gemini/models-list.json"));
+            assertTrue(live.contains(AiProvider.GEMINI.getDefaultModel()), AiProvider.GEMINI.getDefaultModel());
+        }
+
         // Fixture is a verbatim subset of a LIVE capture (see README): 3 generateContent models +
         // 3 negatives (an embedding, an aqa/generateAnswer, and a bidiGenerateContent model).
         @Test

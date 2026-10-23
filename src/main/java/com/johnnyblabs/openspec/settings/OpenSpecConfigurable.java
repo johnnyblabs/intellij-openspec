@@ -3,6 +3,7 @@ package com.johnnyblabs.openspec.settings;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.options.Configurable;
+import com.intellij.openapi.options.ConfigurationException;
 import com.intellij.openapi.project.Project;
 import com.johnnyblabs.openspec.ai.AiConfigListener;
 import com.johnnyblabs.openspec.ai.AiCredentialStore;
@@ -52,6 +53,7 @@ public class OpenSpecConfigurable implements Configurable {
                 || panel.getCliTimeout() != settings.getCliTimeoutSeconds()
                 || !panel.getAiProvider().equals(safe(settings.getAiProvider(), "NONE"))
                 || !panel.getAiModel().equals(safe(settings.getAiModel()))
+                || !panel.getAiWorkspaceId().equals(settings.getAiWorkspaceId())
                 || !panel.getDefaultSchema().equals(safe(settings.getDefaultSchema()))
                 || isApiKeyModified();
     }
@@ -63,8 +65,16 @@ public class OpenSpecConfigurable implements Configurable {
     }
 
     @Override
-    public void apply() {
+    public void apply() throws ConfigurationException {
         if (panel == null) return;
+        // Validate before any setter runs, so a rejected Apply leaves every setting untouched. The Workspace
+        // ID is checked only when Claude is selected — it is hidden (and never sent) for other providers.
+        if (AiProvider.fromString(panel.getAiProvider()) == AiProvider.CLAUDE) {
+            String workspaceError = OpenSpecSettingsPanel.validateWorkspaceId(panel.getAiWorkspaceId());
+            if (workspaceError != null) {
+                throw new ConfigurationException(workspaceError, "Invalid Workspace ID");
+            }
+        }
         OpenSpecSettings settings = OpenSpecSettings.getInstance(project);
 
         // Handle profile change via CLI delegation
@@ -79,6 +89,7 @@ public class OpenSpecConfigurable implements Configurable {
         settings.setCliTimeoutSeconds(panel.getCliTimeout());
         settings.setAiProvider(panel.getAiProvider());
         settings.setAiModel(panel.getAiModel());
+        settings.setAiWorkspaceId(panel.getAiWorkspaceId());
         settings.setDefaultSchema(panel.getDefaultSchema());
         // Store API key securely via PasswordSafe. set() is blocking (@RequiresBackgroundThread) and
         // apply() runs on the EDT, so persist off the EDT; the has-key cache is updated inside storeApiKey.
@@ -141,6 +152,7 @@ public class OpenSpecConfigurable implements Configurable {
         panel.setCliTimeout(settings.getCliTimeoutSeconds());
         panel.setAiProvider(settings.getAiProvider());
         panel.setAiModel(settings.getAiModel());
+        panel.setAiWorkspaceId(settings.getAiWorkspaceId());
         panel.setDefaultSchema(settings.getDefaultSchema());
 
         // D3 fallback refresh: catches the case where the user customized via the CLI

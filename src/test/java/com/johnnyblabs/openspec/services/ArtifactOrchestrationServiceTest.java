@@ -568,4 +568,48 @@ class ArtifactOrchestrationServiceTest {
                     ArtifactOrchestrationService.completedDownstream(artifacts, "proposal"));
         }
     }
+
+    @Nested
+    class WriteArtifactResult {
+        // Headless (no Application), so writes take the plain-file path; the glob handling is the same code either way.
+        private ArtifactInstruction specs(Path changeDir) {
+            return new ArtifactInstruction("c", "specs", changeDir.toString(), "specs/**/*.md", "x", null, null, null);
+        }
+
+        private String liveSpecsText() throws Exception {
+            try (var in = getClass().getResourceAsStream("/fixtures/ai/claude/messages-specs-multi-file.json")) {
+                assertNotNull(in);
+                return DirectApiServiceTestAccess.parseClaude(new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8));
+            }
+        }
+
+        @Test
+        void globOutputWritesEachMarkedFile(@TempDir Path changeDir) throws Exception {
+            List<Path> written = service.writeArtifactResult(specs(changeDir), liveSpecsText());
+
+            Path spec = changeDir.resolve("specs/greeting/spec.md");
+            assertEquals(List.of(spec), written);
+            String content = Files.readString(spec);
+            assertTrue(content.startsWith("# Spec Delta\n") && content.contains("### Requirement: Farewell message"), content);
+            assertFalse(Files.exists(changeDir.resolve("specs/**")), "the glob is never used as a file or directory name");
+        }
+
+        @Test
+        void rejectedResponseWritesNothing(@TempDir Path changeDir) {
+            String response = "<!-- file: specs/ok/spec.md -->\n# Ok\n<!-- file: specs/../escape.md -->\n# Bad\n";
+            assertThrows(java.io.IOException.class, () -> service.writeArtifactResult(specs(changeDir), response));
+            assertFalse(Files.exists(changeDir.resolve("specs")), "a rejected response must not write its valid files either");
+            assertFalse(Files.exists(changeDir.getParent().resolve("escape.md")));
+        }
+
+        @Test
+        void singleFileOutputIsUnchanged(@TempDir Path changeDir) throws Exception {
+            ArtifactInstruction design = new ArtifactInstruction("c", "design", changeDir.toString(), "design.md",
+                    "x", null, null, null);
+            List<Path> written = service.writeArtifactResult(design, "# Design\n<!-- file: specs/a/spec.md -->\n");
+            assertEquals(List.of(changeDir.resolve("design.md")), written);
+            assertEquals("# Design\n<!-- file: specs/a/spec.md -->\n", Files.readString(changeDir.resolve("design.md")),
+                    "a single-file artifact is written verbatim, markers and all");
+        }
+    }
 }

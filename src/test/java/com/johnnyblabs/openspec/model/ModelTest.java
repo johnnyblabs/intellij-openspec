@@ -1,6 +1,5 @@
 package com.johnnyblabs.openspec.model;
 
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -349,31 +348,52 @@ class ModelTest {
         }
 
         // GitHub #20: a completed dependency whose declared path is a glob (the CLI emits
-        // "specs/**/*.md" for the specs dependency) must not be resolved to a filesystem path.
+        // "specs/**/*.md" for the specs dependency) must not be resolved to a filesystem path; it is
+        // matched against the change's files instead.
 
         @Test
-        void buildPrompt_globDependencyPathIsSkippedNotReadAsLiteralFile(@TempDir Path tempDir) throws IOException {
-            Assumptions.assumeFalse(System.getProperty("os.name").toLowerCase().startsWith("win"),
-                    "glob-char filenames cannot be created on Windows; Windows is covered by the no-throw regression");
-            // Plant a REAL regular file at the literal glob path so buggy code (Path.of + read)
-            // would inline it on POSIX, while fixed code (glob-detect -> null) skips it. The
-            // literal "specs/**/*.md" is pinned as real CLI output by
-            // CliContractTest.InstructionContractV1_11.
-            Path planted = tempDir.resolve("specs").resolve("**").resolve("*.md");
-            Files.createDirectories(planted.getParent());
-            Files.writeString(planted, "SENTINEL-SHOULD-NOT-BE-INLINED");
+        void buildPrompt_globDependencyInlinesEachMatchingFile(@TempDir Path tempDir) throws IOException {
+            // A glob names a set of files: each existing match is inlined under its relative path, in path order.
+            Files.createDirectories(tempDir.resolve("specs/user-auth"));
+            Files.createDirectories(tempDir.resolve("specs/billing/invoices"));
+            Files.writeString(tempDir.resolve("specs/user-auth/spec.md"), "AUTH-SPEC");
+            Files.writeString(tempDir.resolve("specs/billing/invoices/spec.md"), "INVOICE-SPEC");
+            Files.writeString(tempDir.resolve("specs/notes.txt"), "NOT-A-SPEC");
 
             ArtifactInstruction.Dependency dep = new ArtifactInstruction.Dependency(
                     "specs", true, "specs/**/*.md", "Detailed specifications for the change");
             ArtifactInstruction inst = new ArtifactInstruction("test-change", "tasks",
-                    tempDir.toString(), "tasks.md",
-                    "Write tasks", null, List.of(dep), null);
+                    tempDir.toString(), "tasks.md", "Write tasks", null, List.of(dep), null);
 
             String prompt = assertDoesNotThrow(inst::buildPrompt);
-            assertFalse(prompt.contains("SENTINEL-SHOULD-NOT-BE-INLINED"),
-                    "a glob-style dependency path must never be read as a literal file, even when one exists");
-            assertTrue(prompt.contains("Path: specs/**/*.md"),
-                    "a glob path falls back to a path-only reference, matching POSIX behavior");
+            int invoices = prompt.indexOf("#### specs/billing/invoices/spec.md\n\n```\nINVOICE-SPEC\n```");
+            int auth = prompt.indexOf("#### specs/user-auth/spec.md\n\n```\nAUTH-SPEC\n```");
+            assertTrue(invoices >= 0 && auth > invoices, "both specs inlined, labeled, in path order: " + prompt);
+            assertFalse(prompt.contains("NOT-A-SPEC"), "a file that doesn't match the glob is not inlined");
+            assertFalse(prompt.contains("Path: specs/**/*.md"), "with matches there is no path-only fallback");
+        }
+
+        @Test
+        void buildPrompt_globDependencyWithNoMatchFallsBackToPath(@TempDir Path tempDir) {
+            ArtifactInstruction.Dependency dep = new ArtifactInstruction.Dependency(
+                    "specs", true, "specs/**/*.md", "Detailed specifications for the change");
+            ArtifactInstruction inst = new ArtifactInstruction("test-change", "tasks",
+                    tempDir.toString(), "tasks.md", "Write tasks", null, List.of(dep), null);
+
+            String prompt = assertDoesNotThrow(inst::buildPrompt);
+            assertTrue(prompt.contains("Path: specs/**/*.md"), "no match keeps the path-only reference");
+        }
+
+        @Test
+        void buildDirectApiPrompt_addsTheMultiFileFormatOnlyForGlobOutputs(@TempDir Path tempDir) {
+            ArtifactInstruction specs = new ArtifactInstruction("c", "specs", tempDir.toString(), "specs/**/*.md",
+                    "Write specs", null, List.of(), null);
+            ArtifactInstruction design = new ArtifactInstruction("c", "design", tempDir.toString(), "design.md",
+                    "Write the design", null, List.of(), null);
+
+            assertTrue(specs.buildDirectApiPrompt().contains("<!-- file: <path> -->"));
+            assertFalse(specs.buildPrompt().contains("<!-- file:"), "copied prompts never get the Direct API format");
+            assertEquals(design.buildPrompt(), design.buildDirectApiPrompt(), "a single-file artifact is unchanged");
         }
 
         @Test

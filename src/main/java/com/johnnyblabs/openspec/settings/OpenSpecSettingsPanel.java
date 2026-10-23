@@ -91,6 +91,10 @@ public class OpenSpecSettingsPanel {
     private JPasswordField apiKeyField;
     private JComboBox<String> aiModelCombo;
     private JBLabel aiTestResultLabel;
+    // Claude-only: the workspace for keys that aren't scoped to one (sent as anthropic-workspace-id).
+    private com.intellij.ui.components.JBTextField aiWorkspaceField;
+    private JBLabel aiWorkspaceLabel;
+    private JBLabel aiWorkspaceHelpLabel;
 
 
     // Config Profile section
@@ -770,11 +774,19 @@ public class OpenSpecSettingsPanel {
 
         aiTestResultLabel = new JBLabel(" ");
 
+        aiWorkspaceField = new com.intellij.ui.components.JBTextField(30);
+        aiWorkspaceField.getEmptyText().setText("wrkspc_\u2026");
+        aiWorkspaceLabel = new JBLabel(WORKSPACE_ID_LABEL + ":");
+        aiWorkspaceHelpLabel = new JBLabel(WORKSPACE_ID_HELP);
+        aiWorkspaceHelpLabel.setForeground(JBUI.CurrentTheme.ContextHelp.FOREGROUND);
+
         JPanel panel = FormBuilder.createFormBuilder()
                 .addComponent(helpLabel)
                 .addVerticalGap(8)
                 .addLabeledComponent(new JBLabel("Provider:"), aiProviderCombo)
                 .addLabeledComponent(new JBLabel("API key:"), apiKeyRow)
+                .addLabeledComponent(aiWorkspaceLabel, aiWorkspaceField)
+                .addComponentToRightColumn(aiWorkspaceHelpLabel)
                 .addLabeledComponent(new JBLabel("Model:"), aiModelCombo)
                 .addComponent(aiTestResultLabel)
                 .getPanel();
@@ -834,6 +846,11 @@ public class OpenSpecSettingsPanel {
 
     private void onProviderChanged() {
         AiProvider provider = getSelectedProvider();
+        // The Workspace ID applies to Claude only; toggle it synchronously, before any pooled hop.
+        boolean claude = provider == AiProvider.CLAUDE;
+        aiWorkspaceLabel.setVisible(claude);
+        aiWorkspaceField.setVisible(claude);
+        aiWorkspaceHelpLabel.setVisible(claude);
         aiModelCombo.removeAllItems();
         for (String model : provider.getModels()) {
             aiModelCombo.addItem(model);
@@ -873,8 +890,16 @@ public class OpenSpecSettingsPanel {
         aiTestResultLabel.setForeground(JBColor.GRAY);
 
         AiProvider provider = getSelectedProvider();
-        // Read the UI field on the EDT; the blocking PasswordSafe store/get happens in the worker below.
+        // Read the UI fields on the EDT; the blocking PasswordSafe store/get happens in the worker below.
         final String uiKey = getApiKey();
+        // Test uses the Workspace ID as currently typed (like the unsaved key), and never sends an invalid one.
+        final String workspaceId = provider == AiProvider.CLAUDE ? getAiWorkspaceId() : "";
+        String workspaceError = validateWorkspaceId(workspaceId);
+        if (workspaceError != null) {
+            aiTestResultLabel.setText("Failed: " + workspaceError);
+            aiTestResultLabel.setForeground(JBColor.RED);
+            return;
+        }
 
         DirectApiService apiService = project.getService(DirectApiService.class);
         if (apiService == null) {
@@ -896,7 +921,7 @@ public class OpenSpecSettingsPanel {
                 }
                 // Validate the key by listing the account's models — a free GET, no token cost — and
                 // return them to populate the selector. Network I/O runs here, off the EDT.
-                return apiService.listModels(provider, key);
+                return apiService.listModels(provider, key, workspaceId);
             }
 
             @Override
@@ -913,17 +938,47 @@ public class OpenSpecSettingsPanel {
                     aiTestResultLabel.setForeground(new JBColor(new Color(0, 128, 0), new Color(100, 210, 100)));
                 } catch (Exception e) {
                     Throwable cause = e.getCause() != null ? e.getCause() : e;
-                    int status = (cause instanceof AiApiException aae) ? aae.getStatusCode() : 0;
-                    String msg = (status == 401 || status == 403)
-                            ? "Check your API key"
-                            : (cause.getMessage() != null ? cause.getMessage() : "Connection failed");
-                    aiTestResultLabel.setText("Failed: " + msg);
+                    aiTestResultLabel.setText("Failed: " + testFailureMessage(cause));
                     aiTestResultLabel.setForeground(JBColor.RED);
                     // Never leave the selector empty — fall back to the static list, keeping the selection.
                     applyModelOptions(provider, null, false);
                 }
             }
         }.execute();
+    }
+
+    /**
+     * The message Test shows for a failure: "Check your API key" for 401/403, otherwise the exception's own
+     * message (for Claude workspace errors that is the mapped, actionable one from {@code DirectApiService}).
+     */
+    static String testFailureMessage(Throwable cause) {
+        int status = (cause instanceof AiApiException aae) ? aae.getStatusCode() : 0;
+        if (status == 401 || status == 403) {
+            return "Check your API key";
+        }
+        return cause.getMessage() != null ? cause.getMessage() : "Connection failed";
+    }
+
+    static final String WORKSPACE_ID_LABEL = "Workspace ID (optional)";
+    static final String WORKSPACE_ID_HELP = "Required for keys that aren't scoped to a workspace. "
+            + "Find it under Console \u2192 Settings \u2192 Workspaces.";
+    private static final String WORKSPACE_ID_PREFIX = "wrkspc_";
+
+    /**
+     * Validates a Claude Workspace ID: empty is allowed (the header is then omitted); otherwise it must be
+     * {@code wrkspc_} followed by at least one character, with no whitespace. Returns an error message, or
+     * {@code null} when valid. Leading/trailing whitespace is ignored, matching the trimming setter.
+     */
+    static @org.jetbrains.annotations.Nullable String validateWorkspaceId(@org.jetbrains.annotations.Nullable String id) {
+        String value = id == null ? "" : id.trim();
+        if (value.isEmpty()) {
+            return null;
+        }
+        if (!value.startsWith(WORKSPACE_ID_PREFIX) || value.length() == WORKSPACE_ID_PREFIX.length()
+                || value.chars().anyMatch(Character::isWhitespace)) {
+            return "Workspace ID must start with \"" + WORKSPACE_ID_PREFIX + "\" (find it under Console \u2192 Settings \u2192 Workspaces)";
+        }
+        return null;
     }
 
     /**
@@ -1059,6 +1114,19 @@ public class OpenSpecSettingsPanel {
 
     public void setAiModel(String model) {
         aiModelCombo.setSelectedItem(model != null ? model : "");
+    }
+
+    public String getAiWorkspaceId() {
+        return aiWorkspaceField.getText().trim();
+    }
+
+    public void setAiWorkspaceId(String workspaceId) {
+        aiWorkspaceField.setText(workspaceId != null ? workspaceId : "");
+    }
+
+    @TestOnly
+    boolean isWorkspaceIdRowVisible() {
+        return aiWorkspaceField.isVisible() && aiWorkspaceLabel.isVisible() && aiWorkspaceHelpLabel.isVisible();
     }
 
     public String getDefaultSchema() {

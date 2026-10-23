@@ -30,8 +30,9 @@ Go to **Settings > Tools > OpenSpec > Direct API**.
 
 1. **Provider** — Select `Claude`, `OpenAI`, or `Gemini`
 2. **API key** — Enter your key. It's stored in your OS keychain via IntelliJ's PasswordSafe — never in project files. See [Direct API settings](feature-reference.md#direct-api) for key format details.
-3. **Model** — Pre-populated for your provider. Edit if you want a specific model.
-4. **Test** — Click to verify your key and connection
+3. **Workspace ID (optional)** — Claude only. Needed when your Claude API key isn't scoped to a single workspace (for example, a personal key that can use any of your workspaces). Copy the ID, which starts with `wrkspc_`, from **Console → Settings → Workspaces**. Leave it blank for a key that belongs to one workspace. It's a regular setting, not a secret.
+4. **Model** — Pre-populated for your provider. Edit if you want a specific model.
+5. **Test** — Click to verify your key and connection. If Claude reports that the key isn't scoped to a workspace, fill in the Workspace ID and test again.
 
 Then go to the **Tools & Delivery** tab and set **Deliver via** to **"Generate via API"**.
 
