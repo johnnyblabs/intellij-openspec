@@ -84,8 +84,6 @@ The Claude parser SHALL return the concatenated text of every `text` content blo
 - **WHEN** the static fallback lists are checked against the providers' published deprecation pages
 - **THEN** no listed model SHALL be retired, and no default SHALL be a deprecated model when a non-deprecated replacement is published
 
-## MODIFIED Requirements
-
 ### Requirement: Dynamic model discovery
 
 When a Direct API provider key is configured, the plugin SHALL populate the model selector from the provider's **live model list**, fetched with the configured key via that provider's list-models endpoint (`GET /v1/models` for OpenAI and Anthropic; `GET /v1beta/models` for Gemini) using the same auth headers as generation. The fetch SHALL run off the EDT (it is a network call). The model selector SHALL remain **editable** so a user can enter a model the list does not include. When no key is configured, the plugin is offline, or the fetch fails, the plugin SHALL **fall back to a static list** of current defaults (governed by "AI providers") rather than presenting an empty selector. Where a provider marks generation capability on each model (Gemini's `supportedGenerationMethods`), the populated list SHALL be filtered to models that support the generation method the plugin uses. Each provider's list-models response parser SHALL be contract-tested against a captured provider example response. When no model is chosen yet, the selection SHALL be the provider's static default if the fetched list contains it, and the first fetched model otherwise.
