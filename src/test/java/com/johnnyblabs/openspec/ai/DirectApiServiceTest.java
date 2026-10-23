@@ -167,9 +167,12 @@ class DirectApiServiceTest {
     @Nested
     class OpenAiTokenParam {
 
-        // Reasoning family reject max_tokens and require max_completion_tokens.
+        // Reasoning family reject max_tokens and require max_completion_tokens. The gpt-6 entries are
+        // the current flagships (and the OpenAI fallback list); the old o1/o3/o4/gpt-5 prefix rule sent
+        // them max_tokens. The last entry stands in for a family released after this code.
         @ParameterizedTest
-        @ValueSource(strings = {"o1", "o1-mini", "o1-preview", "o3", "o3-mini", "o4-mini", "gpt-5", "gpt-5-mini"})
+        @ValueSource(strings = {"o1", "o1-mini", "o1-preview", "o3", "o3-mini", "o4-mini", "gpt-5", "gpt-5-mini",
+                "gpt-5.6-terra", "gpt-6-luna", "gpt-6-astra", "gpt-6.1-sol", "gpt-7-future"})
         void reasoningModels_useMaxCompletionTokens(String model) {
             assertEquals("max_completion_tokens", DirectApiService.openAiTokenParam(model),
                     model + " is a reasoning model and must use max_completion_tokens");
@@ -178,15 +181,31 @@ class DirectApiServiceTest {
         // Negative anchors: chat models must NOT be swept into the reasoning path. These are
         // load-bearing — without them an over-broad predicate would still pass.
         @ParameterizedTest
-        @ValueSource(strings = {"gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-3.5-turbo"})
+        @ValueSource(strings = {"gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-4.1", "gpt-3.5-turbo", "chatgpt-4o-latest",
+                "ft:gpt-4o-mini-2024-07-18:acme::abc123"})
         void chatModels_useMaxTokens(String model) {
             assertEquals("max_tokens", DirectApiService.openAiTokenParam(model),
                     model + " is a chat model and must use max_tokens");
         }
 
         @Test
-        void nullModel_defaultsToMaxTokens() {
-            assertEquals("max_tokens", DirectApiService.openAiTokenParam(null));
+        void reasoningFineTune_followsItsBaseModel() {
+            assertEquals("max_completion_tokens", DirectApiService.openAiTokenParam("ft:o4-mini-2025-04-16:acme::abc123"));
+        }
+
+        @Test
+        void nullModel_defaultsToMaxCompletionTokens() {
+            // Never reached in practice (getModel falls back to the default), but the non-deprecated parameter is the
+            // safe answer for an unknown model.
+            assertEquals("max_completion_tokens", DirectApiService.openAiTokenParam(null));
+        }
+
+        @Test
+        void everyOpenAiFallbackModel_usesMaxCompletionTokens() {
+            // The fallback list and the token rule must change together: a gpt-6 default sent max_tokens is a 400.
+            for (String model : AiProvider.OPENAI.getModels()) {
+                assertEquals("max_completion_tokens", DirectApiService.openAiTokenParam(model), model);
+            }
         }
     }
 
@@ -300,7 +319,9 @@ class DirectApiServiceTest {
         void openAiModelsAreCurrent() {
             var models = AiProvider.OPENAI.getModels();
             assertFalse(models.isEmpty());
-            assertTrue(models.contains("gpt-4o"), "Should include gpt-4o");
+            // gpt-4o and gpt-4o-mini shut down 2027-01-14 and o1-mini retired 2025-10-27 (OpenAI deprecations page).
+            assertTrue(models.stream().noneMatch(m -> m.startsWith("gpt-4") || m.equals("o1-mini")),
+                    "OpenAI fallback list must not carry deprecated or retired models: " + models);
         }
 
         @Test

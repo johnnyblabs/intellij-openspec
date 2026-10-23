@@ -15,10 +15,10 @@ For Claude, the plugin SHALL offer an optional **Workspace ID** setting.
 The plugin SHALL call each provider using a valid, current API contract:
 - The default model for each provider SHALL be a valid current model identifier. Claude defaults SHALL be dateless aliases, so they resolve to the current snapshot and don't carry a fabricated release date.
 - Anthropic requests SHALL send the current required `anthropic-version` value (`2023-06-01`).
-- OpenAI requests SHALL send the token-limit parameter the target model requires: `max_completion_tokens` for the reasoning family (`o1`/`o3`/`o4`/`gpt-5`), and `max_tokens` otherwise.
+- OpenAI requests SHALL send `max_tokens` only to the legacy non-reasoning chat families (`gpt-3.5`, `gpt-4`, including `gpt-4o` and `gpt-4.1`, and `chatgpt-4o`), and `max_completion_tokens` to every other model, including the reasoning family (the `o`-series, `gpt-5` and later) and families released after the plugin. A fine-tuned model SHALL follow its base model.
 - The provider response parsers SHALL be contract-tested against captured provider responses, and live-captured ones SHALL be preferred where a key is available.
 
-The Claude parser SHALL return the concatenated text of every `text` content block. It SHALL skip `thinking` and `redacted_thinking` blocks, because models with thinking on by default return those before the text. When no live model list is available (see "Dynamic model discovery"), the model selector falls back to a small static list, and the valid-current-default rule above governs that list.
+The Claude parser SHALL return the concatenated text of every `text` content block. It SHALL skip `thinking` and `redacted_thinking` blocks, because models with thinking on by default return those before the text. The Gemini parser SHALL return the concatenated text of every part that isn't marked as a thought. Every parser SHALL treat a response with no usable text as an error that names the provider's stated reason (stop or finish reason, refusal, or block reason), and SHALL NOT return empty text as a generated artifact. When no live model list is available (see "Dynamic model discovery"), the model selector falls back to a small static list, and the valid-current-default rule above governs that list.
 
 #### Scenario: API generation
 - **WHEN** a user configures a Direct API provider with a valid key
@@ -57,8 +57,8 @@ The Claude parser SHALL return the concatenated text of every `text` content blo
 - **THEN** the request SHALL carry `anthropic-version: 2023-06-01`
 
 #### Scenario: OpenAI reasoning-model token parameter
-- **WHEN** the plugin builds an OpenAI request for a reasoning-family model (`o1`/`o3`/`o4`/`gpt-5`)
-- **THEN** the request SHALL send `max_completion_tokens` rather than `max_tokens`; for non-reasoning chat models the request SHALL send `max_tokens`
+- **WHEN** the plugin builds an OpenAI request for a reasoning-family model (for example `o1`, `o4-mini`, `gpt-5`, `gpt-6-luna`)
+- **THEN** the request SHALL send `max_completion_tokens` rather than `max_tokens`; for the legacy chat families (for example `gpt-4o`, `gpt-3.5-turbo`) the request SHALL send `max_tokens`
 
 #### Scenario: Response parser contract
 - **WHEN** a provider returns its response shape
@@ -71,6 +71,48 @@ The Claude parser SHALL return the concatenated text of every `text` content blo
 #### Scenario: Claude response with no text block
 - **WHEN** a Claude response contains no `text` block (for example, the token limit was reached while thinking)
 - **THEN** the plugin SHALL report a clear error that names the response's `stop_reason`, and SHALL NOT fail with an unhandled exception
+
+#### Scenario: Gemini response with several parts
+- **WHEN** a Gemini candidate's content has several parts, some marked `thought: true`
+- **THEN** the plugin SHALL return the concatenated text of the parts that are not thoughts
+
+#### Scenario: Response with no usable text
+- **WHEN** a Gemini candidate has no content or no text parts, or an OpenAI choice's `content` is null or empty
+- **THEN** the plugin SHALL report an error naming the reason the provider gives (Gemini `finishReason` or `promptFeedback.blockReason`; OpenAI `refusal` or `finish_reason`), and SHALL NOT write an empty artifact
+
+#### Scenario: Fallback lists contain no retired models
+- **WHEN** the static fallback lists are checked against the providers' published deprecation pages
+- **THEN** no listed model SHALL be retired, and no default SHALL be a deprecated model when a non-deprecated replacement is published
+
+## MODIFIED Requirements
+
+### Requirement: Dynamic model discovery
+
+When a Direct API provider key is configured, the plugin SHALL populate the model selector from the provider's **live model list**, fetched with the configured key via that provider's list-models endpoint (`GET /v1/models` for OpenAI and Anthropic; `GET /v1beta/models` for Gemini) using the same auth headers as generation. The fetch SHALL run off the EDT (it is a network call). The model selector SHALL remain **editable** so a user can enter a model the list does not include. When no key is configured, the plugin is offline, or the fetch fails, the plugin SHALL **fall back to a static list** of current defaults (governed by "AI providers") rather than presenting an empty selector. Where a provider marks generation capability on each model (Gemini's `supportedGenerationMethods`), the populated list SHALL be filtered to models that support the generation method the plugin uses. Each provider's list-models response parser SHALL be contract-tested against a captured provider example response. When no model is chosen yet, the selection SHALL be the provider's static default if the fetched list contains it, and the first fetched model otherwise.
+
+#### Scenario: Populate from the account's live model list
+- **WHEN** a valid key is present and the model list is requested (via Test or a refresh)
+- **THEN** the plugin SHALL fetch the provider's model list with that key and populate the model selector with the returned models
+
+#### Scenario: Filter to generation-capable models
+- **WHEN** the provider reports per-model generation capabilities (e.g. Gemini's `supportedGenerationMethods`)
+- **THEN** the populated list SHALL include only models that support the generation method the plugin uses
+
+#### Scenario: Fallback when discovery is unavailable
+- **WHEN** no key is configured, the plugin is offline, or the list-models fetch fails
+- **THEN** the model selector SHALL fall back to the static default list and SHALL NOT be left empty
+
+#### Scenario: Discovery fetch runs off the EDT
+- **WHEN** the plugin fetches the provider's model list
+- **THEN** the network call SHALL run on a background thread and the selector update SHALL be posted back to the EDT
+
+#### Scenario: Manual override preserved
+- **WHEN** a user types a model identifier not present in the fetched list
+- **THEN** the plugin SHALL use the entered value (the selector remains editable)
+
+#### Scenario: Default selection prefers the static default
+- **WHEN** no model is chosen yet and the fetched list contains the provider's static default model
+- **THEN** the selector SHALL select that default rather than the list's first entry, which may be an access-limited or non-chat model
 
 ## ADDED Requirements
 

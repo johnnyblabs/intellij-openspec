@@ -7,14 +7,14 @@ public enum AiProvider {
     // Dateless aliases: providers resolve these to the current snapshot server-side, so the
     // default (models.get(0)) is always a live model and the list does not need a date bump each
     // release. Pinning a dated snapshot here previously shipped a fabricated ID that 404'd.
-    CLAUDE("Claude", List.of("claude-sonnet-5", "claude-opus-5", "claude-haiku-4-5")),
-    // OpenAI list is pending a key-verified refresh (GET /v1/models) — do not guess IDs here;
-    // guessed IDs 401 on fresh installs. gpt-4o/o1-mini are stale but the routing logic
-    // (max_completion_tokens for o1/o3/o4/gpt-5) is current. See change refresh-direct-api-models-and-routing.
-    OPENAI("OpenAI", List.of("gpt-4o", "gpt-4o-mini", "o1-mini")),
-    // Gemini 2.5 (pro/flash/flash-lite) is retiring 2026-10-16 (flash already deprecated), so its
-    // defaults 404'd on fresh AI Studio keys. Current stable Flash line (free-tier friendly):
-    GEMINI("Gemini", List.of("gemini-3.5-flash", "gemini-3.8-flash", "gemini-3.5-flash-lite"));
+    CLAUDE("Claude", List.of("claude-sonnet-5-5", "claude-opus-5-5", "claude-haiku-5-5")),
+    // Current flagships, all reasoning models, so they need max_completion_tokens (see
+    // DirectApiService.openAiTokenParam). gpt-6-luna is the published replacement for gpt-4o and
+    // gpt-4o-mini, which shut down 2027-01-14. IDs are from the models and deprecations pages, not a key.
+    OPENAI("OpenAI", List.of("gpt-6-luna", "gpt-6-astra", "gpt-6.1-sol")),
+    // gemini-3.5-flash is deprecated (2026-10-08): the endpoint still answers but routes to
+    // gemini-3.6-flash, so it would misreport which model ran.
+    GEMINI("Gemini", List.of("gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite"));
 
     private final String displayName;
     private final List<String> models;

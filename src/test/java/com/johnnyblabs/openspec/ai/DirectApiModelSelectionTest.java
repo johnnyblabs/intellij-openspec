@@ -19,7 +19,7 @@ class DirectApiModelSelectionTest {
     @Test
     void fetchFailure_fallsBackToTheStaticListSpecifically() {
         List<String> fallback = AiProvider.OPENAI.getModels();
-        AiModelOptions.Resolution r = AiModelOptions.resolve(null, false, fallback, "gpt-4o");
+        AiModelOptions.Resolution r = AiModelOptions.resolve(null, false, fallback, fallback.get(1));
         // Equals the static list specifically — a non-empty-but-wrong list would pass a laxer check.
         assertEquals(fallback, r.options());
     }
@@ -55,10 +55,20 @@ class DirectApiModelSelectionTest {
     }
 
     @Test
-    void emptyCurrentSelection_defaultsToFirstFetched() {
+    void emptyCurrentSelection_defaultsToFirstFetched_whenStaticDefaultIsAbsent() {
         List<String> fetched = List.of("model-a", "model-b");
         AiModelOptions.Resolution r = AiModelOptions.resolve(fetched, true, List.of("static"), "");
         assertEquals("model-a", r.selection());
+    }
+
+    @Test
+    void emptyCurrentSelection_prefersStaticDefault_whenTheFetchedListHasIt() {
+        // A live list's first entry can be an access-limited or non-chat model; the static default is the safe pick.
+        List<String> fallback = AiProvider.CLAUDE.getModels();
+        List<String> fetched = List.of("claude-fable-5-1", "claude-opus-5-5", fallback.get(0));
+        AiModelOptions.Resolution r = AiModelOptions.resolve(fetched, true, fallback, "");
+        assertEquals(fetched, r.options(), "the fetched order is kept");
+        assertEquals(fallback.get(0), r.selection());
     }
 
     @Test

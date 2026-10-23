@@ -79,7 +79,19 @@
 
   Verify by checking for no Claude 400 in `log_runIde/idea.log` during the configured run.
 
+## 7. Direct API provider check findings
+
+The release's provider check against the live provider docs (2026-10-22) found no blocker in the shipped state, but found gaps to fix in this release. The OpenAI default and the token rule must change together, or the new default returns 400.
+
+- [x] 7.1 Refresh the static fallback lists in `AiProvider` to current, non-deprecated models: Claude `claude-sonnet-5-5`, `claude-opus-5-5`, `claude-haiku-5-5`; OpenAI `gpt-6-luna`, `gpt-6-astra`, `gpt-6.1-sol`; Gemini `gemini-3.8-flash`, `gemini-3.6-flash`, `gemini-3.5-flash-lite`. Verify with tests that no fallback model is a deprecated or retired one.
+- [x] 7.2 Invert the OpenAI token rule: `max_tokens` only for `gpt-3.5`, `gpt-4*` and `chatgpt-4o`, with fine-tunes following their base model; `max_completion_tokens` for everything else. Verify with tests over the gpt-6 family, an unknown future family, and every OpenAI fallback model.
+- [x] 7.3 OpenAI parser: null or empty `content` is an error naming the `refusal` or the `finish_reason`. Verify with contract tests on the published OpenAPI example, with the derived variants built from it in the test.
+- [x] 7.4 Gemini parser: join every text part not marked `thought`, and report `promptFeedback.blockReason` or the candidate's `finishReason` when there is no text. Verify with contract tests derived from the documented example.
+- [x] 7.5 With no model chosen, select the provider's static default when the fetched list contains it. Verify with a model-selection test.
+- [x] 7.6 Correct the stale comments (Anthropic API version, Gemini 2.5), the worked example in `docs/direct-api-workflow.md`, the fixtures README, and the CHANGELOG. Verify that the leak grep is clean.
+- [x] 7.7 Run `./gradlew build` and `./gradlew verifyPlugin`, and verify both pass.
+
 ## Workflow follow-up
 
 - Archive the change, then cut v0.14.1 (`/release-cut 0.14.1`). The Direct API provider gate runs as part of the cut.
-- The next minor keeps the remaining Direct API items (OpenAI fields, fallback refresh, error hints and retry, Gemini parser).
+- The next minor keeps the remaining Direct API items from the provider check: OpenAI Organization and Project fields, regional OpenAI hosts, a quota-aware 429 message, Gemini key-restriction hints, tracking Gemini's Interactions API, and an optional move to Anthropic API version 2026-10-21.

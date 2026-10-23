@@ -21,12 +21,17 @@ updating the parser — treat the committed fixture as the contract of record un
 | File | Provider | Documented shape source | Key path the parser reads |
 |------|----------|-------------------------|---------------------------|
 | `openai/chat-completion-response.json` | OpenAI | Chat Completions reference — "The chat completion object" example (`platform.openai.com/docs/api-reference/chat/object`) | `choices[0].message.content` |
-| `gemini/generatecontent-response.json` | Google Gemini | `generateContent` reference — response example (`ai.google.dev/api/generate-content`) | `candidates[0].content.parts[0].text` |
+| `gemini/generatecontent-response.json` | Google Gemini | `generateContent` reference — response example (`ai.google.dev/api/generate-content`) | the text of every `candidates[0].content.parts[]` entry not marked `thought`, concatenated |
+| `openai/chat-completion-openapi-example.json` | OpenAI | `openapi.yaml` in OpenAI's `openai-openapi` repository — the Chat Completions "Default" example response, which carries `"refusal": null` | `choices[0].message.content`, then `refusal` and `finish_reason` |
 
-Transcribed 2026-08-02 for change `fix-direct-api-provider-compliance`. Structural fidelity (field
+Transcribed 2026-08-02 for change `fix-direct-api-provider-compliance`; the OpenAPI example was added 2026-10-22, because the reference page is not reachable by automated fetch.
+
+Structural fidelity (field
 nesting and the read paths above) is what the contract tests assert; the exact text strings are read
 from these files, so refreshing a fixture to a newer documented example is safe as long as the shape
 is preserved.
+
+**Derived variants (no official example exists).** Neither provider publishes an example of an empty reply. The OpenAI null-content, refusal and token-limit cases, and the Gemini thought-part, missing-content and blocked-prompt cases, are built inside `DirectApiResponseContractTest` from the documented fixtures above. Each one changes only fields the provider's reference defines (OpenAI's nullable `content` and `refusal`, the `finish_reason` enum; Gemini's `Part.thought`, `FinishReason` and `promptFeedback.blockReason`). Replace them with live captures when keys are available.
 
 ## List-models fixtures — provenance
 

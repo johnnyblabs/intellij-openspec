@@ -56,8 +56,8 @@ flowchart TD
 **Goal:** generate the `design` artifact for a change, using Gemini, without leaving the IDE.
 
 1. Provider = **Gemini**, key tested green (say it listed 40 models).
-2. Tool window delivery = **`Direct API [API]`**; model = **`gemini-3.5-flash`** (picked from the dropdown, or typed).
-3. Status strip reads: `· gemini-3.5-flash · Direct API`.
+2. Tool window delivery = **`Direct API [API]`**; model = **`gemini-3.8-flash`** (picked from the dropdown, or typed).
+3. Status strip reads: `· gemini-3.8-flash · Direct API`.
 4. Select the change, then click its **`design`** pipeline chip (it must be **READY** — a chip that's already **DONE** just opens the file).
 5. The chip spins, the plugin calls Gemini, and `design.md` is written and turns the chip **green**.
 
@@ -77,9 +77,9 @@ sequenceDiagram
 
     U->>TW: Click "design" chip (READY)
     TW->>D: generate(instruction)
-    D->>S: getModel() → "gemini-3.5-flash"
+    D->>S: getModel() → "gemini-3.8-flash"
     D->>D: build request<br/>(x-goog-api-key header, prompt, model)
-    D->>P: POST …/models/gemini-3.5-flash:generateContent
+    D->>P: POST …/models/gemini-3.8-flash:generateContent
     P-->>D: 200 · generated content
     D->>D: parse response text
     D-->>TW: artifact content

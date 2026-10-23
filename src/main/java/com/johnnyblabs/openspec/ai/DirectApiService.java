@@ -165,8 +165,9 @@ public final class DirectApiService {
     }
 
     /**
-     * The required Anthropic API version. This is a fixed, enumerated header value — feature
-     * opt-ins ship via {@code anthropic-beta}, not new version dates — so it is stable.
+     * The Anthropic API version the request and response shapes here were written against. Newer
+     * versions exist (2026-10-21), but no end date for this one is announced and the plugin uses
+     * none of the fields they changed. Move to a newer version deliberately, not as a routine bump.
      */
     static final String ANTHROPIC_VERSION = "2023-06-01";
 
@@ -268,20 +269,26 @@ public final class DirectApiService {
     }
 
     /**
-     * Returns the token-limit parameter name for the given OpenAI model. The reasoning family
-     * ({@code o1}/{@code o3}/{@code o4}/{@code gpt-5}) rejects {@code max_tokens} and requires
-     * {@code max_completion_tokens}; non-reasoning chat models use {@code max_tokens}.
+     * Returns the token-limit parameter name for the given OpenAI model. OpenAI deprecated
+     * {@code max_tokens} in favor of {@code max_completion_tokens}, and reasoning models
+     * ({@code o}-series, {@code gpt-5}, {@code gpt-6} and later) reject it. So only the legacy
+     * non-reasoning chat families keep {@code max_tokens}; every other model, including families
+     * released after this code, gets {@code max_completion_tokens}. Fine-tunes ({@code ft:<base>:…})
+     * follow their base model.
      */
     static String openAiTokenParam(String model) {
-        if (model == null) return "max_tokens";
-        for (String prefix : REASONING_MODEL_PREFIXES) {
-            if (model.startsWith(prefix)) return "max_completion_tokens";
+        if (model != null) {
+            String base = model.startsWith("ft:") ? model.substring(3) : model;
+            for (String prefix : LEGACY_MAX_TOKENS_PREFIXES) {
+                if (base.startsWith(prefix)) return "max_tokens";
+            }
         }
-        return "max_tokens";
+        return "max_completion_tokens";
     }
 
-    private static final java.util.List<String> REASONING_MODEL_PREFIXES =
-            java.util.List.of("o1", "o3", "o4", "gpt-5");
+    /** {@code gpt-4} covers gpt-4, gpt-4-turbo, gpt-4o and gpt-4.1. */
+    private static final java.util.List<String> LEGACY_MAX_TOKENS_PREFIXES =
+            java.util.List.of("gpt-3.5", "gpt-4", "chatgpt-4o");
 
     /**
      * Builds an OpenAI Chat Completions request. Extracted (mirroring {@link #buildGeminiRequest})
@@ -309,18 +316,42 @@ public final class DirectApiService {
     }
 
     /**
-     * Extracts the generated text from an OpenAI Chat Completions response body. Extracted for
-     * contract-testing against captured provider example output.
+     * Extracts the generated text from an OpenAI Chat Completions response body: the first choice's
+     * {@code message.content}. When that is null or empty (a refusal, or a reasoning model that spent
+     * the token limit before writing), it throws an error naming the {@code refusal} or
+     * {@code finish_reason} instead of returning empty text. Extracted for contract-testing against
+     * captured provider example output.
      */
     static String parseOpenAiResponse(String body) throws AiApiException {
         JsonObject responseJson = JsonParser.parseString(body).getAsJsonObject();
         JsonArray choices = responseJson.getAsJsonArray("choices");
-        if (choices != null && choices.size() > 0) {
-            return choices.get(0).getAsJsonObject()
-                    .getAsJsonObject("message")
-                    .get("content").getAsString();
+        if (choices == null || choices.isEmpty() || !choices.get(0).isJsonObject()) {
+            throw new AiApiException("Empty response from OpenAI API");
         }
-        throw new AiApiException("Empty response from OpenAI API");
+        JsonObject choice = choices.get(0).getAsJsonObject();
+        JsonObject message = choice.has("message") && choice.get("message").isJsonObject()
+                ? choice.getAsJsonObject("message")
+                : new JsonObject();
+        String content = stringOrNull(message, "content");
+        if (content != null && !content.isEmpty()) {
+            return content;
+        }
+        String refusal = stringOrNull(message, "refusal");
+        if (refusal != null && !refusal.isBlank()) {
+            throw new AiApiException("OpenAI declined the request: " + refusal);
+        }
+        String finishReason = stringOrNull(choice, "finish_reason");
+        String error = "OpenAI returned no text (finish_reason: " + (finishReason != null ? finishReason : "unknown") + ")";
+        if ("length".equals(finishReason)) {
+            error += " \u2014 the token limit was reached before any text was written";
+        }
+        throw new AiApiException(error);
+    }
+
+    /** The string value of {@code key}, or {@code null} when it is absent, JSON null or not a string. */
+    private static @Nullable String stringOrNull(JsonObject json, String key) {
+        var el = json.get(key);
+        return el != null && el.isJsonPrimitive() && el.getAsJsonPrimitive().isString() ? el.getAsString() : null;
     }
 
     private String callOpenAi(String apiKey, String model, String prompt) throws AiApiException {
@@ -371,20 +402,55 @@ public final class DirectApiService {
     }
 
     /**
-     * Extracts the generated text from a Gemini generateContent response body. Extracted for
-     * contract-testing against captured provider example output.
+     * Extracts the generated text from a Gemini generateContent response body: the concatenated text
+     * of every part of the first candidate that isn't marked {@code thought: true}. When there is no
+     * such text it throws an error naming {@code promptFeedback.blockReason} (a blocked prompt has no
+     * candidates) or the candidate's {@code finishReason}, instead of returning empty text. Extracted
+     * for contract-testing against captured provider example output.
      */
     static String parseGeminiResponse(String body) throws AiApiException {
         JsonObject responseJson = JsonParser.parseString(body).getAsJsonObject();
         JsonArray candidates = responseJson.getAsJsonArray("candidates");
-        if (candidates != null && candidates.size() > 0) {
-            JsonObject content = candidates.get(0).getAsJsonObject().getAsJsonObject("content");
-            JsonArray responseParts = content.getAsJsonArray("parts");
-            if (responseParts != null && responseParts.size() > 0) {
-                return responseParts.get(0).getAsJsonObject().get("text").getAsString();
+        JsonObject candidate = candidates != null && !candidates.isEmpty() && candidates.get(0).isJsonObject()
+                ? candidates.get(0).getAsJsonObject()
+                : null;
+        if (candidate != null && candidate.has("content") && candidate.get("content").isJsonObject()) {
+            JsonArray parts = candidate.getAsJsonObject("content").getAsJsonArray("parts");
+            StringBuilder text = new StringBuilder();
+            if (parts != null) {
+                for (var el : parts) {
+                    if (!el.isJsonObject()) {
+                        continue;
+                    }
+                    JsonObject part = el.getAsJsonObject();
+                    boolean thought = part.has("thought") && part.get("thought").isJsonPrimitive()
+                            && part.get("thought").getAsBoolean();
+                    String partText = stringOrNull(part, "text");
+                    if (!thought && partText != null) {
+                        text.append(partText);
+                    }
+                }
+            }
+            if (!text.isEmpty()) {
+                return text.toString();
             }
         }
-        throw new AiApiException("Empty response from Gemini API");
+        JsonObject feedback = responseJson.has("promptFeedback") && responseJson.get("promptFeedback").isJsonObject()
+                ? responseJson.getAsJsonObject("promptFeedback")
+                : null;
+        String blockReason = feedback != null ? stringOrNull(feedback, "blockReason") : null;
+        if (blockReason != null) {
+            throw new AiApiException("Gemini blocked the prompt (blockReason: " + blockReason + ")");
+        }
+        String finishReason = candidate != null ? stringOrNull(candidate, "finishReason") : null;
+        if (finishReason == null) {
+            throw new AiApiException("Empty response from Gemini API");
+        }
+        String error = "Gemini returned no text (finishReason: " + finishReason + ")";
+        if ("MAX_TOKENS".equals(finishReason)) {
+            error += " \u2014 the token limit was reached before any text was written";
+        }
+        throw new AiApiException(error);
     }
 
     private String callGemini(String apiKey, String model, String prompt) throws AiApiException {

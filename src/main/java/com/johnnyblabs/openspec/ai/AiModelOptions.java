@@ -11,7 +11,9 @@ import java.util.List;
  * ({@code removeAllItems}/{@code addItem}/{@code setSelectedItem}) over what this returns. The rules:
  * a successful non-empty fetch supplies the options, otherwise the static fallback does; the user's
  * current selection is always preserved — if it is a typed-in value not in the list, it is kept
- * (prepended) rather than silently replaced (the editable-override guarantee).
+ * (prepended) rather than silently replaced (the editable-override guarantee). With no current
+ * selection, the provider's static default is selected when the list has it, because a fetched list's
+ * first entry can be an access-limited or non-chat model.
  */
 public final class AiModelOptions {
 
@@ -40,9 +42,15 @@ public final class AiModelOptions {
             options.add(0, current);
         }
 
-        String selection = !current.isEmpty()
-                ? current
-                : (options.isEmpty() ? "" : options.get(0));
+        String staticDefault = staticFallback == null || staticFallback.isEmpty() ? "" : staticFallback.get(0);
+        String selection;
+        if (!current.isEmpty()) {
+            selection = current;
+        } else if (!staticDefault.isEmpty() && options.contains(staticDefault)) {
+            selection = staticDefault;
+        } else {
+            selection = options.isEmpty() ? "" : options.get(0);
+        }
         return new Resolution(options, selection);
     }
 }

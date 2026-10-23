@@ -49,6 +49,25 @@ class DirectApiModelsContractTest {
     @Nested
     class AnthropicModels {
         @Test
+        void everyClaudeFallbackModelIsInTheLiveList() {
+            // Catches a fabricated fallback ID (the C1 bug class): the shape regex in AiProviderTest can't.
+            List<String> live = DirectApiService.parseAnthropicModels(loadFixture("claude/models-list-live.json"));
+            for (String model : AiProvider.CLAUDE.getModels()) {
+                assertTrue(live.contains(model), model + " is not in the live Claude model list");
+            }
+        }
+
+        @Test
+        void liveListSelectsTheStaticDefaultNotItsFirstEntry() {
+            // The live list leads with claude-haiku-5-5; with no model chosen, the static default wins.
+            List<String> live = DirectApiService.parseAnthropicModels(loadFixture("claude/models-list-live.json"));
+            assertFalse(live.getFirst().equals(AiProvider.CLAUDE.getDefaultModel()), "fixture precondition");
+
+            AiModelOptions.Resolution r = AiModelOptions.resolve(live, true, AiProvider.CLAUDE.getModels(), "");
+            assertEquals(AiProvider.CLAUDE.getDefaultModel(), r.selection());
+        }
+
+        @Test
         void extractsIdNotDisplayNameFromLiveCapture() {
             List<String> ids = DirectApiService.parseAnthropicModels(loadFixture("claude/models-list-live.json"));
             // Full-set equality, in response order (the live list leads with the newest model).
@@ -70,6 +89,13 @@ class DirectApiModelsContractTest {
 
     @Nested
     class GeminiModels {
+        @Test
+        void geminiDefaultIsInTheLiveList() {
+            // The capture predates gemini-3.6-flash and lacks the lite model, so only the default is checked here.
+            List<String> live = DirectApiService.parseGeminiModels(loadFixture("gemini/models-list.json"));
+            assertTrue(live.contains(AiProvider.GEMINI.getDefaultModel()), AiProvider.GEMINI.getDefaultModel());
+        }
+
         // Fixture is a verbatim subset of a LIVE capture (see README): 3 generateContent models +
         // 3 negatives (an embedding, an aqa/generateAnswer, and a bidiGenerateContent model).
         @Test

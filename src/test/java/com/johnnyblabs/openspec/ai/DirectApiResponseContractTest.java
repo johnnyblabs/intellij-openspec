@@ -118,10 +118,92 @@ class DirectApiResponseContractTest {
         }
 
         @Test
+        void extractsContentFromOpenApiExampleWithNullRefusal() throws Exception {
+            // The newer documented shape carries "refusal": null beside the content.
+            String body = loadFixture("openai/chat-completion-openapi-example.json");
+            JsonObject message = firstChoice(JsonParser.parseString(body).getAsJsonObject()).getAsJsonObject("message");
+            assertTrue(message.get("refusal").isJsonNull(), "fixture must keep the documented null refusal");
+
+            assertEquals(message.get("content").getAsString(), DirectApiService.parseOpenAiResponse(body));
+        }
+
+        @Test
+        void nullContentAtTokenLimitNamesFinishReason() {
+            // Derived from the documented example: content null and finish_reason "length", as when a reasoning
+            // model spends the limit before writing. Both fields are typed nullable/enum in the published schema.
+            JsonObject json = JsonParser.parseString(loadFixture("openai/chat-completion-openapi-example.json")).getAsJsonObject();
+            JsonObject choice = firstChoice(json);
+            choice.getAsJsonObject("message").add("content", com.google.gson.JsonNull.INSTANCE);
+            choice.addProperty("finish_reason", "length");
+
+            AiApiException ex = assertThrows(AiApiException.class, () -> DirectApiService.parseOpenAiResponse(json.toString()));
+            assertTrue(ex.getMessage().contains("finish_reason: length"), ex.getMessage());
+            assertTrue(ex.getMessage().contains("token limit"), ex.getMessage());
+        }
+
+        @Test
+        void refusalIsReportedInsteadOfEmptyText() {
+            // Derived from the documented example: the schema's refusal string set, content null.
+            JsonObject json = JsonParser.parseString(loadFixture("openai/chat-completion-openapi-example.json")).getAsJsonObject();
+            JsonObject message = firstChoice(json).getAsJsonObject("message");
+            message.add("content", com.google.gson.JsonNull.INSTANCE);
+            message.addProperty("refusal", "I can't help with that.");
+
+            AiApiException ex = assertThrows(AiApiException.class, () -> DirectApiService.parseOpenAiResponse(json.toString()));
+            assertTrue(ex.getMessage().contains("declined") && ex.getMessage().contains("I can't help with that."),
+                    ex.getMessage());
+        }
+
+        @Test
+        void blankRefusalFallsBackToFinishReason() {
+            JsonObject json = JsonParser.parseString(loadFixture("openai/chat-completion-openapi-example.json")).getAsJsonObject();
+            JsonObject message = firstChoice(json).getAsJsonObject("message");
+            message.add("content", com.google.gson.JsonNull.INSTANCE);
+            message.addProperty("refusal", "   ");
+
+            AiApiException ex = assertThrows(AiApiException.class, () -> DirectApiService.parseOpenAiResponse(json.toString()));
+            assertTrue(ex.getMessage().contains("finish_reason: stop"), ex.getMessage());
+        }
+
+        @Test
+        void missingMessageAndFinishReasonIsAnApiError() {
+            // Crash hardening: the error is an AiApiException naming "unknown", never a raw NPE/ClassCastException.
+            JsonObject json = JsonParser.parseString(loadFixture("openai/chat-completion-openapi-example.json")).getAsJsonObject();
+            JsonObject choice = firstChoice(json);
+            choice.remove("message");
+            choice.remove("finish_reason");
+
+            AiApiException ex = assertThrows(AiApiException.class, () -> DirectApiService.parseOpenAiResponse(json.toString()));
+            assertTrue(ex.getMessage().contains("finish_reason: unknown"), ex.getMessage());
+        }
+
+        @Test
+        void nonObjectChoiceIsAnApiError() {
+            JsonObject json = JsonParser.parseString(loadFixture("openai/chat-completion-openapi-example.json")).getAsJsonObject();
+            json.getAsJsonArray("choices").set(0, new com.google.gson.JsonPrimitive("x"));
+
+            AiApiException ex = assertThrows(AiApiException.class, () -> DirectApiService.parseOpenAiResponse(json.toString()));
+            assertTrue(ex.getMessage().contains("Empty response"), ex.getMessage());
+        }
+
+        @Test
+        void emptyStringContentIsAnError() {
+            JsonObject json = JsonParser.parseString(loadFixture("openai/chat-completion-openapi-example.json")).getAsJsonObject();
+            firstChoice(json).getAsJsonObject("message").addProperty("content", "");
+
+            AiApiException ex = assertThrows(AiApiException.class, () -> DirectApiService.parseOpenAiResponse(json.toString()));
+            assertTrue(ex.getMessage().contains("finish_reason: stop"), ex.getMessage());
+        }
+
+        @Test
         void emptyChoicesThrows() {
             AiApiException ex = assertThrows(AiApiException.class,
                     () -> DirectApiService.parseOpenAiResponse("{\"choices\":[]}"));
             assertTrue(ex.getMessage().contains("Empty response"));
+        }
+
+        private JsonObject firstChoice(JsonObject json) {
+            return json.getAsJsonArray("choices").get(0).getAsJsonObject();
         }
     }
 
@@ -133,6 +215,82 @@ class DirectApiResponseContractTest {
             assertEquals(
                     "AI works by learning patterns from large amounts of data, then using those patterns to make predictions or generate new content.",
                     text);
+        }
+
+        // Gemini's reference page has no example for these cases, so each one is derived from the documented
+        // example above, changing only the fields the reference defines (Part.thought, FinishReason,
+        // promptFeedback.blockReason).
+        private JsonObject documented() {
+            return JsonParser.parseString(loadFixture("gemini/generatecontent-response.json")).getAsJsonObject();
+        }
+
+        private JsonArray parts(JsonObject json) {
+            return json.getAsJsonArray("candidates").get(0).getAsJsonObject()
+                    .getAsJsonObject("content").getAsJsonArray("parts");
+        }
+
+        @Test
+        void concatenatesTextPartsAndSkipsThoughts() throws Exception {
+            JsonObject json = documented();
+            JsonArray parts = parts(json);
+            String documentedText = parts.get(0).getAsJsonObject().get("text").getAsString();
+            JsonObject thought = new JsonObject();
+            thought.addProperty("text", "Planning the answer.");
+            thought.addProperty("thought", true);
+            JsonObject text = parts.get(0).getAsJsonObject();
+            parts.set(0, thought);
+            parts.add(new com.google.gson.JsonPrimitive("not a part"));
+            parts.add(text);
+            JsonObject notThought = text.deepCopy();
+            notThought.addProperty("thought", false);
+            parts.add(notThought);
+
+            assertEquals(documentedText + documentedText, DirectApiService.parseGeminiResponse(json.toString()));
+        }
+
+        @Test
+        void candidateWithoutContentNamesFinishReason() {
+            JsonObject json = documented();
+            JsonObject candidate = json.getAsJsonArray("candidates").get(0).getAsJsonObject();
+            candidate.remove("content");
+            candidate.addProperty("finishReason", "MAX_TOKENS");
+
+            AiApiException ex = assertThrows(AiApiException.class, () -> DirectApiService.parseGeminiResponse(json.toString()));
+            assertTrue(ex.getMessage().contains("finishReason: MAX_TOKENS"), ex.getMessage());
+            assertTrue(ex.getMessage().contains("token limit"), ex.getMessage());
+        }
+
+        @Test
+        void nonObjectContentNamesFinishReason() {
+            JsonObject json = documented();
+            JsonObject candidate = json.getAsJsonArray("candidates").get(0).getAsJsonObject();
+            candidate.add("content", new JsonArray());
+
+            AiApiException ex = assertThrows(AiApiException.class, () -> DirectApiService.parseGeminiResponse(json.toString()));
+            assertTrue(ex.getMessage().contains("finishReason: STOP"), ex.getMessage());
+        }
+
+        @Test
+        void onlyThoughtPartsIsAnError() {
+            JsonObject json = documented();
+            parts(json).get(0).getAsJsonObject().addProperty("thought", true);
+            json.getAsJsonArray("candidates").get(0).getAsJsonObject().addProperty("finishReason", "SAFETY");
+
+            AiApiException ex = assertThrows(AiApiException.class, () -> DirectApiService.parseGeminiResponse(json.toString()));
+            assertTrue(ex.getMessage().contains("finishReason: SAFETY"), ex.getMessage());
+        }
+
+        @Test
+        void blockedPromptNamesBlockReason() {
+            // A blocked prompt returns no candidates and sets promptFeedback.blockReason.
+            JsonObject json = documented();
+            json.remove("candidates");
+            JsonObject feedback = new JsonObject();
+            feedback.addProperty("blockReason", "SAFETY");
+            json.add("promptFeedback", feedback);
+
+            AiApiException ex = assertThrows(AiApiException.class, () -> DirectApiService.parseGeminiResponse(json.toString()));
+            assertTrue(ex.getMessage().contains("blockReason: SAFETY"), ex.getMessage());
         }
 
         @Test
