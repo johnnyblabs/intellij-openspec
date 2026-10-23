@@ -1,0 +1,33 @@
+{
+  "model": "claude-sonnet-5",
+  "id": "msg_SANITIZED",
+  "type": "message",
+  "role": "assistant",
+  "content": [
+    {
+      "type": "text",
+      "text": "# Design: Dark-Mode Toggle for Plugin Settings\n\n## Context\nThe plugin currently renders its custom UI panels (tool windows, dialogs) using fixed light-themed colors, which clash when the JetBrains IDE is running in Darcula/dark themes. Users have requested a way to align the plugin's appearance with their IDE theme preference.\n\n## Goals\n- Add a toggle in the plugin's Settings page to enable/disable dark mode for plugin-rendered UI.\n- Persist the user's preference across IDE restarts.\n- Optionally support \"Follow IDE Theme\" as an auto-detect mode.\n\n## Non-Goals\n- Changing the IDE's global theme (out of scope; IDE-level theming is handled by JetBrains' own LAF settings).\n- Custom theme creation/editing (only light/dark/auto presets supported initially).\n- Styling third-party embedded components not owned by the plugin.\n\n## Decisions\n1. **Storage**: Use `PersistentStateComponent` to store the selected mode (`LIGHT`, `DARK`, `AUTO`) in the plugin's existing settings XML.\n2. **UI Component**: Add a `JBCheckBox`/`ComboBox` in the existing `Configurable` settings panel, following IntelliJ UI guidelines (via `FormBuilder`).\n3. **Theme Application**: Introduce a `ThemeManager` service that resolves the effective theme (checking `AUTO` against `UIUtil.isUnderDarcula()`) and applies corresponding color constants/UI resources to plugin panels.\n4. **Live Update**: Subscribe to `LafManagerListener` to re-apply plugin theme when IDE theme changes (relevant for AUTO mode).\n5. **Scope of Styling**: Centralize colors in a single `PluginColors` object to minimize scattered hardcoded values.\n\n## Risks\n- **Inconsistent rendering**: Some Swing components may not respect custom color overrides, causing partial theming.\n- **Maintenance overhead**: Dual color palettes increase testing surface for UI regressions.\n- **IDE version differences**: Older IDE versions may lack certain theme-detection APIs, requiring fallback handling."
+    }
+  ],
+  "container": null,
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "stop_details": null,
+  "usage": {
+    "input_tokens": 79,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "cache_creation": {
+      "ephemeral_5m_input_tokens": 0,
+      "ephemeral_1h_input_tokens": 0
+    },
+    "output_tokens": 749,
+    "output_tokens_details": {
+      "thinking_tokens": 0
+    },
+    "service_tier": "standard",
+    "inference_geo": "global",
+    "speed": "standard"
+  },
+  "diagnostics": null
+}

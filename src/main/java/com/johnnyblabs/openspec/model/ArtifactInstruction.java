@@ -53,8 +53,18 @@ public record ArtifactInstruction(
                 }
                 sb.append("\n");
 
-                // Inline the content of completed dependency files
-                if (dep.done() && dep.path() != null && changeDir != null) {
+                // Inline the content of completed dependency files. A glob (the CLI's "specs/**/*.md") names a
+                // set of files: inline each one that exists, labeled with its path.
+                List<String> globMatches = dep.done() && changeDir != null && isGlobPath(dep.path())
+                        ? MultiFileArtifact.matchingFiles(Path.of(changeDir), dep.path()) : List.of();
+                if (!globMatches.isEmpty()) {
+                    for (String match : globMatches) {
+                        String content = readDependencyContent(changeDir, match);
+                        if (content != null) {
+                            sb.append("\n#### ").append(match).append("\n\n```\n").append(content).append("\n```\n");
+                        }
+                    }
+                } else if (dep.done() && dep.path() != null && changeDir != null) {
                     String content = readDependencyContent(changeDir, dep.path());
                     if (content != null) {
                         sb.append("\n```\n").append(content).append("\n```\n");
@@ -67,6 +77,25 @@ public record ArtifactInstruction(
             }
         }
         return sb.toString();
+    }
+
+    /**
+     * The prompt for a Direct API call: {@link #buildPrompt()}, plus, for an artifact whose output path is a glob, the
+     * multi-file output format and the context an API call can't look up (see {@link MultiFileArtifact}). Copied
+     * prompts keep using {@link #buildPrompt()}, because there an agent writes its own files.
+     */
+    public String buildDirectApiPrompt() {
+        String prompt = buildPrompt();
+        if (!isGlobPath(outputPath)) {
+            return prompt;
+        }
+        Path dir = null;
+        try {
+            dir = changeDir != null ? Path.of(changeDir) : null;
+        } catch (InvalidPathException ignored) {
+            // An unresolvable change directory only loses the context lists, never the format.
+        }
+        return prompt + MultiFileArtifact.directApiPromptSection(dir, outputPath);
     }
 
     private static String readDependencyContent(String changeDir, String relativePath) {
@@ -93,7 +122,6 @@ public record ArtifactInstruction(
 
     /** True when the path contains a glob metacharacter, so it names a set of files, not one. */
     private static boolean isGlobPath(String path) {
-        return path != null
-                && (path.indexOf('*') >= 0 || path.indexOf('?') >= 0 || path.indexOf('[') >= 0);
+        return MultiFileArtifact.isGlob(path);
     }
 }

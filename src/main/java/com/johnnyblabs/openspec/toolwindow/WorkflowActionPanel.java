@@ -713,10 +713,11 @@ public class WorkflowActionPanel extends JPanel {
                     com.intellij.openapi.application.ModalityState.stateForComponent(this);
             ApplicationManager.getApplication().executeOnPooledThread(() -> {
                 String key = AiCredentialStore.getApiKey(provider);
+                String workspaceId = settings.getAiWorkspaceId();
                 List<String> fetched = null;
                 boolean ok = false;
                 try {
-                    fetched = apiService.listModels(provider, key);
+                    fetched = apiService.listModels(provider, key, workspaceId);
                     ok = true;
                 } catch (Exception ignored) {
                     // Fetch failed \u2014 keep the static fill already shown.
@@ -1972,41 +1973,38 @@ public class WorkflowActionPanel extends JPanel {
                             // Honor cancellation: the blocking HTTP call isn't interruptible, but a
                             // cancelled run must not write the artifact or show a success notification.
                             if (indicator.isCanceled()) return;
-                            String outputPath = instruction.changeDir() + "/" + instruction.outputPath();
+                            // One writer for every Direct API path: it also handles a glob output path (specs), parsing
+                            // the response into one file per capability. It runs here, off the EDT.
+                            List<java.nio.file.Path> written;
+                            try {
+                                written = orchestration.writeArtifactResult(instruction, result);
+                            } catch (IOException ex) {
+                                ApplicationManager.getApplication().invokeLater(() ->
+                                        OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_GENERATION, "Generate",
+                                                "Failed to write artifact: " + ex.getMessage(),
+                                                com.intellij.notification.NotificationType.ERROR));
+                                return;
+                            }
                             ApplicationManager.getApplication().invokeLater(() -> {
-                                try {
-                                    com.intellij.openapi.application.WriteAction.run(() -> {
-                                        VirtualFile outFile = LocalFileSystem.getInstance().findFileByPath(outputPath);
-                                        if (outFile == null) {
-                                            VirtualFile parent = LocalFileSystem.getInstance()
-                                                    .findFileByPath(instruction.changeDir());
-                                            if (parent != null) {
-                                                outFile = parent.createChildData(this, instruction.outputPath());
-                                            }
-                                        }
-                                        if (outFile != null) {
-                                            outFile.setBinaryContent(result.getBytes(StandardCharsets.UTF_8));
-                                        }
-                                    });
-                                    VirtualFile generatedFile = LocalFileSystem.getInstance().findFileByPath(outputPath);
-                                    if (generatedFile != null) {
-                                        OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_GENERATION, "Generate",
-                                                "Generated " + artifactId, com.intellij.notification.NotificationType.INFORMATION,
-                                                OpenSpecNotifier.openFileAction(generatedFile));
-                                    } else {
-                                        OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_GENERATION, "Generate",
-                                                "Generated " + artifactId, com.intellij.notification.NotificationType.INFORMATION);
-                                    }
-                                    showGuidancePopover(chipAnchor,
-                                            "\u2713 Generated " + artifactId,
-                                            "Saved to: " + outputPath, null);
-                                    orchestration.invalidateCache(changeName);
-                                    refresh();
-                                    if (onRefreshRequested != null) onRefreshRequested.run();
-                                } catch (IOException ex) {
+                                VirtualFile generatedFile = written.isEmpty() ? null
+                                        : LocalFileSystem.getInstance().findFileByNioFile(written.getFirst());
+                                String what = written.size() > 1 ? artifactId + " (" + written.size() + " files)" : artifactId;
+                                if (generatedFile != null) {
                                     OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_GENERATION, "Generate",
-                                            "Failed to write artifact: " + ex.getMessage(), com.intellij.notification.NotificationType.ERROR);
+                                            "Generated " + what, com.intellij.notification.NotificationType.INFORMATION,
+                                            OpenSpecNotifier.openFileAction(generatedFile));
+                                } else {
+                                    OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_GENERATION, "Generate",
+                                            "Generated " + what, com.intellij.notification.NotificationType.INFORMATION);
                                 }
+                                String savedTo = written.size() == 1 ? written.getFirst().toString()
+                                        : instruction.changeDir() + "/" + instruction.outputPath();
+                                showGuidancePopover(chipAnchor,
+                                        "\u2713 Generated " + what,
+                                        "Saved to: " + savedTo, null);
+                                orchestration.invalidateCache(changeName);
+                                refresh();
+                                if (onRefreshRequested != null) onRefreshRequested.run();
                             });
                         }
                     }

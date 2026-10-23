@@ -1,0 +1,38 @@
+{
+  "model": "claude-sonnet-5-5",
+  "id": "msg_SANITIZED",
+  "type": "message",
+  "role": "assistant",
+  "content": [
+    {
+      "type": "thinking",
+      "thinking": "",
+      "signature": "SIGNATURE_SANITIZED"
+    },
+    {
+      "type": "text",
+      "text": "# design.md: Dark-Mode Toggle for Plugin Settings\n\n## Context\nThe plugin renders custom UI (a tool window and a JCEF-based panel) that currently follows the IDE's Look and Feel. Users have asked to override the theme for plugin surfaces only, for example a dark panel inside a light IDE. The setting belongs on the plugin's existing page under **Settings \u2192 Tools \u2192 MyPlugin**.\n\n## Goals\n- Add a theme preference to the settings page: **Follow IDE** (default), **Light**, **Dark**.\n- Apply changes immediately to open plugin UI, without an IDE restart.\n- Persist the preference across sessions.\n- Use platform-standard APIs (Kotlin UI DSL, `Configurable`, `PersistentStateComponent`).\n\n## Non-Goals\n- Changing the IDE theme or other plugins' UI.\n- Custom color palettes or per-project themes.\n- Supporting IDE versions older than the plugin's current `sinceBuild`.\n\n## Decisions\n1. **UI control:** Use a three-option combo box rather than a boolean checkbox. A boolean can't express \"Follow IDE,\" which should stay the default.\n2. **Settings page:** Extend the existing `BoundConfigurable` using Kotlin UI DSL v2 so apply, reset, and `isModified` are handled automatically.\n3. **Storage:** Add an application-level `PersistentStateComponent` (`PluginSettings`) holding a `ThemeMode` enum, saved in `myplugin.xml`.\n4. **Propagation:** Define a `ThemeChangedListener` message-bus topic. On apply, the settings service publishes it, and the tool window and JCEF panel subscribe.\n5. **Native components:** Use `JBColor` and `UIUtil`, resolving the effective theme as `override ?: LafManager.currentTheme`. Also listen to `LafManagerListener` so \"Follow IDE\" updates live.\n6. **JCEF content:** Inject a `data-theme` attribute and CSS variables, rather than reloading the page.\n\n## Risks\n| Risk | Mitigation |\n|---|---|\n| Mixed light and dark visuals, since Swing components inherit the IDE LaF | Limit the override to plugin-owned surfaces; document the limitation |\n| JCEF flicker or stale theme on load | Set the theme before first paint; re-send it on `onLoadEnd` |\n| Listener leaks | Tie subscriptions to a `Disposable` |\n| Contrast and accessibility regressions | Manually test both themes with high-contrast IDE themes |\n| Settings migration | Missing state defaults to Follow IDE |"
+    }
+  ],
+  "container": null,
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "stop_details": null,
+  "usage": {
+    "input_tokens": 81,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "cache_creation": {
+      "ephemeral_5m_input_tokens": 0,
+      "ephemeral_1h_input_tokens": 0
+    },
+    "output_tokens": 1135,
+    "output_tokens_details": {
+      "thinking_tokens": 235
+    },
+    "service_tier": "standard",
+    "inference_geo": "global",
+    "speed": "standard"
+  },
+  "diagnostics": null
+}

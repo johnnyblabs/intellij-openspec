@@ -1,18 +1,22 @@
 package com.johnnyblabs.openspec.ai;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.johnnyblabs.openspec.model.MultiFileArtifact;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Contract tests for the three Direct-API response parsers. Each parser is driven by the
- * corresponding provider's published example response shape (see
- * {@code src/test/resources/fixtures/ai/README.md} for the doc-sourced provenance and why these
- * are documented shapes rather than live captures). The asserted text is read from the committed
+ * Contract tests for the three Direct-API response parsers. Claude is driven by live-captured
+ * responses; OpenAI and Gemini by each provider's published example response shape (see
+ * {@code src/test/resources/fixtures/ai/README.md} for provenance). The asserted text is read from the committed
  * fixture, so these are real contract checks against the provider's stated shape — not the
  * hand-authored inline literals the repo's contract-test discipline forbids.
  */
@@ -29,17 +33,79 @@ class DirectApiResponseContractTest {
 
     @Nested
     class ClaudeParserContract {
-        @Test
-        void extractsTextFromDocumentedShape() throws Exception {
-            String text = DirectApiService.parseClaudeResponse(loadFixture("claude/messages-response.json"));
-            assertEquals("Hi! My name is Claude.", text);
+        // Both Claude fixtures are LIVE captures (see the fixtures README). The expected text is read
+        // straight out of the captured text block, so the assertion is the provider's real output.
+        private String capturedTextBlock(String fixture, int index) {
+            JsonObject block = JsonParser.parseString(loadFixture(fixture)).getAsJsonObject()
+                    .getAsJsonArray("content").get(index).getAsJsonObject();
+            assertEquals("text", block.get("type").getAsString(), "fixture block " + index + " must be text");
+            return block.get("text").getAsString();
         }
 
         @Test
-        void emptyContentThrows() {
+        void extractsTextFromLiveTextOnlyResponse() throws Exception {
+            String text = DirectApiService.parseClaudeResponse(loadFixture("claude/messages-text-only.json"));
+            assertEquals(capturedTextBlock("claude/messages-text-only.json", 0), text);
+            assertTrue(text.startsWith("# Design: Dark-Mode Toggle"));
+        }
+
+        @Test
+        void skipsLeadingThinkingBlockInLiveResponse() throws Exception {
+            String body = loadFixture("claude/messages-thinking-first.json");
+            // Guard the fixture's load-bearing shape: a thinking block first, then the text.
+            JsonArray content = JsonParser.parseString(body).getAsJsonObject().getAsJsonArray("content");
+            assertEquals("thinking", content.get(0).getAsJsonObject().get("type").getAsString());
+
+            String text = DirectApiService.parseClaudeResponse(body);
+            assertEquals(capturedTextBlock("claude/messages-thinking-first.json", 1), text);
+            assertTrue(text.startsWith("# design.md: Dark-Mode Toggle"));
+        }
+
+        @Test
+        void concatenatesEveryTextBlock() throws Exception {
+            // Derived from the live capture: the text block duplicated after itself.
+            JsonObject json = JsonParser.parseString(loadFixture("claude/messages-thinking-first.json")).getAsJsonObject();
+            JsonArray content = json.getAsJsonArray("content");
+            content.add(content.get(1).deepCopy());
+            String expected = capturedTextBlock("claude/messages-thinking-first.json", 1);
+
+            assertEquals(expected + expected, DirectApiService.parseClaudeResponse(json.toString()));
+        }
+
+        @Test
+        void noTextBlockNamesStopReason() {
+            // Derived from the live capture: drop the text block, as when the token limit is hit while
+            // thinking. Only content and stop_reason differ from the real response.
+            JsonObject json = JsonParser.parseString(loadFixture("claude/messages-thinking-first.json")).getAsJsonObject();
+            json.getAsJsonArray("content").remove(1);
+            json.addProperty("stop_reason", "max_tokens");
+
             AiApiException ex = assertThrows(AiApiException.class,
-                    () -> DirectApiService.parseClaudeResponse("{\"content\":[]}"));
-            assertTrue(ex.getMessage().contains("Empty response"));
+                    () -> DirectApiService.parseClaudeResponse(json.toString()));
+            assertTrue(ex.getMessage().contains("stop_reason: max_tokens"), ex.getMessage());
+            assertTrue(ex.getMessage().contains("token limit"), ex.getMessage());
+        }
+
+        @Test
+        void liveMultiFileSpecsResponseParsesIntoFiles() throws Exception {
+            // LIVE capture: claude-sonnet-5-5's answer to the plugin's real Direct API specs prompt (committed next to
+            // it as messages-specs-multi-file.prompt.md). Pins that a real model follows the marker format.
+            String text = DirectApiService.parseClaudeResponse(loadFixture("claude/messages-specs-multi-file.json"));
+            List<MultiFileArtifact.FileEntry> files = MultiFileArtifact.parse(text, "specs/**/*.md");
+
+            assertEquals(1, files.size(), "the demo proposal names one capability");
+            assertEquals("specs/greeting/spec.md", files.getFirst().path());
+            String spec = files.getFirst().content();
+            assertTrue(spec.startsWith("# Spec Delta\n"), spec);
+            assertFalse(spec.contains("<!-- file:"), "the marker line is not part of the file");
+            assertTrue(spec.contains("### Requirement: Farewell message") && spec.contains("#### Scenario:"), spec);
+        }
+
+        @Test
+        void emptyContentThrowsWithStopReason() {
+            AiApiException ex = assertThrows(AiApiException.class,
+                    () -> DirectApiService.parseClaudeResponse("{\"content\":[],\"stop_reason\":\"end_turn\"}"));
+            assertTrue(ex.getMessage().contains("no text (stop_reason: end_turn)"), ex.getMessage());
         }
     }
 

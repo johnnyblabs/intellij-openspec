@@ -104,6 +104,18 @@ public final class OpenSpecSettings implements PersistentStateComponent<OpenSpec
         state.aiModel = model;
     }
 
+    /**
+     * The Claude workspace ID sent as {@code anthropic-workspace-id}, or {@code ""} when unset. Required
+     * only for keys that aren't scoped to a workspace. Not a secret, so it lives here, not in PasswordSafe.
+     */
+    public String getAiWorkspaceId() {
+        return state.aiWorkspaceId == null ? "" : state.aiWorkspaceId;
+    }
+
+    public void setAiWorkspaceId(String workspaceId) {
+        state.aiWorkspaceId = workspaceId == null ? "" : workspaceId.trim();
+    }
+
     public String getPreferredDeliveryMethod() {
         return state.preferredDeliveryMethod;
     }
@@ -234,6 +246,7 @@ public final class OpenSpecSettings implements PersistentStateComponent<OpenSpec
         public boolean migratedStrictNotice = false;
         public String aiProvider = "NONE";
         public String aiModel = "";
+        public String aiWorkspaceId = "";
         public String preferredDeliveryMethod = "";
         public String preferredTool = "";
         public boolean setupCompleted = false;

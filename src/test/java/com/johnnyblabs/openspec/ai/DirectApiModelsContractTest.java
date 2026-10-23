@@ -14,8 +14,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Contract tests for the three list-models parsers, driven by captured/documented provider example
- * responses under {@code fixtures/ai/<provider>/models-list.json} (see that dir's README for
- * provenance: Gemini live-captured, OpenAI/Anthropic doc-sourced pending a keyed re-capture). Expected
+ * responses under {@code fixtures/ai/<provider>/} (see that dir's README for
+ * provenance: Gemini and Anthropic live-captured, OpenAI doc-sourced pending a keyed re-capture). Expected
  * values are read from the committed fixtures — real contract checks against the providers' stated
  * shapes, not the hand-authored inline literals the repo's contract-test discipline forbids.
  */
@@ -49,12 +49,17 @@ class DirectApiModelsContractTest {
     @Nested
     class AnthropicModels {
         @Test
-        void extractsIdNotDisplayNameFromDocumentedShape() {
-            List<String> ids = DirectApiService.parseAnthropicModels(loadFixture("claude/models-list.json"));
-            assertEquals(List.of("claude-opus-5"), ids);
+        void extractsIdNotDisplayNameFromLiveCapture() {
+            List<String> ids = DirectApiService.parseAnthropicModels(loadFixture("claude/models-list-live.json"));
+            // Full-set equality, in response order (the live list leads with the newest model).
+            assertEquals(List.of(
+                    "claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5", "claude-fable-5-1",
+                    "claude-opus-5", "claude-sonnet-5", "claude-fable-5", "claude-opus-4-8",
+                    "claude-opus-4-7", "claude-sonnet-4-6", "claude-opus-4-6", "claude-opus-4-5-20251101",
+                    "claude-haiku-4-5-20251001", "claude-sonnet-4-5-20250929"), ids);
             // Load-bearing: the parser must read `id`, never `display_name` — a wrong-field read would
-            // surface "Claude Opus 5" here yet still pass a size-only or loose-substring check.
-            assertFalse(ids.contains("Claude Opus 5"), "must read id, not display_name");
+            // surface "Claude Sonnet 5.5"-style names here yet still pass a size-only check.
+            assertFalse(ids.stream().anyMatch(id -> id.startsWith("Claude ")), "must read id, not display_name");
         }
 
         @Test

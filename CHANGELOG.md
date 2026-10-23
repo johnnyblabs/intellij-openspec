@@ -4,6 +4,13 @@
 
 ## Unreleased
 
+### Fixed
+
+- **Claude API keys that aren't scoped to a workspace now work.** Claude now requires such keys, for example a personal key that can use any of your workspaces, to name a workspace on every request, so Test and generation failed with "This API key is not scoped to a workspace". Settings → Tools → OpenSpec → Direct API has a new **Workspace ID (optional)** field, shown when Claude is the provider. Enter the ID from Console → Settings → Workspaces; it is sent with every Claude request, and Test uses the value in the field before you click Apply. If the workspace is missing or not found, the plugin now says what to do instead of showing Claude's raw error. Claude requests now authenticate with `Authorization: Bearer`, the header Anthropic recommends.
+- **Generation no longer fails on Claude models that think by default,** such as Claude Sonnet 5.5. Their responses start with a hidden thinking block, which the plugin read as the answer. It now uses the answer text and skips thinking. If a response has no answer text, for example because the token limit was reached while thinking, the error says why.
+- **Direct API can generate specs.** Generating the `specs` artifact through Direct API failed for every provider with "Invalid file name: 'specs/**/*.md'", after the provider had already answered. Specs are now written as one file per capability (`specs/<capability-path>/spec.md`), and if any file path in the response is invalid, nothing is written. The prompt now gives the model the existing capabilities and the main specs the proposal names, so changes to existing capabilities copy the right requirements. Prompts for later artifacts, such as `tasks`, now include the spec files instead of only naming them.
+- **Manage AI Tools updates after you add a tool.** Adding a tool with the CLI wrote its files, but the dialog kept showing it as available with a stuck button and logged an IDE error. The list now reloads when the tool is added, and any failure brings the button back.
+
 ## v0.14.0
 
 ### Added

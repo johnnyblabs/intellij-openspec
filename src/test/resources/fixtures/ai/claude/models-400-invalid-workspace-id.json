@@ -1,0 +1,8 @@
+{
+  "type": "error",
+  "error": {
+    "type": "invalid_request_error",
+    "message": "anthropic-workspace-id header must be a valid workspace ID."
+  },
+  "request_id": "req_SANITIZED"
+}

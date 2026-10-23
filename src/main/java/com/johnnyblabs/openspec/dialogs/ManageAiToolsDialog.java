@@ -1,12 +1,19 @@
 package com.johnnyblabs.openspec.dialogs;
 
 import com.intellij.icons.AllIcons;
+import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.application.ModalityState;
+import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.DialogWrapper;
+import com.intellij.openapi.util.Condition;
+import com.intellij.openapi.vfs.LocalFileSystem;
+import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.vfs.VirtualFileManager;
+import com.intellij.openapi.vfs.newvfs.RefreshQueue;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.SearchTextField;
 import com.intellij.ui.components.JBLabel;
@@ -20,6 +27,7 @@ import com.johnnyblabs.openspec.util.CliRunner;
 import com.johnnyblabs.openspec.util.OpenSpecNotifier;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.VisibleForTesting;
 
 import javax.swing.*;
 import java.awt.*;
@@ -32,6 +40,11 @@ public class ManageAiToolsDialog extends DialogWrapper {
     private final SearchTextField searchField;
     private final JPanel toolListPanel;
     private List<ToolInfo> allTools;
+    /**
+     * The dialog's modality, captured once after {@code init()}. Background results posted without it are held by
+     * the platform until this modal dialog closes (see {@code BulkArchiveDialog}).
+     */
+    private ModalityState dialogModality;
 
     public ManageAiToolsDialog(Project project) {
         super(project, false);
@@ -51,6 +64,9 @@ public class ManageAiToolsDialog extends DialogWrapper {
         toolListPanel.setLayout(new BoxLayout(toolListPanel, BoxLayout.Y_AXIS));
 
         init();
+        // A headless peer has no content panel; fall back rather than fail (that path is never modal anyway).
+        JComponent content = getContentPanel();
+        dialogModality = content != null ? ModalityState.stateForComponent(content) : ModalityState.defaultModalityState();
         loadTools();
     }
 
@@ -275,34 +291,64 @@ public class ManageAiToolsDialog extends DialogWrapper {
         ProgressManager.getInstance().run(new Task.Backgroundable(project, title, false) {
             @Override
             public void run(@NotNull ProgressIndicator indicator) {
+                Condition<?> expired = ignored -> isDisposed() || project.isDisposed();
                 try {
                     String[] args = command.split("\\s+");
                     CliRunner.CliResult result = CliRunner.run(project, args);
                     if (result.isSuccess()) {
-                        // Synchronous VFS refresh
-                        VirtualFileManager.getInstance().syncRefresh();
-                        SwingUtilities.invokeLater(() -> {
+                        // The CLI wrote files outside the VFS. A synchronous refresh is illegal here (off the EDT),
+                        // so refresh the project directory asynchronously and reload the list once it finishes.
+                        // loadTools() rebuilds every row, which also replaces the "..." button.
+                        String basePath = project.getBasePath();
+                        VirtualFile projectDir = basePath != null
+                                ? LocalFileSystem.getInstance().findFileByPath(basePath) : null;
+                        refreshThenPost(projectDir, dialogModality, expired, () -> {
                             loadTools();
                             OpenSpecNotifier.info(project, "AI Tools", title + " — done");
                         });
                     } else {
-                        SwingUtilities.invokeLater(() -> {
+                        ApplicationManager.getApplication().invokeLater(() -> {
                             OpenSpecNotifier.warn(project, "AI Tools",
                                     title + " failed: " + result.stderr().trim());
                             sourceButton.setEnabled(true);
                             sourceButton.setText("Retry");
-                        });
+                        }, dialogModality, expired);
                     }
-                } catch (CliRunner.CliException ex) {
-                    SwingUtilities.invokeLater(() -> {
-                        OpenSpecNotifier.error(project, "AI Tools",
-                                title + " failed: " + ex.getMessage());
+                } catch (ProcessCanceledException ex) {
+                    // Cancellation must propagate, but the button still comes back.
+                    ApplicationManager.getApplication().invokeLater(() -> {
                         sourceButton.setEnabled(true);
                         sourceButton.setText("Retry");
-                    });
+                    }, dialogModality, expired);
+                    throw ex;
+                } catch (Exception ex) {
+                    // Any failure, not only a CLI error, must restore the button and tell the user.
+                    String reason = ex instanceof CliRunner.CliException ? ex.getMessage() : ex.toString();
+                    ApplicationManager.getApplication().invokeLater(() -> {
+                        OpenSpecNotifier.error(project, "AI Tools", title + " failed: " + reason);
+                        sourceButton.setEnabled(true);
+                        sourceButton.setText("Retry");
+                    }, dialogModality, expired);
                 }
             }
         });
+    }
+
+    /**
+     * Refreshes {@code dir} asynchronously, then runs {@code post} on the EDT under {@code modality}. Safe to call from
+     * a background thread (never while holding a read action). The modality must be passed to the refresh itself:
+     * {@code LocalFileSystem.refreshFiles} uses the calling thread's default modality, which on a
+     * {@code Task.Backgroundable} is non-modal, so the refresh, and anything chained after it, would be held until the
+     * dialog closes. With no directory, {@code post} is scheduled directly.
+     */
+    @VisibleForTesting
+    static void refreshThenPost(@Nullable VirtualFile dir, ModalityState modality, Condition<?> expired, Runnable post) {
+        Runnable onEdt = () -> ApplicationManager.getApplication().invokeLater(post, modality, expired);
+        if (dir == null) {
+            onEdt.run();
+            return;
+        }
+        RefreshQueue.getInstance().refresh(true, true, onEdt, modality, List.of(dir));
     }
 
     private void addToolBuiltIn(ToolInfo tool) {
@@ -328,6 +374,8 @@ public class ManageAiToolsDialog extends DialogWrapper {
                     com.intellij.openapi.vfs.VfsUtil.saveText(dir.createChildData(this, ".openspec-target"), entry.id() + "\n");
                 }
             });
+            // syncRefresh() is legal only because this runs on the EDT (a button handler); never call it from runCliAction's
+            // background task.
             VirtualFileManager.getInstance().syncRefresh();
             setPreferredTool(tool.name());
             loadTools();
