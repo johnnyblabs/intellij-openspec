@@ -387,6 +387,7 @@ Fork, Validate and Open Templates act on the schema selected in the list, and st
 | **Provider** | `None`, `Claude`, `OpenAI`, or `Gemini`. |
 | **API key** | Stored securely in the OS keychain — never in project files. |
 | **Model** | Model to use (pre-populated per provider, editable). |
+| **Workspace ID (optional)** | Claude only. Needed when your Claude API key isn't scoped to a single workspace; see [Claude Workspace ID](#direct-api-providers). |
 | **Test** | Verify your API key and connection. |
 
 > An API key is only needed for Direct API delivery. Clipboard and Editor Tab modes work without any API key.
@@ -414,6 +415,7 @@ The plugin works without the CLI, but some features (schema management, CLI-enha
 ### API test fails
 
 - Verify your API key is correct (Claude: `sk-ant-`, OpenAI: `sk-`, Gemini: Google API key)
+- Claude says the key isn't scoped to a workspace, or the workspace wasn't found: enter or correct the **Workspace ID** (starts with `wrkspc_`, from **Console → Settings → Workspaces**)
 - Check that your network allows outbound HTTPS to the provider's API endpoint
 
 ### Tree doesn't auto-refresh
