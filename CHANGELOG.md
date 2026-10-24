@@ -8,6 +8,10 @@
 
 - **OpenSpec CLI 1.15.x is supported, including its standalone binary.** OpenSpec 1.15 can be installed as a single program that doesn't need Node.js; the plugin reads its version the same way as the npm install. Validation results and everything else the plugin reads are unchanged from 1.14.
 
+### Fixed
+
+- **The OpenSpec tool window keeps your place when it refreshes.** Editing files, ticking a task, a git checkout or an agent writing files in the terminal used to refresh the tree, clear your selection, leave the preview pane blank, and collapse a change whose task count had just moved. The selected node and expanded changes now stay as they were, and the preview shows the refreshed content.
+
 ## v0.14.1
 
 ### Fixed

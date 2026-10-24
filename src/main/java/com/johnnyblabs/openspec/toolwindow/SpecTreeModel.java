@@ -1,5 +1,6 @@
 package com.johnnyblabs.openspec.toolwindow;
 
+import com.intellij.ide.util.treeView.PathElementIdProvider;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.johnnyblabs.openspec.model.*;
@@ -331,7 +332,8 @@ public class SpecTreeModel {
     }
 
     public record TreeNodeData(String label, TreeNodeType type, String filePath, String changeName, String artifactId,
-                               String tooltip, String searchText, ChangeLabelParts changeParts) {
+                               String tooltip, String searchText, ChangeLabelParts changeParts)
+            implements PathElementIdProvider {
         public TreeNodeData(String label, TreeNodeType type, String filePath, String changeName, String artifactId, String tooltip, String searchText) {
             this(label, type, filePath, changeName, artifactId, tooltip, searchText, null);
         }
@@ -351,6 +353,24 @@ public class SpecTreeModel {
         @Override
         public String toString() {
             return label;
+        }
+
+        /**
+         * What the node is, for matching it across a tree rebuild ({@code TreeState}). Never the label or the raw
+         * type: a change's label carries its task count and its type moves through the rollup states, and an
+         * artifact's label gains {@code (needs: …)} and its type moves from missing to ready to done.
+         */
+        @Override
+        public @org.jetbrains.annotations.NotNull String getPathElementId() {
+            if (type == TreeNodeType.CHANGES) return "changes";
+            if (type.isChange()) return "change:" + changeName;
+            return switch (type) {
+                case DELTA_SPEC -> "delta:" + label;
+                case HINT -> "hint";
+                // CLI-built artifact nodes carry their artifact id; the CLI-absent fallback nodes have only the
+                // file name, which is stable within that mode.
+                default -> "artifact:" + (artifactId != null ? artifactId : label);
+            };
         }
 
         /**
