@@ -43,7 +43,7 @@ This guide walks you through setting up the OpenSpec IntelliJ plugin and complet
 | **IntelliJ IDEA 2024.2+** | Community or Ultimate edition |
 | **OpenSpec plugin** | Install from JetBrains Marketplace or build from source |
 | **GitHub Copilot** | Copilot extension installed and signed in inside IntelliJ |
-| **OpenSpec CLI** | `npm install -g @fission-ai/openspec` — the plugin auto-detects it |
+| **OpenSpec CLI** | OpenSpec's standalone installer (no Node.js needed), `npm install -g @fission-ai/openspec@latest`, or `brew install openspec` ([installation page](https://openspec.dev/docs/installation)). The plugin auto-detects it |
 | **Java 21+** | Required to build the plugin from source (not needed if installed from Marketplace) |
 
 After installing both the OpenSpec plugin and Copilot, restart IntelliJ. You should see an **OpenSpec** tool window icon on the right sidebar and an **OpenSpec** menu in the top menu bar.
@@ -66,7 +66,7 @@ The settings panel has sections stacked vertically: **CLI**, **General**, **Conf
 | **Detect** | Click to auto-detect the CLI. The plugin searches your PATH, login shell, and common locations (`/opt/homebrew/bin`, `/usr/local/bin`, Homebrew on Linux, and `~/.local/bin` for OpenSpec's standalone binary). On macOS, it resolves your login shell's PATH since GUI apps don't inherit terminal environment variables. |
 | **Status indicator** | Shows green "OpenSpec CLI v*X.Y.Z*" when found, or orange "OpenSpec CLI not found" when missing. |
 
-> **Tip:** If the CLI isn't detected, make sure you've installed it globally with `npm install -g @fission-ai/openspec`, then click **Detect** again.
+> **Tip:** If the CLI isn't detected, check that `openspec --version` works in a terminal, then click **Detect** again. For the standalone installer on macOS or Linux, add `~/.local/bin` to your PATH in `~/.zprofile` (or `~/.profile`), not only `~/.zshrc`, or set the CLI path to `~/.local/bin/openspec`.
 
 ### General
 

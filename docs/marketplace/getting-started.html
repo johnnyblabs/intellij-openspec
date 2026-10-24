@@ -10,9 +10,13 @@
   what you want to build and why.</li>
   </ol>
 
-  <p><b>Optional:</b> Install the <a href="https://github.com/fission-ai/openspec">OpenSpec CLI</a> for additional skill generation and advanced
-  workflows:</p>
-  <pre><code>npm install -g @fission-ai/openspec</code></pre>
+  <p><b>Optional:</b> Install the <a href="https://openspec.dev/docs/installation">OpenSpec CLI</a> for additional skill generation and advanced
+  workflows. Its standalone installer needs no Node.js:</p>
+  <pre><code># macOS and Linux
+curl -fsSL https://raw.githubusercontent.com/Fission-AI/OpenSpec/main/scripts/binary/install.sh | sh
+# Windows (PowerShell)
+irm https://raw.githubusercontent.com/Fission-AI/OpenSpec/main/scripts/binary/install.ps1 | iex</code></pre>
+  <p>Or use <code>npm install -g @fission-ai/openspec@latest</code> (Node.js 20.19+) or <code>brew install openspec</code>.</p>
 
   <h3>How It Works</h3>
   <p>OpenSpec follows a spec-driven workflow with four phases:</p>

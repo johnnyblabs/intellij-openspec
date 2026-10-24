@@ -1,5 +1,6 @@
 package com.johnnyblabs.openspec.util;
 
+import com.intellij.ide.BrowserUtil;
 import com.intellij.notification.Notification;
 import com.intellij.notification.NotificationAction;
 import com.intellij.notification.NotificationGroupManager;
@@ -8,6 +9,7 @@ import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.fileEditor.OpenFileDescriptor;
 import com.intellij.openapi.options.ShowSettingsUtil;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -54,10 +56,13 @@ public final class OpenSpecNotifier {
     // --- Specialized notifications ---
 
     public static void cliMissing(@NotNull Project project) {
-        notify(project, GROUP_SYSTEM, "CLI Detection",
-                "OpenSpec CLI not found. Built-in features will be used. Install with: npm i -g @fission-ai/openspec",
+        notify(project, GROUP_SYSTEM, "CLI Detection", cliMissingContent(SystemInfo.isWindows),
                 NotificationType.WARNING,
-                openSettingsAction());
+                installInstructionsAction(), openSettingsAction());
+    }
+
+    static String cliMissingContent(boolean isWindows) {
+        return "OpenSpec CLI not found. Built-in features will be used. " + CliInstallHints.notificationText(isWindows);
     }
 
     /**
@@ -111,6 +116,17 @@ public final class OpenSpecNotifier {
                 if (project != null) {
                     new OpenFileDescriptor(project, file).navigate(true);
                 }
+                notification.expire();
+            }
+        };
+    }
+
+    /** Opens upstream's install instructions in the browser; offered wherever the plugin reports a missing CLI. */
+    public static NotificationAction installInstructionsAction() {
+        return new NotificationAction(CliInstallHints.INSTALL_DOCS_LABEL) {
+            @Override
+            public void actionPerformed(@NotNull AnActionEvent e, @NotNull Notification notification) {
+                BrowserUtil.browse(CliInstallHints.INSTALL_DOCS_URL);
                 notification.expire();
             }
         };

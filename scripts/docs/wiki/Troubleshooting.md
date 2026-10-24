@@ -21,15 +21,26 @@ npm root -g
 
 ### CLI Not Installed
 ```bash
-npm install -g @fission-ai/openspec
+# Standalone installer (no Node.js needed), macOS and Linux:
+curl -fsSL https://raw.githubusercontent.com/Fission-AI/OpenSpec/main/scripts/binary/install.sh | sh
+# Windows (PowerShell):
+irm https://raw.githubusercontent.com/Fission-AI/OpenSpec/main/scripts/binary/install.ps1 | iex
+# Or with a package manager:
+npm install -g @fission-ai/openspec@latest   # needs Node.js 20.19+
+brew install openspec                        # macOS and Linux
 ```
+
+**Keep one copy of the CLI.** If you install it a second way, for example the standalone installer after an earlier npm install, your terminal runs whichever comes first in PATH, while the plugin uses the first copy it finds. Upgrade the copy you have the way you installed it: re-run the installer (or `openspec install`), `npm install -g @fission-ai/openspec@latest`, or `brew upgrade openspec`. To make the plugin use a specific copy, set **Settings → Tools → OpenSpec → CLI Path**. The plugin's **Update** action runs `openspec update`, which refreshes your project's instruction files; it doesn't upgrade the CLI.
 
 ### Detection Cascade
 The plugin tries these locations in order:
 1. Settings-configured path
 2. `openspec` on PATH
 3. Login shell resolution (`/bin/zsh -l -c "which openspec"`)
-4. Common paths: `/usr/local/bin/openspec`, `~/.npm-global/bin/openspec`
+4. Common paths, where a file exists:
+   - `/opt/homebrew/bin`, `/usr/local/bin`, `/usr/bin` and `/home/linuxbrew/.linuxbrew/bin`;
+   - `$OPENSPEC_INSTALL_DIR`, when set;
+   - `~/.local/bin`, or the Windows equivalents.
 
 ## Tree Shows Stale Data
 

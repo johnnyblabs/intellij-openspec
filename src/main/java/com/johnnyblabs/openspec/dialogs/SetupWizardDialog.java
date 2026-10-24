@@ -5,7 +5,10 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.ComboBox;
 import com.intellij.openapi.ui.DialogWrapper;
 import com.intellij.ui.JBColor;
+import com.intellij.ide.BrowserUtil;
+import com.intellij.ui.HyperlinkLabel;
 import com.intellij.ui.components.JBLabel;
+import com.johnnyblabs.openspec.util.CliInstallHints;
 import com.intellij.ui.components.JBPasswordField;
 import com.intellij.ui.components.JBTextField;
 import com.intellij.util.ui.JBUI;
@@ -158,23 +161,33 @@ public class SetupWizardDialog extends DialogWrapper {
         gbc.gridx = 0;
         gbc.gridy = 3;
         gbc.gridwidth = 2;
-        String hintHtml;
-        if (com.intellij.openapi.util.SystemInfo.isWindows) {
-            hintHtml = "<html><body style='width:" + JBUI.scale(400) + "px;color:gray'>" +
-                    "The CLI is optional. Built-in features work without it. " +
-                    "Install with: <code>npm i -g @fission-ai/openspec</code>. " +
-                    "If auto-detect doesn't pick it up, set the manual path to " +
-                    "<code>%APPDATA%\\npm\\openspec.cmd</code> (the <code>.cmd</code> extension is required on Windows)." +
-                    "</body></html>";
-        } else {
-            hintHtml = "<html><body style='width:" + JBUI.scale(400) + "px;color:gray'>" +
-                    "The CLI is optional. Built-in features work without it. " +
-                    "Install with: <code>npm i -g @fission-ai/openspec</code></body></html>";
-        }
+        String hintHtml = "<html><body style='width:" + JBUI.scale(400) + "px;color:gray'>"
+                + cliHintBody(com.intellij.openapi.util.SystemInfo.isWindows) + "</body></html>";
         JBLabel hint = new JBLabel(hintHtml);
         panel.add(hint, gbc);
 
+        gbc.gridy = 4;
+        panel.add(installInstructionsLink(), gbc);
+
         return panel;
+    }
+
+    /** The CLI step's hint, without its HTML wrapper; the install wording comes from {@link CliInstallHints}. */
+    static String cliHintBody(boolean isWindows) {
+        String body = "The CLI is optional. Built-in features work without it. " + CliInstallHints.html(isWindows);
+        if (isWindows) {
+            body += " If auto-detect doesn't pick it up, set the manual path to "
+                    + "<code>" + CliInstallHints.standaloneLocation(true) + "</code>, or for npm "
+                    + "<code>%APPDATA%\\npm\\openspec.cmd</code> (the <code>.cmd</code> extension is required on Windows).";
+        }
+        return body;
+    }
+
+    /** A link that opens upstream's installation page. */
+    static HyperlinkLabel installInstructionsLink() {
+        HyperlinkLabel link = new HyperlinkLabel(CliInstallHints.INSTALL_DOCS_LABEL);
+        link.addHyperlinkListener(e -> BrowserUtil.browse(CliInstallHints.INSTALL_DOCS_URL));
+        return link;
     }
 
     private JPanel createAiStep() {

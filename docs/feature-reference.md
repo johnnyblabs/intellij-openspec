@@ -403,11 +403,32 @@ Fork, Validate and Open Templates act on the schema selected in the list, and st
 
 The plugin works without the CLI, but some features (schema management, CLI-enhanced validation, Update action) require it.
 
-1. Install: `npm i -g @fission-ai/openspec`
+1. Install it with OpenSpec's standalone installer, which needs no Node.js (`curl -fsSL https://raw.githubusercontent.com/Fission-AI/OpenSpec/main/scripts/binary/install.sh | sh` on macOS and Linux, `irm https://raw.githubusercontent.com/Fission-AI/OpenSpec/main/scripts/binary/install.ps1 | iex` on Windows), or with `npm install -g @fission-ai/openspec@latest` or `brew install openspec`. See [OpenSpec's installation page](https://openspec.dev/docs/installation)
 2. If installed but not detected: **Settings > Tools > OpenSpec > Detect**, or set the path manually
 3. On macOS, GUI apps don't inherit your terminal's PATH — the plugin tries your login shell, Homebrew paths (including Homebrew on Linux), `/usr/local/bin`, and `~/.local/bin` (where OpenSpec's standalone installer puts it) automatically. On Windows it also checks `%LOCALAPPDATA%\Programs\openspec\openspec.exe`. If you installed the standalone binary with `OPENSPEC_INSTALL_DIR`, the plugin checks that folder only when the IDE's environment carries the variable; otherwise set the path manually
 4. Just installed or upgraded the CLI? Switch away from the IDE and back (after 30 seconds) and the status updates on its own
 5. If the tool window shows "CLI: detecting…", detection is still running; it updates on its own when it finishes
+
+### Which OpenSpec CLI the plugin uses
+
+OpenSpec can be installed three ways, and each puts the `openspec` program in a different place:
+
+| Route | Where it installs |
+|---|---|
+| Standalone installer (`install.sh`, `install.ps1` or `openspec install`) | `~/.local/bin/openspec`; on Windows `%LOCALAPPDATA%\Programs\openspec\openspec.exe`. `OPENSPEC_INSTALL_DIR` changes the folder |
+| npm (`npm install -g @fission-ai/openspec@latest`) | npm's global folder, e.g. `/opt/homebrew/bin` with Homebrew's Node, `/usr/local/bin`, or `%APPDATA%\npm` on Windows |
+| Homebrew (`brew install openspec`) | `/opt/homebrew/bin` (Apple Silicon), `/usr/local/bin` (Intel Macs) or `/home/linuxbrew/.linuxbrew/bin` (Linux) |
+
+The plugin uses the first copy it finds, in this order:
+1. the CLI path in Settings;
+2. `openspec` on the IDE's PATH;
+3. your login shell's `which openspec`;
+4. the Homebrew, system and npm locations;
+5. the standalone locations.
+
+If you have more than one copy, the terminal and the IDE can run different versions. Keep one, and upgrade it the way you installed it: re-run the installer (or `openspec install`), `npm install -g @fission-ai/openspec@latest`, or `brew upgrade openspec`. To pin a copy, set its full path in **Settings > Tools > OpenSpec > CLI path**.
+
+The **Update** action runs `openspec update`. That refreshes your project's generated instruction files (skills and commands) to match the CLI you have; it doesn't upgrade the CLI itself.
 
 ### "Fast-Forward", "Continue", or other actions are grayed out
 
