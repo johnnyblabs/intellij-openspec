@@ -1,7 +1,7 @@
 ## 1. Candidate lists
 
-- [x] 1.1 Replace `COMMON_PATHS` with `unixCommonPaths(envLookup, home)`, plus a no-argument form that passes `System::getenv` and `user.home`. It returns the three existing paths in order, then `OPENSPEC_INSTALL_DIR/<OPENSPEC_INSTALL_NAME or openspec>` when the dir is non-empty, then `<home>/.local/bin/openspec` when home is non-blank. Verify in `CliDetectionServiceTest`:
-  - with no overrides, the list is the three existing paths, then `.local/bin`;
+- [x] 1.1 Replace `COMMON_PATHS` with `unixCommonPaths(envLookup, home)`, plus a no-argument form that passes `System::getenv` and `user.home`. It returns the three existing paths in order, then `/home/linuxbrew/.linuxbrew/bin/openspec` (the Homebrew formula on Linux), then `OPENSPEC_INSTALL_DIR/<OPENSPEC_INSTALL_NAME or openspec>` when the dir is non-empty, then `<home>/.local/bin/openspec` when home is non-blank. Verify in `CliDetectionServiceTest`:
+  - with no overrides, the list is the three existing paths, then Linux Homebrew, then `.local/bin`;
   - a dir override comes before `.local/bin`, with the default name;
   - dir plus name overrides combine;
   - an empty dir, or a name with no dir, adds nothing;

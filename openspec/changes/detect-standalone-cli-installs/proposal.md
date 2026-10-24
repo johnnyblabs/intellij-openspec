@@ -4,7 +4,7 @@
 
 OpenSpec CLI 1.15.0 ships a standalone binary that needs no Node.js. Its installers put it where the plugin never looks, so a user who installs it the recommended way sees "OpenSpec CLI not found". Tracked by the linked tracker entry.
 
-- **macOS and Linux:** `install.sh` writes `~/.local/bin/openspec` and leaves PATH alone; it only prints "Add `<dir>` to your PATH". A GUI-launched IDE doesn't inherit the terminal PATH. The login-shell lookup (`$SHELL -lc 'which openspec'`) doesn't read `.zshrc`, which is where macOS users usually add that line. None of the fixed fallbacks (`/opt/homebrew/bin`, `/usr/local/bin`, `/usr/bin`) is `~/.local/bin`.
+- **macOS and Linux:** `install.sh` writes `~/.local/bin/openspec` and leaves PATH alone; it only prints "Add `<dir>` to your PATH". A GUI-launched IDE doesn't inherit the terminal PATH. The login-shell lookup (`$SHELL -lc 'which openspec'`) doesn't read `.zshrc`, which is where macOS users usually add that line. None of the fixed fallbacks (`/opt/homebrew/bin`, `/usr/local/bin`, `/usr/bin`) is `~/.local/bin`, and none is the Homebrew formula's Linux prefix.
 - **Windows:** `install.ps1` writes `%LOCALAPPDATA%\Programs\openspec\openspec.exe` and adds that directory to the user PATH. Only processes started afterwards see that PATH, so an IDE that was already running misses it. The Windows fallbacks cover only the npm and winget shims.
 - **Overrides:** both installers honour `OPENSPEC_INSTALL_DIR` and `OPENSPEC_INSTALL_NAME`.
 
@@ -13,6 +13,7 @@ OpenSpec CLI 1.15.0 ships a standalone binary that needs no Node.js. Its install
 - **Probe the standalone install locations.** These are added after the existing fixed locations, so a current install is still found first and in the same order:
   - Unix: `~/.local/bin/openspec`.
   - Windows: `%LOCALAPPDATA%\Programs\openspec\openspec.exe`.
+- **Probe Homebrew on Linux.** OpenSpec's official Homebrew formula installs to `$(brew --prefix)/bin`. That is already covered on macOS (`/opt/homebrew/bin`, `/usr/local/bin`), but not on Linux, where it is `/home/linuxbrew/.linuxbrew/bin/openspec`. This location joins the fixed list right after `/usr/bin`.
 - **Honour the installer overrides** when the IDE's environment carries them:
   - `OPENSPEC_INSTALL_DIR` combined with `OPENSPEC_INSTALL_NAME`, which defaults to `openspec` on Unix and `openspec.exe` on Windows.
   - This candidate is probed before the default standalone location.

@@ -2,7 +2,7 @@
 
 ### Requirement: Cross-platform CLI detection
 
-`CliDetectionService` SHALL detect the OpenSpec CLI on Windows under the same scenarios that succeed on macOS and Linux. On Windows the service SHALL extend bare candidate paths through `.cmd`, `.bat`, and `.exe` suffixes when direct invocation fails, SHALL resolve the executable via `where.exe` instead of a POSIX login shell, and SHALL probe Windows-specific install locations derived from `%APPDATA%` and `%LOCALAPPDATA%`. On every OS, after the existing fixed install locations, the service SHALL probe the location the upstream standalone-binary installer writes to: the installer's `OPENSPEC_INSTALL_DIR` and `OPENSPEC_INSTALL_NAME` overrides when the IDE's environment carries them, then the installer's default location. A fixed install-location candidate SHALL be probed only when a regular, executable file exists at it (on Windows, a regular file). The settings path, the bare name and the shell-resolved path SHALL be probed as before, without that check. The plugin SHALL NOT run an installer, edit PATH, or remove another install.
+`CliDetectionService` SHALL detect the OpenSpec CLI on Windows under the same scenarios that succeed on macOS and Linux. On Windows the service SHALL extend bare candidate paths through `.cmd`, `.bat`, and `.exe` suffixes when direct invocation fails, SHALL resolve the executable via `where.exe` instead of a POSIX login shell, and SHALL probe Windows-specific install locations derived from `%APPDATA%` and `%LOCALAPPDATA%`. On every OS, after the existing fixed install locations, the service SHALL probe Homebrew's Linux prefix (`/home/linuxbrew/.linuxbrew/bin/openspec`), then the location the upstream standalone-binary installer writes to: the installer's `OPENSPEC_INSTALL_DIR` and `OPENSPEC_INSTALL_NAME` overrides when the IDE's environment carries them, then the installer's default location. A fixed install-location candidate SHALL be probed only when a regular, executable file exists at it (on Windows, a regular file). The settings path, the bare name and the shell-resolved path SHALL be probed as before, without that check. The plugin SHALL NOT run an installer, edit PATH, or remove another install.
 
 #### Scenario: Windows bare-name resolution falls back through executable suffixes
 - **WHEN** the host OS is Windows and `tryPath("openspec")` is called and bare invocation fails
@@ -30,7 +30,7 @@
 
 #### Scenario: macOS and Linux behavior unchanged
 - **WHEN** the host OS is macOS or Linux
-- **THEN** detection SHALL execute the existing branches in their existing order (bare name → `/bin/zsh -lc which openspec` → `/opt/homebrew/bin`, `/usr/local/bin`, `/usr/bin`), followed only by the standalone-binary candidates, without invoking any Windows-specific code path
+- **THEN** detection SHALL execute the existing branches in their existing order (bare name → `/bin/zsh -lc which openspec` → `/opt/homebrew/bin`, `/usr/local/bin`, `/usr/bin`), followed only by Homebrew on Linux (`/home/linuxbrew/.linuxbrew/bin`) and then the standalone-binary candidates, without invoking any Windows-specific code path
 
 #### Scenario: Windows detection completes within the existing timeout
 - **WHEN** detection runs on Windows and traverses the suffix-fallback, `where.exe`, and common-paths branches
@@ -43,6 +43,10 @@
 #### Scenario: Standalone binary in its default Windows location
 - **WHEN** the host OS is Windows, the standalone binary is at `%LOCALAPPDATA%\Programs\openspec\openspec.exe`, and no earlier branch finds the CLI
 - **THEN** detection SHALL find the CLI at that path, after the npm and winget candidates and skipping it when `%LOCALAPPDATA%` is unset
+
+#### Scenario: Homebrew formula on Linux
+- **WHEN** the host OS is Linux, OpenSpec was installed with the Homebrew formula at `/home/linuxbrew/.linuxbrew/bin/openspec`, and no earlier branch finds the CLI
+- **THEN** detection SHALL find the CLI there, before the standalone-binary candidates
 
 #### Scenario: Installer overrides in the IDE's environment
 - **WHEN** the IDE's environment sets `OPENSPEC_INSTALL_DIR`, optionally with `OPENSPEC_INSTALL_NAME`

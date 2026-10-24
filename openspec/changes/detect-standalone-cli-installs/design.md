@@ -34,7 +34,7 @@ The standalone binary prints a bare `1.15.0`. The captured fixture is `fixtures/
 ## Decisions
 
 1. **Append the standalone candidates; don't reorder.**
-   - **Unix:** the list is `/opt/homebrew/bin/openspec`, `/usr/local/bin/openspec`, `/usr/bin/openspec`, then the override candidate, then `<home>/.local/bin/openspec`.
+   - **Unix:** the list is `/opt/homebrew/bin/openspec`, `/usr/local/bin/openspec`, `/usr/bin/openspec` and `/home/linuxbrew/.linuxbrew/bin/openspec`, then the override candidate, then `<home>/.local/bin/openspec`. The Linux Homebrew prefix belongs with the existing install routes: the official formula installs to `$(brew --prefix)/bin`, which the macOS prefixes already cover.
    - **Windows:** the list is the three npm and winget shims, then the override candidate, then `%LOCALAPPDATA%\Programs\openspec\openspec.exe`.
    - **Why:** a user with both an npm copy and a standalone copy keeps getting the one detection finds today. Detection also stays compatible for everyone already detected.
    - *Alternative:* put the standalone binary first because it's newer. Rejected: that would silently switch an existing user's CLI.

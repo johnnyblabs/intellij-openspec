@@ -35,13 +35,15 @@ public final class CliDetectionService {
     private static final Duration DETECTION_STALENESS = Duration.ofSeconds(30);
 
     /**
-     * Fixed install locations for openspec on macOS/Linux that need no environment: Homebrew, then the system paths.
+     * Fixed install locations for openspec on macOS/Linux that need no environment: Homebrew, the system paths, then
+     * Homebrew on Linux (whose formula installs to {@code $(brew --prefix)/bin}).
      * {@link #unixCommonPaths} appends the standalone-binary installer's locations after these.
      */
     private static final List<String> UNIX_FIXED_PATHS = List.of(
             "/opt/homebrew/bin/openspec",
             "/usr/local/bin/openspec",
-            "/usr/bin/openspec"
+            "/usr/bin/openspec",
+            "/home/linuxbrew/.linuxbrew/bin/openspec"
     );
 
     /** The standalone-binary installers' overrides (upstream {@code install.sh} / {@code install.ps1}). */

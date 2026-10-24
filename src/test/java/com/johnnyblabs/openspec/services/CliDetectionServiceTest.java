@@ -477,7 +477,8 @@ class CliDetectionServiceTest {
     // ---------- 1.15 standalone binary: where its installers put it ----------
 
     private static final List<String> UNIX_FIXED = List.of(
-            "/opt/homebrew/bin/openspec", "/usr/local/bin/openspec", "/usr/bin/openspec");
+            "/opt/homebrew/bin/openspec", "/usr/local/bin/openspec", "/usr/bin/openspec",
+            "/home/linuxbrew/.linuxbrew/bin/openspec");
 
     @Test
     void unixCommonPaths_noOverrides_endWithLocalBin() {
@@ -491,21 +492,21 @@ class CliDetectionServiceTest {
     void unixCommonPaths_installDirOverride_comesBeforeLocalBin() {
         Map<String, String> env = Map.of("OPENSPEC_INSTALL_DIR", "/opt/tools");
         List<String> paths = CliDetectionService.unixCommonPaths(env::get, "/home/me");
-        assertEquals(List.of("/opt/tools/openspec", "/home/me/.local/bin/openspec"), paths.subList(3, 5));
+        assertEquals(List.of("/opt/tools/openspec", "/home/me/.local/bin/openspec"), paths.subList(4, 6));
     }
 
     @Test
     void unixCommonPaths_installDirAndNameOverrides_combine() {
         Map<String, String> env = Map.of("OPENSPEC_INSTALL_DIR", "/opt/tools", "OPENSPEC_INSTALL_NAME", "ospec");
         List<String> paths = CliDetectionService.unixCommonPaths(env::get, "/home/me");
-        assertEquals("/opt/tools/ospec", paths.get(3));
+        assertEquals("/opt/tools/ospec", paths.get(4));
     }
 
     @Test
     void unixCommonPaths_emptyDirOrNameAlone_addsNoOverride() {
         Map<String, String> env = Map.of("OPENSPEC_INSTALL_DIR", "", "OPENSPEC_INSTALL_NAME", "ospec");
         List<String> paths = CliDetectionService.unixCommonPaths(env::get, "/home/me");
-        assertEquals(4, paths.size(), "a name without a dir is no candidate");
+        assertEquals(5, paths.size(), "a name without a dir is no candidate");
         assertFalse(paths.stream().anyMatch(p -> p.contains("ospec") && !p.endsWith("/openspec")));
     }
 
@@ -574,7 +575,7 @@ class CliDetectionServiceTest {
         assertEquals("1.15.0", svc.getDetectedVersion());
         List<String> expectedChecks = new ArrayList<>(UNIX_FIXED);
         expectedChecks.add(standalone);
-        assertEquals(expectedChecks, checked, "Homebrew and the system paths are checked first");
+        assertEquals(expectedChecks, checked, "Homebrew, the system paths and Linux Homebrew are checked first");
         assertEquals(List.of("openspec", standalone), probed, "only the bare name and the existing file are run");
     }
 
