@@ -33,7 +33,7 @@
 
 ## 5. Adopt-sync
 
-- [ ] 5.1 Upgrade the local CLI, pinned: the global CLI is an npm install under Homebrew's Node, so the user runs `! npm i -g @fission-ai/openspec@1.15.0` and confirms `openspec --version` shows `1.15.0`. Then run `openspec update`. Verify:
+- [x] 5.1 Upgrade the local CLI, pinned: the global CLI is an npm install under Homebrew's Node, so the user runs `! npm i -g @fission-ai/openspec@1.15.0` and confirms `openspec --version` shows `1.15.0`. Then run `openspec update`. Verify:
   - only the managed `.claude/skills/openspec-*` files regenerate (`generatedBy: "1.15.0"`);
   - `.claude/commands/opsx/` and the custom-named skills are unchanged.
 
@@ -42,8 +42,8 @@
 ## 6. Verify
 
 - [x] 6.1 `./gradlew build` is green, including the coverage floor.
-- [ ] 6.2 `openspec validate support-openspec-1-15-validation --strict` is clean, using the upgraded 1.15.0 CLI.
-- [ ] 6.3 `caffeinate -dimsu ./gradlew uiSmoke` is green with the 1.15.0 CLI installed. The journeys that assert CLI output run against the new line.
+- [x] 6.2 `openspec validate support-openspec-1-15-validation --strict` is clean, using the upgraded 1.15.0 CLI.
+- [x] 6.3 `caffeinate -dimsu ./gradlew uiSmoke` is green with the 1.15.0 CLI installed. The journeys that assert CLI output run against the new line.
 
 ## Workflow follow-up
 
