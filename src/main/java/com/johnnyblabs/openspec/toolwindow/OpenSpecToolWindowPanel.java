@@ -1,5 +1,7 @@
 package com.johnnyblabs.openspec.toolwindow;
 
+import com.intellij.ide.util.treeView.PathElementIdProvider;
+import com.intellij.ide.util.treeView.TreeState;
 import com.intellij.openapi.actionSystem.*;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.WriteAction;
@@ -79,9 +81,26 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
     // when a deltas render applies, read on the EDT when a link fires.
     private volatile String deltasChangeDir;
 
+    // Builds the tree model off the EDT. A field so tests can supply models (including failing ones).
+    private final java.util.function.Supplier<DefaultTreeModel> modelBuilder;
+    // Bumped on the EDT when a refresh starts; a built model applies only if no newer refresh started since.
+    private int treeGeneration = 0;
+    // True only while a rebuilt model is swapped in and its state restored, so the selection listeners
+    // ignore the transient clear-and-reselect and the panel syncs once afterwards.
+    private boolean restoringTree = false;
+    // Whether a built model has been shown; until then a failed build shows the error node.
+    private boolean treeLoaded = false;
+    private int refreshRetryDelayMs = 1000;
+
     public OpenSpecToolWindowPanel(Project project) {
+        this(project, () -> new SpecTreeModel(project).buildModel());
+    }
+
+    /** {@code modelBuilder} builds the tree off the EDT; tests pass their own, so even the first load is theirs. */
+    OpenSpecToolWindowPanel(Project project, java.util.function.Supplier<DefaultTreeModel> modelBuilder) {
         super(new BorderLayout());
         this.project = project;
+        this.modelBuilder = modelBuilder;
         this.refreshAlarm = new Alarm(Alarm.ThreadToUse.POOLED_THREAD, this);
         this.previewAlarm = new Alarm(Alarm.ThreadToUse.POOLED_THREAD, this);
 
@@ -126,7 +145,9 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
 
         // Sync tree selection → workflow panel (after workflowPanel is constructed)
         tree.addTreeSelectionListener(e -> {
-            String changeName = SpecTreeModel.resolveChangeName(e.getPath());
+            if (restoringTree) return;
+            // The current selection, not e.getPath(): on a clear that is the path being removed.
+            String changeName = SpecTreeModel.resolveChangeName(tree.getSelectionPath());
             if (changeName != null) {
                 workflowPanel.setActiveChange(changeName);
             }
@@ -178,7 +199,9 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
         showPreviewEmptyState();
 
         // Debounced single-click preview: selection snapshot on EDT → pooled read+render → EDT setText.
-        tree.addTreeSelectionListener(e -> schedulePreview());
+        tree.addTreeSelectionListener(e -> {
+            if (!restoringTree) schedulePreview();
+        });
 
         // Master (tree + workflow) on the left, preview on the right. The Changes tree is the
         // load-bearing surface, so it gets the larger default share; the preview earns width only
@@ -367,30 +390,22 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
     }
 
     private void refreshAsync() {
-        // Ensure expansion state is captured on EDT before background work
+        refreshAsync(false);
+    }
+
+    /**
+     * Rebuilds the tree off the EDT and swaps it in on the EDT, keeping the user's selection and expansion. A
+     * {@code retry} is the single quiet retry after a failed build; it never schedules another.
+     */
+    private void refreshAsync(boolean retry) {
         Runnable doRefresh = () -> {
-            Set<String> expandedLabels = saveExpansionState();
+            final int generation = ++treeGeneration;
             ApplicationManager.getApplication().executeOnPooledThread(() -> {
                 try {
-                    SpecTreeModel treeModel = new SpecTreeModel(project);
-                    DefaultTreeModel model = treeModel.buildModel();
-                    ApplicationManager.getApplication().invokeLater(() -> {
-                        tree.setModel(model);
-                        if (expandedLabels != null) {
-                            restoreExpansionState(expandedLabels);
-                        }
-                        updateCliStatus();
-                        updateAiStatus();
-                    });
+                    DefaultTreeModel model = modelBuilder.get();
+                    ApplicationManager.getApplication().invokeLater(() -> applyModel(model, generation));
                 } catch (Exception e) {
-                    LOG.warn("Failed to build tree model", e);
-                    ApplicationManager.getApplication().invokeLater(() -> {
-                        DefaultMutableTreeNode errorRoot = new DefaultMutableTreeNode("OpenSpec");
-                        errorRoot.add(new DefaultMutableTreeNode("Error loading — click Refresh to retry"));
-                        tree.setModel(new DefaultTreeModel(errorRoot));
-                        updateCliStatus();
-                        updateAiStatus();
-                    });
+                    ApplicationManager.getApplication().invokeLater(() -> onBuildFailed(e, generation, retry));
                 }
             });
             workflowPanel.refresh();
@@ -403,46 +418,69 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
         }
     }
 
-    private void expandAllNodes() {
-        for (int i = 0; i < tree.getRowCount(); i++) {
-            tree.expandRow(i);
-        }
-    }
-
-    private Set<String> saveExpansionState() {
-        Set<String> expanded = new HashSet<>();
-        int rowCount = tree.getRowCount();
-        for (int i = 0; i < rowCount; i++) {
-            TreePath path = tree.getPathForRow(i);
-            if (path != null && tree.isExpanded(path)) {
-                expanded.add(pathToKey(path));
+    /** Swaps in a rebuilt model, restoring selection and expansion by node identity ({@link TreeState}). */
+    private void applyModel(DefaultTreeModel model, int generation) {
+        if (generation != treeGeneration) return; // a newer refresh started since this one
+        // Captured now, not when the refresh started, so anything the user did during the build is kept.
+        String selectedId = nodeId(tree.getSelectionPath());
+        TreeState state = TreeState.createOn(tree, new TreePath(tree.getModel().getRoot()));
+        state.setScrollToSelection(false);
+        restoringTree = true;
+        try {
+            tree.setModel(model);
+            state.applyTo(tree);
+            // TreeState falls back to a sibling or the parent when the selected node is gone; the user didn't
+            // choose that node, so clear instead.
+            TreePath restored = tree.getSelectionPath();
+            if (restored != null && selectedId != null && !selectedId.equals(nodeId(restored))) {
+                tree.clearSelection();
             }
+        } finally {
+            restoringTree = false;
         }
-        return expanded;
+        treeLoaded = true;
+
+        TreePath selection = tree.getSelectionPath();
+        if (selection != null) {
+            Rectangle bounds = tree.getPathBounds(selection);
+            if (bounds != null && !tree.getVisibleRect().contains(bounds)) {
+                tree.scrollPathToVisible(selection);
+            }
+            String changeName = SpecTreeModel.resolveChangeName(selection);
+            if (changeName != null) workflowPanel.setActiveChange(changeName);
+        }
+        // Once, for the restored (or cleared) selection: re-renders the same node with its new content.
+        schedulePreview();
+        updateCliStatus();
+        updateAiStatus();
     }
 
-    private void restoreExpansionState(Set<String> expandedKeys) {
-        DefaultMutableTreeNode root = (DefaultMutableTreeNode) tree.getModel().getRoot();
-        restoreNodeExpansion(root, new TreePath(root), expandedKeys);
+    /**
+     * A build that throws is a transient race (a change directory removed mid-scan, a file caught half-written);
+     * the burst of file changes behind it normally triggers a refresh that succeeds. So a loaded tree is kept as it
+     * is, nothing is shown, and the build is retried once in case no further change arrives.
+     */
+    private void onBuildFailed(Exception e, int generation, boolean retry) {
+        if (generation != treeGeneration) return;
+        LOG.warn("Failed to build tree model", e);
+        if (treeLoaded) {
+            if (!retry) refreshAlarm.addRequest(() -> refreshAsync(true), refreshRetryDelayMs);
+            return;
+        }
+        DefaultMutableTreeNode errorRoot = new DefaultMutableTreeNode("OpenSpec");
+        errorRoot.add(new DefaultMutableTreeNode("Error loading — click Refresh to retry"));
+        tree.setModel(new DefaultTreeModel(errorRoot));
+        updateCliStatus();
+        updateAiStatus();
     }
 
-    private void restoreNodeExpansion(DefaultMutableTreeNode node, TreePath path, Set<String> expandedKeys) {
-        if (expandedKeys.contains(pathToKey(path))) {
-            tree.expandPath(path);
+    private static String nodeId(TreePath path) {
+        if (path == null) return null;
+        if (path.getLastPathComponent() instanceof DefaultMutableTreeNode node
+                && node.getUserObject() instanceof PathElementIdProvider provider) {
+            return provider.getPathElementId();
         }
-        for (int i = 0; i < node.getChildCount(); i++) {
-            DefaultMutableTreeNode child = (DefaultMutableTreeNode) node.getChildAt(i);
-            restoreNodeExpansion(child, path.pathByAddingChild(child), expandedKeys);
-        }
-    }
-
-    private String pathToKey(TreePath path) {
-        StringBuilder sb = new StringBuilder();
-        for (Object component : path.getPath()) {
-            if (!sb.isEmpty()) sb.append("/");
-            sb.append(component.toString());
-        }
-        return sb.toString();
+        return String.valueOf(path.getLastPathComponent());
     }
 
     private JComponent createActionToolbar() {
@@ -615,6 +653,31 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
                 workflowPanel.selectChangeAndGenerate(changeName);
             }
         };
+    }
+
+    @org.jetbrains.annotations.TestOnly
+    void setRefreshRetryDelayForTest(int retryDelayMs) {
+        this.refreshRetryDelayMs = retryDelayMs;
+    }
+
+    @org.jetbrains.annotations.TestOnly
+    WorkflowActionPanel workflowPanelForTest() {
+        return workflowPanel;
+    }
+
+    @org.jetbrains.annotations.TestOnly
+    Tree treeForTest() {
+        return tree;
+    }
+
+    @org.jetbrains.annotations.TestOnly
+    javax.accessibility.AccessibleContext previewAccessibleContextForTest() {
+        return previewPane.getAccessibleContext();
+    }
+
+    @org.jetbrains.annotations.TestOnly
+    String previewAccessibleNameForTest() {
+        return previewPane.getAccessibleContext().getAccessibleName();
     }
 
     @org.jetbrains.annotations.TestOnly

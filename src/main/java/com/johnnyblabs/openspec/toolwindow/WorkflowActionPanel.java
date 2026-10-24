@@ -957,6 +957,11 @@ public class WorkflowActionPanel extends JPanel {
     }
 
     @org.jetbrains.annotations.TestOnly
+    String activeChangeForTest() {
+        return activeChangeName;
+    }
+
+    @org.jetbrains.annotations.TestOnly
     Set<String> templateHintIdsForTest() {
         return templateHintIds;
     }
