@@ -22,6 +22,21 @@ Open the **OpenSpec tool window** (right sidebar stripe).
 - [ ] The Workflow Action Panel chips read: **✓ proposal · ○ design · ○ specs · − tasks**
       (tasks blocked by design + specs — this is the CLI's DAG, not a hardcoded one)
 
+## Stop 1b — Change Deltas pane
+
+The pane right of the tree shows a change's **deltas**: what the change will add, modify or
+remove in the specs when it's archived.
+
+- [ ] With nothing selected, the pane explains itself under a **Change Deltas** header
+- [ ] `Changes` was already expanded when the tool window opened
+- [ ] Click `demo-modify-greeting` → **Change Deltas — demo-modify-greeting**, with a
+      **MODIFIED** badge on *Friendly greeting* and both of its scenarios
+- [ ] Click its **Preview diff vs current main spec** link → the greeting diff opens
+- [ ] Click its `proposal` → the same deltas, plus **Open proposal.md in editor** under the
+      header; the link opens the file
+- [ ] Click a `demo-add-farewell` artifact that doesn't exist yet (e.g. `tasks`) → that
+      change's deltas view, with no open link (this change has no spec deltas yet)
+
 ## Stop 2 — Validator parity (case-insensitive headers)
 
 Open `openspec/specs/greeting/spec.md`. The requirement header is deliberately
@@ -76,7 +91,8 @@ Back in the tool window, on `demo-add-farewell`:
 - [ ] Create `design.md` by hand (or use Continue/Fast-Forward with Direct API) →
       watch the chips flip as artifacts complete
 - [ ] **Verify** → report dialog (completeness gate; semantic checks need an AI bridge)
-- [ ] **Archive** → change moves to the tree's *Archive* node
+- [ ] **Archive** → pick `demo-add-farewell` in the change chooser (there are two active
+      changes) → the change moves to the tree's *Archive* node
 
 ---
 

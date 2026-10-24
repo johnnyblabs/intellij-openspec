@@ -126,16 +126,18 @@ public class TreeRefreshStateTest extends OpenSpecIntegrationTestBase {
     }
 
     public void testSelectionExpansionAndPreviewSurviveALabelAndStatusChange() {
-        DefaultTreeModel before = model("add-auth:add-auth 1/3:CHANGE:ARTIFACT_DONE");
+        // A delta spec renders from its own file with no CLI, so its preview is the observable here; an
+        // artifact previews its change's CLI-sourced deltas.
+        DefaultTreeModel before = model("add-auth:add-auth 1/3:CHANGE:DELTA_SPEC");
         OpenSpecToolWindowPanel panel = panel(before);
         Tree tree = panel.treeForTest();
         tree.expandPath(pathTo(find(before, "add-auth", false)));
         tree.setSelectionPath(pathTo(find(before, "add-auth", true)));
         waitFor(() -> OpenSpecToolWindowPanel.PREVIEW_RENDERED_NAME.equals(panel.previewAccessibleNameForTest()),
-                "the selected artifact's preview renders");
+                "the selected delta spec's preview renders");
 
         List<String> names = recordPreviewNames(panel);
-        DefaultTreeModel after = model("add-auth:add-auth 3/3:CHANGE_ARCHIVE_READY:ARTIFACT_DONE");
+        DefaultTreeModel after = model("add-auth:add-auth 3/3:CHANGE_ARCHIVE_READY:DELTA_SPEC");
         next.set(() -> after);
         panel.refresh();
         waitFor(() -> panel.treeModelForTest() == after, "the rebuilt model is shown");
@@ -145,7 +147,7 @@ public class TreeRefreshStateTest extends OpenSpecIntegrationTestBase {
         assertTrue("the change stays expanded although its label and status changed",
                 tree.isExpanded(pathTo(change)));
         assertNotNull("something is selected after the refresh", tree.getSelectionPath());
-        assertSame("the same artifact is selected, in the new model",
+        assertSame("the same delta spec is selected, in the new model",
                 find(after, "add-auth", true), tree.getSelectionPath().getLastPathComponent());
         assertEquals(OpenSpecToolWindowPanel.PREVIEW_RENDERED_NAME, panel.previewAccessibleNameForTest());
         assertFalse("the preview never showed the empty state during the refresh: " + names,
@@ -319,6 +321,61 @@ public class TreeRefreshStateTest extends OpenSpecIntegrationTestBase {
         tree.clearSelection();
         assertEquals("a clear fires with the removed path; it must not switch the workflow back",
                 "other-change", panel.workflowPanelForTest().activeChangeForTest());
+    }
+
+    private DefaultTreeModel noChangesModel() {
+        DefaultMutableTreeNode root = new DefaultMutableTreeNode("OpenSpec");
+        DefaultMutableTreeNode changesNode = new DefaultMutableTreeNode(
+                new TreeNodeData("Changes", TreeNodeType.CHANGES, null, null, null, "Active changes"));
+        changesNode.add(new DefaultMutableTreeNode(new TreeNodeData("No active changes", TreeNodeType.HINT, null)));
+        root.add(changesNode);
+        return new DefaultTreeModel(root);
+    }
+
+    private static TreePath changesPath(DefaultTreeModel model) {
+        return new TreePath(((DefaultMutableTreeNode) ((DefaultMutableTreeNode) model.getRoot()).getChildAt(0)).getPath());
+    }
+
+    public void testTheFirstLoadExpandsChanges() {
+        DefaultTreeModel model = model("add-auth:add-auth:CHANGE:ARTIFACT_DONE");
+        OpenSpecToolWindowPanel panel = panel(model);
+        assertTrue("Changes is open on the first load", panel.treeForTest().isExpanded(changesPath(model)));
+    }
+
+    public void testTheFirstLoadLeavesAnEmptyChangesAlone() {
+        DefaultTreeModel model = noChangesModel();
+        OpenSpecToolWindowPanel panel = panel(model);
+        assertFalse("only the propose hint: nothing to show", panel.treeForTest().isExpanded(changesPath(model)));
+    }
+
+    public void testAFailedFirstLoadStillExpandsChangesWhenARefreshSucceeds() {
+        next.set(() -> {
+            throw new IllegalStateException("broken");
+        });
+        OpenSpecToolWindowPanel panel = new OpenSpecToolWindowPanel(getProject(), () -> next.get().get());
+        Disposer.register(getTestRootDisposable(), panel);
+        waitFor(() -> panel.treeModelForTest().getRoot() instanceof DefaultMutableTreeNode n && n.getChildCount() == 1
+                && String.valueOf(n.getFirstChild()).startsWith("Error loading"), "the error node is shown");
+
+        DefaultTreeModel model = model("add-auth:add-auth:CHANGE:ARTIFACT_DONE");
+        next.set(() -> model);
+        panel.refresh();
+        waitFor(() -> panel.treeModelForTest() == model, "the model is shown");
+        assertTrue("the first successful load opens Changes", panel.treeForTest().isExpanded(changesPath(model)));
+    }
+
+    public void testACollapsedChangesStaysCollapsedAcrossARefresh() {
+        DefaultTreeModel before = model("add-auth:add-auth:CHANGE:ARTIFACT_DONE");
+        OpenSpecToolWindowPanel panel = panel(before);
+        Tree tree = panel.treeForTest();
+        tree.collapsePath(changesPath(before));
+
+        DefaultTreeModel after = model("add-auth:add-auth 1/1:CHANGE:ARTIFACT_DONE");
+        next.set(() -> after);
+        panel.refresh();
+        waitFor(() -> panel.treeModelForTest() == after, "the rebuilt model is shown");
+        settle(200);
+        assertFalse("the user's collapse is kept", tree.isExpanded(changesPath(after)));
     }
 
     private static void relabelArtifact(DefaultTreeModel model, String changeName, String label) {

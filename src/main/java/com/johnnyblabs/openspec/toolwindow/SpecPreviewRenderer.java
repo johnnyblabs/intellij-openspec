@@ -31,6 +31,20 @@ import java.util.List;
  */
 public final class SpecPreviewRenderer {
 
+    /** Stable marker class on the header that starts every preview fragment. */
+    public static final String HEADER_MARKER = "openspec-preview-header";
+
+    /** The one line under every header saying what the pane is for. */
+    static final String PURPOSE_LINE =
+            "What this change will add, modify or remove in your specs when it's archived.";
+
+    /** The open-in-editor link inserted under the header for a single-file artifact. */
+    public static final String OPEN_LINK_CLASS = "openspec-open-link";
+    /** Href scheme of the open-in-editor link; the rest is the file path relative to the change directory. */
+    static final String OPEN_HREF_PREFIX = "openspec-open:";
+    /** Href of the empty state's Propose link. */
+    public static final String PROPOSE_HREF = "openspec-action:propose";
+
     /** Stable marker class on the empty-state fragment, asserted by tests. */
     public static final String EMPTY_STATE_MARKER = "openspec-preview-empty";
 
@@ -52,13 +66,12 @@ public final class SpecPreviewRenderer {
 
     /** How a selected node maps to a rendering interpretation. */
     public enum PreviewKind {
-        /** A main capability spec ({@code specs/<cap>/spec.md}) or a requirement within it. */
-        MAIN_SPEC,
         /** A change's delta spec ({@code changes/<change>/specs/<cap>/spec.md}). */
         DELTA_SPEC,
-        /** A change artifact: {@code proposal.md}, {@code design.md}, or {@code tasks.md}. */
-        CHANGE_ARTIFACT,
-        /** A change node — render its consolidated, CLI-sourced deltas ({@link #renderChangeDeltas}). */
+        /**
+         * A change node or any artifact under it — render the change's consolidated, CLI-sourced deltas
+         * ({@link #renderChangeDeltas}).
+         */
         CHANGE_DELTAS,
         /** Nothing previewable — render the empty state. */
         NONE
@@ -68,74 +81,58 @@ public final class SpecPreviewRenderer {
     }
 
     /**
-     * Classifies a node by its type and backing file path. A change node's path is the change
-     * <em>directory</em> (not a {@code .md} file), so it is recognized BEFORE the markdown-file guard.
-     * A node with no backing markdown file, or whose file is not markdown, is {@link PreviewKind#NONE}.
-     */
-    public static PreviewKind classify(TreeNodeType type, String filePath) {
-        return classify(type, filePath, null);
-    }
-
-    /**
-     * As {@link #classify(TreeNodeType, String)}, with the enclosing change's directory. An artifact
-     * whose path is a glob (the CLI's {@code outputPath} for a multi-file artifact, e.g. the
-     * {@code specs} artifact's {@code specs/**}{@code /*.md}) is never a file: a glob under
-     * {@code changeDir/specs/} previews the change's deltas, any other glob is {@link PreviewKind#NONE}.
+     * Classifies a node by its type, backing file path and enclosing change directory. A change node,
+     * and any artifact under a change (whatever its status, and whether or not its path is a file),
+     * previews the change's deltas. A delta spec renders its own markdown. Anything else, including an
+     * artifact whose change is unknown, is {@link PreviewKind#NONE}.
      */
     public static PreviewKind classify(TreeNodeType type, String filePath, String changeDir) {
-        if (type != null && !type.isChange() && filePath != null && isGlob(filePath)) {
-            boolean underSpecs = changeDir != null && filePath.startsWith(changeDir + "/specs/");
-            return underSpecs && (type == TreeNodeType.ARTIFACT || type == TreeNodeType.ARTIFACT_DONE)
-                    ? PreviewKind.CHANGE_DELTAS : PreviewKind.NONE;
-        }
-        // A change node backs a directory, not a .md file — route it before the markdown-file guard.
-        // Every change rollup state (plain, apply-ready, archive-ready) previews identically.
-        if (type.isChange() && filePath != null) {
-            return PreviewKind.CHANGE_DELTAS;
-        }
-        if (type == null || filePath == null || !filePath.endsWith(".md")) {
+        if (type == null) {
             return PreviewKind.NONE;
         }
+        // A change node backs a directory, not a .md file. Every change rollup state previews identically.
+        if (type.isChange()) {
+            return filePath != null ? PreviewKind.CHANGE_DELTAS : PreviewKind.NONE;
+        }
+        if (isArtifact(type)) {
+            return changeDir != null ? PreviewKind.CHANGE_DELTAS : PreviewKind.NONE;
+        }
+        if (type == TreeNodeType.DELTA_SPEC && filePath != null && filePath.endsWith(".md")) {
+            return PreviewKind.DELTA_SPEC;
+        }
+        return PreviewKind.NONE;
+    }
+
+    private static boolean isArtifact(TreeNodeType type) {
         return switch (type) {
-            // Plain specs now open in the editor (Project View owns file navigation), so the tree no
-            // longer routes to MAIN_SPEC; the MAIN_SPEC render branch is retained but inert.
-            case DELTA_SPEC -> PreviewKind.DELTA_SPEC;
-            case ARTIFACT, ARTIFACT_DONE -> PreviewKind.CHANGE_ARTIFACT;
-            default -> PreviewKind.NONE;
+            case ARTIFACT, ARTIFACT_DONE, ARTIFACT_READY, ARTIFACT_BLOCKED, MISSING_ARTIFACT -> true;
+            default -> false;
         };
     }
 
-    private static boolean isGlob(String path) {
+    /** Whether an artifact path is a glob (the CLI's {@code outputPath} for a multi-file artifact), never a file. */
+    static boolean isGlob(String path) {
         return path.indexOf('*') >= 0 || path.indexOf('?') >= 0 || path.indexOf('[') >= 0;
     }
 
     /**
      * Renders the source markdown for a classified node into an HTML fragment (no {@code html/body}
-     * wrapper — the Swing layer adds theme CSS via {@link MarkdownHtmlRenderer#wrapInHtml}). Delta
-     * specs are badged; main specs are not. A {@link PreviewKind#NONE} kind (or absent markdown)
-     * yields {@link #emptyState()}. {@link PreviewKind#CHANGE_DELTAS} is NOT rendered here — it is
+     * wrapper — the Swing layer adds theme CSS via {@link MarkdownHtmlRenderer#wrapInHtml}). Only a
+     * delta spec renders here, badged. Any other kind (or absent markdown) yields the empty state. {@link PreviewKind#CHANGE_DELTAS} is NOT rendered here — it is
      * assembled from CLI JSON via {@link #renderChangeDeltas} on a separate pipeline path.
      */
     public static String renderMarkdown(PreviewKind kind, String markdown) {
-        if (kind == null || kind == PreviewKind.NONE || kind == PreviewKind.CHANGE_DELTAS
-                || markdown == null || markdown.isBlank()) {
-            return emptyState();
+        if (kind != PreviewKind.DELTA_SPEC || markdown == null || markdown.isBlank()) {
+            return emptyState(true);
         }
-        String fragment = MarkdownHtmlRenderer.render(markdown);
-        if (kind == PreviewKind.DELTA_SPEC) {
-            // Delta-only interpretation — badge operation headers. A main spec never takes this path.
-            fragment = DeltaBadgeDecorator.decorate(fragment);
-        }
-        if (kind == PreviewKind.MAIN_SPEC || kind == PreviewKind.DELTA_SPEC) {
-            // Anchors let a Requirement selection scroll to its section; a no-op when absent.
-            fragment = RequirementAnchors.injectAnchors(fragment);
-        }
-        return fragment;
+        // Delta-only interpretation — badge operation headers; anchors let a requirement scroll into view.
+        String fragment = DeltaBadgeDecorator.decorate(MarkdownHtmlRenderer.render(markdown));
+        return RequirementAnchors.injectAnchors(fragment);
     }
 
     /**
-     * Assembles a change's CLI-sourced deltas into an HTML fragment: a header ({@code Deltas —
-     * <change>}) and one-line summary counts, then each capability ({@code <h2>}, plugin-imposed
+     * Assembles a change's CLI-sourced deltas into an HTML fragment: the {@link #header} naming the
+     * change id, one-line summary counts, then each capability ({@code <h2>}, plugin-imposed
      * alphabetical order) with a diff cross-link, then per operation an {@code <h3>} keyword header
      * (badged by {@link DeltaBadgeDecorator}) over its requirement bodies and scenarios. RENAMED
      * renders a from→to line with NO requirement body and NO operation badge. An empty model yields
@@ -143,12 +140,11 @@ public final class SpecPreviewRenderer {
      */
     public static String renderChangeDeltas(ChangeDeltaModel model) {
         if (model == null || model.deltas().isEmpty()) {
-            return changeDeltasEmptyState();
+            return changeDeltasEmptyState(model != null ? model.id() : null);
         }
 
-        StringBuilder sb = new StringBuilder();
-        String heading = (model.title() == null || model.title().isBlank()) ? model.id() : model.title();
-        sb.append("<h1>Deltas — ").append(escape(heading)).append("</h1>");
+        // The header names the change id, not the proposal title, so every state of a change reads the same.
+        StringBuilder sb = new StringBuilder(header(model.id()));
 
         int caps = model.capabilityCount();
         sb.append("<p class=\"").append(DELTA_SUMMARY_CLASS).append("\">")
@@ -213,29 +209,99 @@ public final class SpecPreviewRenderer {
                 .append(escape(from)).append("</code> → <code>").append(escape(to)).append("</code></p>");
     }
 
-    /** The placeholder fragment shown when nothing previewable is selected. */
-    public static String emptyState() {
-        return "<div class=\"" + EMPTY_STATE_MARKER + "\" style=\"text-align:center; padding-top:40px;\">"
-                + "<p>Select a change to see its consolidated deltas.</p>"
-                + "</div>";
+    /**
+     * The header that starts every preview fragment: "Change Deltas", the change's name when one is
+     * selected, and the one-line purpose. Carries {@link #HEADER_MARKER}.
+     */
+    public static String header(String changeName) {
+        String title = (changeName == null || changeName.isBlank())
+                ? "Change Deltas" : "Change Deltas — " + escape(changeName);
+        return "<div class=\"" + HEADER_MARKER + "\"><h1>" + title + "</h1><p>" + PURPOSE_LINE + "</p></div>";
+    }
+
+    /**
+     * Spacing for the header and the placeholder states: Swing's HTML renderer gives their paragraphs
+     * no gap, so in the narrow pane they would read as one block.
+     */
+    public static String paneCss() {
+        return "." + HEADER_MARKER + " { margin-bottom: 10px; }"
+                + "." + HEADER_MARKER + " p, ." + EMPTY_STATE_MARKER + " p, ." + CLI_UNAVAILABLE_MARKER + " p, ."
+                + OPEN_LINK_CLASS + " { margin-top: 0; margin-bottom: 8px; }";
+    }
+
+    /**
+     * The fragment shown when nothing previewable is selected. It explains what the pane shows and how
+     * to use it, and offers Propose only when the project has no active changes.
+     */
+    public static String emptyState(boolean hasChanges) {
+        StringBuilder sb = new StringBuilder(header(null));
+        sb.append("<div class=\"").append(EMPTY_STATE_MARKER).append("\">")
+                .append("<p>A change is a proposal to add, modify or remove requirements in your specs. ")
+                .append("This pane shows a change's deltas: every requirement it changes, grouped by capability.</p>")
+                .append("<p>Single-click a change, or any of its files, to see its deltas. ")
+                .append("Double-click a file to open it in the editor.</p>");
+        if (!hasChanges) {
+            sb.append("<p><a href=\"").append(PROPOSE_HREF).append("\">Propose a change</a></p>");
+        }
+        return sb.append("</div>").toString();
     }
 
     /** Empty state for a change that has no spec-level deltas — informative, not an error. */
-    private static String changeDeltasEmptyState() {
-        return "<div class=\"" + EMPTY_STATE_MARKER + "\" style=\"text-align:center; padding-top:40px;\">"
-                + "<p>This change has no spec-level deltas.</p>"
+    private static String changeDeltasEmptyState(String changeName) {
+        return header(changeName)
+                + "<div class=\"" + EMPTY_STATE_MARKER + "\"><p>This change has no spec-level deltas yet.</p></div>";
+    }
+
+    /**
+     * Placeholder shown when a change (or one of its artifacts) is selected but the OpenSpec CLI is
+     * unavailable, so the consolidated deltas can't be assembled on-model. Carries {@link #CLI_UNAVAILABLE_MARKER}.
+     */
+    public static String cliUnavailablePlaceholder(String changeName) {
+        return header(changeName)
+                + "<div class=\"" + CLI_UNAVAILABLE_MARKER + "\">"
+                + "<p>Consolidated deltas require the OpenSpec CLI. Install or configure the CLI to view "
+                + "a change's assembled deltas; individual delta-spec files still preview without it.</p>"
                 + "</div>";
     }
 
     /**
-     * Placeholder shown when a change node is selected but the OpenSpec CLI is unavailable, so the
-     * consolidated deltas can't be assembled on-model. Carries {@link #CLI_UNAVAILABLE_MARKER}.
+     * Inserts an "Open {@code <file>} in editor" link directly after the fragment's header. The href
+     * carries the path relative to the change directory, resolved by {@link #openFileFromHref}.
      */
-    public static String cliUnavailablePlaceholder() {
-        return "<div class=\"" + CLI_UNAVAILABLE_MARKER + "\" style=\"text-align:center; padding-top:40px;\">"
-                + "<p>Consolidated deltas require the OpenSpec CLI. Install or configure the CLI to view "
-                + "a change's assembled deltas; individual delta-spec files still preview without it.</p>"
-                + "</div>";
+    public static String withOpenLink(String fragment, String relativePath) {
+        if (fragment == null || relativePath == null || relativePath.isBlank()) {
+            return fragment;
+        }
+        String name = relativePath.substring(relativePath.lastIndexOf('/') + 1);
+        String link = "<p class=\"" + OPEN_LINK_CLASS + "\"><a href=\""
+                + escapeAttr(OPEN_HREF_PREFIX + relativePath) + "\">Open " + escape(name) + " in editor</a></p>";
+        String headerEnd = "</p></div>";
+        int at = fragment.startsWith("<div class=\"" + HEADER_MARKER + "\">") ? fragment.indexOf(headerEnd) : -1;
+        if (at < 0) {
+            return link + fragment;
+        }
+        int cut = at + headerEnd.length();
+        return fragment.substring(0, cut) + link + fragment.substring(cut);
+    }
+
+    /**
+     * The change-relative file path an open-in-editor href names, or null when the href is not one, or
+     * names an absolute path or one that climbs out of the change directory.
+     */
+    public static String openFileFromHref(String href) {
+        if (href == null || !href.startsWith(OPEN_HREF_PREFIX)) {
+            return null;
+        }
+        String rel = href.substring(OPEN_HREF_PREFIX.length());
+        if (rel.isBlank() || rel.startsWith("/") || rel.startsWith("\\") || rel.matches("^[A-Za-z]:.*")) {
+            return null;
+        }
+        for (String segment : rel.split("[/\\\\]")) {
+            if (segment.equals("..")) {
+                return null;
+            }
+        }
+        return rel;
     }
 
     private static String escape(String s) {

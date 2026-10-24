@@ -87,7 +87,7 @@ A comprehensive comparison of the OpenSpec IntelliJ plugin against known VS Code
 | Archive tree browser | Yes (Project View) | No | No | No | No |
 | Artifact nodes in tree | Yes (with status icons) | No | No | Partial | Yes |
 | Artifact-status badge overlays on tree icons | Yes (done/ready/blocked + X/Y task progress; check mark + "all tasks done" when a change is finished) | No | No | No | No |
-| Rendered-markdown preview pane (master/detail) | Yes | No | No | No | No |
+| Change Deltas pane beside the tree (master/detail) | Yes | No | No | No | No |
 | Consolidated change-deltas view (CLI-sourced) | Yes (grouped by capability/operation, badged) | No | No | No | No |
 | Content search (requirement + scenario text) | Yes (Search Everywhere) | No | No | No | No |
 | Tree auto-refresh on file changes | Yes (file watcher) | No | No | No | Yes |
@@ -159,7 +159,7 @@ A comprehensive comparison of the OpenSpec IntelliJ plugin against known VS Code
 
 ### IntelliJ Plugin (This Plugin)
 - Full IDE-native experience (inspections, annotations, line markers, tool window)
-- Changes-focused tree with a rendered-markdown preview pane dedicated to change surfaces (proposal / design / tasks and consolidated deltas); specs, archived changes, and config browse in the Project View, and spec content search runs through Search Everywhere (opening the spec in the editor at the matching requirement)
+- Changes-focused tree with a Change Deltas pane: any change or artifact shows the change's consolidated deltas, with a link to open the artifact; specs, archived changes, and config browse in the Project View, and spec content search runs through Search Everywhere (opening the spec in the editor at the matching requirement)
 - Consolidated change-deltas view — everything a change modifies at the spec level, grouped by capability/operation and badged, assembled from the CLI, cross-linked to the per-capability delta diff
 - Artifact-status badge overlays on tree node icons (done / ready / blocked / not-created) with X/Y task-progress on change nodes, and a check mark plus "all tasks done" when a change's artifacts are complete and every task is done
 - Grouped, navigable validation console (by file, clickable file:line links, per-severity color) plus a Project-View context-menu Validate scoped to the clicked change or spec
