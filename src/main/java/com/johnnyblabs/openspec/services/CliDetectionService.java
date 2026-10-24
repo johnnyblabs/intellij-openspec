@@ -13,6 +13,9 @@ import org.jetbrains.annotations.TestOnly;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -22,6 +25,8 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 @Service(Service.Level.PROJECT)
 public final class CliDetectionService {
@@ -30,13 +35,20 @@ public final class CliDetectionService {
     private static final Duration DETECTION_STALENESS = Duration.ofSeconds(30);
 
     /**
-     * Common install locations for openspec on macOS/Linux.
+     * Fixed install locations for openspec on macOS/Linux that need no environment: Homebrew, the system paths, then
+     * Homebrew on Linux (whose formula installs to {@code $(brew --prefix)/bin}).
+     * {@link #unixCommonPaths} appends the standalone-binary installer's locations after these.
      */
-    private static final List<String> COMMON_PATHS = List.of(
+    private static final List<String> UNIX_FIXED_PATHS = List.of(
             "/opt/homebrew/bin/openspec",
             "/usr/local/bin/openspec",
-            "/usr/bin/openspec"
+            "/usr/bin/openspec",
+            "/home/linuxbrew/.linuxbrew/bin/openspec"
     );
+
+    /** The standalone-binary installers' overrides (upstream {@code install.sh} / {@code install.ps1}). */
+    private static final String INSTALL_DIR_ENV = "OPENSPEC_INSTALL_DIR";
+    private static final String INSTALL_NAME_ENV = "OPENSPEC_INSTALL_NAME";
 
     /**
      * Windows executable extensions, in fallback order. Java's ProcessBuilder
@@ -72,6 +84,9 @@ public final class CliDetectionService {
     private volatile Instant lastDetectionTime;
     private volatile @Nullable Boolean isWindowsOverride;
     private volatile ProcessRunner processRunner = CliDetectionService::defaultRunAndCapture;
+    private volatile Function<String, String> envLookup = System::getenv;
+    private volatile Supplier<String> userHome = () -> System.getProperty("user.home");
+    private volatile @Nullable Predicate<String> executableCheckOverride;
 
     public CliDetectionService(@Nullable Project project) {
         this.project = project;
@@ -85,6 +100,22 @@ public final class CliDetectionService {
     @TestOnly
     public void setProcessRunnerForTest(ProcessRunner runner) {
         this.processRunner = runner;
+    }
+
+    @TestOnly
+    public void setEnvForTest(Function<String, String> lookup) {
+        this.envLookup = lookup;
+    }
+
+    @TestOnly
+    public void setUserHomeForTest(@Nullable String home) {
+        this.userHome = () -> home;
+    }
+
+    /** Replaces the file check that gates fixed install locations, so tests can drive {@code detect()} with fake paths. */
+    @TestOnly
+    public void setExecutableCheckForTest(@Nullable Predicate<String> check) {
+        this.executableCheckOverride = check;
     }
 
     /** Sets when detection last ran, so tests can exercise the 30s staleness throttle without sleeping. */
@@ -145,9 +176,11 @@ public final class CliDetectionService {
                 }
             }
 
-            // 4. Try common install locations for the host OS
+            // 4. Try common install locations for the host OS, skipping any with no file to run
             if (found == null) {
+                Predicate<String> exists = executableCheck();
                 for (String path : commonPathsForCurrentOs()) {
+                    if (!exists.test(path)) continue;
                     found = probe(path);
                     if (found != null) break;
                 }
@@ -282,15 +315,27 @@ public final class CliDetectionService {
     }
 
     private List<String> commonPathsForCurrentOs() {
-        return isWindows() ? windowsCommonPaths() : COMMON_PATHS;
+        return isWindows() ? windowsCommonPaths(envLookup) : unixCommonPaths(envLookup, userHome.get());
     }
 
-    static List<String> windowsCommonPaths() {
-        return windowsCommonPaths(System::getenv);
+    /**
+     * The fixed paths, then the standalone installer's override location, then its default {@code ~/.local/bin}.
+     * The installer leaves PATH alone, so a GUI-launched IDE only finds the binary here.
+     */
+    static List<String> unixCommonPaths(Function<String, String> envLookup, @Nullable String home) {
+        List<String> paths = new ArrayList<>(UNIX_FIXED_PATHS);
+        String override = installOverride(envLookup, "/", "openspec");
+        if (override != null) {
+            paths.add(override);
+        }
+        if (home != null && !home.isBlank()) {
+            paths.add(home + "/.local/bin/openspec");
+        }
+        return paths;
     }
 
     static List<String> windowsCommonPaths(Function<String, String> envLookup) {
-        List<String> paths = new ArrayList<>(3);
+        List<String> paths = new ArrayList<>(5);
         String appData = envLookup.apply("APPDATA");
         if (appData != null && !appData.isEmpty()) {
             paths.add(appData + "\\npm\\openspec.cmd");
@@ -300,7 +345,48 @@ public final class CliDetectionService {
             paths.add(localAppData + "\\npm\\openspec.cmd");
             paths.add(localAppData + "\\Microsoft\\WinGet\\Links\\openspec.cmd");
         }
+        // The standalone installer adds its directory to the user PATH, which an already-running IDE doesn't see.
+        String override = installOverride(envLookup, "\\", "openspec.exe");
+        if (override != null) {
+            paths.add(override);
+        }
+        if (localAppData != null && !localAppData.isEmpty()) {
+            paths.add(localAppData + "\\Programs\\openspec\\openspec.exe");
+        }
         return paths;
+    }
+
+    /** {@code OPENSPEC_INSTALL_DIR} joined with {@code OPENSPEC_INSTALL_NAME} (or {@code defaultName}), or null when the dir is unset. */
+    private static @Nullable String installOverride(Function<String, String> envLookup, String separator, String defaultName) {
+        String dir = envLookup.apply(INSTALL_DIR_ENV);
+        if (dir == null || dir.isEmpty()) return null;
+        String name = envLookup.apply(INSTALL_NAME_ENV);
+        return dir + separator + (name != null && !name.isEmpty() ? name : defaultName);
+    }
+
+    Predicate<String> executableCheck() {
+        Predicate<String> override = executableCheckOverride;
+        if (override != null) return override;
+        return isWindows() ? CliDetectionService::isRegularFile : CliDetectionService::isExecutableFile;
+    }
+
+    /** Whether {@code path} is a regular, executable file; an invalid path counts as missing. */
+    static boolean isExecutableFile(String path) {
+        try {
+            Path p = Path.of(path);
+            return Files.isRegularFile(p) && Files.isExecutable(p);
+        } catch (InvalidPathException e) {
+            return false;
+        }
+    }
+
+    /** Whether {@code path} is a regular file; on Windows the execute bit means nothing. */
+    static boolean isRegularFile(String path) {
+        try {
+            return Files.isRegularFile(Path.of(path));
+        } catch (InvalidPathException e) {
+            return false;
+        }
     }
 
     /**

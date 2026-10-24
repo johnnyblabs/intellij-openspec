@@ -405,7 +405,7 @@ The plugin works without the CLI, but some features (schema management, CLI-enha
 
 1. Install: `npm i -g @fission-ai/openspec`
 2. If installed but not detected: **Settings > Tools > OpenSpec > Detect**, or set the path manually
-3. On macOS, GUI apps don't inherit your terminal's PATH — the plugin tries your login shell, Homebrew paths, and `/usr/local/bin` automatically
+3. On macOS, GUI apps don't inherit your terminal's PATH — the plugin tries your login shell, Homebrew paths (including Homebrew on Linux), `/usr/local/bin`, and `~/.local/bin` (where OpenSpec's standalone installer puts it) automatically. On Windows it also checks `%LOCALAPPDATA%\Programs\openspec\openspec.exe`. If you installed the standalone binary with `OPENSPEC_INSTALL_DIR`, the plugin checks that folder only when the IDE's environment carries the variable; otherwise set the path manually
 4. Just installed or upgraded the CLI? Switch away from the IDE and back (after 30 seconds) and the status updates on its own
 5. If the tool window shows "CLI: detecting…", detection is still running; it updates on its own when it finishes
 
