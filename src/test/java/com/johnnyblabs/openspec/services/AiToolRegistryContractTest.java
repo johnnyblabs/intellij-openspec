@@ -24,7 +24,19 @@ import static org.junit.jupiter.api.Assertions.*;
 class AiToolRegistryContractTest {
 
     static final Path FIXTURES = Paths.get("src/test/resources/fixtures/cli");
-    static final String TARGET = "1.14.3";
+    /** The plugin's target CLI, read from {@code openspecTargetVersion} in gradle.properties so it can't drift. */
+    static final String TARGET = targetVersion();
+
+    private static String targetVersion() {
+        try {
+            Matcher m = Pattern.compile("(?m)^openspecTargetVersion=(\\S+)$")
+                    .matcher(Files.readString(Paths.get("gradle.properties")));
+            if (!m.find()) throw new IllegalStateException("gradle.properties has no openspecTargetVersion");
+            return m.group(1);
+        } catch (IOException e) {
+            throw new java.io.UncheckedIOException(e);
+        }
+    }
 
     private static JsonObject dump(String version) throws IOException {
         return JsonParser.parseString(Files.readString(FIXTURES.resolve(version).resolve("ai-tools.json"))).getAsJsonObject();
