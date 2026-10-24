@@ -37,8 +37,12 @@ The demo project is deliberately seeded to trigger real behavior:
    journeys (uiTest fixtures) so the manual and automated environments cannot drift:
 
    ```bash
-   <repo>/scripts/seed-lifecycle-demo.sh "$DEMO"
+   <repo>/scripts/seed-lifecycle-demo.sh "$DEMO" --deltas-demo
    ```
+
+   `--deltas-demo` adds a second change, `demo-modify-greeting`, with a MODIFIED delta on
+   `greeting`, for the walkthrough's Change Deltas stop. It is opt-in because the UI smoke
+   fixture is captured without it: with two active changes, Archive opens a change chooser.
 
    (It refuses an existing directory — see step 1. Note: `openspec validate` on the
    seeded change reports "no deltas" — that is authentic mid-lifecycle state, not a

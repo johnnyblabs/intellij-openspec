@@ -127,39 +127,42 @@ content search.) The recognition rules:
   `MAY` are not normative.
 - **Requirement headers stay case-insensitive** (see the Spec Format inspection below).
 
-### Rendered Preview Pane (master/detail)
+### Change Deltas Pane (master/detail)
 
-The Browse tab is a **master/detail** view: the tree on the left, a read-only rendered-markdown
-**preview pane** on the right, in a horizontal splitter whose width is remembered and whose preview
-can be collapsed.
+The Browse tab is a **master/detail** view: the Changes tree on the left, a read-only **Change
+Deltas** pane on the right, in a horizontal splitter whose width is remembered and whose pane can be
+collapsed. `Changes` is expanded the first time the tree loads, so your changes are visible at once;
+if you collapse it, it stays collapsed when the tree refreshes.
 
-- **Single-click** a node to render its document in the pane; **double-click** still opens the real
-  file in the editor. The pane is always read-only — editing stays in the editor.
-- **Per node type.** The preview renders a change's **proposal / design / tasks**, a change's
-  **delta spec** (`changes/<change>/specs/<capability>/spec.md`), or — for a **change** node — a
-  **consolidated deltas view** (below). Main capability specs are not previewed in the pane; they
-  open in the editor with the platform's Markdown preview. A delta spec is interpreted according to
-  its own structure.
-- **Consolidated change-deltas view.** Selecting a **change** node renders a read-only, at-a-glance
-  view of everything that change modifies at the spec level: a header and a one-line summary
-  (capabilities touched · counts per operation), then each capability grouped together, then each
-  operation (`ADDED` / `MODIFIED` / `REMOVED` / `RENAMED`) with the same badges as a delta-spec
-  preview, then each requirement's text and scenarios. The assembled delta set is sourced from the
-  **OpenSpec CLI** (`openspec show <change>`) — never hand-assembled from files — and capability
-  groups are shown in a stable alphabetical order. A `RENAMED` delta shows its from→to without a
-  requirement body. Each capability section offers a **Preview diff** link that opens that
-  capability's delta-vs-current-main diff, so the consolidated *reading* view and the per-capability
-  *machine diff* complement each other. A change with no spec deltas shows an informative empty
-  state; when the CLI is unavailable the view shows a placeholder (individual delta-spec files still
-  preview without the CLI).
-- **Delta operation badges.** In a delta-spec preview — and in the consolidated deltas view — the
-  `ADDED` / `MODIFIED` / `REMOVED` / `RENAMED` operation headers are visually badged so a change's
-  proposed deltas read at a glance.
-- **On-model.** The preview renders the source markdown of your own files, or (for the deltas view)
-  the delta set the CLI reports. It does not synthesize a post-apply "effective" spec, and it does
-  not score or show per-spec/per-delta status, progress, or coverage; change-owned state follows the
-  OpenSpec CLI: delta assembly comes from the CLI, and task progress is counted with the CLI's own
-  task-line grammar, so it matches `openspec list --json`.
+- **What the pane shows.** Every state of the pane starts with a **Change Deltas** header, naming the
+  selected change, and one line: *what this change will add, modify or remove in your specs when it's
+  archived*. With nothing selected, the pane explains what a change is and how to use it; when the
+  project has no changes yet, it offers **Propose a change**.
+- **Single-click** a change, or any of its artifacts (proposal, design, tasks or specs, done or not
+  yet created), to see that change's deltas. When the artifact is a file that exists, an **Open
+  `<file>` in editor** link sits under the header; **double-click** also opens the file. The pane is
+  always read-only, and editing stays in the editor.
+- **Consolidated change-deltas view.** A read-only, at-a-glance view of everything the change modifies
+  at the spec level: a one-line summary (capabilities touched · counts per operation), then each
+  capability grouped together, then each operation (`ADDED` / `MODIFIED` / `REMOVED` / `RENAMED`)
+  with the same badges as a delta-spec preview, then each requirement's text and scenarios. The
+  assembled delta set is sourced from the **OpenSpec CLI** (`openspec show <change>`), never
+  hand-assembled from files, and capability groups are shown in a stable alphabetical order. A
+  `RENAMED` delta shows its from→to without a requirement body. Each capability section offers a
+  **Preview diff** link that opens that capability's delta-vs-current-main diff, so the consolidated
+  *reading* view and the per-capability *machine diff* complement each other. A change with no spec
+  deltas shows an informative empty state.
+- **Delta specs.** Selecting a change's delta spec (`changes/<change>/specs/<capability>/spec.md`)
+  shows that file, with its operation headers badged. Main capability specs are not previewed in the
+  pane; they open in the editor with the platform's Markdown preview.
+- **Without the CLI.** Selecting a change or one of its artifacts shows a placeholder saying the
+  consolidated deltas need the CLI, still with the header and the open-in-editor link. Delta-spec
+  files still preview without the CLI.
+- **On-model.** The pane renders the delta set the CLI reports, or your own delta-spec markdown. It
+  does not synthesize a post-apply "effective" spec, and it does not score or show per-spec/per-delta
+  status, progress, or coverage; change-owned state follows the OpenSpec CLI: delta assembly comes
+  from the CLI, and task progress is counted with the CLI's own task-line grammar, so it matches
+  `openspec list --json`.
 
 Rendering runs off the UI thread (the file is read and rendered on a background thread, then the pane
 is updated on the UI thread), so selection stays responsive.

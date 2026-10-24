@@ -64,7 +64,7 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
 
     /** What the preview render path needs, snapshotted on the EDT at selection time. */
     record PreviewSelection(String filePath, SpecPreviewRenderer.PreviewKind kind,
-                                    String requirementName, String changeName) {}
+                            String requirementName, String changeName, String openFilePath) {}
 
     // Per-change rendered-deltas cache, keyed on change name. Avoids re-spawning the CLI on
     // re-selection of the same change; cleared by the VFS listener when OpenSpec files change.
@@ -88,6 +88,8 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
     // True only while a rebuilt model is swapped in and its state restored, so the selection listeners
     // ignore the transient clear-and-reselect and the panel syncs once afterwards.
     private boolean restoringTree = false;
+    // Whether the shown model has any change under Changes; picks the empty state's Propose link.
+    private boolean modelHasChanges = true;
     // Whether a built model has been shown; until then a failed build shows the error node.
     private boolean treeLoaded = false;
     private int refreshRetryDelayMs = 1000;
@@ -187,7 +189,24 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
         // capability. Non-diff links (e.g. a real http link) resolve to null and are left untouched.
         previewPane.addHyperlinkListener(e -> {
             if (e.getEventType() != HyperlinkEvent.EventType.ACTIVATED) return;
-            String capability = DeltaDiffAnchor.capabilityFromHref(e.getDescription());
+            String href = e.getDescription();
+            if (SpecPreviewRenderer.PROPOSE_HREF.equals(href)) {
+                AnAction propose = ActionManager.getInstance().getAction("OpenSpec.Propose");
+                if (propose != null) {
+                    com.johnnyblabs.openspec.actions.ActionLauncher.launch(propose, previewPane, "OpenSpecPreview");
+                }
+                return;
+            }
+            String openFile = SpecPreviewRenderer.openFileFromHref(href);
+            if (openFile != null) {
+                String dir = deltasChangeDir;
+                VirtualFile file = dir == null ? null : LocalFileSystem.getInstance().findFileByPath(dir + "/" + openFile);
+                if (file != null && file.isValid() && !file.isDirectory()) {
+                    new OpenFileDescriptor(project, file).navigate(true);
+                }
+                return;
+            }
+            String capability = DeltaDiffAnchor.capabilityFromHref(href);
             if (capability == null) return;
             String changeDir = deltasChangeDir;
             if (changeDir == null) return;
@@ -230,6 +249,8 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
     // render fired AND that a badge is present (the JEditorPane's HTML body is not readable via hasText).
     static final String PREVIEW_CHANGE_DELTAS_NAME = "OpenSpec preview change deltas";
     static final String PREVIEW_CHANGE_DELTAS_BADGED_NAME = "OpenSpec preview change deltas badged";
+    // The CLI-unavailable placeholder, distinct from the empty state so the two can be told apart.
+    static final String PREVIEW_CLI_UNAVAILABLE_NAME = "OpenSpec preview needs CLI";
 
     // Bumped on the EDT for every selection; a completed off-EDT render only applies if its
     // token is still current, so a slow render of an earlier selection can't overwrite a newer one.
@@ -263,18 +284,21 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
         // The tree no longer holds requirement nodes (plain specs open in the editor), so there is no
         // requirement anchor to resolve here.
         String requirementName = null;
-        // For a Change node the CLI is keyed by change name; the node's filePath is the change dir,
-        // whose basename is the name (robust across both CHANGE-node constructions in SpecTreeModel).
-        String changeName = null;
-        String filePath = data.filePath();
-        if (kind == SpecPreviewRenderer.PreviewKind.CHANGE_DELTAS) {
-            changeName = data.changeName() != null ? data.changeName()
-                    : (data.filePath() != null ? new java.io.File(data.filePath()).getName() : null);
-            // The specs artifact's path is a glob; the deltas view builds its diff links from the
-            // change directory, so use that instead.
-            if (!data.type().isChange()) filePath = changeDir;
+        if (kind != SpecPreviewRenderer.PreviewKind.CHANGE_DELTAS) {
+            return new PreviewSelection(data.filePath(), kind, requirementName, null, null);
         }
-        return new PreviewSelection(filePath, kind, requirementName, changeName);
+        if (data.type().isChange()) {
+            // The CLI is keyed by change name; the node's path is the change dir, whose basename is the name.
+            String name = data.changeName() != null ? data.changeName() : new java.io.File(data.filePath()).getName();
+            return new PreviewSelection(data.filePath(), kind, requirementName, name, null);
+        }
+        // An artifact previews its change: the name and directory come from the change node (a no-CLI
+        // fallback artifact carries no change name), and the diff links resolve against that directory.
+        String name = SpecTreeModel.resolveChangeName(path);
+        if (name == null) name = new java.io.File(changeDir).getName();
+        String own = data.filePath();
+        String openFilePath = own != null && !SpecPreviewRenderer.isGlob(own) ? own : null;
+        return new PreviewSelection(changeDir, kind, requirementName, name, openFilePath);
     }
 
     private static String enclosingChangeDir(TreePath path) {
@@ -312,7 +336,7 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
         }
         final String renderedFragment = fragment;
         applyIfCurrent(generation, () -> {
-            String css = MarkdownHtmlRenderer.buildThemeStylesheet() + DeltaBadgeDecorator.badgeCss();
+            String css = MarkdownHtmlRenderer.buildThemeStylesheet() + DeltaBadgeDecorator.badgeCss() + SpecPreviewRenderer.paneCss();
             previewPane.setText(MarkdownHtmlRenderer.wrapInHtml(css, renderedFragment));
             previewPane.setCaretPosition(0);
             if (selection.requirementName() != null) {
@@ -323,8 +347,8 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
     }
 
     private void showPreviewEmptyState() {
-        String css = MarkdownHtmlRenderer.buildThemeStylesheet() + DeltaBadgeDecorator.badgeCss();
-        previewPane.setText(MarkdownHtmlRenderer.wrapInHtml(css, SpecPreviewRenderer.emptyState()));
+        String css = MarkdownHtmlRenderer.buildThemeStylesheet() + DeltaBadgeDecorator.badgeCss() + SpecPreviewRenderer.paneCss();
+        previewPane.setText(MarkdownHtmlRenderer.wrapInHtml(css, SpecPreviewRenderer.emptyState(modelHasChanges)));
         previewPane.setCaretPosition(0);
         previewPane.getAccessibleContext().setAccessibleName(PREVIEW_EMPTY_NAME);
     }
@@ -344,17 +368,18 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
             applyIfCurrent(generation, this::showPreviewEmptyState);
             return;
         }
+        String openLink = openLinkPath(selection.openFilePath(), changeDir);
 
         int epochAtStart = cacheEpoch;
         String cached = changeDeltasCache.get(name);
         if (cached != null) {
-            applyChangeDeltas(generation, cached, changeDir);
+            applyChangeDeltas(generation, SpecPreviewRenderer.withOpenLink(cached, openLink), changeDir);
             return;
         }
 
         CliDetectionService detection = project.getService(CliDetectionService.class);
         if (detection == null || !detection.isAvailable()) {
-            applyCliUnavailable(generation, changeDir);
+            applyCliUnavailable(generation, changeDir, name, openLink);
             return;
         }
 
@@ -363,7 +388,7 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
             CliRunner.CliResult result = CliRunner.run(project, ChangeDeltaModel.changeShowArgs(name));
             if (!result.isSuccess()) {
                 LOG.debug("openspec show failed for change " + name + ": exit " + result.exitCode());
-                applyCliUnavailable(generation, changeDir);
+                applyCliUnavailable(generation, changeDir, name, openLink);
                 return;
             }
             // stdout ONLY — a successful change-show still prints "Ignoring flags not applicable to
@@ -372,7 +397,7 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
             fragment = SpecPreviewRenderer.renderChangeDeltas(model);
         } catch (Exception ex) {
             LOG.debug("Failed to render change deltas for " + name, ex);
-            applyCliUnavailable(generation, changeDir);
+            applyCliUnavailable(generation, changeDir, name, openLink);
             return;
         }
 
@@ -381,12 +406,12 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
         if (cacheEpoch == epochAtStart) {
             changeDeltasCache.put(name, fragment);
         }
-        applyChangeDeltas(generation, fragment, changeDir);
+        applyChangeDeltas(generation, SpecPreviewRenderer.withOpenLink(fragment, openLink), changeDir);
     }
 
     private void applyChangeDeltas(int generation, String fragment, String changeDir) {
         applyIfCurrent(generation, () -> {
-            String css = MarkdownHtmlRenderer.buildThemeStylesheet() + DeltaBadgeDecorator.badgeCss();
+            String css = MarkdownHtmlRenderer.buildThemeStylesheet() + DeltaBadgeDecorator.badgeCss() + SpecPreviewRenderer.paneCss();
             previewPane.setText(MarkdownHtmlRenderer.wrapInHtml(css, fragment));
             previewPane.setCaretPosition(0);
             deltasChangeDir = changeDir;
@@ -396,13 +421,25 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
         });
     }
 
-    private void applyCliUnavailable(int generation, String changeDir) {
+    /**
+     * The artifact's path relative to the change directory when it is an existing file inside it, for the
+     * open-in-editor link; otherwise null. Runs off the EDT.
+     */
+    private static String openLinkPath(String openFilePath, String changeDir) {
+        if (openFilePath == null || changeDir == null || !openFilePath.startsWith(changeDir + "/")) return null;
+        VirtualFile file = LocalFileSystem.getInstance().findFileByPath(openFilePath);
+        if (file == null || !file.isValid() || file.isDirectory()) return null;
+        return openFilePath.substring(changeDir.length() + 1);
+    }
+
+    private void applyCliUnavailable(int generation, String changeDir, String changeName, String openLink) {
+        String fragment = SpecPreviewRenderer.withOpenLink(SpecPreviewRenderer.cliUnavailablePlaceholder(changeName), openLink);
         applyIfCurrent(generation, () -> {
-            String css = MarkdownHtmlRenderer.buildThemeStylesheet() + DeltaBadgeDecorator.badgeCss();
-            previewPane.setText(MarkdownHtmlRenderer.wrapInHtml(css, SpecPreviewRenderer.cliUnavailablePlaceholder()));
+            String css = MarkdownHtmlRenderer.buildThemeStylesheet() + DeltaBadgeDecorator.badgeCss() + SpecPreviewRenderer.paneCss();
+            previewPane.setText(MarkdownHtmlRenderer.wrapInHtml(css, fragment));
             previewPane.setCaretPosition(0);
             deltasChangeDir = changeDir;
-            previewPane.getAccessibleContext().setAccessibleName(PREVIEW_EMPTY_NAME);
+            previewPane.getAccessibleContext().setAccessibleName(PREVIEW_CLI_UNAVAILABLE_NAME);
         });
     }
 
@@ -435,6 +472,38 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
         }
     }
 
+    /** The Changes node of a model, or null. */
+    private static DefaultMutableTreeNode changesNode(DefaultTreeModel model) {
+        if (!(model.getRoot() instanceof DefaultMutableTreeNode root)) return null;
+        for (int i = 0; i < root.getChildCount(); i++) {
+            if (root.getChildAt(i) instanceof DefaultMutableTreeNode child
+                    && child.getUserObject() instanceof SpecTreeModel.TreeNodeData data
+                    && data.type() == SpecTreeModel.TreeNodeType.CHANGES) {
+                return child;
+            }
+        }
+        return null;
+    }
+
+    private static TreePath changesPath(DefaultTreeModel model) {
+        DefaultMutableTreeNode changes = changesNode(model);
+        return changes == null ? null : new TreePath(changes.getPath());
+    }
+
+    /** Whether the model lists any change; with none, Changes holds only the propose hint. */
+    static boolean hasChanges(DefaultTreeModel model) {
+        DefaultMutableTreeNode changes = changesNode(model);
+        if (changes == null) return false;
+        for (int i = 0; i < changes.getChildCount(); i++) {
+            if (changes.getChildAt(i) instanceof DefaultMutableTreeNode child
+                    && child.getUserObject() instanceof SpecTreeModel.TreeNodeData data
+                    && data.type().isChange()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /** Swaps in a rebuilt model, restoring selection and expansion by node identity ({@link TreeState}). */
     private void applyModel(DefaultTreeModel model, int generation) {
         if (generation != treeGeneration) return; // a newer refresh started since this one
@@ -443,9 +512,15 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
         TreeState state = TreeState.createOn(tree, new TreePath(tree.getModel().getRoot()));
         state.setScrollToSelection(false);
         restoringTree = true;
+        modelHasChanges = hasChanges(model);
         try {
             tree.setModel(model);
             state.applyTo(tree);
+            // The first load has no expansion to restore; open Changes so the user sees their changes. Later
+            // loads skip this, so TreeState keeps whatever the user expanded or collapsed since.
+            if (!treeLoaded && modelHasChanges) {
+                tree.expandPath(changesPath(model));
+            }
             // TreeState falls back to a sibling or the parent when the selected node is gone; the user didn't
             // choose that node, so clear instead.
             TreePath restored = tree.getSelectionPath();
@@ -690,6 +765,21 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
     @org.jetbrains.annotations.TestOnly
     javax.accessibility.AccessibleContext previewAccessibleContextForTest() {
         return previewPane.getAccessibleContext();
+    }
+
+    @org.jetbrains.annotations.TestOnly
+    String previewHtmlForTest() {
+        return previewPane.getText();
+    }
+
+    @org.jetbrains.annotations.TestOnly
+    JEditorPane previewPaneForTest() {
+        return previewPane;
+    }
+
+    @org.jetbrains.annotations.TestOnly
+    void seedDeltasCacheForTest(String changeName, String fragment) {
+        changeDeltasCache.put(changeName, fragment);
     }
 
     @org.jetbrains.annotations.TestOnly

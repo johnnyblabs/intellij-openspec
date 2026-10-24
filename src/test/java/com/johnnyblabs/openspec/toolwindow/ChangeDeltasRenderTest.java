@@ -66,7 +66,8 @@ class ChangeDeltasRenderTest {
         // which both proves it is unbadged AND pins the specific counts.
         assertTrue(html.contains("2 capabilities · 1 ADDED · 1 MODIFIED · 1 REMOVED · 1 RENAMED"),
                 "summary counts render verbatim (and thus unbadged)");
-        assertTrue(html.contains("<h1>Deltas — mixed-change</h1>"), "header names the change");
+        assertTrue(html.startsWith("<div class=\"" + SpecPreviewRenderer.HEADER_MARKER + "\"><h1>Change Deltas — mixed-change</h1>"),
+                "the fragment starts with the header naming the change id");
     }
 
     @Test
@@ -121,5 +122,21 @@ class ChangeDeltasRenderTest {
         String html = SpecPreviewRenderer.renderChangeDeltas(single);
         assertTrue(html.contains("1 capability · 1 ADDED"), "single capability is singular");
         assertFalse(html.contains("1 capabilities"), "must not read '1 capabilities'");
+    }
+
+    @Test
+    void headerNamesTheChangeIdNotTheProposalTitle() {
+        ChangeDeltaModel titled = new ChangeDeltaModel("add-auth", "Add two-factor login", 1, List.of(
+                req("auth", OperationType.ADDED, "The system SHALL do a thing.", null)));
+        String html = SpecPreviewRenderer.renderChangeDeltas(titled);
+        assertTrue(html.contains("<h1>Change Deltas — add-auth</h1>"), "the header names the change id");
+        assertFalse(html.contains("Add two-factor login"), "the proposal title is not the header");
+    }
+
+    @Test
+    void noDeltasStateCarriesTheHeaderForItsChange() {
+        String html = SpecPreviewRenderer.renderChangeDeltas(new ChangeDeltaModel("c", "c", 0, List.of()));
+        assertTrue(html.startsWith("<div class=\"" + SpecPreviewRenderer.HEADER_MARKER + "\"><h1>Change Deltas — c</h1>"),
+                "the no-deltas state starts with the header naming the change");
     }
 }

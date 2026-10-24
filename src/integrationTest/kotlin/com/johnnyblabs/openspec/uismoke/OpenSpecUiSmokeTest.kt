@@ -151,13 +151,18 @@ class OpenSpecUiSmokeTest {
             ideFrame {
                 // Presence-level assertions via RENDERED TEXT (hasText), not component
                 // queries — tree rows are cell-renderer paint, not Swing components, so
-                // byVisibleText can't see them. Tree groups render collapsed by default;
-                // the group labels and the workflow panel's active-change label are the
-                // reliably visible seeded content.
-                waitUntil("Browse tree renders its Changes group") { hasText("Changes") }
+                // byVisibleText can't see them.
                 waitUntil("Browse tree renders its Changes group") { hasText("Changes") }
                 waitUntil("workflow panel shows the seeded change 'demo-add-farewell'") {
                     hasText("demo-add-farewell")
+                }
+                // The workflow label already shows the change name, so read the tree's rows: the change's
+                // row is visible only if the first load expanded Changes without anyone clicking.
+                val browseTree = tree("//div[@class='Tree']")
+                waitUntil("the first load expands Changes, showing the change's row") {
+                    browseTree.collectExpandedPaths().any { row ->
+                        row.path.size == 3 && row.path[1] == "Changes" && row.path[2].contains("demo-add-farewell")
+                    }
                 }
             }
         }
@@ -664,6 +669,17 @@ class OpenSpecUiSmokeTest {
                 browseTree.clickPath("OpenSpec", "Changes", "demo-add-farewell", fullMatch = false)
 
                 waitUntil("preview pane renders the change's badged deltas", timeout = 2.minutes) {
+                    x { byAccessibleName("OpenSpec preview change deltas badged") }.present()
+                }
+
+                // An artifact previews its change too. Leave the deltas first (Changes itself has no
+                // preview), so the badged name can only come back from the artifact's own render.
+                browseTree.clickPath("OpenSpec", "Changes", fullMatch = false)
+                waitUntil("selecting Changes shows the empty state") {
+                    x { byAccessibleName("OpenSpec preview empty") }.present()
+                }
+                browseTree.clickPath("OpenSpec", "Changes", "demo-add-farewell", "proposal", fullMatch = false)
+                waitUntil("selecting the proposal shows its change's badged deltas", timeout = 2.minutes) {
                     x { byAccessibleName("OpenSpec preview change deltas badged") }.present()
                 }
             }

@@ -6,6 +6,8 @@
 
 ### Added
 
+- **The Browse tab's right-hand pane now says what it shows.** It's the **Change Deltas** pane: what a change will add, modify or remove in your specs when it's archived. Every state starts with that header, and with nothing selected it explains how to use it, with a **Propose a change** link when you have no changes yet. Clicking any of a change's artifacts (proposal, design, tasks or specs, including ones not created yet) now shows the change's deltas, with an **Open `<file>` in editor** link, instead of a plain copy of the file or an empty pane. `Changes` opens expanded, so your changes are visible straight away. Without the OpenSpec CLI, an artifact shows the "needs the CLI" placeholder with the same link, and delta specs still preview as before.
+
 - **OpenSpec CLI 1.15.x is supported, including its standalone binary.** OpenSpec 1.15 can be installed as a single program that doesn't need Node.js; the plugin reads its version the same way as the npm install. Validation results and everything else the plugin reads are unchanged from 1.14.
 
 ### Fixed

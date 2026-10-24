@@ -5,7 +5,7 @@
 #   - the automated UI smoke journeys (uiTest fixtures)
 # so the human and automated walkthrough environments cannot drift apart.
 #
-# Usage: ./scripts/seed-lifecycle-demo.sh <target-dir> [--archive-ready-demo]
+# Usage: ./scripts/seed-lifecycle-demo.sh <target-dir> [--archive-ready-demo] [--deltas-demo]
 #
 #   --archive-ready-demo  also seed two fully-specified changes for the Changes-tree rollup
 #                         walkthrough: demo-apply-ready (artifacts complete, tasks 1/3 -> green dot)
@@ -13,6 +13,9 @@
 #                         "all tasks done"). Opt-in so the captured uiSmoke fixture
 #                         (src/integrationTest/testData/lifecycle-demo) is unaffected: without the
 #                         flag the output is unchanged.
+#   --deltas-demo         also seed demo-modify-greeting, a change with a MODIFIED delta on
+#                         `greeting`, for the Change Deltas pane walkthrough. Opt-in for the same
+#                         reason: a second active change also sends Archive to a change chooser.
 #
 # The target directory must not exist (each test-drive/journey gets a fresh
 # path — per-project sandbox state like cleanup-dismissal memory is keyed to
@@ -34,14 +37,16 @@
 
 set -euo pipefail
 
-DEMO="${1:?usage: seed-lifecycle-demo.sh <target-dir> [--archive-ready-demo]}"
+DEMO="${1:?usage: seed-lifecycle-demo.sh <target-dir> [--archive-ready-demo] [--deltas-demo]}"
 ARCHIVE_READY_DEMO=false
-if [ "${2:-}" = "--archive-ready-demo" ]; then
-    ARCHIVE_READY_DEMO=true
-elif [ -n "${2:-}" ]; then
-    echo "error: unknown option '$2'" >&2
-    exit 1
-fi
+DELTAS_DEMO=false
+for option in "${@:2}"; do
+    case "$option" in
+        --archive-ready-demo) ARCHIVE_READY_DEMO=true ;;
+        --deltas-demo) DELTAS_DEMO=true ;;
+        *) echo "error: unknown option '$option'" >&2; exit 1 ;;
+    esac
+done
 
 if [ -e "$DEMO" ]; then
     echo "error: target '$DEMO' already exists — seeding requires a fresh directory" >&2
@@ -158,6 +163,41 @@ if [ "$ARCHIVE_READY_DEMO" = true ]; then
         "$(printf '%s\n' '- [x] 1.1 Add the message' '- [ ] 1.2 Wire it up' '- [ ] 1.3 Test it')"
     seed_complete_change demo-archive-ready \
         "$(printf '%s\n' '- [x] 1.1 Add the message' '- [x] 1.2 Wire it up' '- [x] 1.3 Test it')"
+fi
+
+if [ "$DELTAS_DEMO" = true ]; then
+    mkdir -p openspec/changes/demo-modify-greeting/specs/greeting
+    printf '%s\n' "schema: spec-driven" "created: 2026-10-24" > openspec/changes/demo-modify-greeting/.openspec.yaml
+    cat > openspec/changes/demo-modify-greeting/proposal.md << 'EOF'
+## Why
+The demo needs a change that modifies an existing requirement, so the Change Deltas pane shows a MODIFIED delta.
+
+## What Changes
+- Welcome back a returning user as well as greeting them by name.
+
+## Capabilities
+
+### Modified Capabilities
+- `greeting`: the friendly greeting also welcomes returning users.
+
+## Impact
+Demo only.
+EOF
+    # MODIFIED carries the whole requirement, keeping the main spec's "Greet" scenario.
+    cat > openspec/changes/demo-modify-greeting/specs/greeting/spec.md << 'EOF'
+## MODIFIED Requirements
+
+### Requirement: Friendly greeting
+The system SHALL greet the user by name, and SHALL welcome back a returning user.
+
+#### Scenario: Greet
+- **WHEN** the user arrives
+- **THEN** the system greets them by name
+
+#### Scenario: Welcome back
+- **WHEN** a returning user arrives
+- **THEN** the system greets them by name and welcomes them back
+EOF
 fi
 
 echo "Seeded lifecycle demo at: $DEMO"
