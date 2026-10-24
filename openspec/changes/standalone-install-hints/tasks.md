@@ -62,7 +62,7 @@
 ## 4. Verify
 
 - [x] 4.1 `./gradlew build` is green, and `openspec validate standalone-install-hints --strict` is clean.
-- [ ] 4.2 Run `caffeinate -dimsu ./gradlew uiSmoke`, because the wizard and the Manage AI Tools dialog are UI. Every journey must be green, or any failure must be triaged as environmental per the usual rule.
+- [x] 4.2 Run `caffeinate -dimsu ./gradlew uiSmoke`, because the wizard and the Manage AI Tools dialog are UI. Every journey must be green, or any failure must be triaged as environmental per the usual rule.
 
 ## Workflow follow-up
 
