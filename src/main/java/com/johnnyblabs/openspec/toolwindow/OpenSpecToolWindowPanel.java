@@ -63,7 +63,7 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
     private final Alarm previewAlarm;
 
     /** What the preview render path needs, snapshotted on the EDT at selection time. */
-    private record PreviewSelection(String filePath, SpecPreviewRenderer.PreviewKind kind,
+    record PreviewSelection(String filePath, SpecPreviewRenderer.PreviewKind kind,
                                     String requirementName, String changeName) {}
 
     // Per-change rendered-deltas cache, keyed on change name. Avoids re-spawning the CLI on
@@ -250,24 +250,41 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
         });
     }
 
-    private PreviewSelection snapshotSelection(TreePath path) {
+    static PreviewSelection snapshotSelection(TreePath path) {
         if (path == null) return null;
         Object last = path.getLastPathComponent();
         if (!(last instanceof DefaultMutableTreeNode node)) return null;
         if (!(node.getUserObject() instanceof SpecTreeModel.TreeNodeData data)) return null;
 
-        SpecPreviewRenderer.PreviewKind kind = SpecPreviewRenderer.classify(data.type(), data.filePath());
+        // An artifact sits directly under its change node, whose path is the change directory.
+        String changeDir = enclosingChangeDir(path);
+        SpecPreviewRenderer.PreviewKind kind =
+                SpecPreviewRenderer.classify(data.type(), data.filePath(), changeDir);
         // The tree no longer holds requirement nodes (plain specs open in the editor), so there is no
         // requirement anchor to resolve here.
         String requirementName = null;
         // For a Change node the CLI is keyed by change name; the node's filePath is the change dir,
         // whose basename is the name (robust across both CHANGE-node constructions in SpecTreeModel).
         String changeName = null;
+        String filePath = data.filePath();
         if (kind == SpecPreviewRenderer.PreviewKind.CHANGE_DELTAS) {
             changeName = data.changeName() != null ? data.changeName()
                     : (data.filePath() != null ? new java.io.File(data.filePath()).getName() : null);
+            // The specs artifact's path is a glob; the deltas view builds its diff links from the
+            // change directory, so use that instead.
+            if (!data.type().isChange()) filePath = changeDir;
         }
-        return new PreviewSelection(data.filePath(), kind, requirementName, changeName);
+        return new PreviewSelection(filePath, kind, requirementName, changeName);
+    }
+
+    private static String enclosingChangeDir(TreePath path) {
+        TreePath parent = path.getParentPath();
+        if (parent != null && parent.getLastPathComponent() instanceof DefaultMutableTreeNode node
+                && node.getUserObject() instanceof SpecTreeModel.TreeNodeData data
+                && data.type().isChange()) {
+            return data.filePath();
+        }
+        return null;
     }
 
     private void renderPreview(PreviewSelection selection, int generation) {
