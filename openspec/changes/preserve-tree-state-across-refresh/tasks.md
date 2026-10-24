@@ -78,8 +78,8 @@
 ## 4. Verify
 
 - [x] 4.1 `./gradlew build` is green, including the coverage floor.
-- [ ] 4.2 `./gradlew verifyPlugin` across the configured IDE range reports Compatible, with no new deprecated, internal or experimental API usages. This change adds `TreeState` and `PathElementIdProvider` references.
-- [ ] 4.3 Run `caffeinate -dimsu ./gradlew uiSmoke` and confirm it is green. Then do a manual check in a sandbox IDE (`lifecycle-testdrive`):
+- [x] 4.2 `./gradlew verifyPlugin` across the configured IDE range reports Compatible, with no new deprecated, internal or experimental API usages. This change adds `TreeState` and `PathElementIdProvider` references.
+- [x] 4.3 Run `caffeinate -dimsu ./gradlew uiSmoke` and confirm it is green. Then do a manual check in a sandbox IDE (`lifecycle-testdrive`):
   - select a change's artifact;
   - tick a task in that change's `tasks.md` from outside the IDE;
   - return to the IDE and confirm the selection, expansion and preview stay.
