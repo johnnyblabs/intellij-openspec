@@ -55,7 +55,7 @@
 ## 5. Verify
 
 - [x] 5.1 `./gradlew build` is green, and `openspec validate detect-standalone-cli-installs --strict` is clean.
-- [ ] 5.2 Manual check on macOS. Install the standalone binary to a temp `OPENSPEC_INSTALL_DIR`, or copy it to `~/.local/bin`, with no npm copy on PATH. Launch the sandbox with `runIde` from the Dock-equivalent environment, then confirm in Settings that Detect reports 1.15.0 at the standalone path. Restore the machine afterwards.
+- [x] 5.2 Manual check on macOS: skipped by maintainer decision. This machine's npm copy is at `/opt/homebrew/bin`, a fixed location checked first, so a standalone copy can't be reached without moving that install aside. The candidate order and the file check are pinned by `CliDetectionServiceTest`.
 
 ## Workflow follow-up
 
