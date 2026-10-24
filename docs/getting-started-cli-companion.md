@@ -12,7 +12,7 @@
 |-------------|-------|
 | **IntelliJ IDEA 2024.2+** | Community or Ultimate edition |
 | **OpenSpec plugin** | Install from [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/30678-openspec) |
-| **OpenSpec CLI** | `npm install -g @fission-ai/openspec` |
+| **OpenSpec CLI** | OpenSpec's standalone installer (no Node.js needed), `npm install -g @fission-ai/openspec@latest`, or `brew install openspec`. See [OpenSpec's installation page](https://openspec.dev/docs/installation) |
 | **A CLI-based AI tool** | Claude Code, Gemini CLI, or similar |
 
 No API key or plugin-side AI configuration is needed — you'll use your existing terminal AI tool.

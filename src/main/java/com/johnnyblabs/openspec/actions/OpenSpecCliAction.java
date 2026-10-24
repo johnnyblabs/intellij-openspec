@@ -28,6 +28,11 @@ public abstract class OpenSpecCliAction extends OpenSpecBaseAction {
 
     protected abstract String getCommandLabel();
 
+    static String cliMissingContent(String commandLabel, boolean isWindows) {
+        return "OpenSpec CLI not available. Cannot run '" + commandLabel + "'. "
+                + com.johnnyblabs.openspec.util.CliInstallHints.notificationText(isWindows);
+    }
+
     @Override
     public void actionPerformed(@NotNull AnActionEvent e) {
         Project project = e.getProject();
@@ -37,8 +42,9 @@ public abstract class OpenSpecCliAction extends OpenSpecBaseAction {
         if (detection == null || !detection.isAvailable()) {
             if (!handleCliMissing(project, e)) {
                 OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_SYSTEM, "CLI",
-                        "OpenSpec CLI not available. Cannot run '" + getCommandLabel() + "'. Install with: npm i -g @fission-ai/openspec",
-                        com.intellij.notification.NotificationType.WARNING, OpenSpecNotifier.openSettingsAction());
+                        cliMissingContent(getCommandLabel(), com.intellij.openapi.util.SystemInfo.isWindows),
+                        com.intellij.notification.NotificationType.WARNING,
+                        OpenSpecNotifier.installInstructionsAction(), OpenSpecNotifier.openSettingsAction());
             }
             return;
         }

@@ -10,6 +10,10 @@
 
 - **OpenSpec CLI 1.15.x is supported, including its standalone binary.** OpenSpec 1.15 can be installed as a single program that doesn't need Node.js; the plugin reads its version the same way as the npm install. Validation results and everything else the plugin reads are unchanged from 1.14.
 
+### Changed
+
+- **Install hints now lead with OpenSpec's standalone installer, which needs no Node.js.** Wherever the plugin says how to install the OpenSpec CLI (the CLI-not-found notification, the setup wizard, Manage AI Tools, Settings), it shows OpenSpec's one-line installer for your OS first, then npm and Homebrew, with an **Install instructions** link to OpenSpec's installation page. The docs explain where each route installs, which copy the plugin uses, and why to keep just one.
+
 ### Fixed
 
 - **The plugin finds OpenSpec's standalone CLI where its installer puts it.** The standalone installer puts the binary in `~/.local/bin` on macOS and Linux, or `%LOCALAPPDATA%\Programs\openspec` on Windows, and an IDE launched from the Dock or Start menu often can't see it on PATH. The plugin now checks those folders, and a custom `OPENSPEC_INSTALL_DIR` when the IDE's environment carries it, after the places it already looked. It also finds the Homebrew formula on Linux (`/home/linuxbrew/.linuxbrew/bin`). An existing npm or Homebrew install is still the one it picks.
