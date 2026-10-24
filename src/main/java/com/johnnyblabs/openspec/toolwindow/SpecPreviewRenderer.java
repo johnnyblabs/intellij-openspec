@@ -73,6 +73,21 @@ public final class SpecPreviewRenderer {
      * A node with no backing markdown file, or whose file is not markdown, is {@link PreviewKind#NONE}.
      */
     public static PreviewKind classify(TreeNodeType type, String filePath) {
+        return classify(type, filePath, null);
+    }
+
+    /**
+     * As {@link #classify(TreeNodeType, String)}, with the enclosing change's directory. An artifact
+     * whose path is a glob (the CLI's {@code outputPath} for a multi-file artifact, e.g. the
+     * {@code specs} artifact's {@code specs/**}{@code /*.md}) is never a file: a glob under
+     * {@code changeDir/specs/} previews the change's deltas, any other glob is {@link PreviewKind#NONE}.
+     */
+    public static PreviewKind classify(TreeNodeType type, String filePath, String changeDir) {
+        if (type != null && !type.isChange() && filePath != null && isGlob(filePath)) {
+            boolean underSpecs = changeDir != null && filePath.startsWith(changeDir + "/specs/");
+            return underSpecs && (type == TreeNodeType.ARTIFACT || type == TreeNodeType.ARTIFACT_DONE)
+                    ? PreviewKind.CHANGE_DELTAS : PreviewKind.NONE;
+        }
         // A change node backs a directory, not a .md file — route it before the markdown-file guard.
         // Every change rollup state (plain, apply-ready, archive-ready) previews identically.
         if (type.isChange() && filePath != null) {
@@ -88,6 +103,10 @@ public final class SpecPreviewRenderer {
             case ARTIFACT, ARTIFACT_DONE -> PreviewKind.CHANGE_ARTIFACT;
             default -> PreviewKind.NONE;
         };
+    }
+
+    private static boolean isGlob(String path) {
+        return path.indexOf('*') >= 0 || path.indexOf('?') >= 0 || path.indexOf('[') >= 0;
     }
 
     /**

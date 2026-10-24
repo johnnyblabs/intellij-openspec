@@ -11,6 +11,7 @@
 ### Fixed
 
 - **The OpenSpec tool window keeps your place when it refreshes.** Editing files, ticking a task, a git checkout or an agent writing files in the terminal used to refresh the tree, clear your selection, leave the preview pane blank, and collapse a change whose task count had just moved. The selected node and expanded changes now stay as they were, and the preview shows the refreshed content.
+- **Selecting a change's specs shows its deltas.** Clicking the `specs` entry under a change left the preview pane empty. It now shows the same view as selecting the change: each capability's changes, with links to open its diff.
 
 ## v0.14.1
 

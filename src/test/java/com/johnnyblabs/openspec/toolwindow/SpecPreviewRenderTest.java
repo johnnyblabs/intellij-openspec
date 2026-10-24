@@ -2,7 +2,12 @@ package com.johnnyblabs.openspec.toolwindow;
 
 import com.johnnyblabs.openspec.toolwindow.SpecPreviewRenderer.PreviewKind;
 import com.johnnyblabs.openspec.toolwindow.SpecTreeModel.TreeNodeType;
+import com.johnnyblabs.openspec.util.CliOutputParser;
 import org.junit.jupiter.api.Test;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -96,5 +101,44 @@ class SpecPreviewRenderTest {
         // Absent path and non-previewable types collapse to NONE.
         assertEquals(PreviewKind.NONE, SpecPreviewRenderer.classify(TreeNodeType.DELTA_SPEC, null));
         assertEquals(PreviewKind.NONE, SpecPreviewRenderer.classify(TreeNodeType.HINT, "/s/spec.md"));
+    }
+    private static final String CHANGE_DIR = "/p/openspec/changes/demo-change";
+
+    /** The {@code specs} artifact's {@code outputPath}, from captured {@code status --json} output. */
+    static String capturedSpecsOutputPath() {
+        try (InputStream is = SpecPreviewRenderTest.class
+                .getResourceAsStream("/fixtures/cli/status-with-context.json")) {
+            String json = new String(is.readAllBytes(), StandardCharsets.UTF_8);
+            return CliOutputParser.parseChangeStatus(json).getArtifacts().stream()
+                    .filter(a -> "specs".equals(a.id())).findFirst().orElseThrow().outputPath();
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    @Test
+    void specsArtifactGlobClassifiesAsChangeDeltas() {
+        String path = CHANGE_DIR + "/" + capturedSpecsOutputPath();
+        assertEquals(PreviewKind.CHANGE_DELTAS,
+                SpecPreviewRenderer.classify(TreeNodeType.ARTIFACT_DONE, path, CHANGE_DIR));
+        assertEquals(PreviewKind.CHANGE_DELTAS,
+                SpecPreviewRenderer.classify(TreeNodeType.ARTIFACT, path, CHANGE_DIR));
+    }
+
+    @Test
+    void globOutsideSpecsClassifiesAsNone() {
+        assertEquals(PreviewKind.NONE, SpecPreviewRenderer.classify(
+                TreeNodeType.ARTIFACT_DONE, CHANGE_DIR + "/notes/**/*.md", CHANGE_DIR));
+        // A specs-shaped glob that is not under this change's specs/ is not its deltas.
+        assertEquals(PreviewKind.NONE, SpecPreviewRenderer.classify(
+                TreeNodeType.ARTIFACT_DONE, "/elsewhere/specs/**/*.md", CHANGE_DIR));
+    }
+
+    @Test
+    void plainArtifactsStillClassifyAsChangeArtifact() {
+        assertEquals(PreviewKind.CHANGE_ARTIFACT, SpecPreviewRenderer.classify(
+                TreeNodeType.ARTIFACT_DONE, CHANGE_DIR + "/proposal.md", CHANGE_DIR));
+        assertEquals(PreviewKind.CHANGE_ARTIFACT, SpecPreviewRenderer.classify(
+                TreeNodeType.ARTIFACT_DONE, CHANGE_DIR + "/design.md", CHANGE_DIR));
     }
 }
