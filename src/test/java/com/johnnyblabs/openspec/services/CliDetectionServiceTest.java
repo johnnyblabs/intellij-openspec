@@ -199,7 +199,7 @@ class CliDetectionServiceTest {
     // ---------- Windows common paths (task 2.4) ----------
 
     @Test
-    void windowsCommonPaths_bothEnvVarsPresent_returnsAllThreeCandidates() {
+    void windowsCommonPaths_bothEnvVarsPresent_returnsTheShimsThenTheStandaloneBinary() {
         Map<String, String> env = Map.of(
                 "APPDATA", "C:\\Users\\me\\AppData\\Roaming",
                 "LOCALAPPDATA", "C:\\Users\\me\\AppData\\Local"
@@ -209,7 +209,8 @@ class CliDetectionServiceTest {
         assertEquals(List.of(
                 "C:\\Users\\me\\AppData\\Roaming\\npm\\openspec.cmd",
                 "C:\\Users\\me\\AppData\\Local\\npm\\openspec.cmd",
-                "C:\\Users\\me\\AppData\\Local\\Microsoft\\WinGet\\Links\\openspec.cmd"
+                "C:\\Users\\me\\AppData\\Local\\Microsoft\\WinGet\\Links\\openspec.cmd",
+                "C:\\Users\\me\\AppData\\Local\\Programs\\openspec\\openspec.exe"
         ), paths);
     }
 
@@ -232,36 +233,31 @@ class CliDetectionServiceTest {
         List<String> paths = CliDetectionService.windowsCommonPaths(env::get);
         assertEquals(List.of(
                 "C:\\Local\\npm\\openspec.cmd",
-                "C:\\Local\\Microsoft\\WinGet\\Links\\openspec.cmd"
+                "C:\\Local\\Microsoft\\WinGet\\Links\\openspec.cmd",
+                "C:\\Local\\Programs\\openspec\\openspec.exe"
         ), paths);
     }
 
     @Test
-    void windowsCommonPaths_firstFails_fallsThroughToNext() {
-        // Integration-style test: feed the list through tryPath and ensure
-        // a failing first candidate doesn't short-circuit the rest.
+    void detect_windows_aFailingShimFallsThroughToTheNext() {
         CliDetectionService svc = new CliDetectionService((Project) null);
         svc.setIsWindowsForTest(true);
-
+        svc.setEnvForTest(Map.of("APPDATA", "C:\\Roaming", "LOCALAPPDATA", "C:\\Local")::get);
+        svc.setExecutableCheckForTest(path -> true);
         List<String> attempted = new ArrayList<>();
         svc.setProcessRunnerForTest(cmd -> {
+            if (!cmd.getParametersList().getList().contains("--version")) return null;
             String exe = cmd.getExePath();
             attempted.add(exe);
-            return exe.contains("Local") ? "openspec 2.0.0" : null;
+            return exe.equals("C:\\Local\\npm\\openspec.cmd") ? "openspec 2.0.0" : null;
         });
 
-        // Simulate detect() iterating windowsCommonPaths
-        boolean found = false;
-        for (String candidate : List.of(
-                "C:\\Roaming\\npm\\openspec.cmd",
-                "C:\\Local\\npm\\openspec.cmd",
-                "C:\\Local\\Microsoft\\WinGet\\Links\\openspec.cmd")) {
-            if (svc.tryPath(candidate)) { found = true; break; }
-        }
+        svc.detect();
 
-        assertTrue(found);
-        assertEquals(2, attempted.size(), "Should fall through first failure to second success");
         assertEquals("C:\\Local\\npm\\openspec.cmd", svc.getDetectedPath());
+        assertTrue(attempted.contains("C:\\Roaming\\npm\\openspec.cmd"), "the first shim was tried and failed");
+        assertFalse(attempted.contains("C:\\Local\\Microsoft\\WinGet\\Links\\openspec.cmd"),
+                "detection stops at the first shim that runs");
     }
 
     // ---------- Non-Windows hosts: no Windows branches invoked (task 2.5) ----------
@@ -476,5 +472,256 @@ class CliDetectionServiceTest {
         String standalone = detectWithVersionOutput(loadCliFixture("1.15.0/standalone/version.txt")).getDetectedVersion();
         String npm = detectWithVersionOutput(loadCliFixture("1.15.0/version.txt")).getDetectedVersion();
         assertEquals(npm, standalone, "the standalone binary and the npm install are the same generation to the plugin");
+    }
+
+    // ---------- 1.15 standalone binary: where its installers put it ----------
+
+    private static final List<String> UNIX_FIXED = List.of(
+            "/opt/homebrew/bin/openspec", "/usr/local/bin/openspec", "/usr/bin/openspec");
+
+    @Test
+    void unixCommonPaths_noOverrides_endWithLocalBin() {
+        List<String> paths = CliDetectionService.unixCommonPaths(name -> null, "/home/me");
+        List<String> expected = new ArrayList<>(UNIX_FIXED);
+        expected.add("/home/me/.local/bin/openspec");
+        assertEquals(expected, paths, "the existing locations keep their order; the installer's default comes last");
+    }
+
+    @Test
+    void unixCommonPaths_installDirOverride_comesBeforeLocalBin() {
+        Map<String, String> env = Map.of("OPENSPEC_INSTALL_DIR", "/opt/tools");
+        List<String> paths = CliDetectionService.unixCommonPaths(env::get, "/home/me");
+        assertEquals(List.of("/opt/tools/openspec", "/home/me/.local/bin/openspec"), paths.subList(3, 5));
+    }
+
+    @Test
+    void unixCommonPaths_installDirAndNameOverrides_combine() {
+        Map<String, String> env = Map.of("OPENSPEC_INSTALL_DIR", "/opt/tools", "OPENSPEC_INSTALL_NAME", "ospec");
+        List<String> paths = CliDetectionService.unixCommonPaths(env::get, "/home/me");
+        assertEquals("/opt/tools/ospec", paths.get(3));
+    }
+
+    @Test
+    void unixCommonPaths_emptyDirOrNameAlone_addsNoOverride() {
+        Map<String, String> env = Map.of("OPENSPEC_INSTALL_DIR", "", "OPENSPEC_INSTALL_NAME", "ospec");
+        List<String> paths = CliDetectionService.unixCommonPaths(env::get, "/home/me");
+        assertEquals(4, paths.size(), "a name without a dir is no candidate");
+        assertFalse(paths.stream().anyMatch(p -> p.contains("ospec") && !p.endsWith("/openspec")));
+    }
+
+    @Test
+    void unixCommonPaths_blankHome_addsNoLocalBin() {
+        assertEquals(UNIX_FIXED, CliDetectionService.unixCommonPaths(name -> null, " "));
+        assertEquals(UNIX_FIXED, CliDetectionService.unixCommonPaths(name -> null, null));
+    }
+
+    @Test
+    void windowsCommonPaths_installDirOverride_comesBeforeTheStandaloneDefault() {
+        Map<String, String> env = Map.of("LOCALAPPDATA", "C:\\Local", "OPENSPEC_INSTALL_DIR", "D:\\Tools");
+        List<String> paths = CliDetectionService.windowsCommonPaths(env::get);
+        assertEquals(List.of("D:\\Tools\\openspec.exe", "C:\\Local\\Programs\\openspec\\openspec.exe"),
+                paths.subList(paths.size() - 2, paths.size()));
+    }
+
+    @Test
+    void windowsCommonPaths_noLocalAppData_keepsASetOverride() {
+        Map<String, String> env = Map.of("OPENSPEC_INSTALL_DIR", "D:\\Tools", "OPENSPEC_INSTALL_NAME", "os.exe");
+        assertEquals(List.of("D:\\Tools\\os.exe"), CliDetectionService.windowsCommonPaths(env::get));
+    }
+
+    /** A service where every branch before the fixed locations misses, and the probe answers only for {@code hit}. */
+    private static CliDetectionService serviceFindingOnly(boolean windows, String hit, String output,
+                                                          List<String> probed) {
+        CliDetectionService svc = new CliDetectionService((Project) null);
+        svc.setIsWindowsForTest(windows);
+        svc.setProcessRunnerForTest(cmd -> {
+            if (!cmd.getParametersList().getList().contains("--version")) return null;
+            probed.add(cmd.getExePath());
+            return cmd.getExePath().equals(hit) ? output : null;
+        });
+        return svc;
+    }
+
+    @Test
+    void detect_unix_findsTheStandaloneBinaryInLocalBin() {
+        String standalone = "/home/me/.local/bin/openspec";
+        List<String> probed = new ArrayList<>();
+        CliDetectionService svc = serviceFindingOnly(false, standalone,
+                loadCliFixture("1.15.0/standalone/version.txt").trim(), probed);
+        svc.setEnvForTest(name -> null);
+        svc.setUserHomeForTest("/home/me");
+        List<String> checked = new ArrayList<>();
+        svc.setExecutableCheckForTest(path -> {
+            checked.add(path);
+            return path.equals(standalone);
+        });
+
+        List<String> otherCommands = new ArrayList<>();
+        svc.setProcessRunnerForTest(cmd -> {
+            if (!cmd.getParametersList().getList().contains("--version")) {
+                otherCommands.add(cmd.getExePath());
+                return null;
+            }
+            probed.add(cmd.getExePath());
+            return cmd.getExePath().equals(standalone) ? loadCliFixture("1.15.0/standalone/version.txt").trim() : null;
+        });
+
+        svc.detect();
+
+        assertFalse(otherCommands.contains("where.exe"), "no Windows lookup on Unix");
+        assertTrue(svc.isAvailable());
+        assertEquals(standalone, svc.getDetectedPath());
+        assertEquals("1.15.0", svc.getDetectedVersion());
+        List<String> expectedChecks = new ArrayList<>(UNIX_FIXED);
+        expectedChecks.add(standalone);
+        assertEquals(expectedChecks, checked, "Homebrew and the system paths are checked first");
+        assertEquals(List.of("openspec", standalone), probed, "only the bare name and the existing file are run");
+    }
+
+    @Test
+    void detect_windows_findsTheStandaloneBinaryAfterTheShims() {
+        String standalone = "C:\\Local\\Programs\\openspec\\openspec.exe";
+        List<String> probed = new ArrayList<>();
+        CliDetectionService svc = serviceFindingOnly(true, standalone,
+                loadCliFixture("1.15.0/standalone/version.txt").trim(), probed);
+        svc.setEnvForTest(Map.of("APPDATA", "C:\\Roaming", "LOCALAPPDATA", "C:\\Local")::get);
+        List<String> checked = new ArrayList<>();
+        svc.setExecutableCheckForTest(path -> {
+            checked.add(path);
+            return path.equals(standalone);
+        });
+
+        svc.detect();
+
+        assertEquals(standalone, svc.getDetectedPath());
+        assertEquals("1.15.0", svc.getDetectedVersion());
+        assertEquals(List.of(
+                "C:\\Roaming\\npm\\openspec.cmd",
+                "C:\\Local\\npm\\openspec.cmd",
+                "C:\\Local\\Microsoft\\WinGet\\Links\\openspec.cmd",
+                standalone), checked, "the npm and winget shims are checked first");
+        assertEquals(standalone, probed.get(probed.size() - 1));
+    }
+
+    @Test
+    void detect_anExistingInstallStillWinsOverTheStandaloneBinary() {
+        String existing = "/usr/local/bin/openspec";
+        List<String> probed = new ArrayList<>();
+        CliDetectionService svc = new CliDetectionService((Project) null);
+        svc.setIsWindowsForTest(false);
+        svc.setProcessRunnerForTest(cmd -> {
+            if (!cmd.getParametersList().getList().contains("--version")) return null;
+            probed.add(cmd.getExePath());
+            return cmd.getExePath().startsWith("/") ? "openspec 1.15.0" : null;
+        });
+        svc.setEnvForTest(name -> null);
+        svc.setUserHomeForTest("/home/me");
+        svc.setExecutableCheckForTest(path -> path.equals(existing) || path.equals("/home/me/.local/bin/openspec"));
+
+        svc.detect();
+
+        assertEquals(existing, svc.getDetectedPath());
+        assertFalse(probed.contains("/home/me/.local/bin/openspec"), "detection stops at the first install found");
+    }
+
+    @Test
+    void detect_missingFixedLocationsAreNotRun() {
+        List<String> probed = new ArrayList<>();
+        CliDetectionService svc = serviceFindingOnly(false, "none", "openspec 1.15.0", probed);
+        svc.setEnvForTest(Map.of("OPENSPEC_INSTALL_DIR", "/opt/tools")::get);
+        svc.setUserHomeForTest("/home/me");
+        svc.setExecutableCheckForTest(path -> false);
+
+        svc.detect();
+
+        assertFalse(svc.isAvailable());
+        assertEquals(List.of("openspec"), probed, "only the bare name runs; no fixed location starts a process");
+    }
+
+    @Test
+    void detect_theFileCheckDoesNotGateTheBareNameOrTheShellPath() {
+        List<String> probed = new ArrayList<>();
+        CliDetectionService svc = new CliDetectionService((Project) null);
+        svc.setIsWindowsForTest(false);
+        svc.setProcessRunnerForTest(cmd -> {
+            List<String> args = cmd.getParametersList().getList();
+            if (args.contains("which openspec")) return "/custom/bin/openspec";
+            if (!args.contains("--version")) return null;
+            probed.add(cmd.getExePath());
+            return cmd.getExePath().equals("/custom/bin/openspec") ? "openspec 1.15.0" : null;
+        });
+        svc.setExecutableCheckForTest(path -> false);
+
+        svc.detect();
+
+        assertEquals(List.of("openspec", "/custom/bin/openspec"), probed);
+        assertEquals("/custom/bin/openspec", svc.getDetectedPath());
+    }
+
+    // ---------- The real file check ----------
+
+    @Test
+    void isExecutableFile_acceptsOnlyARegularExecutableFile(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir)
+            throws java.io.IOException {
+        org.junit.jupiter.api.Assumptions.assumeTrue(
+                java.nio.file.FileSystems.getDefault().supportedFileAttributeViews().contains("posix"),
+                "the execute bit needs a POSIX file system");
+        java.nio.file.Path exe = java.nio.file.Files.createFile(dir.resolve("openspec"));
+        java.nio.file.Files.setPosixFilePermissions(exe, java.nio.file.attribute.PosixFilePermissions.fromString("rwxr-xr-x"));
+        java.nio.file.Path plain = java.nio.file.Files.createFile(dir.resolve("plain"));
+        java.nio.file.Files.setPosixFilePermissions(plain, java.nio.file.attribute.PosixFilePermissions.fromString("rw-r--r--"));
+
+        assertTrue(CliDetectionService.isExecutableFile(exe.toString()));
+        assertFalse(CliDetectionService.isExecutableFile(plain.toString()), "not executable");
+        assertFalse(CliDetectionService.isExecutableFile(dir.toString()), "a directory");
+        assertFalse(CliDetectionService.isExecutableFile(dir.resolve("missing").toString()), "missing");
+        assertFalse(CliDetectionService.isExecutableFile("bad\0path"), "an invalid path counts as missing");
+    }
+
+    @Test
+    void isRegularFile_ignoresTheExecuteBit(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir)
+            throws java.io.IOException {
+        java.nio.file.Path plain = java.nio.file.Files.createFile(dir.resolve("openspec.exe"));
+        assertTrue(CliDetectionService.isRegularFile(plain.toString()));
+        assertFalse(CliDetectionService.isRegularFile(dir.toString()), "a directory");
+        assertFalse(CliDetectionService.isRegularFile(dir.resolve("missing.exe").toString()), "missing");
+        assertFalse(CliDetectionService.isRegularFile("bad\0path"), "an invalid path counts as missing");
+    }
+
+    @Test
+    void detect_theInstallDirOverrideWinsOverLocalBin() {
+        List<String> probed = new ArrayList<>();
+        CliDetectionService svc = new CliDetectionService((Project) null);
+        svc.setIsWindowsForTest(false);
+        svc.setProcessRunnerForTest(cmd -> {
+            if (!cmd.getParametersList().getList().contains("--version")) return null;
+            probed.add(cmd.getExePath());
+            return cmd.getExePath().startsWith("/") ? "1.15.0" : null;
+        });
+        svc.setEnvForTest(Map.of("OPENSPEC_INSTALL_DIR", "/opt/tools")::get);
+        svc.setUserHomeForTest("/home/me");
+        svc.setExecutableCheckForTest(path -> path.equals("/opt/tools/openspec")
+                || path.equals("/home/me/.local/bin/openspec"));
+
+        svc.detect();
+
+        assertEquals("/opt/tools/openspec", svc.getDetectedPath());
+        assertFalse(probed.contains("/home/me/.local/bin/openspec"));
+    }
+
+    @Test
+    void theDefaultFileCheckFollowsTheOsAtEachCall(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir)
+            throws java.io.IOException {
+        org.junit.jupiter.api.Assumptions.assumeTrue(
+                java.nio.file.FileSystems.getDefault().supportedFileAttributeViews().contains("posix"),
+                "the execute bit needs a POSIX file system");
+        java.nio.file.Path file = java.nio.file.Files.createFile(dir.resolve("openspec.exe"));
+        java.nio.file.Files.setPosixFilePermissions(file, java.nio.file.attribute.PosixFilePermissions.fromString("rw-r--r--"));
+        CliDetectionService svc = new CliDetectionService((Project) null);
+
+        svc.setIsWindowsForTest(false);
+        assertFalse(svc.executableCheck().test(file.toString()), "Unix needs the execute bit");
+        svc.setIsWindowsForTest(true);
+        assertTrue(svc.executableCheck().test(file.toString()), "Windows needs only a regular file");
     }
 }
