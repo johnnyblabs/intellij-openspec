@@ -70,7 +70,7 @@ class ValidatorVerdictVersionStabilityTest {
     private static final String STRICT = "validate-parity-corpus-strict.json";
     private static final int CORPUS_SIZE = 13;
     /** Vacuity floor — these corpora must always be present, or discovery has silently broken. */
-    private static final Set<String> FLOOR = Set.of("1.6.0", "1.7.0", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.2", "1.14.3");
+    private static final Set<String> FLOOR = Set.of("1.6.0", "1.7.0", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.2", "1.14.3", "1.15.0");
     /**
      * The exact, known relaxation between the {@link #STRICT_ANCHOR} default map and the
      * {@link #DEFAULT_ANCHOR} default map: 1.8 demoted the missing-SHALL rule to a default WARNING, so

@@ -92,5 +92,9 @@ class CliVersionTest {
         assertTrue(CliVersion.compare("1.14.0", "1.13.0") > 0, "1.14.0 sorts above 1.13.0");
         assertFalse(CliVersion.atLeast("1.13.2", "1.14.0"), "1.13.2 is not at least 1.14.0");
         assertTrue(CliVersion.atLeast("1.14.3", "1.14.2"), "1.14.3 is at least 1.14.2");
+        // 1.15: the anti-lexical pair, plus monotonicity over the 1.14.3 → 1.15.0 boundary.
+        assertTrue(CliVersion.compare("1.15.0", "1.9.0") > 0, "1.15.0 must sort above 1.9.0 (numeric, not lexical)");
+        assertTrue(CliVersion.compare("1.15.0", "1.14.3") > 0, "1.15.0 sorts above 1.14.3");
+        assertFalse(CliVersion.atLeast("1.14.3", "1.15.0"), "1.14.3 is not at least 1.15.0");
     }
 }

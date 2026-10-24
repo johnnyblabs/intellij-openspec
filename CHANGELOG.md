@@ -4,6 +4,10 @@
 
 ## Unreleased
 
+### Added
+
+- **OpenSpec CLI 1.15.x is supported, including its standalone binary.** OpenSpec 1.15 can be installed as a single program that doesn't need Node.js; the plugin reads its version the same way as the npm install. Validation results and everything else the plugin reads are unchanged from 1.14.
+
 ## v0.14.1
 
 ### Fixed

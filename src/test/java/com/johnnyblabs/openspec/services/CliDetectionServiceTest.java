@@ -438,4 +438,43 @@ class CliDetectionServiceTest {
         assertTrue(svc.isDetectedOnce(), "a completed detection counts even when the CLI wasn't found");
         assertFalse(svc.isAvailable());
     }
+
+    // ---------- 1.15 standalone binary: its captured --version output parses like the npm install ----------
+
+    private static String loadCliFixture(String name) {
+        String path = "/fixtures/cli/" + name;
+        try (java.io.InputStream is = CliDetectionServiceTest.class.getResourceAsStream(path)) {
+            if (is == null) throw new IllegalStateException("Fixture not found: " + path);
+            return new String(is.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+        } catch (java.io.IOException e) {
+            throw new RuntimeException("Failed to read fixture: " + path, e);
+        }
+    }
+
+    private static CliDetectionService detectWithVersionOutput(String versionOutput) {
+        CliDetectionService svc = new CliDetectionService((Project) null);
+        svc.setIsWindowsForTest(false);
+        svc.setProcessRunnerForTest(cmd ->
+                cmd.getParametersList().getList().contains("--version") ? versionOutput : null);
+        svc.tryPath("openspec");
+        return svc;
+    }
+
+    @Test
+    void standaloneBinary_versionOutput_detectsAs115() {
+        // Real `openspec --version` stdout of the 1.15.0 standalone darwin-arm64 binary (see fixtures/cli/README.md).
+        String captured = loadCliFixture("1.15.0/standalone/version.txt");
+        CliDetectionService svc = detectWithVersionOutput(captured);
+
+        assertTrue(svc.isAvailable(), "the standalone binary's --version output counts as a detected CLI");
+        assertEquals("1.15.0", svc.getDetectedVersion(), "detected version is the bare version, without the trailing newline");
+        assertTrue(CliVersion.atLeast(svc.getDetectedVersion(), "1.15.0"), "recognized as the 1.15 generation");
+    }
+
+    @Test
+    void standaloneBinary_detectsTheSameVersionAsTheNpmInstall() {
+        String standalone = detectWithVersionOutput(loadCliFixture("1.15.0/standalone/version.txt")).getDetectedVersion();
+        String npm = detectWithVersionOutput(loadCliFixture("1.15.0/version.txt")).getDetectedVersion();
+        assertEquals(npm, standalone, "the standalone binary and the npm install are the same generation to the plugin");
+    }
 }
