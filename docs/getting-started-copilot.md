@@ -4,7 +4,7 @@
 
 > **Maintenance: Reference** — stable; updated only when the described setup flow changes (see the [documentation index](README.md)).
 
-*Last verified: 2026-10-19 against plugin v0.14.0 source*
+*Last verified: 2026-10-24 against plugin v0.14.1 source*
 
 This guide walks you through setting up the OpenSpec IntelliJ plugin and completing your first spec-driven change using an IDE-based AI tool. The examples use GitHub Copilot, but the clipboard workflow works identically with Cursor, Devin Desktop, and Cline. By the end, you'll have proposed, generated, implemented, and archived a change — the full OpenSpec lifecycle.
 
@@ -120,6 +120,7 @@ For this guide, select **"Copy for GitHub Copilot"**. This is the recommended de
 | **Provider** | Select your AI provider: Claude (Anthropic), OpenAI, or Gemini (Google). Select "None" to disable. |
 | **API key** | Your API key for the selected provider. Stored securely in your operating system's keychain (macOS Keychain, Windows Credential Manager, or Linux Secret Service) — never saved in project files. Masked with bullet points after entry. |
 | **Model** | The model to use for generation. Pre-populated with available models for the selected provider. Editable — you can type a custom model ID. |
+| **Workspace ID (optional)** | Claude only. Fill it in when your Claude API key isn't scoped to a single workspace; copy the ID (starts with `wrkspc_`) from **Console → Settings → Workspaces**. Leave it blank for a key that belongs to one workspace. |
 | **Test** | Click to verify your API key works. Shows a green success message with the provider and model name, or a red error message with details. |
 
 ---

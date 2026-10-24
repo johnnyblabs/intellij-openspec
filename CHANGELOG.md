@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+## v0.14.1
+
 ### Fixed
 
 - **Claude API keys that aren't scoped to a workspace now work.** Claude now requires such keys, for example a personal key that can use any of your workspaces, to name a workspace on every request, so Test and generation failed with "This API key is not scoped to a workspace". Settings → Tools → OpenSpec → Direct API has a new **Workspace ID (optional)** field, shown when Claude is the provider. Enter the ID from Console → Settings → Workspaces; it is sent with every Claude request, and Test uses the value in the field before you click Apply. If the workspace is missing or not found, the plugin now says what to do instead of showing Claude's raw error. Claude requests now authenticate with `Authorization: Bearer`, the header Anthropic recommends.
