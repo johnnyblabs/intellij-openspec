@@ -31,7 +31,8 @@ public final class DirectApiService {
     private static final String GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/";
 
     // List-models endpoints (the free GET used to validate the key and discover the account's models).
-    private static final String CLAUDE_MODELS_URL = "https://api.anthropic.com/v1/models";
+    // limit=1000 (the maximum) returns every model in one page; the default page is 20.
+    private static final String CLAUDE_MODELS_URL = "https://api.anthropic.com/v1/models?limit=1000";
     private static final String OPENAI_MODELS_URL = "https://api.openai.com/v1/models";
     // pageSize=1000 returns every model in one page (the default page is ~50). The key rides the
     // x-goog-api-key header, never the URL, matching buildGeminiRequest.

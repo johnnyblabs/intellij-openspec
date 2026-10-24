@@ -357,8 +357,8 @@ class DirectApiServiceTest {
         void anthropicListRequestSendsBearerAndVersionHeaders() {
             var request = DirectApiService.buildListModelsRequest(AiProvider.CLAUDE, "test-secret-key", null);
             assertEquals("GET", request.method());
-            assertTrue(request.uri().toString().endsWith("/v1/models"),
-                    "Anthropic list endpoint must be /v1/models: " + request.uri());
+            // limit=1000 asks for every model in one page (the default page is 20).
+            assertEquals(java.net.URI.create("https://api.anthropic.com/v1/models?limit=1000"), request.uri());
             assertEquals("Bearer test-secret-key", request.headers().firstValue("Authorization").orElse(null));
             assertTrue(request.headers().firstValue("x-api-key").isEmpty(), "the legacy x-api-key must not be sent");
             assertTrue(request.headers().firstValue("anthropic-workspace-id").isEmpty(),
