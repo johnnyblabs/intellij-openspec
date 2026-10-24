@@ -47,9 +47,9 @@
 
 ## 4. UI smoke and demo
 
-- [ ] 4.1 Journey 1: assert through the tree's expanded paths that `Changes` is expanded with no explicit expand (the workflow label already shows the change name, so text alone proves nothing). Journey 9 (its explicit `expandPath` of `Changes` stays, a no-op once Changes opens expanded): after the change's badged deltas render, click `Changes` and wait for the empty name, then click the `proposal` artifact and wait for "OpenSpec preview change deltas badged" again.
+- [x] 4.1 Journey 1: assert through the tree's expanded paths that `Changes` is expanded with no explicit expand (the workflow label already shows the change name, so text alone proves nothing). Journey 9 (its explicit `expandPath` of `Changes` stays, a no-op once Changes opens expanded): after the change's badged deltas render, click `Changes` and wait for the empty name, then click the `proposal` artifact and wait for "OpenSpec preview change deltas badged" again.
 - [x] 4.2 In `scripts/seed-lifecycle-demo.sh`, add an opt-in `--deltas-demo` flag that seeds a second change, `demo-modify-greeting`, with a MODIFIED delta on `greeting` whose header matches the main spec's requirement exactly. It is opt-in, like `--archive-ready-demo`, because a second active change sends Archive to a chooser (breaking Journey 5) and the captured UI smoke fixture must stay unchanged. Leave `demo-add-farewell` untouched. Have the lifecycle-testdrive skill pass the flag, and add "Stop 1b — Change Deltas pane" to its walkthrough template: select the change, then an artifact, then nothing, and use the open link and the diff link.
-- [ ] 4.3 Run `caffeinate -dimsu ./gradlew uiSmoke`. Every journey must be green, which confirms first-load expansion shifted no expectations.
+- [x] 4.3 Run `caffeinate -dimsu ./gradlew uiSmoke`. Every journey must be green, which confirms first-load expansion shifted no expectations.
 
 ## 5. Docs and verify
 
@@ -62,7 +62,7 @@
   - without the CLI, artifacts show the placeholder.
 
   Check `docs/marketplace-page.md` and `docs/feature-comparison-matrix.md` for claims about artifact previews.
-- [ ] 5.2 Retake the `01-spec-browser` Marketplace screenshot with the screenshot tour, and hand it to the maintainer to upload.
+- [x] 5.2 Retake the `01-spec-browser` Marketplace screenshot with the screenshot tour, and hand it to the maintainer to upload.
 - [x] 5.3 Add a CHANGELOG `## Unreleased` entry that tells users the preview now says what it shows, opens on your changes, and shows a change's deltas for any of its artifacts, with a link to open the file.
 - [x] 5.4 `./gradlew build` is green, and `openspec validate clarify-browse-preview-purpose --strict` is clean.
 
