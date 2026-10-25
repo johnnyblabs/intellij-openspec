@@ -72,8 +72,7 @@ The demo project is deliberately seeded to trigger real behavior:
 
 6. **Hand over.** Tell the user: the IDE opens straight into the demo project; open
    `WALKTHROUGH.md` (project root), drag its tab into a right split, and work down the
-   stops. Warn that the walkthrough's feedback stop REALLY submits to the OpenSpec
-   maintainers if a message is sent — test the empty-message validation and cancel.
+   stops.
 
 **Guardrails**
 

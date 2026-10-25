@@ -5,9 +5,10 @@ This project was initialized by OpenSpec CLI **1.3.1** on purpose, and carries l
 `.cursor/commands/openspec-*.md` command files that current CLIs report as leftovers. That is
 what makes the Update cleanup flow fire (Stop 3).
 
-> **Automated coverage** (`gradle uiSmoke`, same seeded fixture): presence/wiring of
-> Stops 1 (tree + panel), 2 (editor parity incl. the seeded `keyword-in-header` spec),
-> 3 (cleanup notice), 4 (Settings schemas), and the Stop 5 archive confirmation guard.
+> **Automated coverage** (`gradle uiSmoke`, same seeded fixture, without `--deltas-demo`): presence and wiring of
+> Stops 1 (tree + panel, Journey 1), 1b (a change's badged deltas, Journey 9, which seeds its own ADDED delta),
+> 2 (editor parity incl. the seeded `keyword-in-header` spec, Journey 4; Search Everywhere, Journey 8),
+> 3 (cleanup notice, Journey 2), 4 (Settings schemas, Journey 3), and the Stop 5 archive guard (Journey 5).
 > This manual walkthrough remains the judgment pass —
 > wording, layout, feel — not the only safety net.
 
@@ -17,9 +18,10 @@ what makes the Update cleanup flow fire (Stop 3).
 
 Open the **OpenSpec tool window** (right sidebar stripe).
 
-- [ ] Tree shows `Specs ▸ greeting ▸ Requirement: Friendly greeting`
-- [ ] Tree shows `Changes ▸ demo-add-farewell` with per-artifact rows
-- [ ] The Workflow Action Panel chips read: **✓ proposal · ○ design · ○ specs · − tasks**
+- [ ] The tree's only top-level node is `Changes`: specs aren't listed here (open them from the
+      Project View, or find them with Search Everywhere, Stop 2)
+- [ ] Tree shows `Changes ▸ demo-add-farewell` and `demo-modify-greeting`, each with per-artifact rows
+- [ ] Select `demo-add-farewell`: the Workflow Action Panel chips read **✓ proposal · ○ design · ○ specs · − tasks**
       (tasks blocked by design + specs — this is the CLI's DAG, not a hardcoded one)
 
 ## Stop 1b — Change Deltas pane
@@ -42,7 +44,8 @@ remove in the specs when it's archived.
 Open `openspec/specs/greeting/spec.md`. The requirement header is deliberately
 written lowercase: `### requirement:`.
 
-- [ ] The tree still lists "Friendly greeting" (parsing accepts the casing, like CLI 1.4+)
+- [ ] **Search Everywhere** (double Shift), type `greet the user by name` → it lists the requirement
+      **Friendly greeting**, parsed from the lowercase header (the casing is accepted, like CLI 1.4+)
 - [ ] No inspection flags the file; the requirement gutter icon appears
 - [ ] Now edit it: move `SHALL` so it appears **only in the header line**
       (e.g. header `### requirement: The system SHALL greet` and body without SHALL).

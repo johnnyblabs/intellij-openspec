@@ -892,7 +892,7 @@ class OpenSpecUiSmokeTest {
     }
 
     /**
-     * Journey 8 — model selector (happy path): a Direct API provider configured BEFORE the tool
+     * Journey 12 — model selector (happy path): a Direct API provider configured BEFORE the tool
      * window is first shown surfaces the "Direct API" delivery option, restores it as the selection,
      * and shows the model selector populated from the static provider list; the status strip renders
      * the model + mode. Green on current code — gates the shipped happy path headfully (the EDT combo
@@ -929,7 +929,7 @@ class OpenSpecUiSmokeTest {
     }
 
     /**
-     * Journey 9 — model selector refreshes on MID-SESSION Direct API config (regression test for the
+     * Journey 13 — model selector refreshes on MID-SESSION Direct API config (regression test for the
      * mid-session-refresh fix). With nothing configured at show, the delivery selector offers no Direct
      * API option and the model selector is absent. After configuring Direct API mid-session and firing
      * OpenSpec.Refresh, the fix re-runs populateToolSelector so Direct API is offered + restored and the
