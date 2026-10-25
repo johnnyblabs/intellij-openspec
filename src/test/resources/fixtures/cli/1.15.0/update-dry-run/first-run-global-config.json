@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "path": "~/.config/openspec/config.json",
+      "action": "add",
+      "tool": "openspec"
+    }
+  ],
+  "notes": [],
+  "failures": []
+}

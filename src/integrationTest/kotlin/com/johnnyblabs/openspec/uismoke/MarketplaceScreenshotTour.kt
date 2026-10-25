@@ -13,6 +13,7 @@ import com.intellij.tools.ide.performanceTesting.commands.CommandChain
 import com.intellij.tools.ide.performanceTesting.commands.takeScreenshot
 import com.intellij.driver.sdk.ui.components.ideFrame
 import com.intellij.driver.sdk.ui.components.tree
+import com.intellij.driver.sdk.ui.ui
 import com.intellij.driver.sdk.waitForIndicators
 import com.intellij.ide.starter.driver.engine.runIdeWithDriver
 import com.intellij.ide.starter.ide.IdeProductProvider
@@ -408,6 +409,14 @@ class MarketplaceScreenshotTour {
             selectToolWindowContent("Browse")
             expireNotifications()
             invokeAction("OpenSpec.Update", now = false)
+            // CLI 1.15+ shows the update preview first; apply it to reach the cleanup notice.
+            if (hostCliVersion()?.let { v -> Regex("""^(\d+)\.(\d+)""").find(v)?.destructured
+                    ?.let { (maj, min) -> maj.toInt() > 1 || (maj.toInt() == 1 && min.toInt() >= 15) } } == true) {
+                waitUntil("update preview", timeout = 3.minutes) {
+                    ui.x { byTitle("OpenSpec Update Preview") }.present()
+                }
+                ui.x { byTitle("OpenSpec Update Preview") }.x { byAccessibleName("Apply") }.click(null)
+            }
             waitUntil("cleanup review notification", timeout = 3.minutes) {
                 utility(ActionCenterRef::class).getNotifications(project)
                     .any { it.getContent().contains("legacy file(s)") }

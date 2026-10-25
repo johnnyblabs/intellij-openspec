@@ -19,7 +19,7 @@ All OpenSpec actions are available from the **OpenSpec** top-level menu and from
 | **Validate** | OpenSpec → Validate | *(none)* | BuiltInValidator + CLI merge | Toolbar, spec nodes |
 | **List** | OpenSpec → List | *(none)* | Parses files directly / CLI fallback | — |
 | **Refresh** | OpenSpec → Refresh | *(none)* | Rebuilds SpecTreeModel | Toolbar |
-| **Update** | OpenSpec → Update OpenSpec | *(none)* | CLI only (`openspec update`) | — |
+| **Update** | OpenSpec → Update OpenSpec… | *(none)* | CLI only (`openspec update`; on CLI 1.15+ after an `update --dry-run --json` preview) | — |
 | **Manage AI Tools** | OpenSpec → Manage AI Tools... | *(none)* | ManageAiToolsDialog | — |
 | **Setup Wizard** | OpenSpec → Setup Wizard... | *(none)* | SetupWizardDialog | — |
 

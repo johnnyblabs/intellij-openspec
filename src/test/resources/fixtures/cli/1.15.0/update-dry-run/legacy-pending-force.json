@@ -1,0 +1,21 @@
+{
+  "changes": [
+    {
+      "path": ".cursor/commands/openspec-apply.md",
+      "action": "delete",
+      "tool": "openspec"
+    },
+    {
+      "path": ".cursor/commands/openspec-archive.md",
+      "action": "delete",
+      "tool": "openspec"
+    },
+    {
+      "path": ".cursor/commands/openspec-proposal.md",
+      "action": "delete",
+      "tool": "openspec"
+    }
+  ],
+  "notes": [],
+  "failures": []
+}

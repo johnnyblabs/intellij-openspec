@@ -211,7 +211,7 @@ Statuses are exactly what `openspec status` reports. When `openspec status` reje
 | **Archive** | OpenSpec > Archive | Archive a completed change: with OpenSpec CLI 1.5+ through `openspec archive` (its validation, rules and messages; "Archive Without Syncing" adds `--skip-specs`), otherwise by the plugin, which applies the delta specs and moves the change to `openspec/changes/archive/YYYY-MM-DD-<name>/` (refused if that folder exists). Runs in the background; a refusal shows the reason and leaves the change active. |
 | **Bulk Archive** | OpenSpec > Bulk Archive... | Archive multiple completed changes at once with conflict detection, one `openspec archive` call per change with CLI 1.5+. A change OpenSpec would refuse is marked Blocked (or Failed with the CLI's reason) and left untouched. |
 | **Sync Specs** | OpenSpec > Sync Specs | Merge delta specs from a completed change into main specs at `openspec/specs/`, by the same rules as `openspec archive`: fenced examples are left alone, names match exactly, and a change OpenSpec would refuse is refused with its reason in the preview, with nothing written. A new capability starts with `# <name> Specification` and OpenSpec's "TBD - created by archiving change …" Purpose, or the delta's own Purpose when it has one. Shows preview dialog. |
-| **Update** | OpenSpec > Update | Run `openspec update` to refresh agent instruction files. Requires CLI. When the CLI reports leftover legacy files from its skills migration (it exits 0 but asks for `--force` or an interactive run — neither reachable from the console), the plugin raises a **Review legacy cleanup** notice instead of bare success: every CLI-listed file appears with a checkbox and an open-to-inspect link (the review quotes what the CLI said and starts with no files ticked, since OpenSpec warns to back up custom content first), removal happens through the IDE as a single undoable step (Local History covers it), and a follow-up `openspec update` verifies the result (if that run fails, the plugin says the cleanup couldn't be verified rather than reporting a clean state). If that verification shows the CLI *regenerated* the files (a known inconsistency in some CLI versions' tool integrations), the plugin says so plainly and stops re-nagging until the CLI reports something different. Escape hatches: run interactively in the terminal, or **Not now** (no re-nag while the pending set is unchanged). **The plugin never runs `openspec update --force` on your behalf.** |
+| **Update** | OpenSpec > Update OpenSpec… | Run `openspec update` to refresh agent instruction files. Requires CLI. **On CLI 1.15 or later, Update first shows what it will change** (see [Update preview](#update-preview)) and runs only when you click **Apply**. When the CLI reports leftover legacy files from its skills migration (it exits 0 but asks for `--force` or an interactive run — neither reachable from the console), the plugin raises a **Review legacy cleanup** notice instead of bare success: every CLI-listed file appears with a checkbox and an open-to-inspect link (the review quotes what the CLI said and starts with no files ticked, since OpenSpec warns to back up custom content first), removal happens through the IDE as a single undoable step (Local History covers it), and a follow-up `openspec update` verifies the result (if that run fails, the plugin says the cleanup couldn't be verified rather than reporting a clean state). If that verification shows the CLI *regenerated* the files (a known inconsistency in some CLI versions' tool integrations), the plugin says so plainly and stops re-nagging until the CLI reports something different. Escape hatches: run interactively in the terminal, or **Not now** (no re-nag while the pending set is unchanged). **The plugin never runs `openspec update --force` on your behalf.** |
 | **Manage AI Tools** | OpenSpec > Manage AI Tools... | View and configure AI tool integrations detected in your project. |
 | **List** | OpenSpec > List | List all specs and changes. |
 | **Refresh Tree** | OpenSpec > Refresh Tree | Manually refresh the tool window tree. |
@@ -397,6 +397,25 @@ Fork, Validate and Open Templates act on the schema selected in the list, and st
 
 ---
 
+## Update preview
+
+On OpenSpec CLI 1.15 or later, every update the plugin starts shows you what it will do first: the **Update OpenSpec…** action, the update offered after you switch workflow profile, and the **Update** button in **Manage AI Tools**. The plugin runs `openspec update --dry-run --json`, which writes nothing, and shows its plan in the **OpenSpec Update Preview** dialog:
+
+- **A summary**, such as "24 changes: 12 deletes, 12 adds".
+- **OpenSpec's notes.** A note that the update will move files out of a renamed tool folder (for example `.windsurf/` to `.devin/`) is shown as a warning: run from the IDE, the CLI makes that move without asking.
+- **Failures,** for example a file the update can't write. **Apply** is disabled until they're fixed, because `openspec update` stops at the first tool it can't update.
+- **The changes, grouped by tool,** with deletes first. Anything outside your project, such as `~/.config/openspec/config.json` (written the first time you update), is in its own **Outside this project** group.
+
+**Apply** runs `openspec update` once. **Cancel** changes nothing. When the plan deletes anything, Cancel is the default button.
+
+- **Nothing to update:** when the plan is empty, the plugin says the project is already up to date and doesn't run the update.
+- **The preview fails:** for example there's no `openspec/` folder, or the output can't be read. The plugin shows the CLI's error and changes nothing. It never runs an update you haven't seen.
+- **Manage AI Tools:** `openspec update` always updates every configured tool, so the **Update** button there shows the whole plan, with that tool's changes listed first.
+- **Legacy cleanup:** when the plan says legacy files are waiting, the plugin takes the list of files to remove from `openspec update --dry-run --force --json` (read-only) after you apply, and offers it in the usual **Review legacy cleanup** flow. It never runs `--force` itself.
+- **Older CLIs:** below 1.15, which has no `--dry-run`, Update runs directly as before.
+
+The plan isn't saved anywhere: each Update asks the CLI again.
+
 ## Troubleshooting
 
 ### "CLI: not found" in the status bar
@@ -428,7 +447,7 @@ The plugin uses the first copy it finds, in this order:
 
 If you have more than one copy, the terminal and the IDE can run different versions. Keep one, and upgrade it the way you installed it: re-run the installer (or `openspec install`), `npm install -g @fission-ai/openspec@latest`, or `brew upgrade openspec`. To pin a copy, set its full path in **Settings > Tools > OpenSpec > CLI path**.
 
-The **Update** action runs `openspec update`. That refreshes your project's generated instruction files (skills and commands) to match the CLI you have; it doesn't upgrade the CLI itself.
+The **Update** action runs `openspec update` (on CLI 1.15+, after showing you the [preview](#update-preview)). That refreshes your project's generated instruction files (skills and commands) to match the CLI you have; it doesn't upgrade the CLI itself.
 
 ### "Fast-Forward", "Continue", or other actions are grayed out
 

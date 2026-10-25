@@ -48,6 +48,10 @@ import kotlin.time.Duration.Companion.seconds
  *
  * Failure artifacts (IDE logs, screenshots) are collected by Starter under out/perf-startup/.
  */
+
+/** The update preview's title, as `UpdatePreviewDialog.TITLE`. */
+private const val UPDATE_PREVIEW_TITLE = "OpenSpec Update Preview"
+
 class OpenSpecUiSmokeTest {
 
     /** JMX stub for the platform's notification center (no SDK helper on the 242 line). */
@@ -176,10 +180,29 @@ class OpenSpecUiSmokeTest {
         // 1.13.2 and 1.14.3) still list there; the demo's Junie command files are regenerated in place instead,
         // which is why an earlier version of this journey wrongly concluded the block was gone from 1.8 on.
         // CLI 1.14.0 reworded the block's guidance line; the plugin recognizes both wordings.
-        newContext(freshDemoProject()).runIdeWithDriver().useDriverAndCloseIde {
+        // From CLI 1.15 the action first shows the update preview: Cancel must leave the legacy files alone, Apply
+        // runs the update, and the cleanup list then comes from the CLI's own forced dry-run plan.
+        val previews = cliAtLeast(hostCliVersion(), 1, 15)
+        val projectPath = freshDemoProject()
+        val legacyFile = projectPath.resolve(".cursor/commands/openspec-apply.md")
+        newContext(projectPath).runIdeWithDriver().useDriverAndCloseIde {
             waitForIndicators(5.minutes)
 
             invokeAction("OpenSpec.Update", now = false)
+            if (previews) {
+                waitUntil("update preview shown", timeout = 3.minutes) {
+                    ui.x { byTitle(UPDATE_PREVIEW_TITLE) }.present()
+                }
+                ui.x { byTitle(UPDATE_PREVIEW_TITLE) }.x { byAccessibleName("Cancel") }.click(null)
+                waitUntil("update preview closed on cancel") { ui.x { byTitle(UPDATE_PREVIEW_TITLE) }.notPresent() }
+                check(Files.exists(legacyFile)) { "cancelling the preview changed the project" }
+
+                invokeAction("OpenSpec.Update", now = false)
+                waitUntil("update preview shown again", timeout = 3.minutes) {
+                    ui.x { byTitle(UPDATE_PREVIEW_TITLE) }.present()
+                }
+                ui.x { byTitle(UPDATE_PREVIEW_TITLE) }.x { byAccessibleName("Apply") }.click(null)
+            }
 
             // The review notice arrives after the background `openspec update` finishes.
             waitUntil("cleanup review notice raised", timeout = 3.minutes) {
@@ -319,6 +342,10 @@ class OpenSpecUiSmokeTest {
         ProcessBuilder("openspec", "--version").redirectErrorStream(true).start()
             .inputStream.bufferedReader().readText().trim().lines().lastOrNull()
     }.getOrNull()
+
+    private fun cliAtLeast(version: String?, major: Int, minor: Int): Boolean =
+        version != null && Regex("""^(\d+)\.(\d+)""").find(version)?.destructured
+            ?.let { (maj, min) -> maj.toInt() > major || (maj.toInt() == major && min.toInt() >= minor) } == true
 
     private fun seedStoreRoot(base: Path, name: String, configYaml: String, withIdentity: Boolean): Path {
         val root = base.resolve(name)

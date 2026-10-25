@@ -3,6 +3,7 @@ package com.johnnyblabs.openspec.actions;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.project.Project;
 import com.johnnyblabs.openspec.services.CliDetectionService;
+import com.johnnyblabs.openspec.services.UpdatePreviewService;
 import com.johnnyblabs.openspec.util.OpenSpecFileUtil;
 import org.jetbrains.annotations.NotNull;
 
@@ -12,11 +13,26 @@ import org.jetbrains.annotations.NotNull;
  * <p>This action delegates entirely to the CLI — there is no built-in fallback
  * because agent instruction refresh is a CLI-only capability. When the CLI is
  * not detected, the action is disabled with an explanatory tooltip.</p>
+ *
+ * <p>On CLI 1.15.0+ it first shows what the update will change ({@link UpdatePreviewService}) and runs it only when
+ * the user applies the preview; older CLIs run it directly, as before.</p>
  */
 public class OpenSpecUpdateAction extends OpenSpecCliAction {
 
     private static final String CLI_REQUIRED_DESCRIPTION = "Install OpenSpec CLI to use this action";
     private static final String STANDARD_DESCRIPTION = "Refresh agent instruction files via openspec update";
+
+    @Override
+    public void actionPerformed(@NotNull AnActionEvent e) {
+        Project project = e.getProject();
+        UpdatePreviewService preview = project == null ? null : UpdatePreviewService.getInstance(project);
+        if (preview != null && preview.supportsPreview()) {
+            // The preview service reads the cleanup list from the plan, so the applied run only goes to the console.
+            preview.previewAndApply(UpdatePreviewService.Origin.ACTION, null, result -> super.showOutput(project, result));
+            return;
+        }
+        super.actionPerformed(e);
+    }
 
     @Override
     protected void showOutput(Project project, com.johnnyblabs.openspec.util.CliRunner.CliResult result) {

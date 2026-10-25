@@ -246,7 +246,7 @@ public class ManageAiToolsDialog extends DialogWrapper {
                 if (!cliAvailable) yield null;
                 JButton btn = new JButton("Update");
                 btn.setToolTipText("Refresh OpenSpec skill and command files");
-                btn.addActionListener(e -> runCliAction("update", "Updating " + tool.name(), btn));
+                btn.addActionListener(e -> updateTool(tool, btn));
                 yield btn;
             }
             case DETECTED -> {
@@ -284,6 +284,35 @@ public class ManageAiToolsDialog extends DialogWrapper {
                 yield btn;
             }
         };
+    }
+
+    /**
+     * The Update button. {@code openspec update} always covers every configured tool, so on CLI 1.15+ the preview shows
+     * the whole plan, with this tool's group first; older CLIs run the update directly.
+     */
+    private void updateTool(ToolInfo tool, JButton sourceButton) {
+        com.johnnyblabs.openspec.services.UpdatePreviewService preview =
+                com.johnnyblabs.openspec.services.UpdatePreviewService.getInstance(project);
+        if (preview == null || !preview.supportsPreview()) {
+            runCliAction("update", "Updating " + tool.name(), sourceButton);
+            return;
+        }
+        String title = "Updating " + tool.name();
+        preview.previewAndApply(com.johnnyblabs.openspec.services.UpdatePreviewService.Origin.MANAGE_TOOLS, tool.cliId(),
+                result -> {
+                    if (isDisposed() || project.isDisposed()) return;
+                    if (result.isSuccess()) {
+                        String basePath = project.getBasePath();
+                        VirtualFile projectDir = basePath != null
+                                ? LocalFileSystem.getInstance().findFileByPath(basePath) : null;
+                        refreshThenPost(projectDir, dialogModality, ignored -> isDisposed() || project.isDisposed(), () -> {
+                            loadTools();
+                            OpenSpecNotifier.info(project, "AI Tools", title + " — done");
+                        });
+                    } else {
+                        OpenSpecNotifier.warn(project, "AI Tools", title + " failed: " + result.stderr().trim());
+                    }
+                });
     }
 
     private void runCliAction(String command, String title, JButton sourceButton) {

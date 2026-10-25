@@ -657,3 +657,22 @@ Captured by `scripts/capture-error-fixtures.py` from the installed CLI 1.14.3. E
 | `config-list-custom` | after `config set profile custom` and `config set workflows '[…]'` | adds `workflows: [...]` |
 
 Each legacy variant has its own global state because the first `update` also migrates the global config and prints that, which a second run would not.
+
+## `1.15.0/update-dry-run/` and `1.14.3/update-dry-run-unknown-option` — the update preview's plans
+
+Captured by `scripts/capture-update-dry-run-fixtures.py`. Re-run it after a CLI upgrade; it writes `<version>/update-dry-run/`, and with `--older` (and `OPENSPEC_BIN="npx -y @fission-ai/openspec@1.14.3"`) the single older-CLI case. Every case starts from a fresh project and a fresh isolated `HOME`, with `XDG_*` unset (so the global config resolves under that HOME), `CI=1` and `OPEN_SPEC_INTERACTIVE=0`, stdin closed, and npm's cache outside HOME. The script hashes the project and HOME before and after each dry run and stops if anything changed, so every capture is also proof that the dry run writes nothing. Paths: the project is `/fixture/demo-project`, HOME is `/fixture/home`. Each case has `<case>.json` (stdout), `<case>.exit` and, when non-empty, `<case>.stderr`.
+
+| Case | Setup | Captured result |
+|---|---|---|
+| `up-to-date` | `init --tools claude .`, then a real `update` | exit 0; three empty arrays |
+| `first-run-global-config` | as `up-to-date`, then delete `~/.config/openspec/config.json` | one `add ~/.config/openspec/config.json` with `tool:"openspec"`: the global config migration, outside the project |
+| `stale-skills` | `init --tools claude .` with CLI 1.14.3, a real 1.15 `update`, then re-scaffold with 1.14.3 | `update` entries for the claude skills |
+| `legacy-pending` | `up-to-date`, then `init --tools cursor .` and three hand-placed `.cursor/commands/openspec-{proposal,apply,archive}.md` | a `legacy-artifacts` note and no deletes |
+| `legacy-pending-force` | the same, with `--dry-run --force --json` | three in-project `delete` entries with `tool:"openspec"`; still read-only |
+| `windsurf-move` | `up-to-date`, then `init --tools devin .` and `mv .devin .windsurf` | a `legacy-tool-directories` note, 12 deletes and 12 adds for devin |
+| `read-only-failure` | `stale-skills` with one `SKILL.md` made read-only | exit 0; `failures:[{tool:"claude",error:"EACCES…"}]`; the read-only file is left out of `changes` |
+| `no-openspec-dir` | an empty folder | **exit 1**; empty arrays plus `status:[{severity:"error",code:"update_error",…}]` |
+| `json-without-dry-run` | `up-to-date`, run with `--json` only | **exit 1**, empty stdout, stderr `--json is only available with --dry-run.` |
+| `1.14.3/update-dry-run-unknown-option` | `up-to-date` on CLI 1.14.3 | **exit 1**, empty stdout, stderr `error: unknown option '--dry-run'` |
+
+Consumed by `UpdatePlanContractTest`, the update preview service tests and the legacy-cleanup flow tests.

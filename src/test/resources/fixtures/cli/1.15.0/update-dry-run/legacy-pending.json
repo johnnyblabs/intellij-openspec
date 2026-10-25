@@ -1,0 +1,10 @@
+{
+  "changes": [],
+  "notes": [
+    {
+      "code": "legacy-artifacts",
+      "message": "Legacy OpenSpec artifacts were found. Update cleans them up only with --force or when you confirm at a terminal, so this plan leaves them alone; --dry-run --force lists that cleanup."
+    }
+  ],
+  "failures": []
+}
