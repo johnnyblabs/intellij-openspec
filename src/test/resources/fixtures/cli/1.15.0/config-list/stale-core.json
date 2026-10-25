@@ -1,0 +1,11 @@
+{
+  "featureFlags": {},
+  "profile": "core",
+  "delivery": "both",
+  "workflows": [
+    "propose",
+    "explore",
+    "apply",
+    "archive"
+  ]
+}

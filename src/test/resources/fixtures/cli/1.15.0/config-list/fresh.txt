@@ -1,0 +1,8 @@
+featureFlags: {}
+profile: core
+delivery: both
+
+Profile settings:
+  profile: core (default)
+  delivery: both (default)
+  workflows: propose, explore, apply, update, sync, archive (from core profile)

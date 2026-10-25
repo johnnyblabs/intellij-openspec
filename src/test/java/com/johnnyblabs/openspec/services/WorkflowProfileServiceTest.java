@@ -62,7 +62,7 @@ class WorkflowProfileServiceTest {
                 cliStatic.when(() -> CliRunner.run(project, "config", "list", "--json"))
                         .thenReturn(new CliRunner.CliResult(0, json, ""));
 
-                for (String id : WorkflowProfileService.CORE_DEFAULTS) {
+                for (String id : WorkflowProfileService.CURRENT_CORE) {
                     assertTrue(service.isWorkflowEnabled(id), id);
                 }
                 assertFalse(service.isWorkflowEnabled("ff"));
@@ -91,7 +91,8 @@ class WorkflowProfileServiceTest {
                 cliStatic.when(() -> CliRunner.run(project, "config", "list", "--json"))
                         .thenThrow(new CliRunner.CliException("CLI not found"));
 
-                // OpenSpec 1.2.0+ core: 5 workflows including sync
+                // No CLI: the current core set, six workflows including update
+                assertTrue(service.isWorkflowEnabled("update"));
                 assertTrue(service.isWorkflowEnabled("propose"));
                 assertTrue(service.isWorkflowEnabled("explore"));
                 assertTrue(service.isWorkflowEnabled("apply"));
@@ -225,7 +226,7 @@ class WorkflowProfileServiceTest {
 
                 Set<String> workflows = service.getActiveWorkflows();
                 assertEquals(
-                        Set.of("propose", "explore", "apply", "sync", "archive"),
+                        Set.of("propose", "explore", "apply", "update", "sync", "archive"),
                         workflows);
             }
         }
@@ -325,7 +326,7 @@ class WorkflowProfileServiceTest {
     class ConfigListContract {
 
         @Test
-        void parsesRealConfigListWorkflows_notTheCoreFallback() {
+        void coreConfigResolvesToTheCoreSet() {
             String json = fixture("1.7.0/config-list.json");
             try (MockedStatic<CliRunner> cliStatic = mockStatic(CliRunner.class)) {
                 cliStatic.when(() -> CliRunner.run(project, "config", "list", "--json"))
@@ -334,10 +335,9 @@ class WorkflowProfileServiceTest {
                 assertEquals("core", service.getActiveProfileName());
                 Set<String> wf = service.getActiveWorkflows();
                 assertEquals(Set.of("propose", "explore", "apply", "update", "sync", "archive"), wf);
-                // 'update' is in the real config-list workflows but NOT in CORE_DEFAULTS
-                // ({propose, explore, apply, sync, archive}) — so this proves the real workflows
-                // array was parsed, not the fallback set.
-                assertTrue(wf.contains("update"), "the real workflows array was parsed, not CORE_DEFAULTS");
+                // A core profile resolves to the core set whatever list is stored; the stale-core contract test below
+                // proves the stored list is ignored.
+                assertTrue(wf.contains("update"));
             }
         }
 
@@ -345,16 +345,119 @@ class WorkflowProfileServiceTest {
         void toleratesDefaultStoreKeyInConfigList() {
             // 1.7's global `defaultStore` surfaces in `config list --json`; the parser must ignore it
             // (it reads only `profile`/`workflows`) and never false-flag or crash. This fixture has no
-            // `workflows`, so the profile parses and the workflow set falls back to CORE_DEFAULTS.
+            // `workflows`, so the profile parses and the workflow set is the current core set.
             String json = fixture("1.7.0/config-validation/global-config-defaultstore.json");
             try (MockedStatic<CliRunner> cliStatic = mockStatic(CliRunner.class)) {
                 cliStatic.when(() -> CliRunner.run(project, "config", "list", "--json"))
                         .thenReturn(new CliRunner.CliResult(0, json, ""));
 
                 assertEquals("core", service.getActiveProfileName());
-                assertEquals(WorkflowProfileService.CORE_DEFAULTS, service.getActiveWorkflows(),
-                        "no workflows array → CORE_DEFAULTS fallback; defaultStore is ignored");
+                assertEquals(WorkflowProfileService.CURRENT_CORE, service.getActiveWorkflows(),
+                        "no workflows array → the core set; defaultStore is ignored");
             }
+        }
+    }
+
+    // ---------- Resolution mirrors the CLI's getProfileWorkflows (fixtures/cli/1.15.0/config-list/) ----------
+
+    @Nested
+    class InstalledWorkflowsContract {
+
+        /** The workflows the real CLI installed for the case: the oracle the resolution must match. */
+        private Set<String> installed(String name) {
+            return Set.copyOf(fixture("1.15.0/config-list/" + name + ".installed.txt").lines()
+                    .map(String::strip).filter(l -> !l.isEmpty()).toList());
+        }
+
+        private Set<String> resolvedAt115(String name) {
+            CliDetectionService detection = mock(CliDetectionService.class);
+            when(detection.getDetectedVersion()).thenReturn("1.15.0");
+            when(project.getService(CliDetectionService.class)).thenReturn(detection);
+            String json = fixture("1.15.0/config-list/" + name + ".json");
+            try (MockedStatic<CliRunner> cliStatic = mockStatic(CliRunner.class)) {
+                cliStatic.when(() -> CliRunner.run(project, "config", "list", "--json"))
+                        .thenReturn(new CliRunner.CliResult(0, json, ""));
+                return service.getActiveWorkflows();
+            }
+        }
+
+        @Test
+        void aStaleCoreListIsIgnored() {
+            assertTrue(fixture("1.15.0/config-list/stale-core.json").contains("\"workflows\""),
+                    "capture precondition: a stored list");
+            assertEquals(installed("stale-core"), resolvedAt115("stale-core"));
+            assertEquals(6, installed("stale-core").size(), "the CLI installs the six core workflows");
+        }
+
+        @Test
+        void aFreshConfigIsTheCoreSet() {
+            assertEquals(installed("fresh"), resolvedAt115("fresh"));
+            assertEquals("core", service.getActiveProfileName());
+        }
+
+        @Test
+        void customArchivingPullsInSync() {
+            Set<String> resolved = resolvedAt115("custom-archive-no-sync");
+            assertEquals(installed("custom-archive-no-sync"), resolved);
+            assertEquals(java.util.List.of("propose", "apply", "sync", "archive"), java.util.List.copyOf(resolved),
+                    "sync goes before archive, as the CLI inserts it");
+        }
+    }
+
+    @Nested
+    class VersionBoundaries {
+
+        private final java.util.List<String> staleCore = java.util.List.of("propose", "explore", "apply", "archive");
+
+        @Test
+        void theCoreSetFollowsTheCliVersion() {
+            assertEquals(WorkflowProfileService.CORE_1_3, WorkflowProfileService.resolve("core", staleCore, "1.3.1"));
+            assertEquals(Set.of("propose", "explore", "apply", "archive"), WorkflowProfileService.CORE_1_3);
+            assertEquals(WorkflowProfileService.CORE_1_4, WorkflowProfileService.resolve("core", null, "1.4.0"));
+            assertEquals(WorkflowProfileService.CORE_1_4, WorkflowProfileService.resolve("core", null, "1.5.0"));
+            assertEquals(Set.of("propose", "explore", "apply", "sync", "archive"), WorkflowProfileService.CORE_1_4);
+            for (String v : java.util.List.of("1.6.0", "1.9.0", "1.15.0", "2.0.0")) {
+                assertEquals(WorkflowProfileService.CURRENT_CORE, WorkflowProfileService.resolve("core", staleCore, v), v);
+            }
+        }
+
+        @Test
+        void noOrAnUnknownProfileIsCore() {
+            assertEquals(WorkflowProfileService.CURRENT_CORE, WorkflowProfileService.resolve(null, staleCore, "1.15.0"));
+            assertEquals(WorkflowProfileService.CURRENT_CORE, WorkflowProfileService.resolve("expanded", staleCore, "1.15.0"));
+        }
+
+        @Test
+        void anUnknownVersionGetsTheCurrentSet() {
+            assertEquals(WorkflowProfileService.CURRENT_CORE, WorkflowProfileService.resolve("core", null, null));
+            assertEquals(WorkflowProfileService.CURRENT_CORE, WorkflowProfileService.resolve("core", null, ""));
+            assertEquals(WorkflowProfileService.CURRENT_CORE, WorkflowProfileService.resolve("core", null, "unknown"));
+        }
+
+        @Test
+        void theCustomSyncRuleStartsAt110() {
+            java.util.List<String> list = java.util.List.of("propose", "archive");
+            assertEquals(java.util.List.of("propose", "archive"),
+                    java.util.List.copyOf(WorkflowProfileService.resolve("custom", list, "1.9.0")));
+            assertEquals(java.util.List.of("propose", "sync", "archive"),
+                    java.util.List.copyOf(WorkflowProfileService.resolve("custom", list, "1.10.0")));
+        }
+
+        @Test
+        void syncGoesBeforeBulkArchiveAndIsNeverDuplicated() {
+            assertEquals(java.util.List.of("propose", "sync", "bulk-archive", "archive"), java.util.List.copyOf(
+                    WorkflowProfileService.resolve("custom", java.util.List.of("propose", "bulk-archive", "archive"), "1.15.0")));
+            assertEquals(java.util.List.of("propose", "sync", "archive"), java.util.List.copyOf(
+                    WorkflowProfileService.resolve("custom", java.util.List.of("propose", "sync", "archive"), "1.15.0")));
+            assertEquals(java.util.List.of("propose", "verify"), java.util.List.copyOf(
+                    WorkflowProfileService.resolve("custom", java.util.List.of("propose", "verify"), "1.15.0")),
+                    "no archiving, no sync");
+        }
+
+        @Test
+        void anEmptyCustomListStaysEmpty() {
+            assertTrue(WorkflowProfileService.resolve("custom", null, "1.15.0").isEmpty());
+            assertTrue(WorkflowProfileService.resolve("custom", java.util.List.of(), "1.15.0").isEmpty());
         }
     }
 
