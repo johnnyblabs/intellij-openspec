@@ -258,7 +258,7 @@ CLI commands executed via `CliRunner` and `CliDetectionService` SHALL use `Proce
 
 ### Requirement: Cross-platform CLI detection
 
-`CliDetectionService` SHALL detect the OpenSpec CLI on Windows under the same scenarios that succeed on macOS and Linux. On Windows the service SHALL extend bare candidate paths through `.cmd`, `.bat`, and `.exe` suffixes when direct invocation fails, SHALL resolve the executable via `where.exe` instead of a POSIX login shell, and SHALL probe Windows-specific install locations derived from `%APPDATA%` and `%LOCALAPPDATA%`. On every OS, after the existing fixed install locations, the service SHALL probe Homebrew's Linux prefix (`/home/linuxbrew/.linuxbrew/bin/openspec`), then the location the upstream standalone-binary installer writes to: the installer's `OPENSPEC_INSTALL_DIR` and `OPENSPEC_INSTALL_NAME` overrides when the IDE's environment carries them, then the installer's default location. A fixed install-location candidate SHALL be probed only when a regular, executable file exists at it (on Windows, a regular file). The settings path, the bare name and the shell-resolved path SHALL be probed as before, without that check. The plugin SHALL NOT run an installer, edit PATH, or remove another install.
+`CliDetectionService` SHALL detect the OpenSpec CLI on Windows under the same scenarios that succeed on macOS and Linux. On Windows the service SHALL extend bare candidate paths through `.cmd`, `.bat`, and `.exe` suffixes when direct invocation fails, SHALL resolve the executable via `where.exe` instead of a POSIX login shell, and SHALL probe Windows-specific install locations derived from `%APPDATA%` and `%LOCALAPPDATA%`. On every OS, after the existing fixed install locations, the service SHALL probe Homebrew's Linux prefix (`/home/linuxbrew/.linuxbrew/bin/openspec`), then the location the upstream standalone-binary installer writes to: the installer's `OPENSPEC_INSTALL_DIR` and `OPENSPEC_INSTALL_NAME` overrides when the IDE's environment carries them, then the installer's default location. A fixed install-location candidate SHALL be probed only when a regular, executable file exists at it (on Windows, a regular file). The settings path, the bare name and the shell-resolved path SHALL be probed as before, without that check. The plugin SHALL NOT run an installer, edit PATH, or remove another install. On macOS and Linux, after the Settings path, the service SHALL look the CLI up on the IDE's own PATH (the environment the IDE loaded from the user's shell), and its shell lookup SHALL read the PATH an interactive login shell sets, so an entry kept only in an interactive rc file such as `~/.zshrc` is found. Every CLI process SHALL keep the IDE's PATH, adding only the shell PATH entries it lacks.
 
 #### Scenario: Windows bare-name resolution falls back through executable suffixes
 - **WHEN** the host OS is Windows and `tryPath("openspec")` is called and bare invocation fails
@@ -286,7 +286,7 @@ CLI commands executed via `CliRunner` and `CliDetectionService` SHALL use `Proce
 
 #### Scenario: macOS and Linux behavior unchanged
 - **WHEN** the host OS is macOS or Linux
-- **THEN** detection SHALL execute the existing branches in their existing order (bare name → `/bin/zsh -lc which openspec` → `/opt/homebrew/bin`, `/usr/local/bin`, `/usr/bin`), followed only by Homebrew on Linux (`/home/linuxbrew/.linuxbrew/bin`) and then the standalone-binary candidates, without invoking any Windows-specific code path
+- **THEN** detection SHALL try, in order: the Settings path; `openspec` found on the IDE's PATH; the bare name; `openspec` found on the PATH the user's interactive login shell sets; then `/opt/homebrew/bin`, `/usr/local/bin`, `/usr/bin`, Homebrew on Linux (`/home/linuxbrew/.linuxbrew/bin`) and the standalone-binary candidates. It SHALL NOT invoke any Windows-specific code path
 
 #### Scenario: Windows detection completes within the existing timeout
 - **WHEN** detection runs on Windows and traverses the suffix-fallback, `where.exe`, and common-paths branches
@@ -316,6 +316,22 @@ CLI commands executed via `CliRunner` and `CliDetectionService` SHALL use `Proce
 #### Scenario: Standalone version output
 - **WHEN** the standalone binary's `--version` prints a bare version such as `1.15.0`
 - **THEN** the detected version SHALL be `1.15.0`
+
+#### Scenario: A PATH entry kept only in the interactive rc file
+- **WHEN** the CLI's directory is added to PATH only in `~/.zshrc` (for example by nvm, fnm, volta or asdf) and the IDE was launched from the Dock or a desktop launcher
+- **THEN** detection SHALL find the CLI, from the IDE's PATH when the IDE loaded the shell environment, and otherwise from the interactive login shell's PATH
+
+#### Scenario: Output from rc files is ignored
+- **WHEN** the user's rc files print text (a banner, a greeting, a version manager's notice) while the shell lookup runs
+- **THEN** the service SHALL read only the PATH it asked the shell to print, between markers it chose, and SHALL ignore everything else
+
+#### Scenario: Shell flags follow the user's shell
+- **WHEN** the shell lookup runs
+- **THEN** it SHALL start `$SHELL` as an interactive login shell (`-l -i -c`), leaving out `-i` for fish and `-l` for csh and tcsh, as the IDE's own environment loading does, within the existing per-command timeout
+
+#### Scenario: CLI runs keep the IDE's PATH
+- **WHEN** the plugin starts a CLI process on macOS or Linux after resolving the shell PATH
+- **THEN** the process's PATH SHALL be the IDE's PATH followed by any shell PATH entries it doesn't already contain, never the shell PATH alone
 
 ### Requirement: Cross-thread field visibility
 
