@@ -15,7 +15,10 @@ import javax.swing.tree.DefaultTreeModel;
 import java.util.ArrayList;
 import java.util.List;
 
-/** The tree's right-click menus offer Explore first: before Propose on Changes, and "Explore this change..." on a change. */
+/**
+ * The tree's right-click menus offer Explore first: before Propose on Changes, and "Explore this change..." on a change,
+ * followed by "Revise Change...".
+ */
 public class ExploreContextMenuTest extends OpenSpecIntegrationTestBase {
 
     private OpenSpecToolWindowPanel panel;
@@ -59,6 +62,22 @@ public class ExploreContextMenuTest extends OpenSpecIntegrationTestBase {
                 new TreeNodeData("Changes", TreeNodeType.CHANGES, null, null, null, "Active changes")));
 
         assertEquals(List.of("OpenSpec.Explore", "OpenSpec.Propose"), menu);
+    }
+
+    public void testAChangeOffersReviseRightAfterExploreThenApplyAfterASeparator() {
+        for (TreeNodeType type : List.of(TreeNodeType.CHANGE, TreeNodeType.CHANGE_DONE, TreeNodeType.CHANGE_ARCHIVE_READY)) {
+            List<String> menu = ids(panel.contextMenuFor(new TreeNodeData("add-auth", type, null, "add-auth", null)));
+
+            assertEquals(type + ": " + menu, List.of("OpenSpec.ExploreChange", "OpenSpec.ReviseChange"), menu.subList(0, 2));
+            assertEquals(type + ": " + menu, "OpenSpec.Apply", menu.get(menu.indexOf("OpenSpec.ReviseChange") + 2));
+        }
+    }
+
+    public void testADeltaSpecDoesNotOfferRevise() {
+        List<String> menu = ids(panel.contextMenuFor(
+                new TreeNodeData("spec.md", TreeNodeType.DELTA_SPEC, "/tmp/add-auth/specs/a/spec.md", "add-auth", null)));
+
+        assertFalse(menu.toString(), menu.contains("OpenSpec.ReviseChange"));
     }
 
     public void testADeltaSpecDoesNotOfferExploreThisChange() {

@@ -20,7 +20,7 @@ import org.jetbrains.annotations.NotNull;
 public class OpenSpecUpdateAction extends OpenSpecCliAction {
 
     private static final String CLI_REQUIRED_DESCRIPTION = "Install OpenSpec CLI to use this action";
-    private static final String STANDARD_DESCRIPTION = "Refresh agent instruction files via openspec update";
+    private static final String STANDARD_DESCRIPTION = "Refresh generated skills and commands from the installed CLI (openspec update)";
 
     @Override
     public void actionPerformed(@NotNull AnActionEvent e) {

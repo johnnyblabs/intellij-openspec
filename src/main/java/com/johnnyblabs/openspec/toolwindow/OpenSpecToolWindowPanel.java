@@ -688,6 +688,7 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
         switch (data.type()) {
             case CHANGE, CHANGE_DONE, CHANGE_ARCHIVE_READY -> {
                 contextMenu.add(ActionManager.getInstance().getAction("OpenSpec.ExploreChange"));
+                contextMenu.add(ActionManager.getInstance().getAction("OpenSpec.ReviseChange"));
                 contextMenu.addSeparator();
                 contextMenu.add(ActionManager.getInstance().getAction("OpenSpec.Apply"));
                 contextMenu.add(ActionManager.getInstance().getAction("OpenSpec.Archive"));

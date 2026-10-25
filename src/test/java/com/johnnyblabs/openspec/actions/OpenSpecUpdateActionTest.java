@@ -115,7 +115,7 @@ class OpenSpecUpdateActionTest {
 
                 assertTrue(presentation.isVisible());
                 assertTrue(presentation.isEnabled());
-                assertEquals("Refresh agent instruction files via openspec update",
+                assertEquals("Refresh generated skills and commands from the installed CLI (openspec update)",
                         presentation.getDescription());
             }
         }

@@ -11,10 +11,12 @@ These are captured with `scripts/capture-explore-fixtures.py`. For every tool in
 
 Machine paths are replaced with `/fixture/home`. Re-capture when the CLI version changes, then fix whatever the contract tests report.
 
-## `invocations.json`
+## Workflow invocations
 
-What upstream tells the user to type to start Explore, for every tool with a skills dir and every delivery mode (49 × 3 = 147 rows). It's captured by `scripts/capture-explore-invocations.py`, which loads the installed CLI package's dist modules with `node` and applies `openspec init`'s "getting started" hint rules (`core/init.js` `startHintLines`) to `/opsx:explore`:
+What upstream tells the user to type to run a workflow now lives one level up, in `../workflow-invocations.json`. It covers `explore` and `update`: 2 workflows × 49 tools × 3 delivery modes = 294 rows. It's captured by `scripts/capture-workflow-invocations.py`, which loads the installed CLI package's dist modules with `node` and applies `openspec init`'s "getting started" hint rules (`core/init.js` `startHintLines`) to each `/opsx:<id>`:
 - `getTransformerForTool` when the tool gets commands;
 - `getSkillReferenceTransformer` when it gets skills only.
 
-Each row has `tool`, `delivery`, `capability`, `commands`, `skills`, `invocation` (null when nothing is generated), `commandPath` and `skillPath`. `ExploreInvocationContractTest` seeds each row's files and checks the plugin's short handoff against `invocation`. Re-capture with the other explore fixtures on every CLI bump.
+Each row has `workflow`, `skill`, `tool`, `delivery`, `capability`, `commands`, `skills`, `invocation` (null when nothing is generated), `commandPath` and `skillPath`. `WorkflowInvocationContractTest` seeds each row's files and checks the plugin's handoff and paths against it. Re-capture with the other explore fixtures on every CLI bump.
+
+The same `capture-explore-fixtures.py` run also records `../update/listing-<delivery>.txt`: each update-workflow file (its command and its `openspec-update-change` skill) that `init` wrote, in the same format. `WorkflowInvocationContractTest` checks that the matrix's update paths are exactly those files, so the paths come from what `init` writes, not from the matrix script's own construction.

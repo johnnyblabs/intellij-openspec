@@ -347,12 +347,29 @@ public final class AiToolRegistry {
 
     /** The explore skill OpenSpec writes into the project for this tool, or {@code null} for a global-only tool. */
     public static @Nullable String exploreSkillPath(AiTool tool) {
-        return tool.skillsDir() == null ? null : tool.skillsDir() + "/skills/openspec-explore/SKILL.md";
+        return skillPath(tool, WorkflowInvocation.EXPLORE_SKILL);
     }
 
     /** The explore command file OpenSpec writes for this tool, or {@code null} when it has no command adapter. */
     public static @Nullable String exploreCommandPath(AiTool tool) {
         return EXPLORE_COMMAND_PATHS.get(tool.id());
+    }
+
+    /** The skill {@code skillName} OpenSpec writes into the project for this tool, or {@code null} for a global-only tool. */
+    public static @Nullable String skillPath(AiTool tool, String skillName) {
+        return tool.skillsDir() == null ? null : tool.skillsDir() + "/skills/" + skillName + "/SKILL.md";
+    }
+
+    /**
+     * The command file OpenSpec writes for {@code workflowId}, or {@code null} when the tool has no command adapter. Every
+     * adapter names one workflow's file the way it names explore's ({@code opsx/explore.md} → {@code opsx/update.md},
+     * {@code opsx-explore.md} → {@code opsx-update.md}); the workflow-invocations contract test checks it per tool.
+     */
+    public static @Nullable String commandPath(AiTool tool, String workflowId) {
+        String explore = exploreCommandPath(tool);
+        if (explore == null) return null;
+        int at = explore.lastIndexOf(WorkflowInvocation.EXPLORE);
+        return explore.substring(0, at) + workflowId + explore.substring(at + WorkflowInvocation.EXPLORE.length());
     }
 
     /** A path whose last segment has no extension (a leading dot doesn't count): {@code .amp}, not {@code WARP.md}. */

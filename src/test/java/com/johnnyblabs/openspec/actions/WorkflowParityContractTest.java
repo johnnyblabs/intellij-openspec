@@ -39,13 +39,12 @@ public class WorkflowParityContractTest extends BasePlatformTestCase {
     /** Upstream workflows the plugin deliberately has no action gated on, each with why and where it's tracked. */
     static final Map<String, String> NOT_SURFACED = Map.of(
             "new", "no scaffold-only action yet; Propose currently behaves like it (tracked: Propose = upstream propose, New Change = new)",
-            "update", "Revise Change... is planned (tracked: first-class Revise change action)",
             "onboard", "undecided whether the plugin offers a guided tour (tracked with the menu alignment work)",
             "sync", "the built-in Sync Specs action is a utility, deliberately not gated on the workflow");
 
     /** Workflow-gated actions registered today; the test must find at least these, so it can't pass on an empty list. */
     private static final Set<String> KNOWN_GATED = Set.of(
-            "propose", "explore", "continue", "apply", "ff", "archive", "bulk-archive", "verify");
+            "propose", "explore", "continue", "update", "apply", "ff", "archive", "bulk-archive", "verify");
 
     private static List<String> upstream(String key) {
         try (InputStream in = WorkflowParityContractTest.class.getResourceAsStream(FIXTURE)) {

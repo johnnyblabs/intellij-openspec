@@ -144,6 +144,12 @@
                     text="Continue"
                     description="Generate the next ready artifact for the active change"
                     icon="AllIcons.Actions.Resume"/>
+            <!-- Revise hands a change to the agent's own update workflow; never "Update", which is Update OpenSpec…. -->
+            <action id="OpenSpec.ReviseChange"
+                    class="com.johnnyblabs.openspec.actions.ReviseChangeAction"
+                    text="Revise Change..."
+                    description="Revise a change's proposal, specs, design and tasks with your AI agent; it confirms each change"
+                    icon="AllIcons.Actions.Edit"/>
             <action id="OpenSpec.Apply"
                     class="com.johnnyblabs.openspec.actions.OpenSpecApplyAction"
                     text="Apply"
@@ -193,7 +199,7 @@
             <action id="OpenSpec.Update"
                     class="com.johnnyblabs.openspec.actions.OpenSpecUpdateAction"
                     text="Update OpenSpec…"
-                    description="Refresh agent instruction files via openspec update"
+                    description="Refresh generated skills and commands from the installed CLI (openspec update)"
                     icon="AllIcons.Actions.Download"/>
             <action id="OpenSpec.ManageTools"
                     class="com.johnnyblabs.openspec.actions.OpenSpecManageToolsAction"
