@@ -10,3 +10,11 @@ These are captured with `scripts/capture-explore-fixtures.py`. For every tool in
 - `agents-skill.md`, `agents-openspec-target.txt`: the shared `.agents` skill, here generated for codex, and the marker naming the tool that owns it.
 
 Machine paths are replaced with `/fixture/home`. Re-capture when the CLI version changes, then fix whatever the contract tests report.
+
+## `invocations.json`
+
+What upstream tells the user to type to start Explore, for every tool with a skills dir and every delivery mode (49 × 3 = 147 rows). It's captured by `scripts/capture-explore-invocations.py`, which loads the installed CLI package's dist modules with `node` and applies `openspec init`'s "getting started" hint rules (`core/init.js` `startHintLines`) to `/opsx:explore`:
+- `getTransformerForTool` when the tool gets commands;
+- `getSkillReferenceTransformer` when it gets skills only.
+
+Each row has `tool`, `delivery`, `capability`, `commands`, `skills`, `invocation` (null when nothing is generated), `commandPath` and `skillPath`. `ExploreInvocationContractTest` seeds each row's files and checks the plugin's short handoff against `invocation`. Re-capture with the other explore fixtures on every CLI bump.
