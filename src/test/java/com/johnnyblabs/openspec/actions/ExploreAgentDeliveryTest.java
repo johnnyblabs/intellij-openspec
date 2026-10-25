@@ -73,6 +73,33 @@ public class ExploreAgentDeliveryTest extends BasePlatformTestCase {
         }
     }
 
+    public void testExploreTopicFillsTheDialogAndDeliversTheEditedTopic() throws Exception {
+        OpenSpecSettings.getInstance(getProject()).setPreferredDeliveryMethod("CLIPBOARD");
+        List<String> prefilled = new ArrayList<>();
+        ExploreContextAction.setTopicDialogFactoryForTest((project, topic) ->
+                new com.johnnyblabs.openspec.dialogs.ExploreTopicDialog(project, topic) {
+                    @Override
+                    public boolean showAndGet() {
+                        prefilled.add(getTopic());
+                        setTopicForTest(getTopic() + " and its rollout"); // the user edits it before OK
+                        return true;
+                    }
+                });
+        List<Task.Backgroundable> started = new ArrayList<>();
+        ExploreContextAction.setTaskRunnerForTest(started::add);
+        try {
+            ExploreContextAction.exploreTopic(getProject(), "add-auth");
+
+            assertEquals("the dialog opens with the change's name", List.of("add-auth"), prefilled);
+            assertEquals(1, started.size());
+            started.get(0).run(new EmptyProgressIndicator());
+            started.get(0).onSuccess();
+            assertTrue("the edited topic is delivered", clipboard().contains("add-auth and its rollout"));
+        } finally {
+            ExploreContextAction.setTopicDialogFactoryForTest(null);
+        }
+    }
+
     public void testClipboardBuildsThePromptInABackgroundTaskAndCopiesOnlyOnSuccess() throws Exception {
         OpenSpecSettings.getInstance(getProject()).setPreferredDeliveryMethod("CLIPBOARD");
         List<Task.Backgroundable> started = new ArrayList<>();

@@ -48,6 +48,9 @@ public final class SpecPreviewRenderer {
     /** Href of the empty state's Propose link. */
     public static final String PROPOSE_HREF = "openspec-action:propose";
 
+    /** Href of the empty state's "Explore an idea first" link, beside Propose. */
+    public static final String EXPLORE_HREF = "openspec-action:explore";
+
     /** Stable marker class on the empty-state fragment, asserted by tests. */
     public static final String EMPTY_STATE_MARKER = "openspec-preview-empty";
 
@@ -254,7 +257,8 @@ public final class SpecPreviewRenderer {
                 .append("<p>Single-click a change, or any of its files, to see its deltas. ")
                 .append("Double-click a file to open it in the editor.</p>");
         if (!hasChanges) {
-            sb.append("<p><a href=\"").append(PROPOSE_HREF).append("\">Propose a change</a></p>");
+            sb.append("<p><a href=\"").append(PROPOSE_HREF).append("\">Propose a change</a>")
+                    .append(" or <a href=\"").append(EXPLORE_HREF).append("\">Explore an idea first</a></p>");
         }
         return sb.append("</div>").toString();
     }

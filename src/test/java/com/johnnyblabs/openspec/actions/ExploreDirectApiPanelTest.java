@@ -256,6 +256,30 @@ public class ExploreDirectApiPanelTest extends BasePlatformTestCase {
         assertThrows(ProcessCanceledException.class, () -> task.run(indicator));
     }
 
+    public void testExploreTopicWithDirectApiFillsTheTabWithoutSending() {
+        OpenSpecSettings settings = OpenSpecSettings.getInstance(getProject());
+        String savedDelivery = settings.getPreferredDeliveryMethod();
+        settings.setPreferredDeliveryMethod("DIRECT_API");
+        AtomicInteger requests = new AtomicInteger();
+        ExploreContextAction.setRawRequestForTest(request(prompt -> {
+            requests.incrementAndGet();
+            return "ok";
+        }));
+        List<Task.Backgroundable> started = new ArrayList<>();
+        ExploreContextAction.setTaskRunnerForTest(started::add);
+        try {
+            ExploreContextAction.exploreTopic(getProject(), "add-auth");
+            PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
+
+            assertEquals("the change's name is in the Explore tab's input", "add-auth", panel.inputTextForTest());
+            assertTrue("nothing was started", started.isEmpty());
+            assertEquals("nothing was sent", 0, requests.get());
+            assertTrue("the input stays usable", panel.isInputEnabledForTest());
+        } finally {
+            settings.setPreferredDeliveryMethod(savedDelivery);
+        }
+    }
+
     public void testSendStartsOneTaskThatBuildsAndSends() {
         AtomicInteger requests = new AtomicInteger();
         ExploreContextAction.setRawRequestForTest(request(prompt -> {

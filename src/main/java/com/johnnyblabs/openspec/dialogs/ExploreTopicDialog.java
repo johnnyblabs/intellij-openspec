@@ -16,10 +16,15 @@ public class ExploreTopicDialog extends DialogWrapper {
     private final JBTextField topicField;
 
     public ExploreTopicDialog(Project project) {
+        this(project, "");
+    }
+
+    /** A dialog whose field starts with {@code initialTopic}, e.g. a change's name; the user can still edit it. */
+    public ExploreTopicDialog(Project project, String initialTopic) {
         super(project, false);
         setTitle("Explore");
 
-        topicField = new JBTextField(40);
+        topicField = new JBTextField(initialTopic == null ? "" : initialTopic, 40);
         topicField.getEmptyText().setText("What would you like to explore?");
 
         init();
@@ -35,6 +40,12 @@ public class ExploreTopicDialog extends DialogWrapper {
     @Override
     public @Nullable JComponent getPreferredFocusedComponent() {
         return topicField;
+    }
+
+    /** Types {@code text} into the field, as a user would before clicking OK. */
+    @org.jetbrains.annotations.TestOnly
+    public void setTopicForTest(String text) {
+        topicField.setText(text);
     }
 
     /**

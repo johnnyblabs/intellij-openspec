@@ -189,10 +189,11 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
         previewPane.addHyperlinkListener(e -> {
             if (e.getEventType() != HyperlinkEvent.EventType.ACTIVATED) return;
             String href = e.getDescription();
-            if (SpecPreviewRenderer.PROPOSE_HREF.equals(href)) {
-                AnAction propose = ActionManager.getInstance().getAction("OpenSpec.Propose");
-                if (propose != null) {
-                    com.johnnyblabs.openspec.actions.ActionLauncher.launch(propose, previewPane, "OpenSpecPreview");
+            if (SpecPreviewRenderer.PROPOSE_HREF.equals(href) || SpecPreviewRenderer.EXPLORE_HREF.equals(href)) {
+                String actionId = SpecPreviewRenderer.PROPOSE_HREF.equals(href) ? "OpenSpec.Propose" : "OpenSpec.Explore";
+                AnAction action = ActionManager.getInstance().getAction(actionId);
+                if (action != null) {
+                    com.johnnyblabs.openspec.actions.ActionLauncher.launch(action, previewPane, "OpenSpecPreview");
                 }
                 return;
             }
@@ -672,10 +673,22 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
         Object userObject = node.getUserObject();
         if (!(userObject instanceof SpecTreeModel.TreeNodeData data)) return;
 
+        DefaultActionGroup contextMenu = contextMenuFor(data);
+        if (contextMenu.getChildrenCount() > 0) {
+            ActionPopupMenu popupMenu = ActionManager.getInstance()
+                    .createActionPopupMenu("OpenSpecContextMenu", contextMenu);
+            popupMenu.getComponent().show(tree, e.getX(), e.getY());
+        }
+    }
+
+    /** The right-click menu for a tree node; package-private so tests can check its contents without a popup. */
+    DefaultActionGroup contextMenuFor(SpecTreeModel.TreeNodeData data) {
         DefaultActionGroup contextMenu = new DefaultActionGroup();
 
         switch (data.type()) {
             case CHANGE, CHANGE_DONE, CHANGE_ARCHIVE_READY -> {
+                contextMenu.add(ActionManager.getInstance().getAction("OpenSpec.ExploreChange"));
+                contextMenu.addSeparator();
                 contextMenu.add(ActionManager.getInstance().getAction("OpenSpec.Apply"));
                 contextMenu.add(ActionManager.getInstance().getAction("OpenSpec.Archive"));
                 if (data.filePath() != null) {
@@ -689,6 +702,7 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
                 }
             }
             case CHANGES -> {
+                contextMenu.add(ActionManager.getInstance().getAction("OpenSpec.Explore"));
                 contextMenu.add(ActionManager.getInstance().getAction("OpenSpec.Propose"));
             }
             case DELTA_SPEC -> {
@@ -723,18 +737,11 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
             }
             case ARTIFACT_BLOCKED -> {
                 // Info only, no actions
-                return;
             }
             default -> {
-                return;
             }
         }
-
-        if (contextMenu.getChildrenCount() > 0) {
-            ActionPopupMenu popupMenu = ActionManager.getInstance()
-                    .createActionPopupMenu("OpenSpecContextMenu", contextMenu);
-            popupMenu.getComponent().show(tree, e.getX(), e.getY());
-        }
+        return contextMenu;
     }
 
     private AnAction createRenameAction(String changePath) {
