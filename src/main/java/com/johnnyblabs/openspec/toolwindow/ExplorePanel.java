@@ -4,6 +4,7 @@ import com.intellij.icons.AllIcons;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.ide.CopyPasteManager;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.SystemInfo;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBScrollPane;
@@ -18,6 +19,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.ActionEvent;
+import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 
 /**
@@ -85,8 +87,9 @@ public class ExplorePanel extends JPanel implements Disposable {
         inputArea.getEmptyText().setText("What would you like to explore?");
 
         // Ctrl+Enter / Cmd+Enter submits
+        // Cmd on macOS, Ctrl elsewhere. Not Toolkit.getMenuShortcutKeyMaskEx(), which throws in a headless JVM.
         KeyStroke submitKey = KeyStroke.getKeyStroke(KeyEvent.VK_ENTER,
-                Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx());
+                SystemInfo.isMac ? InputEvent.META_DOWN_MASK : InputEvent.CTRL_DOWN_MASK);
         inputArea.getInputMap(JComponent.WHEN_FOCUSED)
                 .put(submitKey, "submitExplore");
         inputArea.getActionMap().put("submitExplore", new AbstractAction() {
