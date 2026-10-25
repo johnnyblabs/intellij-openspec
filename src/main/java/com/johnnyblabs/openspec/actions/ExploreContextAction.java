@@ -2,6 +2,9 @@ package com.johnnyblabs.openspec.actions;
 
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.ide.CopyPasteManager;
+import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.Task;
@@ -16,8 +19,9 @@ import com.johnnyblabs.openspec.toolwindow.ExplorePanel;
 import com.johnnyblabs.openspec.toolwindow.ExplorePanelService;
 import com.johnnyblabs.openspec.util.OpenSpecNotifier;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.TestOnly;
 
-import java.awt.*;
 import java.awt.datatransfer.StringSelection;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -30,6 +34,45 @@ import java.nio.file.Path;
  * project context + topic), and delivers via the configured delivery mode.
  */
 public class ExploreContextAction extends OpenSpecBaseAction {
+
+    private static final Logger LOG = Logger.getInstance(ExploreContextAction.class);
+
+    static final String NO_PROVIDER_NOTICE = "No Direct API provider is configured, so the prompt was copied to the "
+            + "clipboard. Paste it into your AI tool, or configure a provider in Settings \u2192 Tools \u2192 OpenSpec "
+            + "\u2192 Direct API.";
+    static final String CANCELLED_NOTICE = "Cancelled.";
+
+    /** The Direct API call behind Explore; replaced in tests, because {@link DirectApiService} is final. */
+    public interface RawRequest {
+        boolean isConfigured();
+
+        String send(String prompt) throws AiApiException;
+    }
+
+    private static volatile @Nullable RawRequest rawRequestOverride;
+
+    @TestOnly
+    public static void setRawRequestForTest(@Nullable RawRequest request) {
+        rawRequestOverride = request;
+    }
+
+    private static @Nullable RawRequest rawRequest(@NotNull Project project) {
+        RawRequest override = rawRequestOverride;
+        if (override != null) return override;
+        DirectApiService apiService = project.getService(DirectApiService.class);
+        if (apiService == null) return null;
+        return new RawRequest() {
+            @Override
+            public boolean isConfigured() {
+                return apiService.isConfigured();
+            }
+
+            @Override
+            public String send(String prompt) throws AiApiException {
+                return apiService.generateRaw(prompt);
+            }
+        };
+    }
 
     @Override
     protected String getWorkflowId() { return "explore"; }
@@ -129,9 +172,12 @@ public class ExploreContextAction extends OpenSpecBaseAction {
         }
     }
 
+    private static void copyToClipboard(String prompt) {
+        CopyPasteManager.getInstance().setContents(new StringSelection(prompt));
+    }
+
     private static void deliverClipboard(@NotNull Project project, String prompt) {
-        Toolkit.getDefaultToolkit().getSystemClipboard()
-                .setContents(new StringSelection(prompt), null);
+        copyToClipboard(prompt);
         OpenSpecNotifier.info(project, "Explore",
                 "Explore prompt copied \u2014 paste into your AI tool to start exploring.");
     }
@@ -159,32 +205,43 @@ public class ExploreContextAction extends OpenSpecBaseAction {
     }
 
     private static void deliverDirectApi(@NotNull Project project, String prompt, String topic) {
-        DirectApiService apiService = project.getService(DirectApiService.class);
+        RawRequest request = rawRequest(project);
+        ExplorePanelService panelService = project.getService(ExplorePanelService.class);
 
-        if (apiService == null || !apiService.isConfigured()) {
-            // Fallback to clipboard
-            deliverClipboard(project, prompt);
-            OpenSpecNotifier.info(project, "Explore",
-                    "No AI provider configured \u2014 prompt copied to clipboard. " +
-                    "Configure a provider in Settings \u2192 Tools \u2192 OpenSpec for in-IDE exploration.");
+        if (request == null || !request.isConfigured()) {
+            copyToClipboard(prompt);
+            ExplorePanel existing = panelService != null ? panelService.getExplorePanel() : null;
+            if (existing != null) {
+                // The user is looking at the panel; say it there and give the input back.
+                existing.showNotice(topic, NO_PROVIDER_NOTICE);
+            } else {
+                OpenSpecNotifier.info(project, "Explore", NO_PROVIDER_NOTICE);
+            }
             return;
         }
 
         // Show loading state in Explore panel
-        ExplorePanelService panelService = project.getService(ExplorePanelService.class);
         ExplorePanel panel = panelService != null ? panelService.getAndActivate() : null;
         if (panel != null) {
             panel.showLoading(topic);
         }
 
-        ProgressManager.getInstance().run(new Task.Backgroundable(project, "Exploring...", true) {
+        ProgressManager.getInstance().run(newExploreTask(project, request, panelService, prompt, topic));
+    }
+
+    /** The background request behind the Explore panel; package-private so tests can run it directly. */
+    static Task.Backgroundable newExploreTask(@NotNull Project project, @NotNull RawRequest request,
+                                              @Nullable ExplorePanelService panelService, String prompt, String topic) {
+        return new Task.Backgroundable(project, "Exploring...", true) {
             @Override
             public void run(@NotNull ProgressIndicator indicator) {
                 indicator.setIndeterminate(true);
                 indicator.setText("Sending explore prompt to AI provider...");
 
                 try {
-                    String response = apiService.generateRaw(prompt);
+                    String response = request.send(prompt);
+                    // A cancel during the call wins over a late response (onCancel shows it).
+                    indicator.checkCanceled();
 
                     ApplicationManager.getApplication().invokeLater(() -> {
                         ExplorePanel p = panelService != null ? panelService.getAndActivate() : null;
@@ -201,8 +258,36 @@ public class ExploreContextAction extends OpenSpecBaseAction {
                         OpenSpecNotifier.warn(project, "Explore",
                                 "API error: " + ex.getMessage());
                     });
+                } catch (ProcessCanceledException ex) {
+                    throw ex;
+                } catch (RuntimeException ex) {
+                    LOG.warn("Explore request failed", ex);
+                    String message = "Explore failed: " + (ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName());
+                    ApplicationManager.getApplication().invokeLater(() -> {
+                        ExplorePanel p = panelService != null ? panelService.getExplorePanel() : null;
+                        if (p != null) {
+                            p.showError(topic, message);
+                        }
+                    });
                 }
             }
-        });
+
+            @Override
+            public void onCancel() {
+                ExplorePanel p = panelService != null ? panelService.getExplorePanel() : null;
+                if (p != null) {
+                    p.showNotice(topic, CANCELLED_NOTICE);
+                }
+            }
+
+            @Override
+            public void onFinished() {
+                // Runs on the EDT however the task ended, so no path leaves the input disabled.
+                ExplorePanel p = panelService != null ? panelService.getExplorePanel() : null;
+                if (p != null) {
+                    p.restoreInput();
+                }
+            }
+        };
     }
 }

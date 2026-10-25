@@ -2,7 +2,9 @@ package com.johnnyblabs.openspec.toolwindow;
 
 import com.intellij.icons.AllIcons;
 import com.intellij.openapi.Disposable;
+import com.intellij.openapi.ide.CopyPasteManager;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.SystemInfo;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBScrollPane;
@@ -11,11 +13,13 @@ import com.intellij.util.ui.JBUI;
 import com.johnnyblabs.openspec.actions.ExploreContextAction;
 import com.johnnyblabs.openspec.util.MarkdownHtmlRenderer;
 import com.johnnyblabs.openspec.util.OpenSpecNotifier;
+import org.jetbrains.annotations.TestOnly;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.ActionEvent;
+import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 
 /**
@@ -83,8 +87,9 @@ public class ExplorePanel extends JPanel implements Disposable {
         inputArea.getEmptyText().setText("What would you like to explore?");
 
         // Ctrl+Enter / Cmd+Enter submits
+        // Cmd on macOS, Ctrl elsewhere. Not Toolkit.getMenuShortcutKeyMaskEx(), which throws in a headless JVM.
         KeyStroke submitKey = KeyStroke.getKeyStroke(KeyEvent.VK_ENTER,
-                Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx());
+                SystemInfo.isMac ? InputEvent.META_DOWN_MASK : InputEvent.CTRL_DOWN_MASK);
         inputArea.getInputMap(JComponent.WHEN_FOCUSED)
                 .put(submitKey, "submitExplore");
         inputArea.getActionMap().put("submitExplore", new AbstractAction() {
@@ -202,6 +207,34 @@ public class ExplorePanel extends JPanel implements Disposable {
     }
 
     /**
+     * Shows a non-error message for {@code topic}, such as the clipboard fallback or a cancelled request, and
+     * re-enables the input.
+     */
+    public void showNotice(String topic, String message) {
+        this.lastTopic = topic;
+        this.lastResponse = null;
+
+        SwingUtilities.invokeLater(() -> {
+            setTopicHeader(topic);
+            topicLabel.setForeground(JBColor.foreground());
+
+            String css = MarkdownHtmlRenderer.buildThemeStylesheet();
+            String muted = colorToHex(JBColor.GRAY);
+            String html = "<div style='padding:8px; color:" + muted + ";'>" + escapeHtml(message) + "</div>";
+            responsePane.setText(MarkdownHtmlRenderer.wrapInHtml(css, html));
+            responsePane.setCaretPosition(0);
+
+            copyButton.setEnabled(false);
+            setInputEnabled(true);
+        });
+    }
+
+    /** Re-enables the input once a request has ended, whatever the outcome. Call on the EDT. */
+    public void restoreInput() {
+        setInputEnabled(true);
+    }
+
+    /**
      * Focuses the inline input area. Called when Direct API mode activates the panel.
      */
     public void focusInput() {
@@ -210,8 +243,7 @@ public class ExplorePanel extends JPanel implements Disposable {
 
     private void copyResponse() {
         if (lastResponse != null && !lastResponse.isBlank()) {
-            Toolkit.getDefaultToolkit().getSystemClipboard()
-                    .setContents(new StringSelection(lastResponse), null);
+            CopyPasteManager.getInstance().setContents(new StringSelection(lastResponse));
             OpenSpecNotifier.info(project, "Explore", "Response copied to clipboard.");
         }
     }
@@ -248,6 +280,26 @@ public class ExplorePanel extends JPanel implements Disposable {
 
     private static String colorToHex(Color color) {
         return String.format("#%02x%02x%02x", color.getRed(), color.getGreen(), color.getBlue());
+    }
+
+    @TestOnly
+    public JButton sendButtonForTest() {
+        return sendButton;
+    }
+
+    @TestOnly
+    public boolean isInputEnabledForTest() {
+        return inputArea.isEnabled() && sendButton.isEnabled();
+    }
+
+    @TestOnly
+    public String responseTextForTest() {
+        return responsePane.getText();
+    }
+
+    @TestOnly
+    public void setInputTextForTest(String text) {
+        inputArea.setText(text);
     }
 
     @Override
