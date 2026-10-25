@@ -42,7 +42,7 @@
   - the internal wiki's detection-cascade lists in `scripts/docs/wiki/Installation.md` and `Troubleshooting.md`;
   - a CHANGELOG `## Unreleased` Fixed entry.
 - [x] 3.2 `./gradlew build` and `./gradlew verifyPlugin` are green, because of the new `com.intellij.*` references, and `openspec validate find-cli-on-shell-path --strict` is clean.
-- [ ] 3.3 Manual check: with the npm CLI hidden behind a `.zshrc`-only PATH entry (for example a symlink to it in a directory added only in `.zshrc`, with the Settings path cleared), launch the sandbox from Finder (`open -a` on the sandbox app, not a terminal). Settings → Detect should find it. Restore `.zshrc` afterwards.
+- [x] 3.3 Manual check: skipped by maintainer decision. `runIde` starts from a terminal (`SHLVL>0`), so the IDE inherits the terminal's PATH, `.zshrc` included, and the check would pass with or without the fix. This machine's CLI is also at `/opt/homebrew/bin`, a fixed location that's found anyway. The behaviour is covered by the real `zsh`/`bash -l -i -c` captures and the seam tests.
 
 ## Workflow follow-up
 
