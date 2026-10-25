@@ -1,6 +1,6 @@
 # AI provider response fixtures — provenance
 
-The OpenAI and Gemini JSON files below are the **providers' own published example response shapes**,
+The OpenAI and Gemini JSON files below are the **providers' own published example response shapes** (except the live Gemini captures under `gemini/live/`, see below),
 transcribed from each provider's public API reference. The Claude files are **live captures** (see
 "Claude fixtures — live-captured" below). They back the parser contract tests in
 `DirectApiResponseContractTest` so the response parsers in `ai/DirectApiService.java` are verified
@@ -32,6 +32,19 @@ from these files, so refreshing a fixture to a newer documented example is safe 
 is preserved.
 
 **Derived variants (no official example exists).** Neither provider publishes an example of an empty reply. The OpenAI null-content, refusal and token-limit cases, and the Gemini thought-part, missing-content and blocked-prompt cases, are built inside `DirectApiResponseContractTest` from the documented fixtures above. Each one changes only fields the provider's reference defines (OpenAI's nullable `content` and `refusal`, the `finish_reason` enum; Gemini's `Part.thought`, `FinishReason` and `promptFeedback.blockReason`). Replace them with live captures when keys are available.
+
+## Gemini generateContent — live captures
+
+Captured 2026-10-25 with `scripts/capture-gemini-generatecontent.py`. It sends the plugin's own request (`DirectApiService.buildGeminiRequest`) with a free AI Studio key read from `$GEMINI_API_KEY`, and refuses to save a response that contains the key. They back the live Gemini tests in `DirectApiResponseContractTest`.
+
+| File | Model | What it shows |
+|------|-------|---------------|
+| `gemini/live/generatecontent-text.json` | `gemini-3.8-flash`, the plugin's default, at the plugin's `maxOutputTokens` 16000 | `finishReason: STOP`. The reply's **only** part carries both `text` and a `thoughtSignature`. No thought part is returned, because the plugin doesn't ask for one (`includeThoughts`), but `usageMetadata.thoughtsTokenCount` shows the model thought. |
+| `gemini/live/generatecontent-max-tokens.json` | `gemini-3.6-flash`, with `maxOutputTokens` 16 | `finishReason: MAX_TOKENS` with `content: {}`, an object with **no `parts`**. Thinking used the whole budget before any text. |
+
+The token-limit case is from `gemini-3.6-flash` because `gemini-3.8-flash` answered `503 UNAVAILABLE` ("This model is currently experiencing high demand…") on all four attempts that day. The script retries a 503 or a timeout up to four times. A blocked-prompt response isn't captured, since there's no benign way to trigger one, so that case stays derived (below).
+
+These are the live contract for the cases they cover. The documented `generatecontent-response.json` and the variants derived from it still cover thought parts, missing content and blocked prompts.
 
 ## List-models fixtures — provenance
 
