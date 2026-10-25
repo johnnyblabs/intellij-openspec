@@ -707,3 +707,7 @@ Two upstream quirks show here, recorded internally and never filed upstream:
 - even the human output's "Profile settings" line leaves out the `sync` that custom archiving pulls in.
 
 Consumed by `WorkflowProfileServiceTest`.
+
+## `1.15.0/workflows.json`: upstream's workflow set
+
+Upstream's exported `CORE_WORKFLOWS` and `ALL_WORKFLOWS`, in upstream's order, as `{cliVersion, core, all}`. Captured by `scripts/capture-workflow-ids.py`. The CLI has no command that prints them (`config set workflows` accepts any value without validating, and `config profile` is interactive), so the script loads the installed package's own `dist/core/profiles.js` with `node`. It fails rather than writing a guess if the exports move, and the standalone binary can't be used, since it has no JS to load. `WorkflowParityContractTest` checks the plugin's workflow-gated actions against `all`, and `CoreWorkflowsContractTest` checks the plugin's core set against `core`. Re-capture on every CLI bump.
