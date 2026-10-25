@@ -1,0 +1,1475 @@
+{
+ "cliVersion": "1.15.0",
+ "rows": [
+  {
+   "tool": "amazon-q",
+   "delivery": "both",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": true,
+   "invocation": "@opsx-explore",
+   "commandPath": ".amazonq/prompts/opsx-explore.md",
+   "skillPath": ".amazonq/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "amazon-q",
+   "delivery": "skills",
+   "capability": "adapter-backed",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".amazonq/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "amazon-q",
+   "delivery": "commands",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": false,
+   "invocation": "@opsx-explore",
+   "commandPath": ".amazonq/prompts/opsx-explore.md",
+   "skillPath": null
+  },
+  {
+   "tool": "amp",
+   "delivery": "both",
+   "capability": "none",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".agents/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "amp",
+   "delivery": "skills",
+   "capability": "none",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".agents/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "amp",
+   "delivery": "commands",
+   "capability": "none",
+   "commands": false,
+   "skills": false,
+   "invocation": null,
+   "commandPath": null,
+   "skillPath": null
+  },
+  {
+   "tool": "antigravity",
+   "delivery": "both",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": true,
+   "invocation": "/opsx-explore",
+   "commandPath": ".agents/workflows/opsx-explore.md",
+   "skillPath": ".agents/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "antigravity",
+   "delivery": "skills",
+   "capability": "adapter-backed",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".agents/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "antigravity",
+   "delivery": "commands",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": false,
+   "invocation": "/opsx-explore",
+   "commandPath": ".agents/workflows/opsx-explore.md",
+   "skillPath": null
+  },
+  {
+   "tool": "atomcode",
+   "delivery": "both",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": true,
+   "invocation": "/opsx-explore",
+   "commandPath": ".atomcode/commands/opsx-explore.md",
+   "skillPath": ".atomcode/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "atomcode",
+   "delivery": "skills",
+   "capability": "adapter-backed",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".atomcode/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "atomcode",
+   "delivery": "commands",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": false,
+   "invocation": "/opsx-explore",
+   "commandPath": ".atomcode/commands/opsx-explore.md",
+   "skillPath": null
+  },
+  {
+   "tool": "auggie",
+   "delivery": "both",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": true,
+   "invocation": "/opsx-explore",
+   "commandPath": ".augment/commands/opsx-explore.md",
+   "skillPath": ".augment/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "auggie",
+   "delivery": "skills",
+   "capability": "adapter-backed",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".augment/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "auggie",
+   "delivery": "commands",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": false,
+   "invocation": "/opsx-explore",
+   "commandPath": ".augment/commands/opsx-explore.md",
+   "skillPath": null
+  },
+  {
+   "tool": "bob",
+   "delivery": "both",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": true,
+   "invocation": "/opsx-explore",
+   "commandPath": ".bob/commands/opsx-explore.md",
+   "skillPath": ".bob/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "bob",
+   "delivery": "skills",
+   "capability": "adapter-backed",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".bob/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "bob",
+   "delivery": "commands",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": false,
+   "invocation": "/opsx-explore",
+   "commandPath": ".bob/commands/opsx-explore.md",
+   "skillPath": null
+  },
+  {
+   "tool": "claude",
+   "delivery": "both",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": true,
+   "invocation": "/opsx:explore",
+   "commandPath": ".claude/commands/opsx/explore.md",
+   "skillPath": ".claude/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "claude",
+   "delivery": "skills",
+   "capability": "adapter-backed",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".claude/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "claude",
+   "delivery": "commands",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": false,
+   "invocation": "/opsx:explore",
+   "commandPath": ".claude/commands/opsx/explore.md",
+   "skillPath": null
+  },
+  {
+   "tool": "cline",
+   "delivery": "both",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": true,
+   "invocation": "/opsx-explore",
+   "commandPath": ".clinerules/workflows/opsx-explore.md",
+   "skillPath": ".cline/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "cline",
+   "delivery": "skills",
+   "capability": "adapter-backed",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".cline/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "cline",
+   "delivery": "commands",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": false,
+   "invocation": "/opsx-explore",
+   "commandPath": ".clinerules/workflows/opsx-explore.md",
+   "skillPath": null
+  },
+  {
+   "tool": "command-code",
+   "delivery": "both",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": true,
+   "invocation": "/opsx-explore",
+   "commandPath": ".commandcode/commands/opsx-explore.md",
+   "skillPath": ".commandcode/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "command-code",
+   "delivery": "skills",
+   "capability": "adapter-backed",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".commandcode/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "command-code",
+   "delivery": "commands",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": false,
+   "invocation": "/opsx-explore",
+   "commandPath": ".commandcode/commands/opsx-explore.md",
+   "skillPath": null
+  },
+  {
+   "tool": "codeartsagent",
+   "delivery": "both",
+   "capability": "none",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".codeartsdoer/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "codeartsagent",
+   "delivery": "skills",
+   "capability": "none",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".codeartsdoer/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "codeartsagent",
+   "delivery": "commands",
+   "capability": "none",
+   "commands": false,
+   "skills": false,
+   "invocation": null,
+   "commandPath": null,
+   "skillPath": null
+  },
+  {
+   "tool": "codex",
+   "delivery": "both",
+   "capability": "skills-invocable",
+   "commands": false,
+   "skills": true,
+   "invocation": "$openspec-explore",
+   "commandPath": null,
+   "skillPath": ".agents/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "codex",
+   "delivery": "skills",
+   "capability": "skills-invocable",
+   "commands": false,
+   "skills": true,
+   "invocation": "$openspec-explore",
+   "commandPath": null,
+   "skillPath": ".agents/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "codex",
+   "delivery": "commands",
+   "capability": "skills-invocable",
+   "commands": false,
+   "skills": true,
+   "invocation": "$openspec-explore",
+   "commandPath": null,
+   "skillPath": ".agents/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "dsh",
+   "delivery": "both",
+   "capability": "none",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".dsh/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "dsh",
+   "delivery": "skills",
+   "capability": "none",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".dsh/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "dsh",
+   "delivery": "commands",
+   "capability": "none",
+   "commands": false,
+   "skills": false,
+   "invocation": null,
+   "commandPath": null,
+   "skillPath": null
+  },
+  {
+   "tool": "devin",
+   "delivery": "both",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": ".devin/workflows/opsx-explore.md",
+   "skillPath": ".devin/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "devin",
+   "delivery": "skills",
+   "capability": "adapter-backed",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".devin/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "devin",
+   "delivery": "commands",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": false,
+   "invocation": "/opsx-explore",
+   "commandPath": ".devin/workflows/opsx-explore.md",
+   "skillPath": null
+  },
+  {
+   "tool": "forgecode",
+   "delivery": "both",
+   "capability": "none",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".forge/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "forgecode",
+   "delivery": "skills",
+   "capability": "none",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".forge/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "forgecode",
+   "delivery": "commands",
+   "capability": "none",
+   "commands": false,
+   "skills": false,
+   "invocation": null,
+   "commandPath": null,
+   "skillPath": null
+  },
+  {
+   "tool": "codebuddy",
+   "delivery": "both",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": true,
+   "invocation": "/opsx:explore",
+   "commandPath": ".codebuddy/commands/opsx/explore.md",
+   "skillPath": ".codebuddy/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "codebuddy",
+   "delivery": "skills",
+   "capability": "adapter-backed",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".codebuddy/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "codebuddy",
+   "delivery": "commands",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": false,
+   "invocation": "/opsx:explore",
+   "commandPath": ".codebuddy/commands/opsx/explore.md",
+   "skillPath": null
+  },
+  {
+   "tool": "codestudio",
+   "delivery": "both",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": true,
+   "invocation": "/opsx-explore",
+   "commandPath": ".codestudio/prompts/opsx-explore.prompt.md",
+   "skillPath": ".codestudio/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "codestudio",
+   "delivery": "skills",
+   "capability": "adapter-backed",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".codestudio/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "codestudio",
+   "delivery": "commands",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": false,
+   "invocation": "/opsx-explore",
+   "commandPath": ".codestudio/prompts/opsx-explore.prompt.md",
+   "skillPath": null
+  },
+  {
+   "tool": "continue",
+   "delivery": "both",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": true,
+   "invocation": "/opsx-explore",
+   "commandPath": ".continue/prompts/opsx-explore.prompt",
+   "skillPath": ".continue/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "continue",
+   "delivery": "skills",
+   "capability": "adapter-backed",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".continue/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "continue",
+   "delivery": "commands",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": false,
+   "invocation": "/opsx-explore",
+   "commandPath": ".continue/prompts/opsx-explore.prompt",
+   "skillPath": null
+  },
+  {
+   "tool": "costrict",
+   "delivery": "both",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": true,
+   "invocation": "/opsx-explore",
+   "commandPath": ".cospec/openspec/commands/opsx-explore.md",
+   "skillPath": ".cospec/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "costrict",
+   "delivery": "skills",
+   "capability": "adapter-backed",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".cospec/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "costrict",
+   "delivery": "commands",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": false,
+   "invocation": "/opsx-explore",
+   "commandPath": ".cospec/openspec/commands/opsx-explore.md",
+   "skillPath": null
+  },
+  {
+   "tool": "crush",
+   "delivery": "both",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": true,
+   "invocation": "/opsx:explore",
+   "commandPath": ".crush/commands/opsx/explore.md",
+   "skillPath": ".crush/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "crush",
+   "delivery": "skills",
+   "capability": "adapter-backed",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".crush/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "crush",
+   "delivery": "commands",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": false,
+   "invocation": "/opsx:explore",
+   "commandPath": ".crush/commands/opsx/explore.md",
+   "skillPath": null
+  },
+  {
+   "tool": "cursor",
+   "delivery": "both",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": true,
+   "invocation": "/opsx-explore",
+   "commandPath": ".cursor/commands/opsx-explore.md",
+   "skillPath": ".cursor/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "cursor",
+   "delivery": "skills",
+   "capability": "adapter-backed",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".cursor/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "cursor",
+   "delivery": "commands",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": false,
+   "invocation": "/opsx-explore",
+   "commandPath": ".cursor/commands/opsx-explore.md",
+   "skillPath": null
+  },
+  {
+   "tool": "easycode",
+   "delivery": "both",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": true,
+   "invocation": "/opsx:explore",
+   "commandPath": ".easycode/commands/opsx/explore.toml",
+   "skillPath": ".easycode/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "easycode",
+   "delivery": "skills",
+   "capability": "adapter-backed",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".easycode/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "easycode",
+   "delivery": "commands",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": false,
+   "invocation": "/opsx:explore",
+   "commandPath": ".easycode/commands/opsx/explore.toml",
+   "skillPath": null
+  },
+  {
+   "tool": "factory",
+   "delivery": "both",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": true,
+   "invocation": "/opsx-explore",
+   "commandPath": ".factory/commands/opsx-explore.md",
+   "skillPath": ".factory/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "factory",
+   "delivery": "skills",
+   "capability": "adapter-backed",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".factory/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "factory",
+   "delivery": "commands",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": false,
+   "invocation": "/opsx-explore",
+   "commandPath": ".factory/commands/opsx-explore.md",
+   "skillPath": null
+  },
+  {
+   "tool": "gemini",
+   "delivery": "both",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": true,
+   "invocation": "/opsx:explore",
+   "commandPath": ".gemini/commands/opsx/explore.toml",
+   "skillPath": ".gemini/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "gemini",
+   "delivery": "skills",
+   "capability": "adapter-backed",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".gemini/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "gemini",
+   "delivery": "commands",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": false,
+   "invocation": "/opsx:explore",
+   "commandPath": ".gemini/commands/opsx/explore.toml",
+   "skillPath": null
+  },
+  {
+   "tool": "github-copilot",
+   "delivery": "both",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": true,
+   "invocation": "/opsx-explore",
+   "commandPath": ".github/prompts/opsx-explore.prompt.md",
+   "skillPath": ".github/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "github-copilot",
+   "delivery": "skills",
+   "capability": "adapter-backed",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".github/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "github-copilot",
+   "delivery": "commands",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": false,
+   "invocation": "/opsx-explore",
+   "commandPath": ".github/prompts/opsx-explore.prompt.md",
+   "skillPath": null
+  },
+  {
+   "tool": "gigacode",
+   "delivery": "both",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": true,
+   "invocation": "/opsx-explore",
+   "commandPath": ".gigacode/commands/opsx-explore.md",
+   "skillPath": ".gigacode/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "gigacode",
+   "delivery": "skills",
+   "capability": "adapter-backed",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".gigacode/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "gigacode",
+   "delivery": "commands",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": false,
+   "invocation": "/opsx-explore",
+   "commandPath": ".gigacode/commands/opsx-explore.md",
+   "skillPath": null
+  },
+  {
+   "tool": "grok",
+   "delivery": "both",
+   "capability": "none",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".grok/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "grok",
+   "delivery": "skills",
+   "capability": "none",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".grok/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "grok",
+   "delivery": "commands",
+   "capability": "none",
+   "commands": false,
+   "skills": false,
+   "invocation": null,
+   "commandPath": null,
+   "skillPath": null
+  },
+  {
+   "tool": "gsd",
+   "delivery": "both",
+   "capability": "none",
+   "commands": false,
+   "skills": true,
+   "invocation": "the openspec-explore skill",
+   "commandPath": null,
+   "skillPath": ".agents/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "gsd",
+   "delivery": "skills",
+   "capability": "none",
+   "commands": false,
+   "skills": true,
+   "invocation": "the openspec-explore skill",
+   "commandPath": null,
+   "skillPath": ".agents/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "gsd",
+   "delivery": "commands",
+   "capability": "none",
+   "commands": false,
+   "skills": false,
+   "invocation": null,
+   "commandPath": null,
+   "skillPath": null
+  },
+  {
+   "tool": "hermes",
+   "delivery": "both",
+   "capability": "none",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".hermes/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "hermes",
+   "delivery": "skills",
+   "capability": "none",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".hermes/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "hermes",
+   "delivery": "commands",
+   "capability": "none",
+   "commands": false,
+   "skills": false,
+   "invocation": null,
+   "commandPath": null,
+   "skillPath": null
+  },
+  {
+   "tool": "iflow",
+   "delivery": "both",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": true,
+   "invocation": "/opsx-explore",
+   "commandPath": ".iflow/commands/opsx-explore.md",
+   "skillPath": ".iflow/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "iflow",
+   "delivery": "skills",
+   "capability": "adapter-backed",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".iflow/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "iflow",
+   "delivery": "commands",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": false,
+   "invocation": "/opsx-explore",
+   "commandPath": ".iflow/commands/opsx-explore.md",
+   "skillPath": null
+  },
+  {
+   "tool": "junie",
+   "delivery": "both",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": true,
+   "invocation": "/opsx-explore",
+   "commandPath": ".junie/commands/opsx-explore.md",
+   "skillPath": ".junie/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "junie",
+   "delivery": "skills",
+   "capability": "adapter-backed",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".junie/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "junie",
+   "delivery": "commands",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": false,
+   "invocation": "/opsx-explore",
+   "commandPath": ".junie/commands/opsx-explore.md",
+   "skillPath": null
+  },
+  {
+   "tool": "kilocode",
+   "delivery": "both",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": true,
+   "invocation": "/opsx-explore",
+   "commandPath": ".kilo/command/opsx-explore.md",
+   "skillPath": ".kilocode/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "kilocode",
+   "delivery": "skills",
+   "capability": "adapter-backed",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".kilocode/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "kilocode",
+   "delivery": "commands",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": false,
+   "invocation": "/opsx-explore",
+   "commandPath": ".kilo/command/opsx-explore.md",
+   "skillPath": null
+  },
+  {
+   "tool": "kimi",
+   "delivery": "both",
+   "capability": "none",
+   "commands": false,
+   "skills": true,
+   "invocation": "/skill:openspec-explore",
+   "commandPath": null,
+   "skillPath": ".kimi-code/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "kimi",
+   "delivery": "skills",
+   "capability": "none",
+   "commands": false,
+   "skills": true,
+   "invocation": "/skill:openspec-explore",
+   "commandPath": null,
+   "skillPath": ".kimi-code/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "kimi",
+   "delivery": "commands",
+   "capability": "none",
+   "commands": false,
+   "skills": false,
+   "invocation": null,
+   "commandPath": null,
+   "skillPath": null
+  },
+  {
+   "tool": "kiro",
+   "delivery": "both",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": true,
+   "invocation": "/opsx-explore",
+   "commandPath": ".kiro/prompts/opsx-explore.prompt.md",
+   "skillPath": ".kiro/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "kiro",
+   "delivery": "skills",
+   "capability": "adapter-backed",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".kiro/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "kiro",
+   "delivery": "commands",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": false,
+   "invocation": "/opsx-explore",
+   "commandPath": ".kiro/prompts/opsx-explore.prompt.md",
+   "skillPath": null
+  },
+  {
+   "tool": "lingma",
+   "delivery": "both",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": true,
+   "invocation": "/opsx:explore",
+   "commandPath": ".lingma/commands/opsx/explore.md",
+   "skillPath": ".lingma/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "lingma",
+   "delivery": "skills",
+   "capability": "adapter-backed",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".lingma/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "lingma",
+   "delivery": "commands",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": false,
+   "invocation": "/opsx:explore",
+   "commandPath": ".lingma/commands/opsx/explore.md",
+   "skillPath": null
+  },
+  {
+   "tool": "vibe",
+   "delivery": "both",
+   "capability": "none",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".vibe/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "vibe",
+   "delivery": "skills",
+   "capability": "none",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".vibe/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "vibe",
+   "delivery": "commands",
+   "capability": "none",
+   "commands": false,
+   "skills": false,
+   "invocation": null,
+   "commandPath": null,
+   "skillPath": null
+  },
+  {
+   "tool": "oh-my-pi",
+   "delivery": "both",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": true,
+   "invocation": "/opsx-explore",
+   "commandPath": ".omp/commands/opsx-explore.md",
+   "skillPath": ".omp/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "oh-my-pi",
+   "delivery": "skills",
+   "capability": "adapter-backed",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".omp/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "oh-my-pi",
+   "delivery": "commands",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": false,
+   "invocation": "/opsx-explore",
+   "commandPath": ".omp/commands/opsx-explore.md",
+   "skillPath": null
+  },
+  {
+   "tool": "opencode",
+   "delivery": "both",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": true,
+   "invocation": "/opsx-explore",
+   "commandPath": ".opencode/commands/opsx-explore.md",
+   "skillPath": ".opencode/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "opencode",
+   "delivery": "skills",
+   "capability": "adapter-backed",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".opencode/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "opencode",
+   "delivery": "commands",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": false,
+   "invocation": "/opsx-explore",
+   "commandPath": ".opencode/commands/opsx-explore.md",
+   "skillPath": null
+  },
+  {
+   "tool": "pi",
+   "delivery": "both",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": true,
+   "invocation": "/opsx-explore",
+   "commandPath": ".pi/prompts/opsx-explore.md",
+   "skillPath": ".pi/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "pi",
+   "delivery": "skills",
+   "capability": "adapter-backed",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".pi/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "pi",
+   "delivery": "commands",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": false,
+   "invocation": "/opsx-explore",
+   "commandPath": ".pi/prompts/opsx-explore.md",
+   "skillPath": null
+  },
+  {
+   "tool": "codeassistant",
+   "delivery": "both",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": true,
+   "invocation": "/opsx-explore",
+   "commandPath": ".codeassistant/commands/opsx-explore.md",
+   "skillPath": ".codeassistant/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "codeassistant",
+   "delivery": "skills",
+   "capability": "adapter-backed",
+   "commands": false,
+   "skills": true,
+   "invocation": "the openspec-explore skill",
+   "commandPath": null,
+   "skillPath": ".codeassistant/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "codeassistant",
+   "delivery": "commands",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": false,
+   "invocation": "/opsx-explore",
+   "commandPath": ".codeassistant/commands/opsx-explore.md",
+   "skillPath": null
+  },
+  {
+   "tool": "qoder",
+   "delivery": "both",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": true,
+   "invocation": "/opsx:explore",
+   "commandPath": ".qoder/commands/opsx/explore.md",
+   "skillPath": ".qoder/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "qoder",
+   "delivery": "skills",
+   "capability": "adapter-backed",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".qoder/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "qoder",
+   "delivery": "commands",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": false,
+   "invocation": "/opsx:explore",
+   "commandPath": ".qoder/commands/opsx/explore.md",
+   "skillPath": null
+  },
+  {
+   "tool": "qwen",
+   "delivery": "both",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": true,
+   "invocation": "/opsx-explore",
+   "commandPath": ".qwen/commands/opsx-explore.md",
+   "skillPath": ".qwen/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "qwen",
+   "delivery": "skills",
+   "capability": "adapter-backed",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".qwen/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "qwen",
+   "delivery": "commands",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": false,
+   "invocation": "/opsx-explore",
+   "commandPath": ".qwen/commands/opsx-explore.md",
+   "skillPath": null
+  },
+  {
+   "tool": "rovodev",
+   "delivery": "both",
+   "capability": "none",
+   "commands": false,
+   "skills": true,
+   "invocation": "the openspec-explore skill",
+   "commandPath": null,
+   "skillPath": ".rovodev/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "rovodev",
+   "delivery": "skills",
+   "capability": "none",
+   "commands": false,
+   "skills": true,
+   "invocation": "the openspec-explore skill",
+   "commandPath": null,
+   "skillPath": ".rovodev/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "rovodev",
+   "delivery": "commands",
+   "capability": "none",
+   "commands": false,
+   "skills": false,
+   "invocation": null,
+   "commandPath": null,
+   "skillPath": null
+  },
+  {
+   "tool": "roocode",
+   "delivery": "both",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": true,
+   "invocation": "/opsx-explore",
+   "commandPath": ".roo/commands/opsx-explore.md",
+   "skillPath": ".roo/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "roocode",
+   "delivery": "skills",
+   "capability": "adapter-backed",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".roo/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "roocode",
+   "delivery": "commands",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": false,
+   "invocation": "/opsx-explore",
+   "commandPath": ".roo/commands/opsx-explore.md",
+   "skillPath": null
+  },
+  {
+   "tool": "trae",
+   "delivery": "both",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": true,
+   "invocation": "/opsx-explore",
+   "commandPath": ".trae/commands/opsx-explore.md",
+   "skillPath": ".trae/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "trae",
+   "delivery": "skills",
+   "capability": "adapter-backed",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".trae/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "trae",
+   "delivery": "commands",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": false,
+   "invocation": "/opsx-explore",
+   "commandPath": ".trae/commands/opsx-explore.md",
+   "skillPath": null
+  },
+  {
+   "tool": "veai",
+   "delivery": "both",
+   "capability": "none",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".veai/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "veai",
+   "delivery": "skills",
+   "capability": "none",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".veai/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "veai",
+   "delivery": "commands",
+   "capability": "none",
+   "commands": false,
+   "skills": false,
+   "invocation": null,
+   "commandPath": null,
+   "skillPath": null
+  },
+  {
+   "tool": "warp",
+   "delivery": "both",
+   "capability": "skills-invocable",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".warp/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "warp",
+   "delivery": "skills",
+   "capability": "skills-invocable",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".warp/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "warp",
+   "delivery": "commands",
+   "capability": "skills-invocable",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".warp/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "zed",
+   "delivery": "both",
+   "capability": "none",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".agents/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "zed",
+   "delivery": "skills",
+   "capability": "none",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".agents/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "zed",
+   "delivery": "commands",
+   "capability": "none",
+   "commands": false,
+   "skills": false,
+   "invocation": null,
+   "commandPath": null,
+   "skillPath": null
+  },
+  {
+   "tool": "zcode",
+   "delivery": "both",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": true,
+   "invocation": "/opsx:explore",
+   "commandPath": ".zcode/commands/opsx/explore.md",
+   "skillPath": ".zcode/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "zcode",
+   "delivery": "skills",
+   "capability": "adapter-backed",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".zcode/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "zcode",
+   "delivery": "commands",
+   "capability": "adapter-backed",
+   "commands": true,
+   "skills": false,
+   "invocation": "/opsx:explore",
+   "commandPath": ".zcode/commands/opsx/explore.md",
+   "skillPath": null
+  },
+  {
+   "tool": "agents",
+   "delivery": "both",
+   "capability": "none",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".agents/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "agents",
+   "delivery": "skills",
+   "capability": "none",
+   "commands": false,
+   "skills": true,
+   "invocation": "/openspec-explore",
+   "commandPath": null,
+   "skillPath": ".agents/skills/openspec-explore/SKILL.md"
+  },
+  {
+   "tool": "agents",
+   "delivery": "commands",
+   "capability": "none",
+   "commands": false,
+   "skills": false,
+   "invocation": null,
+   "commandPath": null,
+   "skillPath": null
+  }
+ ]
+}

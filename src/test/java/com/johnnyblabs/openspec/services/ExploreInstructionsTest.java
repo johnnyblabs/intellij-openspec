@@ -66,6 +66,46 @@ class ExploreInstructionsTest {
     }
 
     @Test
+    void theLookupReportsTheToolAndWhichOfItsExploreFilesExist() throws IOException {
+        place(".claude/skills/openspec-explore/SKILL.md", "claude-skill-both.md");
+        place(".claude/commands/opsx/explore.md", "claude-command.md");
+        service.setCandidateToolsForTest(() -> List.of(tool("claude")));
+
+        Instructions instructions = service.loadInstructions();
+
+        assertEquals(".claude/skills/openspec-explore/SKILL.md", instructions.sourcePath(), "the skill is the source");
+        assertEquals("claude", instructions.tool().id());
+        assertTrue(instructions.hasSkill());
+        assertTrue(instructions.hasCommand(), "the command exists too, which decides upstream's invocation");
+    }
+
+    @Test
+    void directApiStillGetsTheExpandedPromptWhenTheToolHasExplore() throws IOException {
+        place(".claude/commands/opsx/explore.md", "claude-command.md");
+        service.setCandidateToolsForTest(() -> List.of(tool("claude")));
+
+        ExplorePromptService.Prompt agent = service.build("why caching", ExplorePromptService.Delivery.AGENT);
+        ExplorePromptService.Prompt direct = service.build("why caching", ExplorePromptService.Delivery.DIRECT_API);
+
+        assertEquals("/opsx:explore why caching", agent.text(), "an agent with the command gets what to type");
+        assertEquals("/opsx:explore why caching", agent.handoff());
+        assertTrue(direct.text().startsWith(ExplorePromptService.DIRECT_API_PREAMBLE), "a model has no tools");
+        assertNull(direct.handoff());
+        assertTrue(direct.text().contains("why caching"));
+    }
+
+    @Test
+    void theBuiltInDefaultReportsNoTool() {
+        service.setCandidateToolsForTest(() -> List.of(tool("claude")));
+
+        Instructions instructions = service.loadInstructions();
+
+        assertTrue(instructions.isBuiltInDefault());
+        assertNull(instructions.tool());
+        assertFalse(instructions.hasCommand() || instructions.hasSkill());
+    }
+
+    @Test
     void theCommandIsUsedWhenTheToolHasNoSkill() throws IOException {
         place(".cursor/commands/opsx-explore.md", "cursor-command.md");
         service.setCandidateToolsForTest(() -> List.of(tool("cursor")));

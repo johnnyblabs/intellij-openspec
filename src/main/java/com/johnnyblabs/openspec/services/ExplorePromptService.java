@@ -32,15 +32,31 @@ public final class ExplorePromptService {
     /** Where the prompt goes: an agent that has tools, or a Direct API model that has none. */
     public enum Delivery { AGENT, DIRECT_API }
 
-    /** The explore instructions and the project-relative file they came from, or {@code null} for the default. */
-    public record Instructions(String text, @Nullable String sourcePath) {
+    /**
+     * The explore instructions and the project-relative file they came from, or {@code null} for the default. For a
+     * generated file, also the tool it belongs to and which of that tool's explore files exist: upstream's invocation
+     * depends on both (with {@code delivery: both} the skill is found first, but the command form is what's advertised).
+     */
+    public record Instructions(String text, @Nullable String sourcePath, @Nullable AiTool tool,
+                               boolean hasCommand, boolean hasSkill) {
+        public Instructions(String text, @Nullable String sourcePath) {
+            this(text, sourcePath, null, false, false);
+        }
+
         public boolean isBuiltInDefault() {
             return sourcePath == null;
         }
     }
 
-    /** The assembled prompt and the source of its instructions. */
-    public record Prompt(String text, Instructions instructions) {
+    /**
+     * The assembled prompt and the source of its instructions. {@code handoff} is set when the prompt is the short form,
+     * what the user types to run their tool's own explore (e.g. {@code /opsx:explore why caching}), so notices can
+     * quote it.
+     */
+    public record Prompt(String text, Instructions instructions, @Nullable String handoff) {
+        public Prompt(String text, Instructions instructions) {
+            this(text, instructions, null);
+        }
     }
 
     /**
@@ -116,9 +132,23 @@ public final class ExplorePromptService {
         return build(topic, Delivery.AGENT).text();
     }
 
-    /** Builds the prompt for {@code delivery}; a Direct API prompt starts with {@link #DIRECT_API_PREAMBLE}. */
+    /**
+     * Builds the prompt for {@code delivery}; a Direct API prompt starts with {@link #DIRECT_API_PREAMBLE}. For an
+     * agent whose tool has OpenSpec's explore command or skill installed, it's the short handoff instead: what the user
+     * types to run that tool's own explore, by upstream's rules ({@link ExploreInvocation}). The agent gathers the
+     * project context itself, so none is assembled.
+     */
     public Prompt build(String topic, Delivery delivery) {
         Instructions instructions = loadInstructions();
+        if (delivery == Delivery.AGENT && instructions.tool() != null) {
+            AiTool tool = instructions.tool();
+            String invocation = ExploreInvocation.of(tool.id(), AiToolRegistry.exploreCommandPath(tool),
+                    instructions.hasCommand(), instructions.hasSkill());
+            if (invocation != null) {
+                String handoff = ExploreInvocation.handoff(invocation, topic);
+                return new Prompt(handoff, instructions, handoff);
+            }
+        }
         String body = instructions.text() + "\n\n---\n\n" + assembleContext() + "\n\n---\n\n" + buildTopicSection(topic);
         String text = delivery == Delivery.DIRECT_API ? DIRECT_API_PREAMBLE + "\n\n---\n\n" + body : body;
         return new Prompt(text, instructions);
@@ -133,16 +163,22 @@ public final class ExplorePromptService {
     Instructions loadInstructions() {
         String basePath = project.getBasePath();
         if (basePath != null) {
-            for (String relative : candidatePaths()) {
-                Path path = Path.of(basePath, relative);
-                if (!Files.isRegularFile(path)) continue;
-                try {
-                    String body = extractBody(relative, Files.readString(path));
-                    if (body == null) continue;
-                    LOG.info("Loaded explore instructions from: " + path);
-                    return new Instructions(body, relative);
-                } catch (IOException e) {
-                    LOG.warn("Failed to read explore instructions: " + path, e);
+            for (AiTool tool : candidateTools()) {
+                String skill = AiToolRegistry.exploreSkillPath(tool);
+                String command = AiToolRegistry.exploreCommandPath(tool);
+                boolean hasSkill = skill != null && Files.isRegularFile(Path.of(basePath, skill));
+                boolean hasCommand = command != null && Files.isRegularFile(Path.of(basePath, command));
+                for (String relative : new String[] {hasSkill ? skill : null, hasCommand ? command : null}) {
+                    if (relative == null) continue;
+                    Path path = Path.of(basePath, relative);
+                    try {
+                        String body = extractBody(relative, Files.readString(path));
+                        if (body == null) continue;
+                        LOG.info("Loaded explore instructions from: " + path);
+                        return new Instructions(body, relative, tool, hasCommand, hasSkill);
+                    } catch (IOException e) {
+                        LOG.warn("Failed to read explore instructions: " + path, e);
+                    }
                 }
             }
         }

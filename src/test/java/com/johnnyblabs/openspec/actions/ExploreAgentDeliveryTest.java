@@ -143,7 +143,7 @@ public class ExploreAgentDeliveryTest extends BasePlatformTestCase {
         assertTrue(raised.get(0).getContent(), raised.get(0).getContent().contains(ExplorePanel.BUILT_IN_DEFAULT_NOTE));
     }
 
-    public void testClipboardNamesTheGeneratedFileItUsed() throws Exception {
+    public void testClipboardCopiesThePreferredToolsShortHandoff() throws Exception {
         OpenSpecSettings.getInstance(getProject()).setPreferredDeliveryMethod("CLIPBOARD");
         OpenSpecSettings.getInstance(getProject()).setPreferredTool("Cursor");
         Path target = Path.of(getProject().getBasePath(), ".cursor/commands/opsx-explore.md");
@@ -157,11 +157,26 @@ public class ExploreAgentDeliveryTest extends BasePlatformTestCase {
         ExploreContextAction.runExplore(getProject(), TOPIC);
         PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
 
-        assertTrue("the Cursor command's handoff was copied", clipboard().contains("`/opsx-propose`"));
-        assertFalse("not Claude's skill", clipboard().contains("`/opsx:propose`"));
+        assertEquals("what the user types in Cursor, not the expanded prompt", "/opsx-explore " + TOPIC, clipboard());
         String balloon = raised.get(0).getContent();
-        assertTrue(balloon, balloon.contains(".cursor/commands/opsx-explore.md"));
+        assertTrue(balloon, balloon.contains("/opsx-explore " + TOPIC));
+        assertTrue(balloon, balloon.contains("for Cursor"));
         assertFalse(balloon, balloon.contains("built-in default"));
+    }
+
+    public void testTheEditorTabShowsTheShortHandoffWhenTheToolHasExplore() throws Exception {
+        OpenSpecSettings.getInstance(getProject()).setPreferredDeliveryMethod("EDITOR_TAB");
+        OpenSpecSettings.getInstance(getProject()).setPreferredTool("Claude Code");
+        Path command = Path.of(getProject().getBasePath(), ".claude/commands/opsx/explore.md");
+        Files.createDirectories(command.getParent());
+        Files.copy(Path.of("src/test/resources/fixtures/cli/1.15.0/explore/claude-command.md"), command);
+
+        ExploreContextAction.runExplore(getProject(), TOPIC);
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
+
+        VirtualFile[] open = FileEditorManager.getInstance(getProject()).getOpenFiles();
+        assertEquals(1, open.length);
+        assertEquals("/opsx:explore " + TOPIC, ((LightVirtualFile) open[0]).getContent().toString());
     }
 
     public void testEditorTabOpensAnInMemoryFileWithTheAgentPrompt() throws Exception {

@@ -249,9 +249,27 @@ public class ExploreContextAction extends OpenSpecBaseAction implements com.inte
 
     private static void deliverClipboard(@NotNull Project project, Prompt prompt) {
         copyToClipboard(prompt.text());
-        OpenSpecNotifier.info(project, "Explore",
-                "Explore prompt copied \u2014 paste into your AI tool to start exploring."
-                        + sourceNote(prompt.instructions()));
+        OpenSpecNotifier.info(project, "Explore", copiedNote(prompt));
+    }
+
+    /** The no-provider notice, naming the short handoff when that's what was copied. */
+    static String noProviderNote(Prompt prompt) {
+        if (prompt.handoff() != null && prompt.instructions().tool() != null) {
+            return NO_PROVIDER_NOTICE + " Copied: " + prompt.handoff() + " (for " + prompt.instructions().tool().name() + ").";
+        }
+        return NO_PROVIDER_NOTICE;
+    }
+
+    /**
+     * What a clipboard delivery says it copied: the short handoff and the tool to paste it into, or for the expanded
+     * prompt, the generic line plus where the instructions came from.
+     */
+    static String copiedNote(Prompt prompt) {
+        if (prompt.handoff() != null && prompt.instructions().tool() != null) {
+            String tool = prompt.instructions().tool().name();
+            return "Copied " + prompt.handoff() + " for " + tool + ". Paste it into " + tool + "'s chat to start exploring.";
+        }
+        return "Explore prompt copied \u2014 paste into your AI tool to start exploring." + sourceNote(prompt.instructions());
     }
 
     /** Opens the prompt in an in-memory editor tab, so nothing is written to disk or shared between projects. */
@@ -278,10 +296,10 @@ public class ExploreContextAction extends OpenSpecBaseAction implements com.inte
                         if (existing != null) {
                             // The user is looking at the panel; say it there (onFinished gives the input back).
                             existing.setInstructionsSource(prompt.instructions());
-                            existing.showNotice(topic, NO_PROVIDER_NOTICE);
+                            existing.showNotice(topic, noProviderNote(prompt));
                         } else {
                             OpenSpecNotifier.info(project, "Explore",
-                                    NO_PROVIDER_NOTICE + sourceNote(prompt.instructions()));
+                                    noProviderNote(prompt) + sourceNote(prompt.instructions()));
                         }
                     }));
             return;
