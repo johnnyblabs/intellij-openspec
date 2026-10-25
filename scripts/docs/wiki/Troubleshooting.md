@@ -35,9 +35,10 @@ brew install openspec                        # macOS and Linux
 ### Detection Cascade
 The plugin tries these locations in order:
 1. Settings-configured path
-2. `openspec` on PATH
-3. Login shell resolution (`/bin/zsh -l -c "which openspec"`)
-4. Common paths, where a file exists:
+2. `openspec` on the IDE's PATH (macOS/Linux; the IDE loads it from the user's shell)
+3. `openspec` on the JVM's PATH (bare name)
+4. The interactive login shell's PATH (`$SHELL -l -i -c`, marker-delimited, so `~/.zshrc` counts); `where.exe` on Windows
+5. Common paths, where a file exists:
    - `/opt/homebrew/bin`, `/usr/local/bin`, `/usr/bin` and `/home/linuxbrew/.linuxbrew/bin`;
    - `$OPENSPEC_INSTALL_DIR`, when set;
    - `~/.local/bin`, or the Windows equivalents.

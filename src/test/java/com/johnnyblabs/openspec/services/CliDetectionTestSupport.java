@@ -8,10 +8,12 @@ public final class CliDetectionTestSupport {
 
     /**
      * Makes {@code service} report an available CLI at {@code version} without spawning anything: every
-     * {@code --version} probe answers {@code "openspec <version>"} and every other command finds nothing. A later
+     * {@code --version} probe answers {@code "openspec <version>"} and every other command finds nothing (the IDE-PATH
+     * lookup included, so the machine's real CLI is never seen). A later
      * {@code detect()} lands on the same state, so a panel re-detecting in the background can't race it away.
      */
     public static void fakeAvailable(CliDetectionService service, String version) {
+        service.setIdePathForTest(name -> null, () -> "");
         service.setProcessRunnerForTest(cmd -> cmd.getParametersList().getList().contains("--version")
                 ? "openspec " + version : null);
         service.tryPath("openspec");
@@ -19,6 +21,7 @@ public final class CliDetectionTestSupport {
 
     /** Makes {@code service} report no CLI, whatever is installed on the machine running the tests. */
     public static void fakeUnavailable(CliDetectionService service) {
+        service.setIdePathForTest(name -> null, () -> "");
         service.setProcessRunnerForTest(cmd -> null);
         service.detect();
     }
