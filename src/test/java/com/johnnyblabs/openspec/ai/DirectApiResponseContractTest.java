@@ -14,8 +14,9 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Contract tests for the three Direct-API response parsers. Claude is driven by live-captured
- * responses; OpenAI and Gemini by each provider's published example response shape (see
+ * Contract tests for the three Direct-API response parsers. Claude, and Gemini's text and token-limit cases, are
+ * driven by live-captured responses; OpenAI and the other Gemini cases by each provider's published example response
+ * shape (see
  * {@code src/test/resources/fixtures/ai/README.md} for provenance). The asserted text is read from the committed
  * fixture, so these are real contract checks against the provider's stated shape — not the
  * hand-authored inline literals the repo's contract-test discipline forbids.
@@ -209,6 +210,41 @@ class DirectApiResponseContractTest {
 
     @Nested
     class GeminiParserContract {
+        // LIVE captures (scripts/capture-gemini-generatecontent.py; see the fixtures README). Gemini 3.x thinks by
+        // default: the reply's only part carries the text AND a thoughtSignature, and no thought part is returned
+        // because the plugin doesn't ask for one.
+        private JsonObject live(String fixture) {
+            return JsonParser.parseString(loadFixture("gemini/live/" + fixture)).getAsJsonObject();
+        }
+
+        @Test
+        void extractsTextFromLiveThinkingResponse() throws Exception {
+            JsonObject json = live("generatecontent-text.json");
+            JsonObject part = parts(json).get(0).getAsJsonObject();
+            // Guard the capture's load-bearing shape: the text part also carries a thought signature.
+            assertTrue(part.has("thoughtSignature"), "the live reply's text part carries a thoughtSignature");
+            assertTrue(json.getAsJsonObject("usageMetadata").get("thoughtsTokenCount").getAsInt() > 0, "the model thought");
+
+            String text = DirectApiService.parseGeminiResponse(json.toString());
+
+            assertEquals(part.get("text").getAsString(), text);
+            assertFalse(text.contains(part.get("thoughtSignature").getAsString()), "the signature is never returned as text");
+        }
+
+        @Test
+        void liveTokenLimitResponseWithEmptyContentNamesMaxTokens() {
+            JsonObject json = live("generatecontent-max-tokens.json");
+            JsonObject candidate = json.getAsJsonArray("candidates").get(0).getAsJsonObject();
+            // Guard the capture's load-bearing shape: thinking used the budget, so content is {} with no parts.
+            assertEquals("MAX_TOKENS", candidate.get("finishReason").getAsString());
+            assertFalse(candidate.getAsJsonObject("content").has("parts"), "the live content object has no parts");
+
+            AiApiException ex = assertThrows(AiApiException.class, () -> DirectApiService.parseGeminiResponse(json.toString()));
+
+            assertTrue(ex.getMessage().contains("MAX_TOKENS"), ex.getMessage());
+            assertTrue(ex.getMessage().contains("token limit was reached"), ex.getMessage());
+        }
+
         @Test
         void extractsTextFromDocumentedShape() throws Exception {
             String text = DirectApiService.parseGeminiResponse(loadFixture("gemini/generatecontent-response.json"));
