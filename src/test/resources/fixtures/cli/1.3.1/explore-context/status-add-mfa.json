@@ -1,0 +1,30 @@
+{
+  "changeName": "add-mfa",
+  "schemaName": "spec-driven",
+  "isComplete": true,
+  "applyRequires": [
+    "tasks"
+  ],
+  "artifacts": [
+    {
+      "id": "proposal",
+      "outputPath": "proposal.md",
+      "status": "done"
+    },
+    {
+      "id": "design",
+      "outputPath": "design.md",
+      "status": "done"
+    },
+    {
+      "id": "specs",
+      "outputPath": "specs/**/*.md",
+      "status": "done"
+    },
+    {
+      "id": "tasks",
+      "outputPath": "tasks.md",
+      "status": "done"
+    }
+  ]
+}

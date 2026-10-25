@@ -1,0 +1,9 @@
+{
+  "status": [
+    {
+      "severity": "error",
+      "code": "change_error",
+      "message": "Change 'no-such-change' not found. Available changes:\n  add-mfa\n  research-sso"
+    }
+  ]
+}

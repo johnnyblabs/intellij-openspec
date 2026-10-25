@@ -188,13 +188,13 @@ class ExploreContextServiceTest {
             String context = service.assembleContext();
 
             assertTrue(context.contains("### my-change (spec-driven)"));
-            assertTrue(context.contains("**proposal:**"));
+            assertTrue(context.contains("**proposal.md:**"));
             assertTrue(context.contains("This is the full proposal."));
-            assertTrue(context.contains("**design:**"));
+            assertTrue(context.contains("**design.md:**"));
             assertTrue(context.contains("This is the full design."));
-            assertTrue(context.contains("**tasks:**"));
+            assertTrue(context.contains("**tasks.md:**"));
             assertTrue(context.contains("- [ ] 1.1 Do something"));
-            assertTrue(context.contains("**delta spec (validation):**"));
+            assertTrue(context.contains("**specs/validation/spec.md:**"));
             assertTrue(context.contains("## MODIFIED Requirements"));
         }
 
@@ -219,10 +219,10 @@ class ExploreContextServiceTest {
             String context = service.assembleContext();
 
             assertTrue(context.contains("### partial-change"));
-            assertTrue(context.contains("**proposal:**"));
+            assertTrue(context.contains("**proposal.md:**"));
             assertTrue(context.contains("Just a proposal."));
-            assertFalse(context.contains("**design:**"));
-            assertFalse(context.contains("**tasks:**"));
+            assertFalse(context.contains("**design.md:**"));
+            assertFalse(context.contains("**tasks.md:**"));
         }
     }
 
@@ -245,6 +245,57 @@ class ExploreContextServiceTest {
             assertTrue(context.startsWith("# OpenSpec Explore Context\n"));
             assertTrue(context.contains("## Detected AI Tools\n"));
             assertTrue(context.contains("## Active Changes\n"));
+        }
+    }
+
+    @Nested
+    class FallbackWalks {
+
+        @TempDir
+        Path tempDir;
+
+        private void write(Path file, String content) throws IOException {
+            Files.createDirectories(file.getParent());
+            Files.writeString(file, content);
+        }
+
+        @Test
+        void changeWalkIncludesNestedMarkdownAndSkipsDotNamesAndOtherFiles() throws IOException {
+            Path change = tempDir.resolve("my-change");
+            write(change.resolve("tasks.md"), "t");
+            write(change.resolve("proposal.md"), "p");
+            write(change.resolve("design.md"), "d");
+            write(change.resolve("specs/a/b/spec.md"), "delta");
+            write(change.resolve("research/x/y.md"), "notes");
+            write(change.resolve(".openspec.yaml"), "schema: spec-driven");
+            write(change.resolve(".hidden/secret.md"), "hidden");
+            write(change.resolve("specs/.draft.md"), "draft");
+            write(change.resolve("diagram.png"), "png");
+
+            List<String> labels = ExploreContextService.artifactsFromWalk(change).stream()
+                    .map(ExploreContextService.Artifact::label).toList();
+
+            assertEquals(List.of("proposal.md", "design.md", "tasks.md", "research/x/y.md", "specs/a/b/spec.md"),
+                    labels);
+        }
+
+        @Test
+        void changeWalkOfAMissingDirectoryIsEmpty() {
+            assertEquals(List.of(), ExploreContextService.artifactsFromWalk(tempDir.resolve("gone")));
+        }
+
+        @Test
+        void specWalkNamesCapabilitiesByFolderPathLikeUpstream() throws IOException {
+            Path specs = tempDir.resolve("specs");
+            write(specs.resolve("billing/spec.md"), "s");
+            write(specs.resolve("identity/spec.md"), "s");
+            write(specs.resolve("identity/user-auth/spec.md"), "s");
+            write(specs.resolve("spec.md"), "directly in specs/, ignored");
+            write(specs.resolve(".archive/old/spec.md"), "dot-folder, skipped");
+            write(specs.resolve("empty/README.md"), "no spec.md, not a capability");
+
+            assertEquals(List.of("billing", "identity", "identity/user-auth"),
+                    ExploreContextService.capabilitiesFromWalk(specs));
         }
     }
 }
