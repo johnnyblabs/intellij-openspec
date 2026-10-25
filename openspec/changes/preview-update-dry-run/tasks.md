@@ -79,7 +79,7 @@
 ## 5. Verify
 
 - [x] 5.1 `./gradlew build` is green, and `openspec validate preview-update-dry-run --strict` is clean.
-- [ ] 5.2 Run `./gradlew verifyPlugin`, because there's a new `DialogWrapper` and tree. Then run `caffeinate -dimsu ./gradlew uiSmoke`, where every journey must be green.
+- [x] 5.2 Run `./gradlew verifyPlugin`, because there's a new `DialogWrapper` and tree. Then run `caffeinate -dimsu ./gradlew uiSmoke`, where every journey must be green.
 - [ ] 5.3 Manual check in the sandbox (`lifecycle-testdrive`) on CLI 1.15.0: Update shows the preview. Cancel leaves the project unchanged, and Apply runs and refreshes it.
 
 ## Workflow follow-up
