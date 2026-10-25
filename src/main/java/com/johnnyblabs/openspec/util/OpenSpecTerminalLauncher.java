@@ -2,8 +2,8 @@ package com.johnnyblabs.openspec.util;
 
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
+import com.intellij.terminal.ui.TerminalWidget;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.plugins.terminal.ShellTerminalWidget;
 import org.jetbrains.plugins.terminal.TerminalToolWindowManager;
 
 public final class OpenSpecTerminalLauncher {
@@ -21,21 +21,28 @@ public final class OpenSpecTerminalLauncher {
      * surface a fallback (e.g. clipboard copy + notification).
      *
      * <p>Wraps {@link Throwable} so callers don't need to know about
-     * {@code NoClassDefFoundError} from a stripped IDE missing the terminal plugin.
+     * {@code NoClassDefFoundError} when the terminal plugin is disabled or absent. The plugin declares it as an
+     * optional dependency; without that declaration its classes are never visible, and every launch failed.
+     *
+     * <p>The command is sent through {@link TerminalWidget#sendCommandToExecute}, which queues it until the shell
+     * has started. {@code createShellWidget} returns a {@link TerminalWidget} bridge, never a
+     * {@code ShellTerminalWidget}, on every supported IDE. Call on the EDT.
      */
     public static boolean launchCommand(@NotNull Project project, @NotNull String command, @NotNull String tabName) {
         try {
             TerminalToolWindowManager manager = TerminalToolWindowManager.getInstance(project);
             if (manager == null) return false;
             String workingDir = project.getBasePath();
-            Object widget = manager.createShellWidget(workingDir, tabName, true, false);
-            if (widget instanceof ShellTerminalWidget shell) {
-                shell.executeCommand(command);
-                return true;
-            }
+            TerminalWidget widget = manager.createShellWidget(workingDir, tabName, true, false);
+            if (widget == null) return false;
+            widget.sendCommandToExecute(command);
+            return true;
+        } catch (NoClassDefFoundError e) {
+            // The terminal plugin is disabled or not installed: expected, and the caller falls back.
+            LOG.info("Terminal plugin unavailable, not launching: " + command, e);
             return false;
         } catch (Throwable t) {
-            LOG.info("Terminal launch failed for command: " + command, t);
+            LOG.warn("Terminal launch failed for command: " + command, t);
             return false;
         }
     }

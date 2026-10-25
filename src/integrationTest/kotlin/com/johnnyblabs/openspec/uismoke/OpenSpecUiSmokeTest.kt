@@ -841,7 +841,7 @@ class OpenSpecUiSmokeTest {
         }
     }
 
-    // ---- Journeys 8 & 9 — operation-time model selector ----------------------------
+    // ---- Journeys 12 & 13 — operation-time model selector --------------------------
     // Stubs to drive the plugin's own settings + credential gate from the test. markHasApiKey
     // flips isConfigured()'s cache without a PasswordSafe write (no macOS Keychain touch); no key
     // is stored, so the model selector's off-EDT listModels fetch short-circuits on the null key
@@ -967,6 +967,45 @@ class OpenSpecUiSmokeTest {
             }
 
             runCatching { execute(CommandChain().takeScreenshot("model-selector/B-after-mid-session-refresh")) }
+        }
+    }
+
+    // ---- Journey 14 — the terminal launcher opens a real terminal tab ---------------
+
+    @Remote("com.johnnyblabs.openspec.util.OpenSpecTerminalLauncher", plugin = "com.johnnyblabs.openspec")
+    interface TerminalLauncherRef {
+        fun launchCommand(project: Project, command: String, tabName: String): Boolean
+    }
+
+    /**
+     * Journey 14 — the plugin's terminal launcher (Settings' "Customize workflows…" and Update's cleanup
+     * "Run in terminal") opens a terminal tab and runs its command. Only this layer runs the plugin under the
+     * real plugin classloader: unit tests put the terminal plugin straight on the classpath, so a missing
+     * plugin.xml dependency on it is invisible there and shows up only as launchCommand returning false here.
+     * The launcher is called through a remote ref because the buttons that reach it need clicks, which don't
+     * land in this environment.
+     */
+    @Test
+    fun terminalLauncherOpensATerminalTab() {
+        newContext(freshDemoProject()).runIdeWithDriver().useDriverAndCloseIde {
+            waitForIndicators(5.minutes)
+            val project = singleProject()
+            val tabName = "OpenSpec smoke"
+
+            val launched = withContext(OnDispatcher.EDT) {
+                utility(TerminalLauncherRef::class).launchCommand(project, "echo openspec-smoke", tabName)
+            }
+
+            check(launched) {
+                "OpenSpecTerminalLauncher.launchCommand returned false: the terminal didn't open (see idea.log for " +
+                    "'Terminal launch failed'), so callers fell back to the clipboard"
+            }
+            waitUntil("a Terminal tab named '$tabName' exists", timeout = 1.minutes) {
+                withContext(OnDispatcher.EDT) {
+                    utility(ToolWindowManagerRef::class).getInstance(project).getToolWindow("Terminal")
+                        ?.getContentManager()?.findContent(tabName) != null
+                }
+            }
         }
     }
 }
