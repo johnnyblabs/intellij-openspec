@@ -1,0 +1,2 @@
+Warning: Ignoring flags not applicable to change: scenarios
+✖ Error: Change "nosuch" not found at /fixture/proj/openspec/changes/nosuch/proposal.md

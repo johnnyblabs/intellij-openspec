@@ -658,6 +658,18 @@ Captured by `scripts/capture-error-fixtures.py` from the installed CLI 1.14.3. E
 
 Each legacy variant has its own global state because the first `update` also migrates the global config and prints that, which a second run would not.
 
+## `1.15.0/errors/` and `1.3.1/errors/`: why the Browse preview can't show a change's deltas
+
+These are only the two `show <name> --type change --json` cases, the Browse preview's exact args (`ChangeDeltaModel.changeShowArgs`). They come from `scripts/capture-error-fixtures.py`, under the same isolated environment as `1.14.3/errors/`; only those cases are kept from each run. For 1.3.1, run the script with `OPENSPEC_BIN="npx -y @fission-ai/openspec@1.3.1"` and `npm_config_cache` outside the isolated HOME. The run stops at the store cases, which 1.3.1 lacks, after both `show-change` cases have been written.
+
+| Case | 1.15.0 | 1.3.1 |
+|---|---|---|
+| `show-change-missing` (a renamed or deleted change) | exit 1, `show_error` envelope `Change "nosuch" not found at …/proposal.md` | exit 1, empty stdout. Stderr is `Warning: Ignoring flags not applicable to change: scenarios`, then `✖ Error: Change "nosuch" not found at …` |
+| `show-change-noproposal` (a change with no `proposal.md` yet) | exit 1, `show_error` envelope `… has no proposal.md yet. Run "openspec status --change noproposal" …` | the same as missing: 1.3.1 doesn't distinguish the two |
+| `show-change-good` (a change with a proposal and no deltas) | exit 0, the change object, empty stderr | exit 0, the change object; stderr still carries the "Ignoring flags" warning |
+
+The "Ignoring flags" warning is printed on success too (1.3.1, 1.5.0), so it is never the reason for a failure.
+
 ## `1.15.0/update-dry-run/` and `1.14.3/update-dry-run-unknown-option` — the update preview's plans
 
 Captured by `scripts/capture-update-dry-run-fixtures.py`. Re-run it after a CLI upgrade; it writes `<version>/update-dry-run/`, and with `--older` (and `OPENSPEC_BIN="npx -y @fission-ai/openspec@1.14.3"`) the single older-CLI case. Every case starts from a fresh project and a fresh isolated `HOME`, with `XDG_*` unset (so the global config resolves under that HOME), `CI=1` and `OPEN_SPEC_INTERACTIVE=0`, stdin closed, and npm's cache outside HOME. The script hashes the project and HOME before and after each dry run and stops if anything changed, so every capture is also proof that the dry run writes nothing. Paths: the project is `/fixture/demo-project`, HOME is `/fixture/home`. Each case has `<case>.json` (stdout), `<case>.exit` and, when non-empty, `<case>.stderr`.

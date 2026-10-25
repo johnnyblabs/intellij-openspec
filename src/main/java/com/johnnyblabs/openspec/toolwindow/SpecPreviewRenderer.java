@@ -8,6 +8,9 @@ import com.johnnyblabs.openspec.model.ChangeDeltaModel.Requirement;
 import com.johnnyblabs.openspec.model.ChangeDeltaModel.Scenario;
 import com.johnnyblabs.openspec.model.DeltaSpecOperation.OperationType;
 import com.johnnyblabs.openspec.toolwindow.SpecTreeModel.TreeNodeType;
+import com.johnnyblabs.openspec.util.CliJson;
+import com.johnnyblabs.openspec.util.CliRunner;
+import com.johnnyblabs.openspec.util.CliText;
 import com.johnnyblabs.openspec.util.MarkdownHtmlRenderer;
 
 import java.util.List;
@@ -54,6 +57,15 @@ public final class SpecPreviewRenderer {
      * indistinguishable.
      */
     public static final String CLI_UNAVAILABLE_MARKER = "openspec-preview-cli-unavailable";
+
+    /**
+     * Stable marker class on the placeholder shown when the CLI ran but couldn't read the change — DISTINCT from
+     * {@link #CLI_UNAVAILABLE_MARKER}, because the user doesn't need to install anything.
+     */
+    public static final String CLI_REJECTED_MARKER = "openspec-preview-cli-rejected";
+
+    /** A warning CLI 1.3–1.5 print on stderr for every change {@code show}, successful or not; never a reason. */
+    private static final String IGNORED_FLAGS_WARNING = "Warning: Ignoring flags not applicable";
 
     /** Wraps each rendered requirement body in the consolidated deltas view. */
     public static final String DELTA_REQUIREMENT_CLASS = "openspec-delta-requirement";
@@ -226,6 +238,7 @@ public final class SpecPreviewRenderer {
     public static String paneCss() {
         return "." + HEADER_MARKER + " { margin-bottom: 10px; }"
                 + "." + HEADER_MARKER + " p, ." + EMPTY_STATE_MARKER + " p, ." + CLI_UNAVAILABLE_MARKER + " p, ."
+                + CLI_REJECTED_MARKER + " p, ."
                 + OPEN_LINK_CLASS + " { margin-top: 0; margin-bottom: 8px; }";
     }
 
@@ -262,6 +275,89 @@ public final class SpecPreviewRenderer {
                 + "<p>Consolidated deltas require the OpenSpec CLI. Install or configure the CLI to view "
                 + "a change's assembled deltas; individual delta-spec files still preview without it.</p>"
                 + "</div>";
+    }
+
+    /**
+     * The fragment for a change the OpenSpec CLI ran for but couldn't read (a renamed change, no proposal yet, an
+     * unreadable answer). Quotes the CLI's reason and never says to install the CLI. Carries
+     * {@link #CLI_REJECTED_MARKER}.
+     */
+    public static String cliRejectedPlaceholder(String changeName, String reason) {
+        return header(changeName)
+                + "<div class=\"" + CLI_REJECTED_MARKER + "\">"
+                + "<p><b>Can't read this change.</b> The OpenSpec CLI said: " + escapeAttr(reason) + "</p>"
+                + "<p>Fix the change, then select it again.</p>"
+                + "</div>";
+    }
+
+    /**
+     * The CLI's reason from a failed run, for the user: an error envelope's message and fix as given; otherwise the
+     * stderr-derived message without the "Ignoring flags" warning and without the {@code ✖ Error:} / {@code Error:}
+     * prefix CLI 1.3 puts before it. Falls back to the message as given when nothing is left.
+     */
+    public static String cliReason(CliJson.Failed failed) {
+        if (failed.kind() == CliJson.Kind.ENVELOPE) {
+            return failed.describe();
+        }
+        StringBuilder reason = new StringBuilder();
+        for (String line : CliText.stripAnsi(failed.message()).split("\\R")) {
+            String text = line.strip();
+            if (text.isEmpty() || text.startsWith(IGNORED_FLAGS_WARNING)) continue;
+            text = text.replaceFirst("^\u2716\\s*", "").replaceFirst("^Error:\\s*", "");
+            if (text.isEmpty()) continue;
+            if (reason.length() > 0) reason.append(' ');
+            reason.append(text);
+        }
+        return reason.length() > 0 ? reason.toString() : failed.message();
+    }
+
+    /** What the deltas preview shows for one change: its deltas, or one of the two placeholders. */
+    public enum ChangeShowKind {DELTAS, REJECTED, UNAVAILABLE}
+
+    /** The deltas preview's fragment for a change, and which kind it is. */
+    public record ChangeShowOutcome(ChangeShowKind kind, String fragment) {
+        /**
+         * Whether the preview may cache this fragment. Only deltas are cached: a rejection or a missing CLI can be
+         * fixed a moment later (write the proposal, restore the directory, install the CLI), and reselecting the change
+         * must ask again.
+         */
+        public boolean cacheable() {
+            return kind == ChangeShowKind.DELTAS;
+        }
+    }
+
+    /**
+     * Turns one run of {@code openspec show <change> --type change --json} into the preview's fragment. Reads it the
+     * way every CLI caller does ({@link CliJson#read}); stdout only, since a successful run can still print a warning
+     * on stderr. Any failure the CLI reports, or an answer the plugin can't read, is
+     * {@link ChangeShowKind#REJECTED}: the CLI is there, so the user must not be told to install it.
+     */
+    public static ChangeShowOutcome changeShowOutcome(String changeName, CliRunner.CliResult result) {
+        return switch (CliJson.read(result)) {
+            case CliJson.Ok ok -> {
+                try {
+                    String fragment = renderChangeDeltas(ChangeDeltaModel.parse(ok.payload().toString()));
+                    yield new ChangeShowOutcome(ChangeShowKind.DELTAS, fragment);
+                } catch (RuntimeException e) {
+                    yield new ChangeShowOutcome(ChangeShowKind.REJECTED, cliRejectedPlaceholder(changeName,
+                            "The plugin couldn't read the OpenSpec CLI's answer."));
+                }
+            }
+            case CliJson.Failed failed ->
+                    new ChangeShowOutcome(ChangeShowKind.REJECTED, cliRejectedPlaceholder(changeName, cliReason(failed)));
+        };
+    }
+
+    /**
+     * The preview's fragment when running the CLI threw. A timeout ({@link CliRunner.CliException#timedOut()}) means the
+     * CLI started but didn't answer, so it is {@link ChangeShowKind#REJECTED} with the timeout as the reason; any other
+     * failure to run it is {@link ChangeShowKind#UNAVAILABLE}.
+     */
+    public static ChangeShowOutcome changeShowOutcome(String changeName, CliRunner.CliException error) {
+        if (error.timedOut()) {
+            return new ChangeShowOutcome(ChangeShowKind.REJECTED, cliRejectedPlaceholder(changeName, error.getMessage()));
+        }
+        return new ChangeShowOutcome(ChangeShowKind.UNAVAILABLE, cliUnavailablePlaceholder(changeName));
     }
 
     /**
