@@ -51,7 +51,14 @@ public final class UpdateLegacyCleanupService {
      * recorded as regenerating on this CLI).
      */
     public void handleUpdateResult(String stdout) {
-        UpdateOutputParser.LegacyCleanup block = UpdateOutputParser.parseLegacyCleanupBlock(stdout);
+        offerCleanup(UpdateOutputParser.parseLegacyCleanupBlock(stdout));
+    }
+
+    /**
+     * Offers the cleanup flow for {@code block}: files the CLI listed, from the text output (CLIs before 1.15) or from
+     * the forced dry-run plan (1.15+, see {@link UpdatePreviewService}). Same suppression rules either way. EDT.
+     */
+    public void offerCleanup(UpdateOutputParser.LegacyCleanup block) {
         List<String> pending = block.files();
         if (pending.isEmpty()) {
             return;

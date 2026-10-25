@@ -1,0 +1,36 @@
+{
+  "changes": [
+    {
+      "path": ".claude/skills/openspec-apply-change/SKILL.md",
+      "action": "update",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-archive-change/SKILL.md",
+      "action": "update",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-explore/SKILL.md",
+      "action": "update",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-sync-specs/SKILL.md",
+      "action": "update",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-update-change/SKILL.md",
+      "action": "update",
+      "tool": "claude"
+    }
+  ],
+  "notes": [],
+  "failures": [
+    {
+      "tool": "claude",
+      "error": "EACCES: permission denied, access '/fixture/demo-project/.claude/skills/openspec-propose/SKILL.md'"
+    }
+  ]
+}

@@ -25,7 +25,19 @@ public final class CliRunner {
     }
 
     public static CliResult run(Project project, int timeoutMs, String... args) throws CliException {
+        return run(project, timeoutMs, Map.of(), args);
+    }
+
+    /** Runs the CLI with {@code extraEnv} set on top of the plain-output environment. */
+    public static CliResult run(Project project, Map<String, String> extraEnv, String... args) throws CliException {
+        int timeoutMs = OpenSpecSettings.getInstance(project).getCliTimeoutSeconds() * 1000;
+        return run(project, timeoutMs, extraEnv, args);
+    }
+
+    private static CliResult run(Project project, int timeoutMs, Map<String, String> extraEnv, String... args)
+            throws CliException {
         GeneralCommandLine cmd = buildCommandLine(resolveCliPath(project), project.getBasePath(), args);
+        cmd.getEnvironment().putAll(extraEnv);
 
         // Apply login shell PATH so node-based CLI scripts can resolve their interpreter
         CliDetectionService detection = project.getService(CliDetectionService.class);

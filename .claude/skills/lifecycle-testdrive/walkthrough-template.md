@@ -51,7 +51,14 @@ written lowercase: `### requirement:`.
 
 ## Stop 3 — Update legacy cleanup
 
-Run **OpenSpec ▸ Update** (menu or tool-window toolbar).
+Run **OpenSpec ▸ Update OpenSpec…** (menu or tool-window toolbar).
+
+**CLI 1.15 or later: the update preview comes first.**
+- [ ] The **OpenSpec Update Preview** dialog opens: a summary line, OpenSpec's note that legacy artifacts were
+      found, and the changes grouped by tool (deletes first). If this is the first update in a fresh HOME,
+      `~/.config/openspec/config.json` appears under **Outside this project**
+- [ ] Click **Cancel** → nothing changes (the three `.cursor/commands/openspec-*.md` files are still there)
+- [ ] Run **Update OpenSpec…** again and click **Apply**
 
 - [ ] Console shows the CLI output, including a **"Files to remove"** block listing the three
       `.cursor/commands/openspec-*.md` files, exit 0
@@ -64,7 +71,8 @@ Run **OpenSpec ▸ Update** (menu or tool-window toolbar).
       CLIs it says *"No user content to preserve"* and all start ticked
 - [ ] Tick the files and click **Remove Selected** → files are deleted (one undo step), then a
       verification `openspec update` runs automatically and reports no remaining cleanup
-- [ ] Run **Update** again → no cleanup notice
+- [ ] Run **Update** again → no cleanup notice; on CLI 1.15+ it says the project is already up to date instead of
+      showing the preview
 
 ## Stop 4 — Schema tooling (Settings)
 

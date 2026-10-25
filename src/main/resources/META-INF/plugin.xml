@@ -185,7 +185,7 @@
                     icon="AllIcons.Actions.Refresh"/>
             <action id="OpenSpec.Update"
                     class="com.johnnyblabs.openspec.actions.OpenSpecUpdateAction"
-                    text="Update OpenSpec"
+                    text="Update OpenSpec…"
                     description="Refresh agent instruction files via openspec update"
                     icon="AllIcons.Actions.Download"/>
             <action id="OpenSpec.ManageTools"

@@ -94,6 +94,12 @@ public final class WorkflowProfileSwitchService {
      * <p>Should only be called after a {@link Outcome#SWITCHED} outcome.
      */
     public void promptAndRunUpdateIfConfirmed(String newProfile) {
+        UpdatePreviewService preview = UpdatePreviewService.getInstance(project);
+        if (preview != null && preview.supportsPreview()) {
+            // CLI 1.15+: the preview of what the update will change is the question; applying it is the consent.
+            preview.previewAndApply(UpdatePreviewService.Origin.PROFILE_SWITCH, null, this::reportUpdate);
+            return;
+        }
         int choice = Messages.showYesNoDialog(project,
                 "Profile changed to '" + newProfile + "'.\n\n" +
                         "Run `openspec update` now to install skills for your AI tools " +
@@ -115,18 +121,7 @@ public final class WorkflowProfileSwitchService {
         ApplicationManager.getApplication().executeOnPooledThread(() -> {
             try {
                 CliRunner.CliResult result = CliRunner.run(project, "update");
-                ApplicationManager.getApplication().invokeLater(() -> {
-                    if (result.isSuccess()) {
-                        OpenSpecNotifier.info(project, "Profile",
-                                "Skills updated. Run your AI tool to pick up the new commands.");
-                    } else {
-                        String err = result.stderr().isEmpty()
-                                ? "exit code " + result.exitCode()
-                                : result.stderr().trim();
-                        OpenSpecNotifier.warn(project, "Profile",
-                                "openspec update failed: " + err);
-                    }
-                });
+                ApplicationManager.getApplication().invokeLater(() -> reportUpdate(result));
             } catch (CliRunner.CliException e) {
                 LOG.warn("openspec update failed", e);
                 ApplicationManager.getApplication().invokeLater(() ->
@@ -134,5 +129,19 @@ public final class WorkflowProfileSwitchService {
                                 "openspec update failed: " + e.getMessage()));
             }
         });
+    }
+
+    /** Reports a finished profile-switch update. EDT. */
+    void reportUpdate(CliRunner.CliResult result) {
+        if (result.isSuccess()) {
+            OpenSpecNotifier.info(project, "Profile",
+                    "Skills updated. Run your AI tool to pick up the new commands.");
+        } else {
+            String err = result.stderr().isEmpty()
+                    ? "exit code " + result.exitCode()
+                    : result.stderr().trim();
+            OpenSpecNotifier.warn(project, "Profile",
+                    "openspec update failed: " + err);
+        }
     }
 }
