@@ -34,6 +34,19 @@ class DeliveryMethodResolverTest {
     class PriorityChain {
 
         @Test
+        void savedDirectApiPreference_keepsTheModesOwnLabel() {
+            try (MockedStatic<OpenSpecSettings> settingsStatic = mockStatic(OpenSpecSettings.class)) {
+                settingsStatic.when(() -> OpenSpecSettings.getInstance(project)).thenReturn(settings);
+                when(settings.getPreferredDeliveryMethod()).thenReturn("DIRECT_API");
+
+                DeliveryMethodResolver.ResolvedMethod result = resolver.resolve();
+
+                assertEquals(DeliveryMode.DIRECT_API, result.mode());
+                assertEquals("Generate via API", result.label());
+            }
+        }
+
+        @Test
         void savedPreference_takesHighestPriority() {
             try (MockedStatic<OpenSpecSettings> settingsStatic = mockStatic(OpenSpecSettings.class)) {
                 settingsStatic.when(() -> OpenSpecSettings.getInstance(project)).thenReturn(settings);
@@ -55,7 +68,7 @@ class DeliveryMethodResolverTest {
                 DeliveryMethodResolver.ResolvedMethod result = resolver.resolve();
 
                 assertEquals(DeliveryMode.DIRECT_API, result.mode());
-                assertEquals("Generate via Claude", result.label());
+                assertEquals("Generate via Claude API", result.label());
             }
         }
 
@@ -103,7 +116,7 @@ class DeliveryMethodResolverTest {
 
                 // Falls through to API provider (second priority)
                 assertEquals(DeliveryMode.DIRECT_API, result.mode());
-                assertEquals("Generate via Claude", result.label());
+                assertEquals("Generate via Claude API", result.label());
             }
         }
     }

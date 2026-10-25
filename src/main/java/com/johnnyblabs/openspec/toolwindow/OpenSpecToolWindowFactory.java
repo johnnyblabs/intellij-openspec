@@ -147,7 +147,8 @@ public class OpenSpecToolWindowFactory implements ToolWindowFactory, DumbAware {
             ExplorePanel explorePanel = new ExplorePanel(project);
             Content exploreContent = contentFactory.createContent(explorePanel, "Explore", false);
             exploreContent.setDisposer(explorePanel);
-            toolWindow.getContentManager().addContent(exploreContent);
+            // After Browse, before Console: Explore is the first step.
+            ExplorePanelService.addExploreTab(toolWindow.getContentManager(), exploreContent);
 
             ExplorePanelService explorePanelService = project.getService(ExplorePanelService.class);
             if (explorePanelService != null) {

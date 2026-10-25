@@ -150,7 +150,7 @@ class UserScenarioTest {
                 DeliveryMethodResolver.ResolvedMethod result = resolver.resolve();
 
                 assertEquals(DeliveryMode.DIRECT_API, result.mode());
-                assertEquals("Generate via OpenAI", result.label());
+                assertEquals("Generate via OpenAI API", result.label());
             }
         }
 

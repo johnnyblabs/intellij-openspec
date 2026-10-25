@@ -205,12 +205,18 @@
                     class="com.johnnyblabs.openspec.actions.OpenSpecManageToolsAction"
                     text="Manage AI Tools..."
                     description="Add, configure, and update AI tool integrations"
-                    icon="AllIcons.General.GearPlain"/>
+                    icon="AllIcons.Nodes.Plugin"/>
             <action id="OpenSpec.SetupWizard"
                     class="com.johnnyblabs.openspec.actions.OpenSpecSetupWizardAction"
                     text="Setup Wizard..."
                     description="Run the OpenSpec setup wizard"
                     icon="AllIcons.Actions.IntentionBulb"/>
+            <separator/>
+            <action id="OpenSpec.Settings"
+                    class="com.johnnyblabs.openspec.actions.OpenSpecOpenSettingsAction"
+                    text="Settings…"
+                    description="Open Settings | Tools | OpenSpec (CLI, delivery, Direct API)"
+                    icon="AllIcons.General.Settings"/>
             <add-to-group group-id="MainMenu" anchor="before" relative-to-action="ToolsMenu"/>
         </group>
 
@@ -240,6 +246,7 @@
             <reference ref="OpenSpec.Update"/>
             <reference ref="OpenSpec.ManageTools"/>
             <reference ref="OpenSpec.SetupWizard"/>
+            <reference ref="OpenSpec.Settings"/>
         </group>
 
         <!-- Project View context-menu Validate, scoped to the clicked change/spec.

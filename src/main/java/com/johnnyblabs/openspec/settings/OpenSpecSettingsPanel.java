@@ -9,6 +9,7 @@ import com.intellij.openapi.ui.TextFieldWithBrowseButton;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.ContextHelpLabel;
+import com.intellij.ui.HyperlinkLabel;
 import com.intellij.ui.IdeBorderFactory;
 import com.intellij.ui.components.JBCheckBox;
 import com.intellij.ui.components.JBLabel;
@@ -16,6 +17,7 @@ import com.intellij.ui.components.JBList;
 import com.intellij.util.ui.FormBuilder;
 import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.update.UiNotifyConnector;
+import com.johnnyblabs.openspec.actions.OpenSpecManageToolsAction;
 import com.johnnyblabs.openspec.ai.AiApiException;
 import com.johnnyblabs.openspec.ai.AiCredentialStore;
 import com.johnnyblabs.openspec.ai.AiModelOptions;
@@ -87,6 +89,7 @@ public class OpenSpecSettingsPanel {
             java.util.List.of("", "core");
 
     // Direct API section
+    private HyperlinkLabel manageAiToolsLink;
     private JComboBox<String> aiProviderCombo;
     private JPasswordField apiKeyField;
     private JComboBox<String> aiModelCombo;
@@ -734,13 +737,18 @@ public class OpenSpecSettingsPanel {
         loadSchemaList();
     }
 
+    /** The Direct API section's help: what it is, that it's optional, and that an agent needs no key. */
+    static final String DIRECT_API_HELP = "Generate specs and artifacts inside the IDE with your own API key. "
+            + "Optional: an agent like Claude Code needs no key. Prompts are copied for it to paste.";
+    static final String MANAGE_AI_TOOLS_LINK = "Manage AI Tools\u2026";
+
     private JPanel buildDirectApiSection() {
         JBLabel helpLabel = new JBLabel(
-                "<html><body style='width:" + JBUI.scale(400) + "px'>" +
-                "Use your own API key to generate specs and artifacts directly. " +
-                "This is optional \u2014 not needed if you copy prompts to an AI coding tool." +
-                "</body></html>");
+                "<html><body style='width:" + JBUI.scale(400) + "px'>" + DIRECT_API_HELP + "</body></html>");
         helpLabel.setForeground(JBUI.CurrentTheme.ContextHelp.FOREGROUND);
+        manageAiToolsLink = new HyperlinkLabel(MANAGE_AI_TOOLS_LINK);
+        // A modal dialog over the modal Settings dialog, which the platform allows.
+        manageAiToolsLink.addHyperlinkListener(e -> OpenSpecManageToolsAction.showFromModal(project));
 
         // Provider dropdown with display names
         aiProviderCombo = new JComboBox<>();
@@ -774,6 +782,7 @@ public class OpenSpecSettingsPanel {
 
         JPanel panel = FormBuilder.createFormBuilder()
                 .addComponent(helpLabel)
+                .addComponent(manageAiToolsLink)
                 .addVerticalGap(8)
                 .addLabeledComponent(new JBLabel("Provider:"), aiProviderCombo)
                 .addLabeledComponent(new JBLabel("API key:"), apiKeyRow)
@@ -1173,6 +1182,10 @@ public class OpenSpecSettingsPanel {
 
     /** Visible for tests. */
     @TestOnly
+    HyperlinkLabel manageAiToolsLinkForTest() {
+        return manageAiToolsLink;
+    }
+
     JBLabel schemaValidationResultLabelForTest() {
         return schemaValidationResultLabel;
     }
