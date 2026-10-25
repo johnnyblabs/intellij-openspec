@@ -15,7 +15,8 @@ The plugin SHALL assemble a Markdown-formatted project context from the current 
 
 #### Scenario: Config section includes context and rules
 - **WHEN** context is assembled and `config.yaml` has `context` and `rules` fields
-- **THEN** the Project Config section SHALL include the schema, version, context description, and rules as a bulleted list
+- **THEN** the Project Config section SHALL include the schema, context description, and rules as a bulleted list
+- **AND** it SHALL NOT include a `version` field, which upstream does not read
 
 #### Scenario: Active changes with full artifacts
 - **WHEN** an active change has artifact files (proposal.md, design.md, tasks.md, delta specs)
@@ -75,7 +76,7 @@ The plugin SHALL lazily create the Explore tab when `ExplorePanelService.getAndA
 
 ### Requirement: Direct API submit from panel
 
-The Explore panel's inline input SHALL always submit via Direct API delivery, bypassing the global delivery mode resolver. This ensures the panel's submit path matches its rendering capability.
+The Explore panel's inline input SHALL submit via Direct API delivery, bypassing the global delivery mode resolver, when the explore workflow is enabled in the active profile. A Direct API prompt SHALL begin with a plugin preamble saying the model cannot run commands, read files or write anything, that the included project context stands in for the CLI's listings, and that capturing a change means the plugin's Propose action.
 
 #### Scenario: Panel submit uses Direct API
 - **WHEN** the user submits a topic from the Explore panel's inline input
@@ -84,6 +85,18 @@ The Explore panel's inline input SHALL always submit via Direct API delivery, by
 #### Scenario: Menu action retains delivery mode routing
 - **WHEN** the user triggers the Explore action from the menu with a non-Direct-API delivery mode
 - **THEN** the plugin SHALL show the topic dialog and deliver via the resolved mode (clipboard or editor tab)
+
+#### Scenario: Direct API prompt carries the preamble
+- **WHEN** an explore prompt is built for Direct API delivery
+- **THEN** it SHALL start with the preamble, followed by the explore instructions, the project context and the topic
+
+#### Scenario: Agent deliveries carry no preamble
+- **WHEN** an explore prompt is built for clipboard or editor-tab delivery
+- **THEN** it SHALL NOT contain the preamble
+
+#### Scenario: Explore disabled in the profile
+- **WHEN** the active profile does not include the explore workflow and the user sends from the Explore panel
+- **THEN** the plugin SHALL NOT send a request, SHALL say in the panel that Explore is not in the active profile, and SHALL leave the input enabled
 
 ### Requirement: Topic input dialog
 
@@ -103,19 +116,36 @@ The plugin SHALL display a lightweight dialog prompting the user for an optional
 
 ### Requirement: Explore prompt assembly
 
-The plugin SHALL assemble a complete explore prompt consisting of the explore skill instructions, the assembled project context, and the user's topic. The skill instructions SHALL be read from the project's skill files, searching the skills-era location first (`.claude/skills/openspec-explore/SKILL.md`, the CLI's tracked skill surface since its 1.5.0 skills-only migration) and falling back to the legacy pre-1.5 command paths (e.g. `.claude/commands/opsx/explore.md`), with a built-in fallback if no skill file exists. YAML frontmatter (including the 1.6 `allowed-tools`/`generatedBy` stamps) SHALL be stripped from the loaded instructions.
+The plugin SHALL assemble the explore prompt from the explore instructions, the project context and the topic. The instructions SHALL come from the generated explore file of the Settings-preferred tool, then of every tool in registry order: its skill, then its explore command file. Only when none exists SHALL the built-in default be used. Markdown frontmatter SHALL be stripped, and a TOML command's `prompt` body SHALL be taken.
 
 #### Scenario: Skills-era skill file exists
-- **WHEN** `.claude/skills/openspec-explore/SKILL.md` exists in the project
-- **THEN** the prompt assembly SHALL use its content (frontmatter stripped) as the explore instructions, even when a legacy command-path file also exists
+- **WHEN** a tool's `<skillsDir>/skills/openspec-explore/SKILL.md` exists in the project
+- **THEN** the prompt assembly SHALL use its content (frontmatter stripped) as the explore instructions, even when that tool's explore command file also exists
 
 #### Scenario: Legacy skill file only
-- **WHEN** only a pre-1.5 command-path skill file exists
+- **WHEN** a tool has no explore skill but has its explore command file, as `delivery: commands` generates (for example `.cursor/commands/opsx-explore.md`)
 - **THEN** the prompt assembly SHALL use that file's content as the explore instructions
 
+#### Scenario: TOML command file
+- **WHEN** the only explore file is a TOML command such as `.gemini/commands/opsx/explore.toml`
+- **THEN** the prompt assembly SHALL use the body of its `prompt = """…"""` value as the explore instructions
+
+#### Scenario: Preferred tool wins
+- **WHEN** Settings names a preferred tool and several tools have explore files
+- **THEN** the prompt assembly SHALL use the preferred tool's file
+
+#### Scenario: A tool detection cannot see
+- **WHEN** the only explore file is one detection does not look for, such as Cline's `.clinerules/workflows/opsx-explore.md` under `delivery: commands`
+- **THEN** the prompt assembly SHALL still use it
+
 #### Scenario: Skill file missing
-- **WHEN** no explore skill file exists at any searched location
+- **WHEN** no explore skill or command file exists for any tool
 - **THEN** the prompt assembly SHALL use a built-in default explore prompt that covers the core explore stance and guardrails
+- **AND** the plugin SHALL tell the user that the built-in default was used and that Update OpenSpec generates the project's explore instructions
+
+#### Scenario: Instructions source shown
+- **WHEN** the Explore panel shows a response
+- **THEN** it SHALL name the instructions' source, either the project-relative file path or "built-in default"
 
 #### Scenario: Prompt structure
 - **WHEN** the prompt is assembled
