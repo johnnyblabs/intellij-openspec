@@ -70,8 +70,19 @@ When a change node is selected in the Browse tree, the preview SHALL render a co
 - **THEN** the view SHALL show an informative empty state rather than an error or a fabricated delta
 
 #### Scenario: CLI unavailable
-- **WHEN** the OpenSpec CLI is unavailable and a change node is selected
+- **WHEN** the OpenSpec CLI is unavailable, meaning none is detected or it can't be run, and a change node is selected
 - **THEN** the view SHALL show a placeholder indicating the consolidated deltas require the CLI, rather than hand-assembling the delta set
+
+#### Scenario: CLI rejects the change
+- **WHEN** the OpenSpec CLI runs for a selected change but returns no usable answer: an error envelope, unreadable output, or a non-zero exit
+- **THEN** the view SHALL show a "Can't read this change" placeholder that quotes the CLI's reason, distinct from the CLI-unavailable placeholder
+- **AND** it SHALL NOT tell the user to install or configure the CLI
+- **AND** it SHALL NOT cache that result, so the next selection asks the CLI again
+
+#### Scenario: Reason from a CLI without a JSON envelope
+- **WHEN** the CLI reports the failure only on standard error, as CLI 1.3 does with `✖ Error: …`
+- **THEN** the quoted reason SHALL be that error line without its prefix
+- **AND** the CLI's "Ignoring flags not applicable" warning SHALL NOT be shown as the reason
 
 ### Requirement: Deltas view reflects only client-owned delta state
 
@@ -127,7 +138,7 @@ Selecting a change's artifact node SHALL render that change's consolidated delta
 Every state of the preview pane SHALL start with a "Change Deltas" header, naming the selected change when there is one, and one line saying the view shows what the change will add, modify or remove in the specs when it's archived. With nothing selected, the pane SHALL explain what it shows and how to use it, and SHALL offer to start Propose when the project has no active changes.
 
 #### Scenario: Header in every state
-- **WHEN** the preview pane shows deltas, a change with no deltas, the CLI-unavailable placeholder, or nothing selected
+- **WHEN** the preview pane shows deltas, a change with no deltas, the CLI-unavailable placeholder, the can't-read-this-change placeholder, or nothing selected
 - **THEN** the pane SHALL start with the "Change Deltas" header and the one-line purpose
 - **AND** the header SHALL name the selected change when one is selected
 
