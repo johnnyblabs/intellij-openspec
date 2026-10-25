@@ -9,6 +9,11 @@
 
     <depends>com.intellij.modules.platform</depends>
     <depends>org.jetbrains.plugins.yaml</depends>
+    <!-- The terminal plugin must be declared for OpenSpecTerminalLauncher to see its classes at runtime: a
+         Gradle bundledPlugin is only a compile/test classpath, and the plugin classloader exposes declared
+         dependencies only. Optional, because users can disable the terminal; the launcher then falls back to
+         copying the command to the clipboard. -->
+    <depends optional="true" config-file="openspec-terminal.xml">org.jetbrains.plugins.terminal</depends>
 
     <extensions defaultExtensionNs="com.intellij">
         <!-- Search Everywhere: content search over spec requirement bodies + scenario text

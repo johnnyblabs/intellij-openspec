@@ -1,0 +1,4 @@
+<!-- Loaded only when the terminal plugin is present (see the optional <depends> in plugin.xml). It registers
+     nothing: declaring the dependency is what lets OpenSpecTerminalLauncher load terminal classes. -->
+<idea-plugin>
+</idea-plugin>
