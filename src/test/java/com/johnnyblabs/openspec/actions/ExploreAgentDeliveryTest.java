@@ -5,6 +5,8 @@ import com.intellij.notification.Notifications;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.fileEditor.ex.FileEditorManagerEx;
 import com.intellij.openapi.ide.CopyPasteManager;
+import com.intellij.openapi.progress.EmptyProgressIndicator;
+import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.testFramework.LightVirtualFile;
 import com.intellij.testFramework.PlatformTestUtil;
@@ -57,6 +59,7 @@ public class ExploreAgentDeliveryTest extends BasePlatformTestCase {
     @Override
     protected void tearDown() throws Exception {
         try {
+            ExploreContextAction.setTaskRunnerForTest(null);
             FileEditorManagerEx.getInstanceEx(getProject()).closeAllFiles();
             OpenSpecSettings settings = OpenSpecSettings.getInstance(getProject());
             settings.setPreferredDeliveryMethod(savedDelivery);
@@ -68,6 +71,37 @@ public class ExploreAgentDeliveryTest extends BasePlatformTestCase {
         } finally {
             super.tearDown();
         }
+    }
+
+    public void testClipboardBuildsThePromptInABackgroundTaskAndCopiesOnlyOnSuccess() throws Exception {
+        OpenSpecSettings.getInstance(getProject()).setPreferredDeliveryMethod("CLIPBOARD");
+        List<Task.Backgroundable> started = new ArrayList<>();
+        ExploreContextAction.setTaskRunnerForTest(started::add);
+
+        ExploreContextAction.runExplore(getProject(), TOPIC);
+
+        assertEquals("the prompt is built in a background task, not on the EDT", 1, started.size());
+        assertEquals("nothing is copied before the task runs", "clipboard-sentinel", clipboard());
+        started.get(0).run(new EmptyProgressIndicator());
+        assertEquals("nothing is copied from the background thread", "clipboard-sentinel", clipboard());
+        started.get(0).onSuccess();
+        assertEquals(agentPrompt(), clipboard());
+    }
+
+    public void testEditorTabBuildsThePromptInABackgroundTaskAndOpensOnlyOnSuccess() {
+        OpenSpecSettings.getInstance(getProject()).setPreferredDeliveryMethod("EDITOR_TAB");
+        List<Task.Backgroundable> started = new ArrayList<>();
+        ExploreContextAction.setTaskRunnerForTest(started::add);
+
+        ExploreContextAction.runExplore(getProject(), TOPIC);
+        started.get(0).run(new EmptyProgressIndicator());
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
+
+        assertEquals(1, started.size());
+        assertEquals("no tab before the task succeeds", 0, FileEditorManager.getInstance(getProject()).getOpenFiles().length);
+        started.get(0).onSuccess();
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
+        assertEquals(1, FileEditorManager.getInstance(getProject()).getOpenFiles().length);
     }
 
     public void testClipboardCopiesTheAgentPromptAndSaysTheDefaultWasUsed() throws Exception {

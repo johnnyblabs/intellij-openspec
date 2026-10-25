@@ -1,6 +1,12 @@
 package com.johnnyblabs.openspec.model;
 
+import com.google.gson.annotations.SerializedName;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public class ChangeArtifactDag {
@@ -10,8 +16,34 @@ public class ChangeArtifactDag {
     private List<String> applyRequires;
     private List<ArtifactInfo> artifacts;
     private ActionContext actionContext;
+    private LinkedHashMap<String, ArtifactPaths> artifactPaths;
+    private Root root;
 
     public ChangeArtifactDag() {
+    }
+
+    /**
+     * One entry of the {@code artifactPaths} block (CLI 1.4.0+): the artifact's output pattern and the files that
+     * match it, as absolute realpaths sorted by the CLI.
+     */
+    public record ArtifactPaths(String outputPath, List<String> existingOutputPaths) {
+        public ArtifactPaths {
+            if (existingOutputPaths == null) existingOutputPaths = List.of();
+        }
+
+        /** Whether the artifact generates several files (its output path is a glob, like spec-driven's {@code specs}). */
+        public boolean isGlob() {
+            return outputPath != null && outputPath.contains("*");
+        }
+    }
+
+    /** The {@code root} block: where the CLI resolved the OpenSpec root from, and the store id when it's a store. */
+    public record Root(String path, String source, @SerializedName("store_id") String storeId) {
+        /** Whether the CLI answered for a store rather than the project's own {@code openspec/} directory. */
+        public boolean isStore() {
+            return storeId != null || "store".equals(source) || "declared".equals(source)
+                    || "global_default".equals(source);
+        }
     }
 
     /**
@@ -105,6 +137,19 @@ public class ChangeArtifactDag {
 
     public void setArtifacts(List<ArtifactInfo> artifacts) {
         this.artifacts = artifacts;
+    }
+
+    /**
+     * The {@code artifactPaths} block in the order the CLI emits it, which is the schema's declaration order. Empty on
+     * CLIs before 1.4.0, which don't emit it.
+     */
+    public Map<String, ArtifactPaths> getArtifactPaths() {
+        return artifactPaths != null ? Collections.unmodifiableMap(artifactPaths) : Map.of();
+    }
+
+    /** The {@code root} block, or null when the CLI didn't emit one. */
+    public @Nullable Root getRoot() {
+        return root;
     }
 
     public List<ArtifactInfo> getReadyArtifacts() {

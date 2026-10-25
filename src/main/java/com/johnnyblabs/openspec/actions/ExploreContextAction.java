@@ -29,11 +29,16 @@ import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.TestOnly;
 
 import java.awt.datatransfer.StringSelection;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 /**
  * Explore action aligned with the OpenSpec explore workflow.
  * Prompts for an optional topic, assembles the explore prompt (skill instructions +
  * project context + topic), and delivers via the configured delivery mode.
+ *
+ * <p>Assembling the context runs the OpenSpec CLI, so every delivery builds the prompt in a background task and
+ * delivers it when the task finishes.
  */
 public class ExploreContextAction extends OpenSpecBaseAction {
 
@@ -53,6 +58,19 @@ public class ExploreContextAction extends OpenSpecBaseAction {
     }
 
     private static volatile @Nullable RawRequest rawRequestOverride;
+
+    /** Starts Explore's background tasks; replaced in tests, where ProgressManager runs a task synchronously. */
+    private static volatile Consumer<Task.Backgroundable> taskRunner = ExploreContextAction::runInBackground;
+
+    private static void runInBackground(Task.Backgroundable task) {
+        ProgressManager.getInstance().run(task);
+    }
+
+    /** Replaces how Explore starts its tasks, so a test can see one was started; {@code null} restores the real one. */
+    @TestOnly
+    public static void setTaskRunnerForTest(@Nullable Consumer<Task.Backgroundable> runner) {
+        taskRunner = runner == null ? ExploreContextAction::runInBackground : runner;
+    }
 
     @TestOnly
     public static void setRawRequestForTest(@Nullable RawRequest request) {
@@ -147,8 +165,17 @@ public class ExploreContextAction extends OpenSpecBaseAction {
      * Used by the Explore panel's inline input, which only exists when Direct API is configured.
      */
     public static void runExploreDirect(@NotNull Project project, String topic) {
-        ExplorePromptService promptService = project.getService(ExplorePromptService.class);
-        if (promptService == null) return;
+        runExploreDirect(project, project.getService(ExplorePromptService.class), topic);
+    }
+
+    static void runExploreDirect(@NotNull Project project, @Nullable ExplorePromptService promptService, String topic) {
+        if (promptService == null) {
+            // The panel disabled its input before calling; nothing will run to give it back.
+            ExplorePanelService panelService = project.getService(ExplorePanelService.class);
+            ExplorePanel panel = panelService != null ? panelService.getExplorePanel() : null;
+            if (panel != null) panel.restoreInput();
+            return;
+        }
 
         deliverDirectApi(project, promptService, topic);
     }
@@ -166,8 +193,10 @@ public class ExploreContextAction extends OpenSpecBaseAction {
                 : new DeliveryMethodResolver.ResolvedMethod(DeliveryMode.CLIPBOARD, "Copy to Clipboard");
 
         switch (resolved.mode()) {
-            case CLIPBOARD -> deliverClipboard(project, promptService.build(topic, Delivery.AGENT));
-            case EDITOR_TAB -> deliverEditorTab(project, promptService.build(topic, Delivery.AGENT));
+            case CLIPBOARD -> taskRunner.accept(newBuildTask(project, promptService, null, topic,
+                    Delivery.AGENT, prompt -> deliverClipboard(project, prompt)));
+            case EDITOR_TAB -> taskRunner.accept(newBuildTask(project, promptService, null, topic,
+                    Delivery.AGENT, prompt -> deliverEditorTab(project, prompt)));
             case DIRECT_API -> deliverDirectApi(project, promptService, topic);
         }
     }
@@ -207,52 +236,128 @@ public class ExploreContextAction extends OpenSpecBaseAction {
 
         if (request == null || !request.isConfigured()) {
             // The clipboard goes to an agent, which has tools: copy the agent prompt, without the Direct API preamble.
-            Prompt prompt = promptService.build(topic, Delivery.AGENT);
-            copyToClipboard(prompt.text());
-            ExplorePanel existing = panelService != null ? panelService.getExplorePanel() : null;
-            if (existing != null) {
-                // The user is looking at the panel; say it there and give the input back.
-                existing.setInstructionsSource(prompt.instructions());
-                existing.showNotice(topic, NO_PROVIDER_NOTICE);
-            } else {
-                OpenSpecNotifier.info(project, "Explore", NO_PROVIDER_NOTICE + sourceNote(prompt.instructions()));
-            }
+            taskRunner.accept(newBuildTask(project, promptService, panelService, topic, Delivery.AGENT,
+                    prompt -> {
+                        copyToClipboard(prompt.text());
+                        ExplorePanel existing = panelService != null ? panelService.getExplorePanel() : null;
+                        if (existing != null) {
+                            // The user is looking at the panel; say it there (onFinished gives the input back).
+                            existing.setInstructionsSource(prompt.instructions());
+                            existing.showNotice(topic, NO_PROVIDER_NOTICE);
+                        } else {
+                            OpenSpecNotifier.info(project, "Explore",
+                                    NO_PROVIDER_NOTICE + sourceNote(prompt.instructions()));
+                        }
+                    }));
             return;
         }
 
-        Prompt prompt = promptService.build(topic, Delivery.DIRECT_API);
-        // Show loading state in Explore panel
+        // "Thinking..." covers assembling the context as well as the request.
         ExplorePanel panel = panelService != null ? panelService.getAndActivate() : null;
         if (panel != null) {
-            panel.setInstructionsSource(prompt.instructions());
             panel.showLoading(topic);
         }
 
-        ProgressManager.getInstance().run(newExploreTask(project, request, panelService, prompt.text(), topic));
+        taskRunner.accept(newExploreTask(project, request, panelService,
+                () -> promptService.build(topic, Delivery.DIRECT_API), topic));
     }
 
-    /** The background request behind the Explore panel; package-private so tests can run it directly. */
+    /** Runs {@code runnable} on the EDT outside any modal dialog, and not at all once the project is closed. */
+    private static void onEdt(@NotNull Project project, Runnable runnable) {
+        ApplicationManager.getApplication().invokeLater(runnable, ModalityState.nonModal(), project.getDisposed());
+    }
+
+    /**
+     * Builds the prompt in the background, then hands it to {@code onBuilt} on the EDT. When the Explore panel started
+     * it ({@code panelService} non-null), a cancel or failure is shown there and the input is always given back.
+     * Package-private so tests can run it directly.
+     */
+    static Task.Backgroundable newBuildTask(@NotNull Project project, @NotNull ExplorePromptService promptService,
+                                            @Nullable ExplorePanelService panelService, String topic,
+                                            Delivery delivery, Consumer<Prompt> onBuilt) {
+        return new Task.Backgroundable(project, "Preparing explore prompt...", true) {
+            private Prompt built;
+
+            @Override
+            public void run(@NotNull ProgressIndicator indicator) {
+                indicator.setIndeterminate(true);
+                indicator.setText("Gathering project context...");
+                built = promptService.build(topic, delivery);
+            }
+
+            @Override
+            public void onSuccess() {
+                onBuilt.accept(built);
+            }
+
+            @Override
+            public void onCancel() {
+                ExplorePanel p = panelService != null ? panelService.getExplorePanel() : null;
+                if (p != null) {
+                    p.showNotice(topic, CANCELLED_NOTICE);
+                }
+            }
+
+            @Override
+            public void onThrowable(@NotNull Throwable error) {
+                LOG.warn("Building the explore prompt failed", error);
+                String message = "Explore failed: "
+                        + (error.getMessage() != null ? error.getMessage() : error.getClass().getSimpleName());
+                ExplorePanel p = panelService != null ? panelService.getExplorePanel() : null;
+                if (p != null) {
+                    p.showError(topic, message);
+                } else {
+                    OpenSpecNotifier.warn(project, "Explore", message);
+                }
+            }
+
+            @Override
+            public void onFinished() {
+                ExplorePanel p = panelService != null ? panelService.getExplorePanel() : null;
+                if (p != null) {
+                    p.restoreInput();
+                }
+            }
+        };
+    }
+
+    /**
+     * The background request behind the Explore panel: builds the prompt with {@code build}, then sends it. One task,
+     * so one cancel covers both, and a build failure is shown like a failed request. Package-private so tests can run
+     * it directly.
+     */
     static Task.Backgroundable newExploreTask(@NotNull Project project, @NotNull RawRequest request,
-                                              @Nullable ExplorePanelService panelService, String prompt, String topic) {
+                                              @Nullable ExplorePanelService panelService, Supplier<Prompt> build,
+                                              String topic) {
         return new Task.Backgroundable(project, "Exploring...", true) {
             @Override
             public void run(@NotNull ProgressIndicator indicator) {
                 indicator.setIndeterminate(true);
-                indicator.setText("Sending explore prompt to AI provider...");
 
                 try {
-                    String response = request.send(prompt);
+                    indicator.setText("Gathering project context...");
+                    Prompt prompt = build.get();
+                    onEdt(project, () -> {
+                        ExplorePanel p = panelService != null ? panelService.getExplorePanel() : null;
+                        if (p != null) {
+                            p.setInstructionsSource(prompt.instructions());
+                        }
+                    });
+                    indicator.checkCanceled();
+
+                    indicator.setText("Sending explore prompt to AI provider...");
+                    String response = request.send(prompt.text());
                     // A cancel during the call wins over a late response (onCancel shows it).
                     indicator.checkCanceled();
 
-                    ApplicationManager.getApplication().invokeLater(() -> {
+                    onEdt(project, () -> {
                         ExplorePanel p = panelService != null ? panelService.getAndActivate() : null;
                         if (p != null) {
                             p.showResult(topic, response);
                         }
                     });
                 } catch (AiApiException ex) {
-                    ApplicationManager.getApplication().invokeLater(() -> {
+                    onEdt(project, () -> {
                         ExplorePanel p = panelService != null ? panelService.getExplorePanel() : null;
                         if (p != null) {
                             p.showError(topic, ex.getMessage());
@@ -265,7 +370,7 @@ public class ExploreContextAction extends OpenSpecBaseAction {
                 } catch (RuntimeException ex) {
                     LOG.warn("Explore request failed", ex);
                     String message = "Explore failed: " + (ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName());
-                    ApplicationManager.getApplication().invokeLater(() -> {
+                    onEdt(project, () -> {
                         ExplorePanel p = panelService != null ? panelService.getExplorePanel() : null;
                         if (p != null) {
                             p.showError(topic, message);
