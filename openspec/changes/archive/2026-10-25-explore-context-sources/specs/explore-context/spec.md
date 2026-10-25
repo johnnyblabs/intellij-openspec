@@ -2,7 +2,7 @@
 
 ### Requirement: Context assembly
 
-The plugin SHALL assemble a Markdown-formatted project context from the current OpenSpec project state, including config summary with context and rules, detected AI tools, active changes with the content of every artifact file each change has, and spec domain listings with requirement summaries. Change artifact files SHALL come from the OpenSpec CLI's status report for the change, and capabilities from the CLI's spec listing, each falling back to a recursive walk of the project files when the CLI gives no usable answer. Capabilities and artifact files at nested paths SHALL be included and named by their full path. Context assembly SHALL NOT run on the IDE's UI thread.
+The plugin SHALL assemble a Markdown-formatted project context from the current OpenSpec project state: a config summary with context and rules, detected AI tools, active changes with the content of every artifact file each change has, and every capability with its requirement summaries. Capabilities and artifact files at nested paths SHALL be included and named by their full path.
 
 #### Scenario: Full context assembly
 - **WHEN** the user triggers context assembly
