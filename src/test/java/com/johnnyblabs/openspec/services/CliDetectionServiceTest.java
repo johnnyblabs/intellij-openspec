@@ -854,9 +854,12 @@ class CliDetectionServiceTest {
         List<String> lookedUp = new ArrayList<>();
         CliDetectionService svc = new CliDetectionService((Project) null);
         svc.setIsWindowsForTest(false);
+        java.io.File hit = new java.io.File("/home/me/.nvm/versions/node/v22/bin/openspec");
+        // The path detection probes, as the host's File reports it (a Windows runner adds a drive letter).
+        String probedHit = hit.getAbsolutePath();
         svc.setIdePathForTest(name -> {
             lookedUp.add(name);
-            return new java.io.File("/home/me/.nvm/versions/node/v22/bin/openspec");
+            return hit;
         }, () -> "/usr/bin");
         svc.setProcessRunnerForTest(cmd -> {
             List<String> args = cmd.getParametersList().getList();
@@ -867,8 +870,8 @@ class CliDetectionServiceTest {
         svc.detect();
 
         assertEquals(List.of("openspec"), lookedUp);
-        assertEquals("/home/me/.nvm/versions/node/v22/bin/openspec", svc.getDetectedPath());
-        assertEquals(List.of("shell", "/home/me/.nvm/versions/node/v22/bin/openspec"), order,
+        assertEquals(probedHit, svc.getDetectedPath());
+        assertEquals(List.of("shell", probedHit), order,
                 "the IDE PATH hit is probed by its absolute path, before the bare name");
     }
 
