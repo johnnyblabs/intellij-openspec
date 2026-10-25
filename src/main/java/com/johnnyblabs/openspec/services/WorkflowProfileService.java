@@ -8,9 +8,13 @@ import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.johnnyblabs.openspec.util.CliJson;
 import com.johnnyblabs.openspec.util.CliRunner;
+import com.johnnyblabs.openspec.util.CliVersion;
+import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -19,17 +23,23 @@ import java.util.Set;
  * to enable/disable actions based on the user's configured profile, and by the
  * status bar widget and Settings panel to display the active profile.
  *
- * <p>OpenSpec 1.2.0+ defines the core profile as 5 workflows:
- * {@code propose, explore, apply, sync, archive}. Custom profiles add any subset of
- * the expanded workflows: {@code new, continue, ff, verify, bulk-archive, onboard}.
+ * <p>Workflows are resolved the way the CLI resolves them ({@code getProfileWorkflows} in
+ * {@code dist/core/profiles.js}), see {@link #resolve}: the {@code custom} profile uses its stored list,
+ * and every other profile uses the core set of the detected CLI version, whatever list is stored.
+ * {@code config list --json} reports the stored list, so it can't be shown as is.
  */
 @Service(Service.Level.PROJECT)
 public final class WorkflowProfileService {
     private static final Logger LOG = Logger.getInstance(WorkflowProfileService.class);
 
-    /** OpenSpec 1.2.0+ core profile workflow set. */
-    static final Set<String> CORE_DEFAULTS =
-            Set.of("propose", "explore", "apply", "sync", "archive");
+    /** Core workflows from CLI 1.6.0: the set used when the CLI version is unknown. */
+    static final Set<String> CURRENT_CORE = ordered("propose", "explore", "apply", "update", "sync", "archive");
+    /** Core workflows in CLI 1.4.x and 1.5.x. */
+    static final Set<String> CORE_1_4 = ordered("propose", "explore", "apply", "sync", "archive");
+    /** Core workflows before CLI 1.4.0. */
+    static final Set<String> CORE_1_3 = ordered("propose", "explore", "apply", "archive");
+    /** From this CLI version, a custom list that archives without {@code sync} gets {@code sync} added. */
+    static final String CUSTOM_SYNC_RULE_FROM = "1.10.0";
 
     /** Fallback profile name when the CLI is unavailable. */
     static final String FALLBACK_PROFILE_NAME = "core";
@@ -126,32 +136,87 @@ public final class WorkflowProfileService {
         return Snapshot.fallback();
     }
 
-    private static Snapshot parseSnapshot(JsonObject config) {
+    private Snapshot parseSnapshot(JsonObject config) {
         try {
             String profileName = null;
             JsonElement profileEl = config.get("profile");
             if (profileEl != null && !profileEl.isJsonNull()) {
                 profileName = profileEl.getAsString();
             }
-            JsonArray workflows = config.getAsJsonArray("workflows");
-            if (workflows != null && !workflows.isEmpty()) {
-                Set<String> result = new LinkedHashSet<>();
-                for (JsonElement el : workflows) {
-                    result.add(el.getAsString());
+            List<String> stored = null;
+            JsonElement workflowsEl = config.get("workflows");
+            if (workflowsEl != null && workflowsEl.isJsonArray()) {
+                stored = new ArrayList<>();
+                for (JsonElement el : workflowsEl.getAsJsonArray()) {
+                    stored.add(el.getAsString());
                 }
-                return new Snapshot(profileName, Collections.unmodifiableSet(result));
             }
-            // workflows missing/empty — keep parsed profile name if present, else fallback name
-            return new Snapshot(profileName != null ? profileName : FALLBACK_PROFILE_NAME, CORE_DEFAULTS);
+            return new Snapshot(profileName != null ? profileName : FALLBACK_PROFILE_NAME,
+                    resolve(profileName, stored, detectedCliVersion()));
         } catch (Exception e) {
             LOG.warn("Failed to parse workflows from config JSON", e);
         }
         return Snapshot.fallback();
     }
 
+    private @Nullable String detectedCliVersion() {
+        CliDetectionService detection = project.getService(CliDetectionService.class);
+        return detection != null ? detection.getDetectedVersion() : null;
+    }
+
+    /**
+     * The workflows the CLI installs for {@code profile}, mirroring upstream's {@code getProfileWorkflows}:
+     * <ul>
+     *   <li>{@code custom}: the {@code stored} list (empty when there is none). From CLI 1.10.0, {@code sync} is
+     *       inserted before the first {@code archive} or {@code bulk-archive} when the list lacks it.</li>
+     *   <li>anything else, including no profile: {@link #coreWorkflows} for {@code cliVersion}. A stored list is
+     *       ignored; upstream reads it only for custom.</li>
+     * </ul>
+     */
+    static Set<String> resolve(@Nullable String profile, @Nullable List<String> stored, @Nullable String cliVersion) {
+        if (!"custom".equals(profile)) {
+            return coreWorkflows(cliVersion);
+        }
+        List<String> workflows = new ArrayList<>(stored == null ? List.of() : stored);
+        if (knownVersion(cliVersion) && CliVersion.atLeast(cliVersion, CUSTOM_SYNC_RULE_FROM)
+                && !workflows.contains("sync")) {
+            for (int i = 0; i < workflows.size(); i++) {
+                String w = workflows.get(i);
+                if (w.equals("archive") || w.equals("bulk-archive")) {
+                    workflows.add(i, "sync");
+                    break;
+                }
+            }
+        }
+        return Collections.unmodifiableSet(new LinkedHashSet<>(workflows));
+    }
+
+    /** The core set for {@code cliVersion}: four workflows before 1.4.0, five before 1.6.0, then six. Unknown: six. */
+    static Set<String> coreWorkflows(@Nullable String cliVersion) {
+        if (!knownVersion(cliVersion)) {
+            return CURRENT_CORE;
+        }
+        if (!CliVersion.atLeast(cliVersion, "1.4.0")) {
+            return CORE_1_3;
+        }
+        if (!CliVersion.atLeast(cliVersion, "1.6.0")) {
+            return CORE_1_4;
+        }
+        return CURRENT_CORE;
+    }
+
+    /** A version {@link CliVersion} can order; a blank or unparseable one counts as unknown. */
+    private static boolean knownVersion(@Nullable String version) {
+        return version != null && version.strip().matches("\\d+\\.\\d+.*");
+    }
+
+    private static Set<String> ordered(String... workflows) {
+        return Collections.unmodifiableSet(new LinkedHashSet<>(List.of(workflows)));
+    }
+
     private record Snapshot(String profileName, Set<String> workflows) {
         static Snapshot fallback() {
-            return new Snapshot(FALLBACK_PROFILE_NAME, CORE_DEFAULTS);
+            return new Snapshot(FALLBACK_PROFILE_NAME, CURRENT_CORE);
         }
     }
 }

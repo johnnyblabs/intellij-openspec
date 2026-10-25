@@ -676,3 +676,22 @@ Captured by `scripts/capture-update-dry-run-fixtures.py`. Re-run it after a CLI 
 | `1.14.3/update-dry-run-unknown-option` | `up-to-date` on CLI 1.14.3 | **exit 1**, empty stdout, stderr `error: unknown option '--dry-run'` |
 
 Consumed by `UpdatePlanContractTest`, the update preview service tests and the legacy-cleanup flow tests.
+
+## `1.15.0/config-list/` — the workflow profile, as stored and as installed
+
+Real CLI 1.15.0 runs, each in a fresh isolated `HOME` and `XDG_CONFIG_HOME` (with `XDG_DATA_HOME` unset), `CI=1` and stdin closed. Where a case needs one, a hand-placed `$XDG_CONFIG_HOME/openspec/config.json` sets it up. Each case has three files:
+- `<case>.json`: `openspec config list --json`, which reports the **stored** `profile` and `workflows`;
+- `<case>.txt`: the human `openspec config list`;
+- `<case>.installed.txt`: the workflows `openspec init --tools claude .` actually installed, one per line, from `.claude/commands/opsx/`. **This is the oracle for the plugin's workflow resolution.**
+
+| Case | Config | `--json` workflows | Installed |
+|---|---|---|---|
+| `fresh` | none | absent (`profile: core`) | propose, explore, apply, update, sync, archive |
+| `stale-core` | `{"profile":"core","workflows":["propose","explore","apply","archive"]}` | the stored four | the six core workflows. Upstream ignores a stored list unless the profile is `custom` |
+| `custom-archive-no-sync` | `{"profile":"custom","workflows":["propose","apply","archive"]}` | the stored three | the three plus `sync` (the 1.10+ rule: archiving needs sync) |
+
+Two upstream quirks show here, recorded internally and never filed upstream:
+- `config list --json` reports the stored list, not the effective one;
+- even the human output's "Profile settings" line leaves out the `sync` that custom archiving pulls in.
+
+Consumed by `WorkflowProfileServiceTest`.

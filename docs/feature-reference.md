@@ -221,10 +221,14 @@ Statuses are exactly what `openspec status` reports. When `openspec status` reje
 
 Workflow actions respect the active OpenSpec profile. Actions whose workflow is not enabled in the current profile (e.g., `core` vs expanded) appear **visible but disabled** with a tooltip: *"Requires expanded profile. Change in Settings → Tools → OpenSpec."*
 
-| Profile | Enabled Actions |
+The plugin works out the active workflows the way the OpenSpec CLI does, so it enables exactly what the CLI installs:
+
+| Profile | Active workflows |
 |---------|----------------|
-| **core** | Propose, Explore, Apply, Archive |
-| **expanded/custom** | All of the above + Fast-Forward, Continue, Verify, Sync Specs, Bulk Archive |
+| **core** (also when no profile is set) | `propose, explore, apply, update, sync, archive` on CLI 1.6 and later. CLI 1.4–1.5 has no `update`, and CLI 1.3 also has no `sync`. Any workflow list left over in your config is ignored for core, as the CLI ignores it. |
+| **custom** | The workflows you picked. On CLI 1.10 and later, `sync` is included whenever you picked `archive` or `bulk-archive`, because archiving needs it. |
+
+Workflow-bound actions are enabled when their workflow is active: Propose, Explore, Apply, Archive, Fast-Forward, Continue, Verify and Bulk Archive.
 
 Utility actions (Init, Validate, List, Refresh, Update, Manage AI Tools, Setup Wizard) are always enabled regardless of profile.
 

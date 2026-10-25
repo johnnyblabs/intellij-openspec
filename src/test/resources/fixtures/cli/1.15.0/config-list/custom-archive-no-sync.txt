@@ -1,0 +1,12 @@
+featureFlags: {}
+profile: custom
+delivery: both
+workflows:
+  - propose
+  - apply
+  - archive
+
+Profile settings:
+  profile: custom (explicit)
+  delivery: both (default)
+  workflows: propose, apply, archive (explicit)

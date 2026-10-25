@@ -153,8 +153,7 @@ class OpenSpecSettingsPanelProfileTest {
             when(detection.isAvailable()).thenReturn(true);
             WorkflowProfileService service = mock(WorkflowProfileService.class);
             when(service.getActiveProfileName()).thenReturn("core");
-            // Exact set from fixtures/cli/1.7.0/config-list.json — including `update`, which
-            // distinguishes the real config-list workflows from the 5-item CORE_DEFAULTS fallback.
+            // The core set on a current CLI: six workflows, including `update`.
             when(service.getActiveWorkflows()).thenReturn(new LinkedHashSet<>(
                     List.of("propose", "explore", "apply", "update", "sync", "archive")));
 

@@ -1,0 +1,6 @@
+apply
+archive
+explore
+propose
+sync
+update

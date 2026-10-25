@@ -1,0 +1,10 @@
+{
+  "featureFlags": {},
+  "profile": "custom",
+  "delivery": "both",
+  "workflows": [
+    "propose",
+    "apply",
+    "archive"
+  ]
+}
