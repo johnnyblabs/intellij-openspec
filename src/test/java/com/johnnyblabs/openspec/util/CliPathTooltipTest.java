@@ -1,4 +1,4 @@
-package com.johnnyblabs.openspec.settings;
+package com.johnnyblabs.openspec.util;
 
 import org.junit.jupiter.api.Test;
 
@@ -8,7 +8,7 @@ class CliPathTooltipTest {
 
     @Test
     void unixTooltipListsTheStandaloneLocationBesideTheExistingExamples() {
-        String tip = OpenSpecSettingsPanel.cliPathTooltip(false);
+        String tip = CliInstallHints.cliPathTooltip(false);
         assertTrue(tip.contains("~/.local/bin/openspec"), tip);
         assertTrue(tip.contains("/opt/homebrew/bin/openspec") && tip.contains("/usr/local/bin/openspec"), tip);
         assertFalse(tip.contains("%LOCALAPPDATA%"), tip);
@@ -16,7 +16,7 @@ class CliPathTooltipTest {
 
     @Test
     void windowsTooltipListsTheStandaloneExeBesideTheNpmShim() {
-        String tip = OpenSpecSettingsPanel.cliPathTooltip(true);
+        String tip = CliInstallHints.cliPathTooltip(true);
         assertTrue(tip.contains("%LOCALAPPDATA%\\Programs\\openspec\\openspec.exe"), tip);
         assertTrue(tip.contains("%APPDATA%\\npm\\openspec.cmd"), tip);
         assertFalse(tip.contains("~/.local/bin"), tip);

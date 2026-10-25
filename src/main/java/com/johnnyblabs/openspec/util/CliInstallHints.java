@@ -4,6 +4,10 @@ package com.johnnyblabs.openspec.util;
  * The one place the plugin says how to install the OpenSpec CLI. The commands are upstream's README Quick Start,
  * word for word: the standalone installer first (no Node.js), then npm, then Homebrew outside Windows. The plugin
  * only shows them; it never runs an installer.
+ *
+ * <p>Every surface's wording is built here, with no Swing or platform dependency, so plain unit tests can check it
+ * without loading a dialog class (which starts the platform's UI scaling and, outside a platform test, can break
+ * {@code UIUtil} for the rest of the test JVM).
  */
 public final class CliInstallHints {
 
@@ -51,6 +55,34 @@ public final class CliInstallHints {
             sb.append(", or <code>").append(BREW).append("</code>");
         }
         return sb.append('.').toString();
+    }
+
+    /** The setup wizard's CLI-step hint, without its HTML wrapper; Windows adds where to point the manual path. */
+    public static String wizardHintBody(boolean isWindows) {
+        String body = "The CLI is optional. Built-in features work without it. " + html(isWindows);
+        if (isWindows) {
+            body += " If auto-detect doesn't pick it up, set the manual path to "
+                    + "<code>" + standaloneLocation(true) + "</code>, or for npm "
+                    + "<code>%APPDATA%\\npm\\openspec.cmd</code> (the <code>.cmd</code> extension is required on Windows).";
+        }
+        return body;
+    }
+
+    /** The Manage AI Tools footer shown when the CLI is missing, without its HTML wrapper. */
+    public static String manageToolsHintBody(boolean isWindows) {
+        return "Install the OpenSpec CLI to add and configure tools. " + html(isWindows);
+    }
+
+    /** The Settings CLI-path tooltip: the auto-detect note and typical install locations for the host OS. */
+    public static String cliPathTooltip(boolean isWindows) {
+        String standalone = "<code>" + standaloneLocation(isWindows) + "</code>";
+        return isWindows
+                ? "<html>Leave empty to auto-detect, or enter the full path including the <code>.exe</code> or <code>.cmd</code> extension.<br>"
+                        + "Standalone install: " + standalone + "<br>"
+                        + "Typical npm install: <code>%APPDATA%\\npm\\openspec.cmd</code></html>"
+                : "<html>Leave empty to auto-detect, or enter the full path to the openspec executable.<br>"
+                        + "Standalone install: " + standalone + "<br>"
+                        + "Typical npm or Homebrew install: <code>/opt/homebrew/bin/openspec</code> or <code>/usr/local/bin/openspec</code></html>";
     }
 
     private static String escape(String text) {

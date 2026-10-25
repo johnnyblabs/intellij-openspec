@@ -162,7 +162,7 @@ public class SetupWizardDialog extends DialogWrapper {
         gbc.gridy = 3;
         gbc.gridwidth = 2;
         String hintHtml = "<html><body style='width:" + JBUI.scale(400) + "px;color:gray'>"
-                + cliHintBody(com.intellij.openapi.util.SystemInfo.isWindows) + "</body></html>";
+                + CliInstallHints.wizardHintBody(com.intellij.openapi.util.SystemInfo.isWindows) + "</body></html>";
         JBLabel hint = new JBLabel(hintHtml);
         panel.add(hint, gbc);
 
@@ -170,17 +170,6 @@ public class SetupWizardDialog extends DialogWrapper {
         panel.add(installInstructionsLink(), gbc);
 
         return panel;
-    }
-
-    /** The CLI step's hint, without its HTML wrapper; the install wording comes from {@link CliInstallHints}. */
-    static String cliHintBody(boolean isWindows) {
-        String body = "The CLI is optional. Built-in features work without it. " + CliInstallHints.html(isWindows);
-        if (isWindows) {
-            body += " If auto-detect doesn't pick it up, set the manual path to "
-                    + "<code>" + CliInstallHints.standaloneLocation(true) + "</code>, or for npm "
-                    + "<code>%APPDATA%\\npm\\openspec.cmd</code> (the <code>.cmd</code> extension is required on Windows).";
-        }
-        return body;
     }
 
     /** A link that opens upstream's installation page. */
