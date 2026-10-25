@@ -66,7 +66,7 @@ The settings panel has sections stacked vertically: **CLI**, **General**, **Conf
 | **Detect** | Click to auto-detect the CLI. The plugin searches your PATH, login shell, and common locations (`/opt/homebrew/bin`, `/usr/local/bin`, Homebrew on Linux, and `~/.local/bin` for OpenSpec's standalone binary). On macOS, it resolves your login shell's PATH since GUI apps don't inherit terminal environment variables. |
 | **Status indicator** | Shows green "OpenSpec CLI v*X.Y.Z*" when found, or orange "OpenSpec CLI not found" when missing. |
 
-> **Tip:** If the CLI isn't detected, check that `openspec --version` works in a terminal, then click **Detect** again. For the standalone installer on macOS or Linux, add `~/.local/bin` to your PATH in `~/.zprofile` (or `~/.profile`), not only `~/.zshrc`, or set the CLI path to `~/.local/bin/openspec`.
+> **Tip:** If the CLI isn't detected, check that `openspec --version` works in a terminal, then click **Detect** again. The plugin reads the PATH your interactive shell sets, including `~/.zshrc`, so a version manager or `~/.local/bin` entry there is found. If it still isn't, set the CLI path to the full path `which openspec` prints.
 
 ### General
 

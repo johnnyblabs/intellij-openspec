@@ -53,11 +53,14 @@ brew install openspec                        # macOS and Linux
 The plugin locates the CLI automatically using this order:
 
 1. **Settings path** — manually configured in Settings → Tools → OpenSpec
-2. **Bare command** — `openspec` on the system PATH
-3. **Login shell** — spawns a login shell to resolve PATH (handles macOS `.zprofile` issues)
-4. **Common paths**, checked only where a file exists:
+2. **IDE PATH** (macOS and Linux) — `PathEnvironmentVariableUtil.findInPath("openspec")`, i.e. the PATH the IDE loaded from the user's shell; run by its absolute path
+3. **Bare command** — `openspec` resolved on the JVM's own PATH (a terminal launch, Windows)
+4. **Shell PATH** (macOS and Linux) — one `$SHELL -l -i -c` call (no `-i` for fish, no `-l` for csh/tcsh) prints PATH between markers, so `~/.zshrc`/`~/.bashrc` entries count and rc-file output is ignored; the plugin searches it for an executable `openspec`. On Windows: `where.exe openspec`
+5. **Common paths**, checked only where a file exists:
    - on macOS and Linux: `/opt/homebrew/bin`, `/usr/local/bin`, `/usr/bin`, `/home/linuxbrew/.linuxbrew/bin`, then `$OPENSPEC_INSTALL_DIR` when the IDE's environment sets it, then `~/.local/bin`;
    - on Windows: the npm and winget shims under `%APPDATA%` and `%LOCALAPPDATA%`, then `%OPENSPEC_INSTALL_DIR%`, then `%LOCALAPPDATA%\Programs\openspec\openspec.exe`.
+
+Every CLI run keeps the IDE's PATH and appends only the shell-PATH entries it lacks (never replaces it), so `#!/usr/bin/env node` resolves for version-manager installs.
 
 If no CLI is found, the plugin runs in **built-in mode** — core features like init, propose, validate, and archive work without the CLI.
 

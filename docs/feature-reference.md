@@ -428,7 +428,7 @@ The plugin works without the CLI, but some features (schema management, CLI-enha
 
 1. Install it with OpenSpec's standalone installer, which needs no Node.js (`curl -fsSL https://raw.githubusercontent.com/Fission-AI/OpenSpec/main/scripts/binary/install.sh | sh` on macOS and Linux, `irm https://raw.githubusercontent.com/Fission-AI/OpenSpec/main/scripts/binary/install.ps1 | iex` on Windows), or with `npm install -g @fission-ai/openspec@latest` or `brew install openspec`. See [OpenSpec's installation page](https://openspec.dev/docs/installation)
 2. If installed but not detected: **Settings > Tools > OpenSpec > Detect**, or set the path manually
-3. On macOS, GUI apps don't inherit your terminal's PATH — the plugin tries your login shell, Homebrew paths (including Homebrew on Linux), `/usr/local/bin`, and `~/.local/bin` (where OpenSpec's standalone installer puts it) automatically. On Windows it also checks `%LOCALAPPDATA%\Programs\openspec\openspec.exe`. If you installed the standalone binary with `OPENSPEC_INSTALL_DIR`, the plugin checks that folder only when the IDE's environment carries the variable; otherwise set the path manually
+3. On macOS, GUI apps don't inherit your terminal's PATH — the plugin reads the PATH your interactive login shell sets (`~/.zshrc` included) and tries Homebrew paths (including Homebrew on Linux), `/usr/local/bin`, and `~/.local/bin` (where OpenSpec's standalone installer puts it) automatically. On Windows it also checks `%LOCALAPPDATA%\Programs\openspec\openspec.exe`. If you installed the standalone binary with `OPENSPEC_INSTALL_DIR`, the plugin checks that folder only when the IDE's environment carries the variable; otherwise set the path manually
 4. Just installed or upgraded the CLI? Switch away from the IDE and back (after 30 seconds) and the status updates on its own
 5. If the tool window shows "CLI: detecting…", detection is still running; it updates on its own when it finishes
 
@@ -444,10 +444,12 @@ OpenSpec can be installed three ways, and each puts the `openspec` program in a 
 
 The plugin uses the first copy it finds, in this order:
 1. the CLI path in Settings;
-2. `openspec` on the IDE's PATH;
-3. your login shell's `which openspec`;
+2. `openspec` on the IDE's PATH (on macOS the IDE loads it from your shell, `~/.zshrc` included);
+3. `openspec` on the PATH your interactive login shell sets, so an entry only in `~/.zshrc` or `~/.bashrc` (nvm, fnm, volta, asdf, `~/.local/bin`) is found even when the IDE was opened from the Dock;
 4. the Homebrew, system and npm locations;
 5. the standalone locations.
+
+Every command the plugin runs keeps the IDE's PATH and gains any of your shell's PATH entries it lacks, so a CLI that needs `node` from a version manager starts too.
 
 If you have more than one copy, the terminal and the IDE can run different versions. Keep one, and upgrade it the way you installed it: re-run the installer (or `openspec install`), `npm install -g @fission-ai/openspec@latest`, or `brew upgrade openspec`. To pin a copy, set its full path in **Settings > Tools > OpenSpec > CLI path**.
 

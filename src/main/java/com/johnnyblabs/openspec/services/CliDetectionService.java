@@ -6,11 +6,14 @@ import com.intellij.openapi.components.Service;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.SystemInfo;
+import com.intellij.execution.configurations.PathEnvironmentVariableUtil;
+import com.intellij.util.EnvironmentUtil;
 import com.intellij.util.messages.Topic;
 import com.johnnyblabs.openspec.settings.OpenSpecSettings;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.TestOnly;
 
+import java.io.File;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -87,6 +90,10 @@ public final class CliDetectionService {
     private volatile Function<String, String> envLookup = System::getenv;
     private volatile Supplier<String> userHome = () -> System.getProperty("user.home");
     private volatile @Nullable Predicate<String> executableCheckOverride;
+    /** Finds a command on the IDE's own PATH (the environment it loaded from the user's shell); a seam for tests. */
+    private volatile Function<String, File> idePathLookup = PathEnvironmentVariableUtil::findInPath;
+    /** The PATH a child process inherits from the IDE when its command line sets none; a seam for tests. */
+    private volatile Supplier<String> idePath = () -> EnvironmentUtil.getValue("PATH");
 
     public CliDetectionService(@Nullable Project project) {
         this.project = project;
@@ -116,6 +123,12 @@ public final class CliDetectionService {
     @TestOnly
     public void setExecutableCheckForTest(@Nullable Predicate<String> check) {
         this.executableCheckOverride = check;
+    }
+
+    @TestOnly
+    public void setIdePathForTest(Function<String, File> lookup, Supplier<String> path) {
+        this.idePathLookup = lookup;
+        this.idePath = path;
     }
 
     /** Sets when detection last ran, so tests can exercise the 30s staleness throttle without sleeping. */
@@ -149,9 +162,8 @@ public final class CliDetectionService {
     public void detect() {
         Detection found = null;
         try {
-            // Resolve login shell PATH first — needed on macOS where GUI apps
-            // don't inherit terminal PATH (so node/openspec can't be found).
-            // No-op on Windows.
+            // Read the PATH the user's interactive login shell sets (Unix; no-op on Windows). A GUI-launched IDE
+            // may not have it, and every CLI run gets the entries the IDE's PATH lacks.
             resolveLoginShellPath();
 
             // 1. Check settings path first
@@ -163,12 +175,21 @@ public final class CliDetectionService {
                 }
             }
 
-            // 2. Try bare "openspec" via GeneralCommandLine (uses IntelliJ's env resolution)
+            // 2. Unix: the IDE's own PATH. A bare name below is looked up on the JVM's PATH, which for a
+            // Dock-launched IDE is launchd's minimal one, so ask the platform for the absolute path first.
+            if (found == null && !isWindows()) {
+                File onIdePath = lookUpOnIdePath();
+                if (onIdePath != null) {
+                    found = probe(onIdePath.getAbsolutePath());
+                }
+            }
+
+            // 3. Try bare "openspec" (works when the JVM's own PATH has it, e.g. a terminal launch or Windows)
             if (found == null) {
                 found = probe("openspec");
             }
 
-            // 3. Try via user's login shell (Unix) or where.exe (Windows)
+            // 4. The interactive login shell's PATH (Unix) or where.exe (Windows)
             if (found == null) {
                 String shellPath = tryLoginShellWhich();
                 if (shellPath != null) {
@@ -176,7 +197,7 @@ public final class CliDetectionService {
                 }
             }
 
-            // 4. Try common install locations for the host OS, skipping any with no file to run
+            // 5. Try common install locations for the host OS, skipping any with no file to run
             if (found == null) {
                 Predicate<String> exists = executableCheck();
                 for (String path : commonPathsForCurrentOs()) {
@@ -252,22 +273,20 @@ public final class CliDetectionService {
     }
 
     /**
-     * Tries to find openspec via the user's login shell on Unix
-     * (handles macOS where GUI apps don't inherit terminal PATH),
-     * or via where.exe on Windows. Returns the resolved path, or null.
+     * Finds openspec through the user's shell: on Unix, in the PATH the interactive login shell sets (read once per
+     * detection by {@link #resolveLoginShellPath}, no extra process); on Windows, via where.exe. Returns the resolved
+     * path, or null.
      */
     String tryLoginShellWhich() {
-        try {
-            GeneralCommandLine cmd;
-            if (isWindows()) {
-                cmd = new GeneralCommandLine("where.exe", "openspec");
-            } else {
-                String shell = System.getenv("SHELL");
-                if (shell == null || shell.isEmpty()) {
-                    shell = "/bin/zsh";
-                }
-                cmd = new GeneralCommandLine(shell, "-lc", "which openspec");
+        if (!isWindows()) {
+            String found = findOnPath(loginShellPath, executableCheck());
+            if (found != null) {
+                LOG.info("Found openspec on the login shell PATH: " + found);
             }
+            return found;
+        }
+        try {
+            GeneralCommandLine cmd = new GeneralCommandLine("where.exe", "openspec");
             cmd.setCharset(StandardCharsets.UTF_8);
 
             String output = processRunner.runAndCapture(cmd);
@@ -275,42 +294,112 @@ public final class CliDetectionService {
                 // where.exe may return multiple lines; take first non-empty.
                 String firstLine = output.split("\\R", 2)[0].trim();
                 if (!firstLine.isEmpty()) {
-                    LOG.info("Found openspec via " + (isWindows() ? "where.exe" : "login shell") + ": " + firstLine);
+                    LOG.info("Found openspec via where.exe: " + firstLine);
                     return firstLine;
                 }
             }
         } catch (Exception e) {
-            LOG.debug("which/where lookup failed", e);
+            LOG.debug("where.exe lookup failed", e);
         }
         return null;
     }
 
     /**
-     * Resolves the PATH from the user's login shell and caches it.
-     * On macOS, GUI apps don't inherit the terminal PATH, so tools like
-     * node, openspec, etc. can't be found without this. No-op on Windows
-     * where GUI apps inherit PATH normally and shebang interpreter
-     * resolution doesn't apply to .cmd shims.
+     * Reads the PATH the user's interactive login shell sets, once per detection. A login shell that isn't interactive
+     * skips {@code ~/.zshrc}, where version managers (nvm, fnm, volta, asdf) and the standalone installer's PATH advice
+     * usually go, so the shell runs interactively, the way the IDE's own environment loading does. rc files may print
+     * anything, so the PATH is read between markers. No-op on Windows, where GUI apps inherit PATH.
      */
     private void resolveLoginShellPath() {
-        if (loginShellPath != null) return;
         if (isWindows()) return;
 
-        String shell = System.getenv("SHELL");
+        String shell = envLookup.apply("SHELL");
         if (shell == null || shell.isEmpty()) {
             shell = "/bin/zsh";
         }
         try {
-            GeneralCommandLine cmd = new GeneralCommandLine(shell, "-lc", "echo $PATH");
+            List<String> argv = new ArrayList<>();
+            argv.add(shell);
+            argv.addAll(shellFlags(shell));
+            argv.add(PRINT_PATH);
+            GeneralCommandLine cmd = new GeneralCommandLine(argv);
             cmd.setCharset(StandardCharsets.UTF_8);
+            // Ask rc files and oh-my-zsh to skip prompts and updates, as the IDE's own environment reader does.
+            cmd.getEnvironment().put("INTELLIJ_ENVIRONMENT_READER", "true");
+            cmd.getEnvironment().put("DISABLE_AUTO_UPDATE", "true");
+            cmd.withInput(new File("/dev/null"));
 
-            String path = processRunner.runAndCapture(cmd);
+            String path = parseMarkedPath(processRunner.runAndCapture(cmd));
             if (path != null) {
                 loginShellPath = path;
                 LOG.info("Resolved login shell PATH: " + path);
             }
         } catch (Exception e) {
             LOG.debug("Failed to resolve login shell PATH", e);
+        }
+    }
+
+    static final String PATH_BEGIN = "__OPENSPEC_PATH_BEGIN__";
+    static final String PATH_END = "__OPENSPEC_PATH_END__";
+    /** Prints PATH between markers, on a line of its own, so rc-file output before it can't run into it. */
+    static final String PRINT_PATH = "printf '\\n%s%s%s\\n' '" + PATH_BEGIN + "' \"$PATH\" '" + PATH_END + "'";
+
+    /**
+     * The flags that make {@code shell} an interactive login shell, as the IDE's own environment loading uses them:
+     * {@code -l -i -c}, without {@code -i} for fish and without {@code -l} for csh and tcsh.
+     */
+    static List<String> shellFlags(String shell) {
+        String name = shell.substring(shell.lastIndexOf('/') + 1);
+        return switch (name) {
+            case "fish" -> List.of("-l", "-c");
+            case "csh", "tcsh" -> List.of("-i", "-c");
+            default -> List.of("-l", "-i", "-c");
+        };
+    }
+
+    /** The PATH between the last begin marker and the end marker after it, or null when the markers aren't there. */
+    static @Nullable String parseMarkedPath(@Nullable String output) {
+        if (output == null) return null;
+        int begin = output.lastIndexOf(PATH_BEGIN);
+        if (begin < 0) return null;
+        int start = begin + PATH_BEGIN.length();
+        int end = output.indexOf(PATH_END, start);
+        if (end < 0) return null;
+        String path = output.substring(start, end).strip();
+        return path.isEmpty() ? null : path;
+    }
+
+    /** The first {@code dir/openspec} on {@code path} that the check accepts, or null. */
+    static @Nullable String findOnPath(@Nullable String path, Predicate<String> check) {
+        if (path == null) return null;
+        for (String dir : path.split(":")) {
+            if (dir.isEmpty()) continue;
+            String candidate = (dir.endsWith("/") ? dir : dir + "/") + "openspec";
+            if (check.test(candidate)) return candidate;
+        }
+        return null;
+    }
+
+    /** {@code base} followed by every {@code extra} entry it doesn't already contain, in order. */
+    static String mergePath(@Nullable String base, @Nullable String extra) {
+        if (base == null || base.isEmpty()) return extra == null ? "" : extra;
+        if (extra == null || extra.isEmpty()) return base;
+        java.util.LinkedHashSet<String> seen = new java.util.LinkedHashSet<>(List.of(base.split(":")));
+        StringBuilder merged = new StringBuilder(base);
+        for (String dir : extra.split(":")) {
+            if (!dir.isEmpty() && seen.add(dir)) {
+                merged.append(':').append(dir);
+            }
+        }
+        return merged.toString();
+    }
+
+    private @Nullable File lookUpOnIdePath() {
+        try {
+            return idePathLookup.apply("openspec");
+        } catch (RuntimeException e) {
+            LOG.debug("IDE PATH lookup failed", e);
+            return null;
         }
     }
 
@@ -426,14 +515,15 @@ public final class CliDetectionService {
     }
 
     /**
-     * Applies the login shell PATH to a GeneralCommandLine so that
-     * scripts with #!/usr/bin/env shebangs can resolve their interpreters.
-     * No-op on Windows (loginShellPath stays null there).
+     * Adds the login shell's PATH entries to a command's PATH, so {@code #!/usr/bin/env node} shebangs resolve. The
+     * command keeps its own PATH (or the IDE's, which it would inherit) and gains only the entries it lacks; replacing
+     * it would drop what the IDE loaded from {@code ~/.zshrc}. No-op on Windows (loginShellPath stays null there).
      */
     public void applyLoginShellPath(GeneralCommandLine cmd) {
         if (loginShellPath != null) {
             Map<String, String> env = cmd.getEnvironment();
-            env.put("PATH", loginShellPath);
+            String base = env.containsKey("PATH") ? env.get("PATH") : idePath.get();
+            env.put("PATH", mergePath(base, loginShellPath));
         }
     }
 

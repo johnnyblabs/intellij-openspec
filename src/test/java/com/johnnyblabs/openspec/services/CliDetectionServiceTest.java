@@ -15,12 +15,23 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class CliDetectionServiceTest {
 
+    /**
+     * A service that can't see this machine's real CLI: the IDE-PATH lookup finds nothing and the IDE's PATH is empty,
+     * so only what a test feeds through its seams is found.
+     */
+    static CliDetectionService hermetic() {
+        CliDetectionService svc = new CliDetectionService((Project) null);
+        svc.setIdePathForTest(name -> null, () -> "");
+        return svc;
+    }
+
+
     // ---------- Staleness check: the real detectIfStale(), not a test-local copy ----------
     // (These previously exercised a private isStale() mirror in this file, so deleting the service's throttle could
     // not fail them.) Each counts CLI process runs to prove whether detection actually ran.
 
     private static CliDetectionService serviceCountingRuns(java.util.concurrent.atomic.AtomicInteger runs) {
-        CliDetectionService svc = new CliDetectionService((Project) null);
+        CliDetectionService svc = hermetic();
         svc.setIsWindowsForTest(false);
         svc.setProcessRunnerForTest(cmd -> {
             runs.incrementAndGet();
@@ -32,7 +43,7 @@ class CliDetectionServiceTest {
     @Test
     void versionProbe_asksForPlainOutput() {
         List<Map<String, String>> probeEnvs = new ArrayList<>();
-        CliDetectionService svc = new CliDetectionService((Project) null);
+        CliDetectionService svc = hermetic();
         svc.setIsWindowsForTest(false);
         svc.setProcessRunnerForTest(cmd -> {
             if (cmd.getParametersList().getList().contains("--version")) {
@@ -100,7 +111,7 @@ class CliDetectionServiceTest {
 
     @Test
     void tryPath_windows_fallsBackThroughSuffixesInOrder_shortCircuitsOnFirstSuccess() {
-        CliDetectionService svc = new CliDetectionService((Project) null);
+        CliDetectionService svc = hermetic();
         svc.setIsWindowsForTest(true);
 
         List<String> attempted = new ArrayList<>();
@@ -118,7 +129,7 @@ class CliDetectionServiceTest {
 
     @Test
     void tryPath_windows_allSuffixesFail_returnsFalseAfterTryingAll() {
-        CliDetectionService svc = new CliDetectionService((Project) null);
+        CliDetectionService svc = hermetic();
         svc.setIsWindowsForTest(true);
 
         List<String> attempted = new ArrayList<>();
@@ -136,7 +147,7 @@ class CliDetectionServiceTest {
 
     @Test
     void tryPath_windows_pathWithCmdExtension_invokedVerbatimNoSuffixRetry() {
-        CliDetectionService svc = new CliDetectionService((Project) null);
+        CliDetectionService svc = hermetic();
         svc.setIsWindowsForTest(true);
 
         List<String> attempted = new ArrayList<>();
@@ -153,7 +164,7 @@ class CliDetectionServiceTest {
 
     @Test
     void tryPath_windows_pathWithExeExtension_invokedVerbatim() {
-        CliDetectionService svc = new CliDetectionService((Project) null);
+        CliDetectionService svc = hermetic();
         svc.setIsWindowsForTest(true);
 
         List<String> attempted = new ArrayList<>();
@@ -171,7 +182,7 @@ class CliDetectionServiceTest {
 
     @Test
     void tryLoginShellWhich_windows_usesWhereExeNotZsh() {
-        CliDetectionService svc = new CliDetectionService((Project) null);
+        CliDetectionService svc = hermetic();
         svc.setIsWindowsForTest(true);
 
         List<String> exes = new ArrayList<>();
@@ -189,7 +200,7 @@ class CliDetectionServiceTest {
 
     @Test
     void tryLoginShellWhich_windows_emptyOutput_returnsNull() {
-        CliDetectionService svc = new CliDetectionService((Project) null);
+        CliDetectionService svc = hermetic();
         svc.setIsWindowsForTest(true);
         svc.setProcessRunnerForTest(cmd -> null);
 
@@ -240,7 +251,7 @@ class CliDetectionServiceTest {
 
     @Test
     void detect_windows_aFailingShimFallsThroughToTheNext() {
-        CliDetectionService svc = new CliDetectionService((Project) null);
+        CliDetectionService svc = hermetic();
         svc.setIsWindowsForTest(true);
         svc.setEnvForTest(Map.of("APPDATA", "C:\\Roaming", "LOCALAPPDATA", "C:\\Local")::get);
         svc.setExecutableCheckForTest(path -> true);
@@ -264,7 +275,7 @@ class CliDetectionServiceTest {
 
     @Test
     void tryPath_unix_noSuffixFallback() {
-        CliDetectionService svc = new CliDetectionService((Project) null);
+        CliDetectionService svc = hermetic();
         svc.setIsWindowsForTest(false);
 
         List<String> attempted = new ArrayList<>();
@@ -280,8 +291,8 @@ class CliDetectionServiceTest {
     }
 
     @Test
-    void tryLoginShellWhich_unix_doesNotInvokeWhereExe() {
-        CliDetectionService svc = new CliDetectionService((Project) null);
+    void tryLoginShellWhich_unix_searchesTheShellPathWithoutStartingAProcess() {
+        CliDetectionService svc = hermetic();
         svc.setIsWindowsForTest(false);
 
         List<String> exes = new ArrayList<>();
@@ -290,11 +301,8 @@ class CliDetectionServiceTest {
             return null;
         });
 
-        svc.tryLoginShellWhich();
-
-        assertFalse(exes.isEmpty(), "Should still attempt the Unix shell lookup");
-        assertFalse(exes.get(0).endsWith("where.exe"),
-                "On Unix the executable must not be where.exe; got: " + exes.get(0));
+        assertNull(svc.tryLoginShellWhich(), "no shell PATH resolved yet, so nothing to search");
+        assertTrue(exes.isEmpty(), "on Unix the shell's PATH is read once per detection, not per lookup: " + exes);
     }
 
     // ---------- Version detection (contract against captured `openspec --version`) ----------
@@ -306,7 +314,7 @@ class CliDetectionServiceTest {
         // 1.3.0 floor. The gate is a floor (>= 1.3.0), never an allowlist/equality, so any future
         // version flows through — the broad no-upper-cap coverage lives in CliVersionAtLeastTest;
         // here it is tied to the actually-detected version.
-        CliDetectionService svc = new CliDetectionService((Project) null);
+        CliDetectionService svc = hermetic();
         svc.setProcessRunnerForTest(cmd -> fixture("1.7.0/version.txt"));
 
         assertTrue(svc.tryPath("openspec"));
@@ -321,7 +329,7 @@ class CliDetectionServiceTest {
         // Only 1.7's bare "1.7.0" is capturable on the installed CLI, but older builds print
         // "openspec vX.Y.Z"; the strip (`(?i)openspec\s*v?`) must reduce that to the numeric version.
         // This exercises the prefix-removal branch the bare-fixture case leaves untouched.
-        CliDetectionService svc = new CliDetectionService((Project) null);
+        CliDetectionService svc = hermetic();
         svc.setProcessRunnerForTest(cmd -> "openspec v1.7.0");
 
         assertTrue(svc.tryPath("openspec"));
@@ -359,7 +367,7 @@ class CliDetectionServiceTest {
 
     @Test
     void staleDetection_picksUpAnUpgradedCli() {
-        CliDetectionService svc = new CliDetectionService((Project) null);
+        CliDetectionService svc = hermetic();
         svc.setIsWindowsForTest(false);
         fakeInstalledCli(svc, "1.12.0");
         svc.detect();
@@ -374,7 +382,7 @@ class CliDetectionServiceTest {
 
     @Test
     void freshDetection_isThrottled_soWindowSwitchingDoesNotRerunTheCli() {
-        CliDetectionService svc = new CliDetectionService((Project) null);
+        CliDetectionService svc = hermetic();
         svc.setIsWindowsForTest(false);
         fakeInstalledCli(svc, "1.12.0");
         svc.detect();
@@ -396,7 +404,7 @@ class CliDetectionServiceTest {
     void aDetectionInProgressNeverReadsAsUnavailable() throws Exception {
         // A re-run must not clear the previous result while it probes: readers (the tool window, validation's
         // CLI-or-fallback choice) would be told the CLI is missing for as long as the probe takes.
-        CliDetectionService svc = new CliDetectionService((Project) null);
+        CliDetectionService svc = hermetic();
         svc.setIsWindowsForTest(false);
         svc.setProcessRunnerForTest(cmd -> cmd.getParametersList().getList().contains("--version") ? "openspec 1.14.3" : null);
         svc.detect();
@@ -426,7 +434,7 @@ class CliDetectionServiceTest {
 
     @Test
     void detectedOnceIsFalseUntilTheFirstDetectionCompletes() {
-        CliDetectionService svc = new CliDetectionService((Project) null);
+        CliDetectionService svc = hermetic();
         svc.setIsWindowsForTest(false);
         svc.setProcessRunnerForTest(cmd -> null);
         assertFalse(svc.isDetectedOnce(), "nothing has been detected yet");
@@ -448,7 +456,7 @@ class CliDetectionServiceTest {
     }
 
     private static CliDetectionService detectWithVersionOutput(String versionOutput) {
-        CliDetectionService svc = new CliDetectionService((Project) null);
+        CliDetectionService svc = hermetic();
         svc.setIsWindowsForTest(false);
         svc.setProcessRunnerForTest(cmd ->
                 cmd.getParametersList().getList().contains("--version") ? versionOutput : null);
@@ -533,7 +541,7 @@ class CliDetectionServiceTest {
     /** A service where every branch before the fixed locations misses, and the probe answers only for {@code hit}. */
     private static CliDetectionService serviceFindingOnly(boolean windows, String hit, String output,
                                                           List<String> probed) {
-        CliDetectionService svc = new CliDetectionService((Project) null);
+        CliDetectionService svc = hermetic();
         svc.setIsWindowsForTest(windows);
         svc.setProcessRunnerForTest(cmd -> {
             if (!cmd.getParametersList().getList().contains("--version")) return null;
@@ -608,7 +616,7 @@ class CliDetectionServiceTest {
     void detect_anExistingInstallStillWinsOverTheStandaloneBinary() {
         String existing = "/usr/local/bin/openspec";
         List<String> probed = new ArrayList<>();
-        CliDetectionService svc = new CliDetectionService((Project) null);
+        CliDetectionService svc = hermetic();
         svc.setIsWindowsForTest(false);
         svc.setProcessRunnerForTest(cmd -> {
             if (!cmd.getParametersList().getList().contains("--version")) return null;
@@ -640,18 +648,21 @@ class CliDetectionServiceTest {
     }
 
     @Test
-    void detect_theFileCheckDoesNotGateTheBareNameOrTheShellPath() {
+    void detect_theFileCheckDoesNotGateTheBareNameButFindsTheShellPathEntry() {
         List<String> probed = new ArrayList<>();
-        CliDetectionService svc = new CliDetectionService((Project) null);
+        CliDetectionService svc = hermetic();
         svc.setIsWindowsForTest(false);
         svc.setProcessRunnerForTest(cmd -> {
             List<String> args = cmd.getParametersList().getList();
-            if (args.contains("which openspec")) return "/custom/bin/openspec";
+            if (args.contains(CliDetectionService.PRINT_PATH)) {
+                return "noise\n" + CliDetectionService.PATH_BEGIN + "/usr/bin:/custom/bin" + CliDetectionService.PATH_END;
+            }
             if (!args.contains("--version")) return null;
             probed.add(cmd.getExePath());
             return cmd.getExePath().equals("/custom/bin/openspec") ? "openspec 1.15.0" : null;
         });
-        svc.setExecutableCheckForTest(path -> false);
+        // Nothing passes the check except the shell PATH's copy; the bare name is probed regardless.
+        svc.setExecutableCheckForTest(path -> path.equals("/custom/bin/openspec"));
 
         svc.detect();
 
@@ -692,7 +703,7 @@ class CliDetectionServiceTest {
     @Test
     void detect_theInstallDirOverrideWinsOverLocalBin() {
         List<String> probed = new ArrayList<>();
-        CliDetectionService svc = new CliDetectionService((Project) null);
+        CliDetectionService svc = hermetic();
         svc.setIsWindowsForTest(false);
         svc.setProcessRunnerForTest(cmd -> {
             if (!cmd.getParametersList().getList().contains("--version")) return null;
@@ -718,11 +729,207 @@ class CliDetectionServiceTest {
                 "the execute bit needs a POSIX file system");
         java.nio.file.Path file = java.nio.file.Files.createFile(dir.resolve("openspec.exe"));
         java.nio.file.Files.setPosixFilePermissions(file, java.nio.file.attribute.PosixFilePermissions.fromString("rw-r--r--"));
-        CliDetectionService svc = new CliDetectionService((Project) null);
+        CliDetectionService svc = hermetic();
 
         svc.setIsWindowsForTest(false);
         assertFalse(svc.executableCheck().test(file.toString()), "Unix needs the execute bit");
         svc.setIsWindowsForTest(true);
         assertTrue(svc.executableCheck().test(file.toString()), "Windows needs only a regular file");
+    }
+
+    // ---------- The interactive login shell's PATH (fixtures/shell/) ----------
+
+    private static String shellFixture(String name) {
+        try (java.io.InputStream is = CliDetectionServiceTest.class.getResourceAsStream("/fixtures/shell/" + name)) {
+            assertNotNull(is, name);
+            return new String(is.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+        } catch (java.io.IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Test
+    void theMarkedPathIsReadFromRealShellOutputIgnoringTheBanner() {
+        for (String name : List.of("zsh-ilc-noisy.txt", "bash-ilc-noisy.txt")) {
+            String raw = shellFixture(name);
+            assertTrue(raw.contains("Welcome back!"), name + " capture precondition: the rc file printed a banner");
+            String path = CliDetectionService.parseMarkedPath(raw);
+            assertNotNull(path, name);
+            assertTrue(path.startsWith("/fixture/home/rcbin:"), name + ": the rc-added entry comes first: " + path);
+            assertFalse(path.contains("Welcome") || path.contains("\n"), name + ": no banner text: " + path);
+        }
+    }
+
+    @Test
+    void aLoginShellThatIsNotInteractiveMissesTheRcEntry() {
+        String path = CliDetectionService.parseMarkedPath(shellFixture("zsh-lc-misses.txt"));
+        assertNotNull(path);
+        assertFalse(path.contains("/fixture/home/rcbin"), "the old -lc flags skip .zshrc: " + path);
+    }
+
+    @Test
+    void markerParsingRejectsIncompleteOutputAndUsesTheLastBegin() {
+        assertNull(CliDetectionService.parseMarkedPath(null));
+        assertNull(CliDetectionService.parseMarkedPath("/usr/bin:/bin"), "no markers, nothing used");
+        assertNull(CliDetectionService.parseMarkedPath(CliDetectionService.PATH_BEGIN + "/usr/bin"), "no end marker");
+        assertNull(CliDetectionService.parseMarkedPath(CliDetectionService.PATH_BEGIN + CliDetectionService.PATH_END), "empty");
+        String echoedEarlier = "echo " + CliDetectionService.PATH_BEGIN + "junk\n"
+                + CliDetectionService.PATH_BEGIN + "/a:/b" + CliDetectionService.PATH_END + "\n";
+        assertEquals("/a:/b", CliDetectionService.parseMarkedPath(echoedEarlier));
+    }
+
+    @Test
+    void shellFlagsFollowTheShellLikeThePlatform() {
+        assertEquals(List.of("-l", "-i", "-c"), CliDetectionService.shellFlags("/bin/zsh"));
+        assertEquals(List.of("-l", "-i", "-c"), CliDetectionService.shellFlags("/usr/bin/bash"));
+        assertEquals(List.of("-l", "-c"), CliDetectionService.shellFlags("/opt/homebrew/bin/fish"));
+        assertEquals(List.of("-i", "-c"), CliDetectionService.shellFlags("/bin/tcsh"));
+        assertEquals(List.of("-i", "-c"), CliDetectionService.shellFlags("/bin/csh"));
+        assertEquals(List.of("-l", "-i", "-c"), CliDetectionService.shellFlags("/usr/local/bin/nu"));
+    }
+
+    @Test
+    void mergeAppendsOnlyMissingEntriesInOrder() {
+        assertEquals("/usr/bin:/bin:/home/me/.nvm/bin:/opt/x",
+                CliDetectionService.mergePath("/usr/bin:/bin", "/home/me/.nvm/bin:/usr/bin:/opt/x"));
+        assertEquals("/a:/b", CliDetectionService.mergePath("/a:/b", "/b:/a"), "nothing missing, unchanged");
+        assertEquals("/a", CliDetectionService.mergePath(null, "/a"));
+        assertEquals("/a", CliDetectionService.mergePath("", "/a"));
+        assertEquals("/a", CliDetectionService.mergePath("/a", null));
+    }
+
+    @Test
+    void detect_unix_runsOneInteractiveShellWithTheReaderEnvAndFindsAnRcOnlyEntry() {
+        List<GeneralCommandLine> shells = new ArrayList<>();
+        List<String> probed = new ArrayList<>();
+        CliDetectionService svc = hermetic();
+        svc.setIsWindowsForTest(false);
+        svc.setEnvForTest(name -> name.equals("SHELL") ? "/bin/zsh" : null);
+        svc.setUserHomeForTest(null);
+        svc.setProcessRunnerForTest(cmd -> {
+            List<String> args = cmd.getParametersList().getList();
+            if (args.contains(CliDetectionService.PRINT_PATH)) {
+                shells.add(cmd);
+                return shellFixture("zsh-ilc-noisy.txt");
+            }
+            if (!args.contains("--version")) return null;
+            probed.add(cmd.getExePath());
+            return cmd.getExePath().equals("/fixture/home/rcbin/openspec") ? "1.15.0" : null;
+        });
+        svc.setExecutableCheckForTest(path -> path.equals("/fixture/home/rcbin/openspec"));
+
+        svc.detect();
+
+        assertEquals(1, shells.size(), "one shell call per detection, no separate which");
+        GeneralCommandLine shell = shells.get(0);
+        assertEquals("/bin/zsh", shell.getExePath());
+        assertEquals(List.of("-l", "-i", "-c", CliDetectionService.PRINT_PATH), shell.getParametersList().getList());
+        assertEquals("true", shell.getEnvironment().get("INTELLIJ_ENVIRONMENT_READER"));
+        assertEquals("true", shell.getEnvironment().get("DISABLE_AUTO_UPDATE"));
+        assertEquals("/fixture/home/rcbin/openspec", svc.getDetectedPath());
+        assertEquals(List.of("openspec", "/fixture/home/rcbin/openspec"), probed, "bare name, then the shell PATH entry");
+    }
+
+    @Test
+    void detect_unix_aShellWithNoMarkersFallsThroughToTheFixedLocations() {
+        CliDetectionService svc = hermetic();
+        svc.setIsWindowsForTest(false);
+        svc.setEnvForTest(name -> null);
+        svc.setUserHomeForTest(null);
+        svc.setProcessRunnerForTest(cmd -> {
+            if (cmd.getParametersList().getList().contains(CliDetectionService.PRINT_PATH)) return "only a banner";
+            return cmd.getExePath().equals("/usr/local/bin/openspec") ? "1.15.0" : null;
+        });
+        svc.setExecutableCheckForTest(path -> path.equals("/usr/local/bin/openspec"));
+
+        svc.detect();
+
+        assertEquals("/usr/local/bin/openspec", svc.getDetectedPath());
+        assertNull(svc.getLoginShellPath(), "unmarked output is never used as a PATH");
+    }
+
+    @Test
+    void detect_unix_theIdePathComesAfterSettingsAndBeforeAnyShellOrBareProbe() {
+        List<String> order = new ArrayList<>();
+        List<String> lookedUp = new ArrayList<>();
+        CliDetectionService svc = new CliDetectionService((Project) null);
+        svc.setIsWindowsForTest(false);
+        svc.setIdePathForTest(name -> {
+            lookedUp.add(name);
+            return new java.io.File("/home/me/.nvm/versions/node/v22/bin/openspec");
+        }, () -> "/usr/bin");
+        svc.setProcessRunnerForTest(cmd -> {
+            List<String> args = cmd.getParametersList().getList();
+            order.add(args.contains(CliDetectionService.PRINT_PATH) ? "shell" : cmd.getExePath());
+            return args.contains("--version") && cmd.getExePath().contains(".nvm") ? "1.15.0" : null;
+        });
+
+        svc.detect();
+
+        assertEquals(List.of("openspec"), lookedUp);
+        assertEquals("/home/me/.nvm/versions/node/v22/bin/openspec", svc.getDetectedPath());
+        assertEquals(List.of("shell", "/home/me/.nvm/versions/node/v22/bin/openspec"), order,
+                "the IDE PATH hit is probed by its absolute path, before the bare name");
+    }
+
+    @Test
+    void detect_unix_anIdePathMissGoesOnToTheBareName() {
+        List<String> probed = new ArrayList<>();
+        CliDetectionService svc = hermetic();
+        svc.setIsWindowsForTest(false);
+        svc.setProcessRunnerForTest(cmd -> {
+            if (!cmd.getParametersList().getList().contains("--version")) return null;
+            probed.add(cmd.getExePath());
+            return "1.15.0";
+        });
+
+        svc.detect();
+
+        assertEquals(List.of("openspec"), probed);
+    }
+
+    @Test
+    void detect_windows_neverAsksTheIdePathOrStartsAShell() {
+        List<String> lookedUp = new ArrayList<>();
+        List<String> exes = new ArrayList<>();
+        CliDetectionService svc = new CliDetectionService((Project) null);
+        svc.setIsWindowsForTest(true);
+        svc.setEnvForTest(name -> null);
+        svc.setIdePathForTest(name -> {
+            lookedUp.add(name);
+            return null;
+        }, () -> "");
+        svc.setProcessRunnerForTest(cmd -> {
+            exes.add(cmd.getExePath());
+            return null;
+        });
+
+        svc.detect();
+
+        assertTrue(lookedUp.isEmpty(), "Windows keeps where.exe and the suffix fallback");
+        assertTrue(exes.stream().noneMatch(e -> e.contains("zsh") || e.contains("bash") || e.endsWith("sh")), exes.toString());
+        assertTrue(exes.contains("where.exe"));
+    }
+
+    @Test
+    void cliRunsKeepTheirPathAndGainOnlyMissingShellEntries() {
+        CliDetectionService svc = hermetic();
+        svc.setIsWindowsForTest(false);
+        svc.setEnvForTest(name -> null);
+        svc.setUserHomeForTest(null);
+        svc.setProcessRunnerForTest(cmd -> cmd.getParametersList().getList().contains(CliDetectionService.PRINT_PATH)
+                ? CliDetectionService.PATH_BEGIN + "/home/me/.nvm/bin:/usr/bin" + CliDetectionService.PATH_END : null);
+        svc.detect();
+        svc.setIdePathForTest(name -> null, () -> "/opt/homebrew/bin:/usr/bin");
+
+        GeneralCommandLine inherits = new GeneralCommandLine("openspec");
+        svc.applyLoginShellPath(inherits);
+        assertEquals("/opt/homebrew/bin:/usr/bin:/home/me/.nvm/bin", inherits.getEnvironment().get("PATH"),
+                "the IDE's PATH first, then only what it lacked");
+
+        GeneralCommandLine ownPath = new GeneralCommandLine("openspec");
+        ownPath.getEnvironment().put("PATH", "/home/me/.nvm/bin:/usr/bin");
+        svc.applyLoginShellPath(ownPath);
+        assertEquals("/home/me/.nvm/bin:/usr/bin", ownPath.getEnvironment().get("PATH"), "nothing missing, unchanged");
     }
 }
