@@ -231,6 +231,49 @@ public final class AiToolRegistry {
             Map.entry("rovodev", new ToolGuidance("terminal", "Paste into Rovo Dev CLI", null, true))
     );
 
+    /**
+     * The explore command file OpenSpec writes for each tool with a command adapter, when {@code delivery} isn't
+     * {@code skills}. The layout follows no single rule (roots, {@code prompts} vs {@code commands}, {@code opsx/x}
+     * vs {@code opsx-x}, four extensions), so it is listed as captured from {@code openspec init}; the contract test
+     * against the captured listings catches a path that moves.
+     */
+    private static final Map<String, String> EXPLORE_COMMAND_PATHS = Map.ofEntries(
+            Map.entry("amazon-q", ".amazonq/prompts/opsx-explore.md"),
+            Map.entry("antigravity", ".agents/workflows/opsx-explore.md"),
+            Map.entry("atomcode", ".atomcode/commands/opsx-explore.md"),
+            Map.entry("auggie", ".augment/commands/opsx-explore.md"),
+            Map.entry("bob", ".bob/commands/opsx-explore.md"),
+            Map.entry("claude", ".claude/commands/opsx/explore.md"),
+            Map.entry("cline", ".clinerules/workflows/opsx-explore.md"),
+            Map.entry("command-code", ".commandcode/commands/opsx-explore.md"),
+            Map.entry("devin", ".devin/workflows/opsx-explore.md"),
+            Map.entry("codebuddy", ".codebuddy/commands/opsx/explore.md"),
+            Map.entry("codestudio", ".codestudio/prompts/opsx-explore.prompt.md"),
+            Map.entry("continue", ".continue/prompts/opsx-explore.prompt"),
+            Map.entry("costrict", ".cospec/openspec/commands/opsx-explore.md"),
+            Map.entry("crush", ".crush/commands/opsx/explore.md"),
+            Map.entry("cursor", ".cursor/commands/opsx-explore.md"),
+            Map.entry("easycode", ".easycode/commands/opsx/explore.toml"),
+            Map.entry("factory", ".factory/commands/opsx-explore.md"),
+            Map.entry("gemini", ".gemini/commands/opsx/explore.toml"),
+            Map.entry("github-copilot", ".github/prompts/opsx-explore.prompt.md"),
+            Map.entry("gigacode", ".gigacode/commands/opsx-explore.md"),
+            Map.entry("iflow", ".iflow/commands/opsx-explore.md"),
+            Map.entry("junie", ".junie/commands/opsx-explore.md"),
+            Map.entry("kilocode", ".kilo/command/opsx-explore.md"),
+            Map.entry("kiro", ".kiro/prompts/opsx-explore.prompt.md"),
+            Map.entry("lingma", ".lingma/commands/opsx/explore.md"),
+            Map.entry("oh-my-pi", ".omp/commands/opsx-explore.md"),
+            Map.entry("opencode", ".opencode/commands/opsx-explore.md"),
+            Map.entry("pi", ".pi/prompts/opsx-explore.md"),
+            Map.entry("codeassistant", ".codeassistant/commands/opsx-explore.md"),
+            Map.entry("qoder", ".qoder/commands/opsx/explore.md"),
+            Map.entry("qwen", ".qwen/commands/opsx-explore.md"),
+            Map.entry("roocode", ".roo/commands/opsx-explore.md"),
+            Map.entry("trae", ".trae/commands/opsx-explore.md"),
+            Map.entry("zcode", ".zcode/commands/opsx/explore.md")
+    );
+
     private static final Map<String, AiTool> BY_ID = new LinkedHashMap<>();
     private static final Map<String, AiTool> BY_NAME = new HashMap<>();
 
@@ -300,6 +343,16 @@ public final class AiToolRegistry {
 
     private static boolean sharesRoot(AiTool tool) {
         return TOOLS.stream().filter(t -> Objects.equals(t.skillsDir(), tool.skillsDir())).count() > 1;
+    }
+
+    /** The explore skill OpenSpec writes into the project for this tool, or {@code null} for a global-only tool. */
+    public static @Nullable String exploreSkillPath(AiTool tool) {
+        return tool.skillsDir() == null ? null : tool.skillsDir() + "/skills/openspec-explore/SKILL.md";
+    }
+
+    /** The explore command file OpenSpec writes for this tool, or {@code null} when it has no command adapter. */
+    public static @Nullable String exploreCommandPath(AiTool tool) {
+        return EXPLORE_COMMAND_PATHS.get(tool.id());
     }
 
     /** A path whose last segment has no extension (a leading dot doesn't count): {@code .amp}, not {@code WARP.md}. */

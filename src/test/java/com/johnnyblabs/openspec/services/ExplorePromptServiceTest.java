@@ -27,6 +27,8 @@ class ExplorePromptServiceTest {
     @BeforeEach
     void setUp() {
         service = new ExplorePromptService(project);
+        // Every tool, as the lookup ends with, without Settings or detection; the order has its own tests.
+        service.setCandidateToolsForTest(AiToolRegistry::all);
     }
 
     @Nested

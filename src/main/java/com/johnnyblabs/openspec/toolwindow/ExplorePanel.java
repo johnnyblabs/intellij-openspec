@@ -11,6 +11,8 @@ import com.intellij.ui.components.JBScrollPane;
 import com.intellij.ui.components.JBTextArea;
 import com.intellij.util.ui.JBUI;
 import com.johnnyblabs.openspec.actions.ExploreContextAction;
+import com.johnnyblabs.openspec.services.ExplorePromptService.Instructions;
+import com.johnnyblabs.openspec.services.WorkflowProfileService;
 import com.johnnyblabs.openspec.util.MarkdownHtmlRenderer;
 import com.johnnyblabs.openspec.util.OpenSpecNotifier;
 import org.jetbrains.annotations.TestOnly;
@@ -32,9 +34,16 @@ import java.awt.event.KeyEvent;
  */
 public class ExplorePanel extends JPanel implements Disposable {
 
+    /** Said wherever Explore had to use the plugin's own instructions instead of the project's generated ones. */
+    public static final String BUILT_IN_DEFAULT_NOTE = "No generated explore instructions were found, so the plugin's "
+            + "built-in default was used. Update OpenSpec\u2026 generates them for your AI tool.";
+    static final String EXPLORE_DISABLED_NOTICE = "Explore isn't in your workflow profile. Change it in Settings "
+            + "\u2192 Tools \u2192 OpenSpec \u2192 Config Profile.";
+
     private final Project project;
     private final JEditorPane responsePane;
     private final JBLabel topicLabel;
+    private final JBLabel sourceLabel;
     private final JBTextArea inputArea;
     private final JButton sendButton;
     private final JButton copyButton;
@@ -66,9 +75,19 @@ public class ExplorePanel extends JPanel implements Disposable {
         topicLabel.setBorder(JBUI.Borders.empty(6, 4, 4, 4));
         topicLabel.setVisible(false);
 
+        // --- Instructions source (muted, under the topic) ---
+        sourceLabel = new JBLabel();
+        sourceLabel.setForeground(JBColor.GRAY);
+        sourceLabel.setBorder(JBUI.Borders.empty(0, 4, 4, 4));
+        sourceLabel.setVisible(false);
+
+        JPanel headerPanel = new JPanel(new BorderLayout());
+        headerPanel.add(topicLabel, BorderLayout.NORTH);
+        headerPanel.add(sourceLabel, BorderLayout.SOUTH);
+
         JPanel topPanel = new JPanel(new BorderLayout());
         topPanel.add(toolbar, BorderLayout.NORTH);
-        topPanel.add(topicLabel, BorderLayout.SOUTH);
+        topPanel.add(headerPanel, BorderLayout.SOUTH);
 
         // --- Response area (CENTER) ---
         responsePane = new JEditorPane();
@@ -138,6 +157,12 @@ public class ExplorePanel extends JPanel implements Disposable {
      */
     private void submitTopic() {
         String topic = inputArea.getText() == null ? "" : inputArea.getText().trim();
+        WorkflowProfileService profile = project.getService(WorkflowProfileService.class);
+        if (profile != null && !profile.isWorkflowEnabled("explore")) {
+            // The menu action is disabled for this profile; the tab's Send follows the same rule.
+            showNotice(topic, EXPLORE_DISABLED_NOTICE);
+            return;
+        }
         setInputEnabled(false);
         ExploreContextAction.runExploreDirect(project, topic);
     }
@@ -229,6 +254,21 @@ public class ExplorePanel extends JPanel implements Disposable {
         });
     }
 
+    /**
+     * Names where the explore instructions came from, under the topic: the generated file, or the built-in default
+     * with how to get the generated ones.
+     */
+    public void setInstructionsSource(Instructions instructions) {
+        String text = instructions.isBuiltInDefault()
+                ? "Instructions: built-in default. " + BUILT_IN_DEFAULT_NOTE
+                : "Instructions: " + instructions.sourcePath();
+        SwingUtilities.invokeLater(() -> {
+            sourceLabel.setText(text);
+            sourceLabel.setToolTipText(text);
+            sourceLabel.setVisible(true);
+        });
+    }
+
     /** Re-enables the input once a request has ended, whatever the outcome. Call on the EDT. */
     public void restoreInput() {
         setInputEnabled(true);
@@ -253,6 +293,7 @@ public class ExplorePanel extends JPanel implements Disposable {
         lastResponse = null;
         inputArea.setText("");
         topicLabel.setVisible(false);
+        sourceLabel.setVisible(false);
         copyButton.setEnabled(false);
         showInvitation();
         setInputEnabled(true);
@@ -295,6 +336,11 @@ public class ExplorePanel extends JPanel implements Disposable {
     @TestOnly
     public String responseTextForTest() {
         return responsePane.getText();
+    }
+
+    @TestOnly
+    public String sourceTextForTest() {
+        return sourceLabel.isVisible() ? sourceLabel.getText() : "";
     }
 
     @TestOnly
