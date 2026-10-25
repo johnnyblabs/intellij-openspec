@@ -158,6 +158,11 @@ if you collapse it, it stays collapsed when the tree refreshes.
 - **Without the CLI.** Selecting a change or one of its artifacts shows a placeholder saying the
   consolidated deltas need the CLI, still with the header and the open-in-editor link. Delta-spec
   files still preview without the CLI.
+- **When the CLI can't read a change.** If the CLI is installed but rejects the change, the pane says
+  **Can't read this change** and quotes the CLI's reason. That happens for a change with no
+  `proposal.md` yet, a renamed or deleted change folder, or a CLI that timed out. It doesn't tell you
+  to install the CLI. The result isn't cached, so selecting the change again after fixing it shows its
+  deltas.
 - **On-model.** The pane renders the delta set the CLI reports, or your own delta-spec markdown. It
   does not synthesize a post-apply "effective" spec, and it does not score or show per-spec/per-delta
   status, progress, or coverage; change-owned state follows the OpenSpec CLI: delta assembly comes

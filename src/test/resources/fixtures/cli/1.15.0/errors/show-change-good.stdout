@@ -1,0 +1,10 @@
+{
+  "id": "good",
+  "title": "good",
+  "deltaCount": 0,
+  "deltas": [],
+  "root": {
+    "path": "/fixture/proj",
+    "source": "nearest"
+  }
+}

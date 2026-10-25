@@ -24,7 +24,6 @@ import com.intellij.openapi.Disposable;
 import com.intellij.util.Alarm;
 import com.johnnyblabs.openspec.ai.AiConfigListener;
 import com.johnnyblabs.openspec.model.ChangeDeltaModel;
-import com.johnnyblabs.openspec.util.CliJson;
 import com.johnnyblabs.openspec.util.CliRunner;
 import com.johnnyblabs.openspec.util.MarkdownHtmlRenderer;
 import com.johnnyblabs.openspec.actions.CreateDeltaSpecAction;
@@ -251,6 +250,7 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
     static final String PREVIEW_CHANGE_DELTAS_BADGED_NAME = "OpenSpec preview change deltas badged";
     // The CLI-unavailable placeholder, distinct from the empty state so the two can be told apart.
     static final String PREVIEW_CLI_UNAVAILABLE_NAME = "OpenSpec preview needs CLI";
+    static final String PREVIEW_CLI_REJECTED_NAME = "OpenSpec preview: CLI could not read the change";
 
     // Bumped on the EDT for every selection; a completed off-EDT render only applies if its
     // token is still current, so a slow render of an earlier selection can't overwrite a newer one.
@@ -357,9 +357,10 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
      * Renders the consolidated deltas for a change node. Runs off the EDT (this method is invoked on
      * the {@code previewAlarm} pooled thread), generation-guarded like every preview path. Serves a
      * per-change cache first; otherwise spawns {@code openspec show <name> --type change --json},
-     * parses stdout only (stderr carries a spurious flag warning on success), and renders. A missing
-     * CLI or a failed/thrown call yields the DISTINCT cli-unavailable placeholder, never the
-     * no-deltas empty state.
+     * parses stdout only (stderr carries a spurious flag warning on success), and renders. A CLI that
+     * isn't there or can't start yields the cli-unavailable placeholder; a CLI that ran but couldn't
+     * read the change yields the cli-rejected placeholder with its reason, never cached. Neither is
+     * the no-deltas empty state.
      */
     private void renderChangeDeltasPreview(PreviewSelection selection, int generation) {
         String name = selection.changeName();
@@ -383,27 +384,39 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
             return;
         }
 
-        String fragment;
+        SpecPreviewRenderer.ChangeShowOutcome outcome;
         try {
-            CliRunner.CliResult result = CliRunner.run(project, ChangeDeltaModel.changeShowArgs(name));
-            if (!result.isSuccess()) {
-                LOG.debug("openspec show failed for change " + name + ": exit " + result.exitCode());
-                applyCliUnavailable(generation, changeDir, name, openLink);
-                return;
-            }
-            // stdout ONLY — a successful change-show still prints "Ignoring flags not applicable to
-            // change: scenarios" to stderr; that is not a failure and must not blank the pane.
-            ChangeDeltaModel model = ChangeDeltaModel.parse(CliJson.extractJsonPayload(result.stdout()));
-            fragment = SpecPreviewRenderer.renderChangeDeltas(model);
-        } catch (Exception ex) {
-            LOG.debug("Failed to render change deltas for " + name, ex);
+            outcome = SpecPreviewRenderer.changeShowOutcome(name,
+                    CliRunner.run(project, ChangeDeltaModel.changeShowArgs(name)));
+        } catch (CliRunner.CliException ex) {
+            LOG.debug("openspec show could not run for change " + name, ex);
+            outcome = SpecPreviewRenderer.changeShowOutcome(name, ex);
+        } catch (com.intellij.openapi.progress.ProcessCanceledException ex) {
+            throw ex;
+        } catch (RuntimeException ex) {
+            // Building the command line can fail before anything runs; never leave the pane on the old selection.
+            LOG.debug("openspec show could not start for change " + name, ex);
             applyCliUnavailable(generation, changeDir, name, openLink);
             return;
         }
+        switch (outcome.kind()) {
+            case UNAVAILABLE -> {
+                applyCliUnavailable(generation, changeDir, name, openLink);
+                return;
+            }
+            case REJECTED -> {
+                // Not cached: the user may fix the change (write its proposal, restore its directory) and reselect.
+                applyCliRejected(generation, changeDir, SpecPreviewRenderer.withOpenLink(outcome.fragment(), openLink));
+                return;
+            }
+            case DELTAS -> {
+            }
+        }
+        String fragment = outcome.fragment();
 
         // Only cache if no invalidation raced in during the CLI call — otherwise this now-stale
         // fragment would repopulate a just-cleared cache and be served on the next re-selection.
-        if (cacheEpoch == epochAtStart) {
+        if (outcome.cacheable() && cacheEpoch == epochAtStart) {
             changeDeltasCache.put(name, fragment);
         }
         applyChangeDeltas(generation, SpecPreviewRenderer.withOpenLink(fragment, openLink), changeDir);
@@ -430,6 +443,16 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
         VirtualFile file = LocalFileSystem.getInstance().findFileByPath(openFilePath);
         if (file == null || !file.isValid() || file.isDirectory()) return null;
         return openFilePath.substring(changeDir.length() + 1);
+    }
+
+    private void applyCliRejected(int generation, String changeDir, String fragment) {
+        applyIfCurrent(generation, () -> {
+            String css = MarkdownHtmlRenderer.buildThemeStylesheet() + DeltaBadgeDecorator.badgeCss() + SpecPreviewRenderer.paneCss();
+            previewPane.setText(MarkdownHtmlRenderer.wrapInHtml(css, fragment));
+            previewPane.setCaretPosition(0);
+            deltasChangeDir = changeDir;
+            previewPane.getAccessibleContext().setAccessibleName(PREVIEW_CLI_REJECTED_NAME);
+        });
     }
 
     private void applyCliUnavailable(int generation, String changeDir, String changeName, String openLink) {

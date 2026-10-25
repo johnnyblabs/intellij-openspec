@@ -1,0 +1,9 @@
+{
+  "status": [
+    {
+      "severity": "error",
+      "code": "show_error",
+      "message": "Change \"nosuch\" not found at /fixture/proj/openspec/changes/nosuch/proposal.md"
+    }
+  ]
+}

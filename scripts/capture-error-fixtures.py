@@ -138,6 +138,12 @@ def main() -> None:
         # Item and change errors inside a root.
         cap.case("validate-unknown", proj, "validate", "nosuch", "--json")
         cap.case("show-error", proj, "show", "noproposal", "--json")
+        # The Browse preview's exact args (ChangeDeltaModel.changeShowArgs): a renamed or deleted change, and a change
+        # with no proposal yet.
+        cap.case("show-change-missing", proj, "show", "nosuch", "--type", "change", "--json")
+        cap.case("show-change-noproposal", proj, "show", "noproposal", "--type", "change", "--json")
+        # A successful show, for its stderr: 1.3-1.5 print a flags warning there even on success.
+        cap.case("show-change-good", proj, "show", "good", "--type", "change", "--json")
         cap.case("status-unknown", proj, "status", "--change", "nosuch", "--json")
         cap.case("status-badyaml", proj, "status", "--change", "badyaml", "--json")
         cap.case("instructions-unknown-artifact", proj, "instructions", "bogusart", "--change", "good", "--json")

@@ -54,7 +54,7 @@ public final class CliRunner {
 
             if (!process.waitFor(timeoutMs, TimeUnit.MILLISECONDS)) {
                 process.destroyForcibly();
-                throw new CliException("OpenSpec CLI command timed out after " + (timeoutMs / 1000) + "s");
+                throw CliException.timeout("OpenSpec CLI command timed out after " + (timeoutMs / 1000) + "s");
             }
 
             return capturedResult(process.exitValue(), stdoutFuture.join(), stderrFuture.join());
@@ -123,12 +123,29 @@ public final class CliRunner {
     }
 
     public static class CliException extends Exception {
+        private final boolean timedOut;
+
         public CliException(String message) {
-            super(message);
+            this(message, null, false);
         }
 
         public CliException(String message, Throwable cause) {
+            this(message, cause, false);
+        }
+
+        private CliException(String message, Throwable cause, boolean timedOut) {
             super(message, cause);
+            this.timedOut = timedOut;
+        }
+
+        /** The CLI started but didn't finish within the timeout, as opposed to not running at all. */
+        public static CliException timeout(String message) {
+            return new CliException(message, null, true);
+        }
+
+        /** Whether the CLI started but was stopped for taking too long. */
+        public boolean timedOut() {
+            return timedOut;
         }
     }
 }
