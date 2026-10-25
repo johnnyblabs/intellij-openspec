@@ -13,6 +13,10 @@
 
 ### Changed
 
+- **Explore uses the instructions OpenSpec generated for your AI tool.** Explore used to read only Claude's explore skill, and quietly used a shorter built-in copy for every other tool. It now finds the explore skill or command OpenSpec generated for your tool (your preferred tool in Settings first), including Cursor, Junie, Codex, Gemini and Copilot, and setups that generate only commands. So its suggestions, like how to start a change, match your tool and profile. The Explore tab shows which file it used. If none is found, you're told the built-in default was used and that **Update OpenSpec…** generates the real one.
+- **Explore over Direct API no longer acts as if it can run commands.** The model is told it can't run commands, read files or write anything, so it works from the project context the plugin sends and points you to **Propose** to capture a change.
+- **Explore follows your workflow profile in the Explore tab too.** When Explore isn't in your profile, the tab's Send says so instead of sending. Editor Tab delivery opens the prompt in an unsaved tab instead of writing a temporary file.
+
 - **Install hints now lead with OpenSpec's standalone installer, which needs no Node.js.** Wherever the plugin says how to install the OpenSpec CLI (the CLI-not-found notification, the setup wizard, Manage AI Tools, Settings), it shows OpenSpec's one-line installer for your OS first, then npm and Homebrew, with an **Install instructions** link to OpenSpec's installation page. The docs explain where each route installs, which copy the plugin uses, and why to keep just one.
 
 ### Fixed

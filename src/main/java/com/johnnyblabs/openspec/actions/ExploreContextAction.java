@@ -2,19 +2,25 @@ package com.johnnyblabs.openspec.actions;
 
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.fileEditor.OpenFileDescriptor;
 import com.intellij.openapi.ide.CopyPasteManager;
 import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
+import com.intellij.testFramework.LightVirtualFile;
 import com.johnnyblabs.openspec.ai.AiApiException;
 import com.johnnyblabs.openspec.ai.DeliveryMode;
 import com.johnnyblabs.openspec.ai.DirectApiService;
 import com.johnnyblabs.openspec.dialogs.ExploreTopicDialog;
 import com.johnnyblabs.openspec.services.DeliveryMethodResolver;
 import com.johnnyblabs.openspec.services.ExplorePromptService;
+import com.johnnyblabs.openspec.services.ExplorePromptService.Delivery;
+import com.johnnyblabs.openspec.services.ExplorePromptService.Instructions;
+import com.johnnyblabs.openspec.services.ExplorePromptService.Prompt;
 import com.johnnyblabs.openspec.toolwindow.ExplorePanel;
 import com.johnnyblabs.openspec.toolwindow.ExplorePanelService;
 import com.johnnyblabs.openspec.util.OpenSpecNotifier;
@@ -23,10 +29,6 @@ import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.TestOnly;
 
 import java.awt.datatransfer.StringSelection;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 
 /**
  * Explore action aligned with the OpenSpec explore workflow.
@@ -41,6 +43,7 @@ public class ExploreContextAction extends OpenSpecBaseAction {
             + "clipboard. Paste it into your AI tool, or configure a provider in Settings \u2192 Tools \u2192 OpenSpec "
             + "\u2192 Direct API.";
     static final String CANCELLED_NOTICE = "Cancelled.";
+    static final String EDITOR_TAB_FILE_NAME = "openspec-explore-prompt.md";
 
     /** The Direct API call behind Explore; replaced in tests, because {@link DirectApiService} is final. */
     public interface RawRequest {
@@ -147,8 +150,7 @@ public class ExploreContextAction extends OpenSpecBaseAction {
         ExplorePromptService promptService = project.getService(ExplorePromptService.class);
         if (promptService == null) return;
 
-        String prompt = promptService.buildPrompt(topic);
-        deliverDirectApi(project, prompt, topic);
+        deliverDirectApi(project, promptService, topic);
     }
 
     /**
@@ -158,75 +160,75 @@ public class ExploreContextAction extends OpenSpecBaseAction {
         ExplorePromptService promptService = project.getService(ExplorePromptService.class);
         if (promptService == null) return;
 
-        String prompt = promptService.buildPrompt(topic);
-
         DeliveryMethodResolver resolver = project.getService(DeliveryMethodResolver.class);
         DeliveryMethodResolver.ResolvedMethod resolved = resolver != null
                 ? resolver.resolve()
                 : new DeliveryMethodResolver.ResolvedMethod(DeliveryMode.CLIPBOARD, "Copy to Clipboard");
 
         switch (resolved.mode()) {
-            case CLIPBOARD -> deliverClipboard(project, prompt);
-            case EDITOR_TAB -> deliverEditorTab(project, prompt);
-            case DIRECT_API -> deliverDirectApi(project, prompt, topic);
+            case CLIPBOARD -> deliverClipboard(project, promptService.build(topic, Delivery.AGENT));
+            case EDITOR_TAB -> deliverEditorTab(project, promptService.build(topic, Delivery.AGENT));
+            case DIRECT_API -> deliverDirectApi(project, promptService, topic);
         }
+    }
+
+    /** Appended to a delivery's message: which file the instructions came from, or that the default was used. */
+    static String sourceNote(Instructions instructions) {
+        return instructions.isBuiltInDefault()
+                ? " " + ExplorePanel.BUILT_IN_DEFAULT_NOTE
+                : " Instructions: " + instructions.sourcePath() + ".";
     }
 
     private static void copyToClipboard(String prompt) {
         CopyPasteManager.getInstance().setContents(new StringSelection(prompt));
     }
 
-    private static void deliverClipboard(@NotNull Project project, String prompt) {
-        copyToClipboard(prompt);
+    private static void deliverClipboard(@NotNull Project project, Prompt prompt) {
+        copyToClipboard(prompt.text());
         OpenSpecNotifier.info(project, "Explore",
-                "Explore prompt copied \u2014 paste into your AI tool to start exploring.");
+                "Explore prompt copied \u2014 paste into your AI tool to start exploring."
+                        + sourceNote(prompt.instructions()));
     }
 
-    private static void deliverEditorTab(@NotNull Project project, String prompt) {
-        ApplicationManager.getApplication().executeOnPooledThread(() -> {
-            try {
-                Path tmpFile = Path.of(System.getProperty("java.io.tmpdir"),
-                        "openspec-explore-prompt.md");
-                Files.writeString(tmpFile, prompt, StandardCharsets.UTF_8);
-
-                // VFS refresh on pooled thread — only editor open needs EDT
-                var vf = com.intellij.openapi.vfs.LocalFileSystem.getInstance()
-                        .refreshAndFindFileByNioFile(tmpFile);
-                if (vf != null) {
-                    ApplicationManager.getApplication().invokeLater(() -> {
-                        new com.intellij.openapi.fileEditor.OpenFileDescriptor(project, vf).navigate(true);
-                    });
-                }
-            } catch (IOException ex) {
-                OpenSpecNotifier.warn(project, "Explore",
-                        "Failed to create explore prompt file: " + ex.getMessage());
+    /** Opens the prompt in an in-memory editor tab, so nothing is written to disk or shared between projects. */
+    private static void deliverEditorTab(@NotNull Project project, Prompt prompt) {
+        LightVirtualFile file = new LightVirtualFile(EDITOR_TAB_FILE_NAME, prompt.text());
+        ApplicationManager.getApplication().invokeLater(() -> {
+            new OpenFileDescriptor(project, file).navigate(true);
+            if (prompt.instructions().isBuiltInDefault()) {
+                OpenSpecNotifier.info(project, "Explore", ExplorePanel.BUILT_IN_DEFAULT_NOTE);
             }
-        });
+        }, ModalityState.nonModal(), project.getDisposed());
     }
 
-    private static void deliverDirectApi(@NotNull Project project, String prompt, String topic) {
+    private static void deliverDirectApi(@NotNull Project project, ExplorePromptService promptService, String topic) {
         RawRequest request = rawRequest(project);
         ExplorePanelService panelService = project.getService(ExplorePanelService.class);
 
         if (request == null || !request.isConfigured()) {
-            copyToClipboard(prompt);
+            // The clipboard goes to an agent, which has tools: copy the agent prompt, without the Direct API preamble.
+            Prompt prompt = promptService.build(topic, Delivery.AGENT);
+            copyToClipboard(prompt.text());
             ExplorePanel existing = panelService != null ? panelService.getExplorePanel() : null;
             if (existing != null) {
                 // The user is looking at the panel; say it there and give the input back.
+                existing.setInstructionsSource(prompt.instructions());
                 existing.showNotice(topic, NO_PROVIDER_NOTICE);
             } else {
-                OpenSpecNotifier.info(project, "Explore", NO_PROVIDER_NOTICE);
+                OpenSpecNotifier.info(project, "Explore", NO_PROVIDER_NOTICE + sourceNote(prompt.instructions()));
             }
             return;
         }
 
+        Prompt prompt = promptService.build(topic, Delivery.DIRECT_API);
         // Show loading state in Explore panel
         ExplorePanel panel = panelService != null ? panelService.getAndActivate() : null;
         if (panel != null) {
+            panel.setInstructionsSource(prompt.instructions());
             panel.showLoading(topic);
         }
 
-        ProgressManager.getInstance().run(newExploreTask(project, request, panelService, prompt, topic));
+        ProgressManager.getInstance().run(newExploreTask(project, request, panelService, prompt.text(), topic));
     }
 
     /** The background request behind the Explore panel; package-private so tests can run it directly. */

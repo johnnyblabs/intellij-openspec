@@ -131,7 +131,7 @@
             <action id="OpenSpec.Explore"
                     class="com.johnnyblabs.openspec.actions.ExploreContextAction"
                     text="Explore..."
-                    description="Copy project context to clipboard for AI-assisted exploration"/>
+                    description="Explore an idea with your AI tool or Direct API"/>
             <action id="OpenSpec.Continue"
                     class="com.johnnyblabs.openspec.actions.OpenSpecContinueAction"
                     text="Continue"

@@ -13,15 +13,25 @@ import com.intellij.testFramework.PlatformTestUtil;
 import com.intellij.testFramework.fixtures.BasePlatformTestCase;
 import com.johnnyblabs.openspec.ai.AiApiException;
 import com.johnnyblabs.openspec.services.ExplorePromptService;
+import com.johnnyblabs.openspec.services.WorkflowProfileService;
+import com.intellij.testFramework.ServiceContainerUtil;
 import com.johnnyblabs.openspec.settings.OpenSpecSettings;
 import com.johnnyblabs.openspec.toolwindow.ExplorePanel;
 import com.johnnyblabs.openspec.toolwindow.ExplorePanelService;
 import org.jetbrains.annotations.NotNull;
 
 import java.awt.datatransfer.DataFlavor;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.awt.datatransfer.StringSelection;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * Drives the real Explore panel's Send button through {@link ExploreContextAction}'s Direct API path. Every way a
@@ -37,6 +47,8 @@ public class ExploreDirectApiPanelTest extends BasePlatformTestCase {
     private ExplorePanelService panelService;
     private ExplorePanel panel;
     private String savedProvider;
+    private String savedPreferredTool;
+    private WorkflowProfileService profile;
 
     @Override
     protected void setUp() throws Exception {
@@ -52,6 +64,11 @@ public class ExploreDirectApiPanelTest extends BasePlatformTestCase {
         // A light test has no OpenSpec tool window, and getAndActivate() finds the panel through it.
         ToolWindowManager.getInstance(getProject()).registerToolWindow(RegisterToolWindowTask.notClosable(TOOL_WINDOW_ID));
         savedProvider = OpenSpecSettings.getInstance(getProject()).getAiProvider();
+        savedPreferredTool = OpenSpecSettings.getInstance(getProject()).getPreferredTool();
+        // The real profile service asks the machine's CLI; the tests decide whether explore is enabled.
+        profile = mock(WorkflowProfileService.class);
+        when(profile.isWorkflowEnabled(anyString())).thenReturn(true);
+        ServiceContainerUtil.replaceService(getProject(), WorkflowProfileService.class, profile, getTestRootDisposable());
         CopyPasteManager.getInstance().setContents(new StringSelection(SENTINEL));
 
         panelService = getProject().getService(ExplorePanelService.class);
@@ -66,6 +83,8 @@ public class ExploreDirectApiPanelTest extends BasePlatformTestCase {
             panelService.register(null);
             panel.dispose();
             OpenSpecSettings.getInstance(getProject()).setAiProvider(savedProvider);
+            OpenSpecSettings.getInstance(getProject()).setPreferredTool(savedPreferredTool);
+            deleteUnderBase(".cursor");
             ToolWindowManager.getInstance(getProject()).unregisterToolWindow(TOOL_WINDOW_ID);
         } catch (Throwable e) {
             addSuppressedException(e);
@@ -149,6 +168,69 @@ public class ExploreDirectApiPanelTest extends BasePlatformTestCase {
         assertTrue(contents().toString(), raised.isEmpty());
     }
 
+    public void testDirectApiSendsThePreambleAndNamesTheInstructionsFile() throws Exception {
+        writeUnderBase(".cursor/commands/opsx-explore.md", "cursor-command.md");
+        OpenSpecSettings.getInstance(getProject()).setPreferredTool("Cursor");
+        AtomicReference<String> sent = new AtomicReference<>();
+        ExploreContextAction.setRawRequestForTest(request(prompt -> {
+            sent.set(prompt);
+            return "ok";
+        }));
+
+        send();
+
+        assertTrue(sent.get().substring(0, 60), sent.get().startsWith(ExplorePromptService.DIRECT_API_PREAMBLE));
+        assertTrue("the Cursor command's own handoff was sent", sent.get().contains("`/opsx-propose`"));
+        assertEquals("Instructions: .cursor/commands/opsx-explore.md", panel.sourceTextForTest());
+    }
+
+    public void testTheBuiltInDefaultIsNamedWithHowToGetTheGeneratedInstructions() {
+        ExploreContextAction.setRawRequestForTest(request(prompt -> "ok"));
+
+        send();
+
+        String source = panel.sourceTextForTest();
+        assertTrue(source, source.contains("built-in default"));
+        assertTrue(source, source.contains("Update OpenSpec"));
+    }
+
+    public void testTheBuiltInDefaultIsNamedOnTheNoProviderNoticeToo() {
+        OpenSpecSettings.getInstance(getProject()).setAiProvider("none");
+
+        send();
+
+        assertTrue(panel.sourceTextForTest(), panel.sourceTextForTest().contains("built-in default"));
+    }
+
+    public void testSendDoesNothingButSaySoWhenExploreIsNotInTheProfile() throws Exception {
+        when(profile.isWorkflowEnabled("explore")).thenReturn(false);
+        AtomicInteger requests = new AtomicInteger();
+        ExploreContextAction.setRawRequestForTest(request(prompt -> {
+            requests.incrementAndGet();
+            return "ok";
+        }));
+
+        send();
+
+        assertEquals(0, requests.get());
+        assertTrue(panel.responseTextForTest(), panel.responseTextForTest().contains("Explore isn't in your workflow profile"));
+        assertTrue(panel.isInputEnabledForTest());
+        assertEquals("nothing was copied", SENTINEL, clipboard());
+        assertTrue(contents().toString(), raised.isEmpty());
+    }
+
+    public void testSendGoesThroughWhenExploreIsInTheProfile() {
+        AtomicInteger requests = new AtomicInteger();
+        ExploreContextAction.setRawRequestForTest(request(prompt -> {
+            requests.incrementAndGet();
+            return "ok";
+        }));
+
+        send();
+
+        assertEquals(1, requests.get());
+    }
+
     public void testACancelInsideTheRequestPropagatesFromRun() {
         Task.Backgroundable task = ExploreContextAction.newExploreTask(getProject(), request(prompt -> {
             throw new ProcessCanceledException();
@@ -164,6 +246,21 @@ public class ExploreDirectApiPanelTest extends BasePlatformTestCase {
         indicator.cancel();
 
         assertThrows(ProcessCanceledException.class, () -> task.run(indicator));
+    }
+
+    private void writeUnderBase(String relative, String fixture) throws Exception {
+        Path target = Path.of(getProject().getBasePath(), relative);
+        Files.createDirectories(target.getParent());
+        Files.copy(Path.of("src/test/resources/fixtures/cli/1.15.0/explore", fixture), target);
+    }
+
+    /** The light project is shared between tests, so a tool directory one test creates would change the next. */
+    private void deleteUnderBase(String relative) throws Exception {
+        Path root = Path.of(getProject().getBasePath(), relative);
+        if (!Files.exists(root)) return;
+        try (var paths = Files.walk(root)) {
+            for (Path p : paths.sorted(java.util.Comparator.reverseOrder()).toList()) Files.delete(p);
+        }
     }
 
     private void send() {
