@@ -3,6 +3,7 @@ package com.johnnyblabs.openspec.services;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.components.Service;
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
@@ -38,6 +39,8 @@ import java.util.function.Consumer;
  */
 @Service(Service.Level.PROJECT)
 public final class UpdatePreviewService {
+
+    private static final Logger LOG = Logger.getInstance(UpdatePreviewService.class);
 
     /** The first CLI with {@code update --dry-run --json}. A CLI-capability gate, not the config-format axis. */
     public static final String DRY_RUN_FLOOR = "1.15.0";
@@ -108,26 +111,34 @@ public final class UpdatePreviewService {
     private void decide(UpdatePlanParser.Result result, @Nullable String focusTool,
                         Consumer<CliRunner.CliResult> onApplied, ModalityState modality) {
         if (result instanceof UpdatePlanParser.Failed failed) {
+            LOG.info("Update preview failed: " + failed.message());
             reportFailure("openspec update --dry-run --json", "The update preview failed: " + failed.message());
             return;
         }
         UpdatePlanParser.Plan plan = (UpdatePlanParser.Plan) result;
         if (plan.isEmpty()) {
+            LOG.info("Update preview: nothing to update");
             OpenSpecNotifier.info(project, "OpenSpec update",
                     "Already up to date: openspec update has nothing to change.");
             return;
         }
+        LOG.info("Update preview: " + plan.changes().size() + " change(s), " + plan.notes().size() + " note(s), "
+                + plan.failures().size() + " failure(s)" + (focusTool != null ? ", focus " + focusTool : ""));
         if (!decider.apply(UpdatePreviewModel.of(plan, focusTool))) {
+            LOG.info("Update preview cancelled");
             return;
         }
+        LOG.info("Update preview applied: running openspec update");
         background.run("Running openspec update", () -> {
             CliRunner.CliResult applied;
             try {
                 applied = cli.run(project, NON_INTERACTIVE, "update");
             } catch (CliRunner.CliException e) {
+                LOG.info("openspec update could not run: " + e.getMessage());
                 ui.run(modality, () -> reportFailure("openspec update", "openspec update failed: " + e.getMessage()));
                 return;
             }
+            LOG.info("openspec update finished with exit code " + applied.exitCode());
             ui.run(modality, () -> onApplied.accept(applied));
             if (applied.isSuccess() && plan.hasNote(UpdatePlanParser.LEGACY_ARTIFACTS)) {
                 offerLegacyCleanup(plan, modality);
@@ -143,11 +154,13 @@ public final class UpdatePreviewService {
                 .map(UpdatePlanParser.Note::message).findFirst().orElse(null);
         ui.run(modality, () -> {
             if (forced instanceof UpdatePlanParser.Failed failed) {
+                LOG.info("Legacy cleanup list couldn't be read: " + failed.message());
                 OpenSpecNotifier.warn(project, "OpenSpec update",
                         "The legacy cleanup list couldn't be read: " + failed.message());
                 return;
             }
             List<String> files = legacyDeletes((UpdatePlanParser.Plan) forced);
+            LOG.info("Legacy cleanup: " + files.size() + " file(s) offered from the forced plan");
             if (files.isEmpty()) {
                 return;
             }
