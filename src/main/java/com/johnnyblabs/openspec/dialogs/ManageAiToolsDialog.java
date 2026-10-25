@@ -102,7 +102,7 @@ public class ManageAiToolsDialog extends DialogWrapper {
         CliDetectionService cliService = project.getService(CliDetectionService.class);
         if (cliService == null || !cliService.isAvailable()) {
             JBLabel cliHint = new JBLabel(
-                    "<html>" + cliHintBody(com.intellij.openapi.util.SystemInfo.isWindows) + "</html>");
+                    "<html>" + com.johnnyblabs.openspec.util.CliInstallHints.manageToolsHintBody(com.intellij.openapi.util.SystemInfo.isWindows) + "</html>");
             cliHint.setForeground(JBColor.GRAY);
             cliHint.setFont(cliHint.getFont().deriveFont(Font.PLAIN, 11f));
             JPanel footer = new JPanel(new BorderLayout());
@@ -422,11 +422,5 @@ public class ManageAiToolsDialog extends DialogWrapper {
         com.johnnyblabs.openspec.settings.OpenSpecSettings settings =
                 com.johnnyblabs.openspec.settings.OpenSpecSettings.getInstance(project);
         settings.setPreferredTool(toolName);
-    }
-
-    /** The footer shown when the CLI is missing, without its HTML wrapper. */
-    static String cliHintBody(boolean isWindows) {
-        return "Install the OpenSpec CLI to add and configure tools. "
-                + com.johnnyblabs.openspec.util.CliInstallHints.html(isWindows);
     }
 }
