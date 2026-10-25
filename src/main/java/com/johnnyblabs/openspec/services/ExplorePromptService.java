@@ -4,7 +4,6 @@ import com.intellij.openapi.components.Service;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.johnnyblabs.openspec.services.AiToolRegistry.AiTool;
-import com.johnnyblabs.openspec.settings.OpenSpecSettings;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.TestOnly;
 
@@ -135,17 +134,18 @@ public final class ExplorePromptService {
     /**
      * Builds the prompt for {@code delivery}; a Direct API prompt starts with {@link #DIRECT_API_PREAMBLE}. For an
      * agent whose tool has OpenSpec's explore command or skill installed, it's the short handoff instead: what the user
-     * types to run that tool's own explore, by upstream's rules ({@link ExploreInvocation}). The agent gathers the
+     * types to run that tool's own explore, by upstream's rules ({@link WorkflowInvocation}). The agent gathers the
      * project context itself, so none is assembled.
      */
     public Prompt build(String topic, Delivery delivery) {
         Instructions instructions = loadInstructions();
         if (delivery == Delivery.AGENT && instructions.tool() != null) {
             AiTool tool = instructions.tool();
-            String invocation = ExploreInvocation.of(tool.id(), AiToolRegistry.exploreCommandPath(tool),
+            String invocation = WorkflowInvocation.of(tool.id(), WorkflowInvocation.EXPLORE,
+                    WorkflowInvocation.EXPLORE_SKILL, AiToolRegistry.exploreCommandPath(tool),
                     instructions.hasCommand(), instructions.hasSkill());
             if (invocation != null) {
-                String handoff = ExploreInvocation.handoff(invocation, topic);
+                String handoff = WorkflowInvocation.handoff(invocation, WorkflowInvocation.EXPLORE_SKILL, topic);
                 return new Prompt(handoff, instructions, handoff);
             }
         }
@@ -198,22 +198,10 @@ public final class ExplorePromptService {
         return new ArrayList<>(paths);
     }
 
-    /**
-     * The preferred tool from Settings, then every tool in registry order. Only files that exist are used, so this
-     * finds whichever tools the project has. Detection isn't consulted: a generated explore file creates the
-     * directory detection looks for, except a commands-only tool detection can't see (Cline's {@code .clinerules},
-     * Kilo Code's {@code .kilo}), which this still finds.
-     */
+    /** The tools to look for explore files in: {@link WorkflowInvocation#candidateTools}. */
     private List<AiTool> candidateTools() {
         if (candidateToolsOverride != null) return candidateToolsOverride.get();
-        Set<AiTool> tools = new LinkedHashSet<>();
-        OpenSpecSettings settings = OpenSpecSettings.getInstance(project);
-        if (settings != null) {
-            AiTool preferred = AiToolRegistry.byName(settings.getPreferredTool());
-            if (preferred != null) tools.add(preferred);
-        }
-        tools.addAll(AiToolRegistry.all());
-        return new ArrayList<>(tools);
+        return WorkflowInvocation.candidateTools(project);
     }
 
     /**

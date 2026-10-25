@@ -21,6 +21,7 @@ The real global OpenSpec state is never touched.
 Usage: scripts/capture-explore-fixtures.py        (uses the `openspec` on PATH, or $OPENSPEC_BIN)
 """
 import json
+import re
 import os
 import shlex
 import shutil
@@ -64,15 +65,25 @@ def init_project(tmp: Path, tool: str, delivery: str, workflows=None) -> tuple:
     return project, home
 
 
-def explore_files(root: Path, skip_openspec: bool) -> list:
+def workflow_files(root: Path, skip_openspec: bool, marker: str) -> list:
     found = []
     for path in sorted(root.rglob("*")):
         rel = path.relative_to(root)
         if skip_openspec and rel.parts and rel.parts[0] == "openspec":
             continue
-        if path.is_file() and "explore" in str(rel).lower():
+        if path.is_file() and marker in str(rel).lower():
             found.append(rel.as_posix())
     return found
+
+
+def explore_files(root: Path, skip_openspec: bool) -> list:
+    return workflow_files(root, skip_openspec, "explore")
+
+
+# The update workflow's files: its command (opsx/update.*, opsx-update.*) and its skill (openspec-update-change).
+def update_files(root: Path, skip_openspec: bool) -> list:
+    return [p for p in workflow_files(root, skip_openspec, "update")
+            if "openspec-update-change" in p or re.search(r"opsx[/-]update\.", p)]
 
 
 def sanitize(text: str, home: Path) -> str:
@@ -85,17 +96,21 @@ def main() -> None:
                                            .read_text())["tools"]]
     out = REPO / f"src/test/resources/fixtures/cli/{version}/explore"
     out.mkdir(parents=True, exist_ok=True)
+    update_out = REPO / f"src/test/resources/fixtures/cli/{version}/update"
+    update_out.mkdir(parents=True, exist_ok=True)
 
     with tempfile.TemporaryDirectory(prefix="openspec-explore-") as tmp_name:
         tmp = Path(tmp_name)
         for delivery in DELIVERIES:
-            lines = []
+            lines, update_lines = [], []
             for tool in tools:
                 project, home = init_project(tmp, tool, delivery)
                 lines += [f"{tool} P {p}" for p in explore_files(project, skip_openspec=True)]
                 lines += [f"{tool} H {p}" for p in explore_files(home, skip_openspec=False)
                           if not p.startswith((".config/", ".local/", ".cache/"))]
+                update_lines += [f"{tool} P {p}" for p in update_files(project, skip_openspec=True)]
             (out / f"listing-{delivery}.txt").write_text("\n".join(lines) + "\n")
+            (update_out / f"listing-{delivery}.txt").write_text("\n".join(update_lines) + "\n")
 
         def keep(delivery, tool, rel, name, home_based=False):
             project, home = tmp / f"{delivery}-{tool}" / "project", tmp / f"{delivery}-{tool}" / "home"

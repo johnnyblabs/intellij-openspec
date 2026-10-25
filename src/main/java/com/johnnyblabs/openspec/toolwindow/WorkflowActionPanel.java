@@ -114,6 +114,7 @@ public class WorkflowActionPanel extends JPanel {
     private final JComboBox<String> modelSelector;
 
     // Icon action bar
+    private final JButton reviseIconButton;
     private final JButton applyIconButton;
     private final JButton verifyIconButton;
     private final JButton syncSpecsIconButton;
@@ -224,6 +225,9 @@ public class WorkflowActionPanel extends JPanel {
         iconBarChangeLabel.setFont(iconBarChangeLabel.getFont().deriveFont(Font.PLAIN, 11f));
         iconBarChangeLabel.setForeground(JBColor.GRAY);
 
+        reviseIconButton = new ChangeDataButton(AllIcons.Actions.Edit);
+        configureIconButton(reviseIconButton, REVISE_TOOLTIP, this::onReviseChange);
+        reviseIconButton.setEnabled(false);
         applyIconButton = createIconButton(AllIcons.Actions.Execute, "Apply", this::onApplyTasks);
         verifyIconButton = createIconButton(AllIcons.Actions.ProjectWideAnalysisOn, "Verify", this::onVerify);
         syncSpecsIconButton = createIconButton(AllIcons.Actions.Download, "Sync Specs", this::onSyncSpecs);
@@ -238,6 +242,7 @@ public class WorkflowActionPanel extends JPanel {
 
         JPanel iconButtons = new JPanel(new FlowLayout(FlowLayout.RIGHT, JBUI.scale(2), 0));
         iconButtons.setOpaque(false);
+        iconButtons.add(reviseIconButton);
         iconButtons.add(applyIconButton);
         iconButtons.add(verifyIconButton);
         iconButtons.add(syncSpecsIconButton);
@@ -420,8 +425,56 @@ public class WorkflowActionPanel extends JPanel {
         updateDeliveryModeLabel();
     }
 
+    static final String REVISE_TOOLTIP =
+            "Revise Change... \u2014 have your AI agent revise this change's planning artifacts and check they still agree";
+
+    /** An icon button whose data context names the panel's change, so the action it launches knows which one. */
+    private final class ChangeDataButton extends JButton implements com.intellij.openapi.actionSystem.DataProvider {
+        ChangeDataButton(Icon icon) {
+            super(icon);
+        }
+
+        @Override
+        public @Nullable Object getData(@NotNull String dataId) {
+            return com.johnnyblabs.openspec.actions.OpenSpecDataKeys.CHANGE_NAME.is(dataId) ? activeChangeName : null;
+        }
+    }
+
+    /**
+     * Launches an action from a component; replaced in tests, whose data manager ignores components' own providers,
+     * so they can check which component the Revise button launches from.
+     */
+    private java.util.function.BiConsumer<AnAction, Component> launcher =
+            (action, source) -> com.johnnyblabs.openspec.actions.ActionLauncher.launch(action, source, "WorkflowPanel");
+
+    /**
+     * Runs Revise Change... for the panel's change through the action pipeline, so its gating applies. It launches from
+     * the button itself, whose data context names the change.
+     */
+    private void onReviseChange() {
+        AnAction action = ActionManager.getInstance().getAction("OpenSpec.ReviseChange");
+        if (action != null && activeChangeName != null) {
+            launcher.accept(action, reviseIconButton);
+        }
+    }
+
+    /** The Revise header button; package-private for tests. */
+    JButton reviseIconButtonForTest() {
+        return reviseIconButton;
+    }
+
+    @org.jetbrains.annotations.TestOnly
+    void setLauncherForTest(java.util.function.BiConsumer<AnAction, Component> testLauncher) {
+        launcher = testLauncher;
+    }
+
     private JButton createIconButton(Icon icon, String tooltip, Runnable action) {
         JButton btn = new JButton(icon);
+        configureIconButton(btn, tooltip, action);
+        return btn;
+    }
+
+    private static void configureIconButton(JButton btn, String tooltip, Runnable action) {
         btn.setToolTipText(tooltip);
         // Icon-only buttons are invisible to screen readers and fragile to locate in headful tests;
         // give each a stable accessible name (the tooltip is a good default label).
@@ -430,7 +483,6 @@ public class WorkflowActionPanel extends JPanel {
         btn.setPreferredSize(new Dimension(JBUI.scale(24), JBUI.scale(24)));
         btn.setMaximumSize(new Dimension(JBUI.scale(24), JBUI.scale(24)));
         btn.addActionListener(e -> action.run());
-        return btn;
     }
 
     public void setOnRefreshRequested(Runnable callback) {
@@ -897,6 +949,8 @@ public class WorkflowActionPanel extends JPanel {
     }
 
     private void updateIconBarState() {
+        // Revise works on any active change: with no request, the agent reviews whatever artifacts exist.
+        reviseIconButton.setEnabled(activeChangeName != null);
         applyIconButton.setEnabled(allArtifactsComplete);
         verifyIconButton.setEnabled(allArtifactsComplete);
         syncSpecsIconButton.setEnabled(hasDeltaSpecs);

@@ -95,6 +95,21 @@ Open **Settings ▸ Tools ▸ OpenSpec**, Schemas section.
 - [ ] (Optional) **New...** with a description and two artifacts → its `schema.yaml` opens with
       that description and only those artifacts
 
+## Stop 4b — Revise Change
+
+Revise hands a change back to your AI agent's own update workflow. The demo project may not have that
+workflow's files yet; if not, the first check shows what happens without them.
+
+- [ ] Right-click `demo-add-farewell` → **Revise Change...** sits right under **Explore This Change...**
+- [ ] With no update workflow installed: nothing is copied, and the notice offers **Update OpenSpec…**
+- [ ] Run **Update OpenSpec…** (apply the preview), then **Revise Change...** again → the dialog asks
+      **What should change?**; type `drop the export feature` → OK → the clipboard holds your tool's form,
+      e.g. `/opsx:update demo-add-farewell drop the export feature`, and the notice names the tool
+- [ ] Repeat with the note blank → the clipboard holds just the invocation and the change name
+- [ ] The edit icon in the workflow panel's header opens the same dialog for the selected change
+- [ ] **OpenSpec > Revise Change...** sits between Continue and Apply; its description differs from
+      **Update OpenSpec…**'s
+
 ## Stop 5 — Finish the lifecycle
 
 Back in the tool window, on `demo-add-farewell`:

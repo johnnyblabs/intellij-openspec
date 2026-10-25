@@ -1,8 +1,13 @@
 package com.johnnyblabs.openspec.actions;
 
+import com.intellij.notification.Notification;
+import com.intellij.notification.NotificationAction;
 import com.intellij.openapi.actionSystem.ActionManager;
 import com.intellij.openapi.actionSystem.AnAction;
+import com.intellij.openapi.actionSystem.AnActionEvent;
+import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.ActionCallback;
+import com.intellij.openapi.wm.WindowManager;
 import org.jetbrains.annotations.NotNull;
 
 import java.awt.Component;
@@ -23,5 +28,25 @@ public final class ActionLauncher {
 
     public static @NotNull ActionCallback launch(@NotNull AnAction action, @NotNull Component source, @NotNull String place) {
         return ActionManager.getInstance().tryToExecute(action, null, source, place, true);
+    }
+
+    /**
+     * A notification button that runs the action {@code actionId} in {@code project}, e.g. "Update OpenSpec…" from a
+     * notice. Its data context comes from the project's frame, not whatever has focus: a notice can be clicked from the
+     * Notifications tool window or while another project's window is focused.
+     */
+    public static @NotNull NotificationAction notificationAction(@NotNull Project project, @NotNull String text,
+                                                                 @NotNull String actionId) {
+        return new NotificationAction(text) {
+            @Override
+            public void actionPerformed(@NotNull AnActionEvent e, @NotNull Notification notification) {
+                AnAction action = ActionManager.getInstance().getAction(actionId);
+                Component frame = project.isDisposed() ? null : WindowManager.getInstance().getFrame(project);
+                if (action != null && frame != null) {
+                    launch(action, frame, e.getPlace());
+                }
+                notification.expire();
+            }
+        };
     }
 }
