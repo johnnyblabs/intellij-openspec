@@ -40,7 +40,9 @@ import java.util.function.Supplier;
  * <p>Assembling the context runs the OpenSpec CLI, so every delivery builds the prompt in a background task and
  * delivers it when the task finishes.
  */
-public class ExploreContextAction extends OpenSpecBaseAction {
+// DumbAware: Explore reads files and runs the CLI, never the IDE's indexes, and in-panel "Explore an idea first" links
+// launch it through ActionLauncher, whose availability check would otherwise skip it while indexing.
+public class ExploreContextAction extends OpenSpecBaseAction implements com.intellij.openapi.project.DumbAware {
 
     private static final Logger LOG = Logger.getInstance(ExploreContextAction.class);
 
@@ -123,10 +125,43 @@ public class ExploreContextAction extends OpenSpecBaseAction {
     }
 
     /**
+     * Starts Explore with {@code topic} filled in, for example a change's name from "Explore this change...". With Direct
+     * API delivery it puts the topic in the Explore tab's input and focuses it, without sending, so the user can add a
+     * question; otherwise it opens the topic dialog with the topic filled in. Call on the EDT.
+     */
+    public static void exploreTopic(@NotNull Project project, String topic) {
+        DeliveryMethodResolver resolver = project.getService(DeliveryMethodResolver.class);
+        if (resolver != null && resolver.resolve().mode() == DeliveryMode.DIRECT_API) {
+            ExplorePanelService panelService = project.getService(ExplorePanelService.class);
+            ExplorePanel panel = panelService != null ? panelService.getAndActivate() : null;
+            if (panel != null) {
+                panel.setInput(topic);
+                panel.focusInput();
+                return;
+            }
+        }
+        ExploreTopicDialog dialog = topicDialogFactory.apply(project, topic);
+        if (!dialog.showAndGet()) {
+            return;
+        }
+        runExploreDeliver(project, dialog.getTopic());
+    }
+
+    /** Makes the topic dialog; replaced in tests, which can't show a modal dialog. */
+    private static volatile java.util.function.BiFunction<Project, String, ExploreTopicDialog> topicDialogFactory =
+            ExploreTopicDialog::new;
+
+    @TestOnly
+    public static void setTopicDialogFactoryForTest(
+            @Nullable java.util.function.BiFunction<Project, String, ExploreTopicDialog> factory) {
+        topicDialogFactory = factory == null ? ExploreTopicDialog::new : factory;
+    }
+
+    /**
      * Runs the explore workflow via the modal dialog for non-Direct-API delivery modes.
      */
     private static void runExploreWithDialog(@NotNull Project project) {
-        ExploreTopicDialog dialog = new ExploreTopicDialog(project);
+        ExploreTopicDialog dialog = topicDialogFactory.apply(project, "");
         if (!dialog.showAndGet()) {
             return; // User cancelled
         }
@@ -151,7 +186,7 @@ public class ExploreContextAction extends OpenSpecBaseAction {
         if (prefillTopic != null) {
             topic = prefillTopic;
         } else {
-            ExploreTopicDialog dialog = new ExploreTopicDialog(project);
+            ExploreTopicDialog dialog = topicDialogFactory.apply(project, "");
             if (!dialog.showAndGet()) {
                 return; // User cancelled
             }

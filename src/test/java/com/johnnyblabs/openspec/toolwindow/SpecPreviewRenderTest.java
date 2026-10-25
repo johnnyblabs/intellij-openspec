@@ -117,6 +117,18 @@ class SpecPreviewRenderTest {
     }
 
     @Test
+    void emptyStateOffersExploreBesideProposeOnlyWithoutChanges() {
+        String noChanges = SpecPreviewRenderer.emptyState(false);
+        int propose = noChanges.indexOf("href=\"" + SpecPreviewRenderer.PROPOSE_HREF + "\"");
+        int explore = noChanges.indexOf("href=\"" + SpecPreviewRenderer.EXPLORE_HREF + "\"");
+
+        assertTrue(propose >= 0 && explore > propose, "Explore comes right after Propose: " + noChanges);
+        assertTrue(noChanges.contains(">Explore an idea first</a>"), noChanges);
+        assertFalse(SpecPreviewRenderer.emptyState(true).contains(SpecPreviewRenderer.EXPLORE_HREF),
+                "with changes, there is no Explore link either");
+    }
+
+    @Test
     void openLinkSitsDirectlyUnderTheHeader() {
         String deltas = SpecPreviewRenderer.header("c") + "<p class=\"summary\">1 capability</p><h2>auth</h2>";
         String linked = SpecPreviewRenderer.withOpenLink(deltas, "proposal.md");

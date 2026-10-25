@@ -155,6 +155,8 @@ public class GettingStartedPanel extends JPanel implements Disposable {
                         "generate design docs, specs, and tasks. Keep it focused: one change per feature.",
                         createProposeButton()
                 ), gbc);
+                gbc.gridy++;
+                add(createExploreLink(), gbc);
             }
             case READY -> {
                 // Should not be shown — caller should display normal tool window
@@ -245,6 +247,18 @@ public class GettingStartedPanel extends JPanel implements Disposable {
             }
         });
         return btn;
+    }
+
+    /** "Explore an idea first", beside Propose: the quickstart's first step, before a change exists. */
+    HyperlinkLabel createExploreLink() {
+        HyperlinkLabel link = new HyperlinkLabel("Explore an idea first");
+        link.addHyperlinkListener(e -> {
+            AnAction action = ActionManager.getInstance().getAction("OpenSpec.Explore");
+            if (action != null) {
+                com.johnnyblabs.openspec.actions.ActionLauncher.launch(action, link, "GettingStartedPanel");
+            }
+        });
+        return link;
     }
 
     private HyperlinkLabel createWizardLink() {

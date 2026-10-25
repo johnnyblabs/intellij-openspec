@@ -123,6 +123,12 @@
                     text="Init"
                     description="Initialize OpenSpec in this project"
                     icon="/icons/openspec.svg"/>
+            <!-- Explore comes first: it's the quickstart's first step, the thinking before a change exists. -->
+            <action id="OpenSpec.Explore"
+                    class="com.johnnyblabs.openspec.actions.ExploreContextAction"
+                    text="Explore..."
+                    description="Think through an idea before proposing; nothing is created"
+                    icon="AllIcons.Actions.Find"/>
             <action id="OpenSpec.Propose"
                     class="com.johnnyblabs.openspec.actions.OpenSpecProposeAction"
                     text="Propose..."
@@ -133,10 +139,6 @@
                     text="Fast-Forward..."
                     description="Create a change and generate all artifacts in one step"
                     icon="AllIcons.Actions.Lightning"/>
-            <action id="OpenSpec.Explore"
-                    class="com.johnnyblabs.openspec.actions.ExploreContextAction"
-                    text="Explore..."
-                    description="Explore an idea with your AI tool or Direct API"/>
             <action id="OpenSpec.Continue"
                     class="com.johnnyblabs.openspec.actions.OpenSpecContinueAction"
                     text="Continue"
@@ -206,6 +208,13 @@
             <add-to-group group-id="MainMenu" anchor="before" relative-to-action="ToolsMenu"/>
         </group>
 
+        <!-- "Explore this change...": in no group; the tool window adds it to an active change's right-click menu. -->
+        <action id="OpenSpec.ExploreChange"
+                class="com.johnnyblabs.openspec.actions.ExploreChangeAction"
+                text="Explore This Change..."
+                description="Think through this change before going further; nothing is created"
+                icon="AllIcons.Actions.Find"/>
+
         <!-- Tool window toolbar actions -->
         <group id="OpenSpec.ToolWindowToolbar">
             <reference ref="OpenSpec.Refresh"/>
@@ -215,6 +224,7 @@
                 <reference ref="OpenSpec.Validate"/>
                 <reference ref="OpenSpec.ValidateStrict"/>
             </group>
+            <reference ref="OpenSpec.Explore"/>
             <reference ref="OpenSpec.Propose"/>
             <reference ref="OpenSpec.Ff"/>
             <separator/>

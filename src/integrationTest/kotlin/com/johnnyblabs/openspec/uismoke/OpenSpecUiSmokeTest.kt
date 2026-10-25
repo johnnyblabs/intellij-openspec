@@ -1008,4 +1008,28 @@ class OpenSpecUiSmokeTest {
             }
         }
     }
+
+    // ---- Journey 15 — with no active changes, Explore is offered beside Propose -------
+
+    /**
+     * Journey 15 — Explore is the first step: on a project with no active changes, the tool window offers "Explore an
+     * idea first" beside "Propose a change" (the workflow panel's no-changes card). The demo project ships with one
+     * change, so this journey removes it from its fresh temp copy before boot. The menu and toolbar order are checked
+     * against the real registered action groups by ExploreEntryPointsTest; clicking the link is checked by
+     * PreviewLinksPanelTest (clicks don't land in this environment).
+     */
+    @Test
+    fun noChangesOffersExploreBesidePropose() {
+        val projectPath = freshDemoProject()
+        projectPath.resolve("openspec/changes/demo-add-farewell").toFile().deleteRecursively()
+        newContext(projectPath).runIdeWithDriver().useDriverAndCloseIde {
+            waitForIndicators(5.minutes)
+            withContext(OnDispatcher.EDT) { getToolWindow("OpenSpec").show() }
+
+            ideFrame {
+                waitUntil("the no-changes card offers Propose", timeout = 2.minutes) { hasText("Propose a change") }
+                waitUntil("and Explore beside it", timeout = 1.minutes) { hasText("Explore an idea first") }
+            }
+        }
+    }
 }

@@ -171,6 +171,67 @@ public class PreviewLinksPanelTest extends OpenSpecIntegrationTestBase {
         assertTrue("the artifact opens in the editor", editors.isFileOpen(proposal));
     }
 
+    public void testTheEmptyStatesExploreLinkStartsExplore() throws Exception {
+        DefaultMutableTreeNode root = new DefaultMutableTreeNode("OpenSpec");
+        DefaultMutableTreeNode changes = new DefaultMutableTreeNode(
+                new TreeNodeData("Changes", TreeNodeType.CHANGES, null, null, null, "Active changes"));
+        changes.add(new DefaultMutableTreeNode(new TreeNodeData("No active changes", TreeNodeType.HINT, null)));
+        root.add(changes);
+        OpenSpecToolWindowPanel noChanges = panel(new DefaultTreeModel(root));
+        waitFor(() -> noChanges.previewHtmlForTest().contains(SpecPreviewRenderer.EXPLORE_HREF),
+                "the empty state offers Explore");
+        com.johnnyblabs.openspec.settings.OpenSpecSettings settings =
+                com.johnnyblabs.openspec.settings.OpenSpecSettings.getInstance(getProject());
+        String savedDelivery = settings.getPreferredDeliveryMethod();
+        settings.setPreferredDeliveryMethod("CLIPBOARD");
+        List<String> dialogs = new java.util.ArrayList<>();
+        com.johnnyblabs.openspec.actions.ExploreContextAction.setTopicDialogFactoryForTest((project, topic) ->
+                new com.johnnyblabs.openspec.dialogs.ExploreTopicDialog(project, topic) {
+                    @Override
+                    public boolean showAndGet() {
+                        dialogs.add("explore");
+                        return false;
+                    }
+                });
+        try {
+            activate(noChanges, SpecPreviewRenderer.EXPLORE_HREF);
+
+            assertEquals("the link ran the Explore action, which opened its topic dialog", List.of("explore"), dialogs);
+        } finally {
+            com.johnnyblabs.openspec.actions.ExploreContextAction.setTopicDialogFactoryForTest(null);
+            settings.setPreferredDeliveryMethod(savedDelivery);
+        }
+    }
+
+    public void testTheGettingStartedExploreLinkStartsExplore() {
+        com.johnnyblabs.openspec.settings.OpenSpecSettings settings =
+                com.johnnyblabs.openspec.settings.OpenSpecSettings.getInstance(getProject());
+        String savedDelivery = settings.getPreferredDeliveryMethod();
+        settings.setPreferredDeliveryMethod("CLIPBOARD");
+        List<String> dialogs = new java.util.ArrayList<>();
+        com.johnnyblabs.openspec.actions.ExploreContextAction.setTopicDialogFactoryForTest((project, topic) ->
+                new com.johnnyblabs.openspec.dialogs.ExploreTopicDialog(project, topic) {
+                    @Override
+                    public boolean showAndGet() {
+                        dialogs.add("explore");
+                        return false;
+                    }
+                });
+        GettingStartedPanel gettingStarted = new GettingStartedPanel(getProject());
+        Disposer.register(getTestRootDisposable(), gettingStarted);
+        try {
+            com.intellij.ui.HyperlinkLabel link = gettingStarted.createExploreLink();
+            assertEquals("Explore an idea first", link.getText());
+            link.doClick();
+            PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
+
+            assertEquals(List.of("explore"), dialogs);
+        } finally {
+            com.johnnyblabs.openspec.actions.ExploreContextAction.setTopicDialogFactoryForTest(null);
+            settings.setPreferredDeliveryMethod(savedDelivery);
+        }
+    }
+
     public void testTheEmptyStateOffersProposeOnlyWithoutChanges() throws Exception {
         OpenSpecToolWindowPanel withChanges = panel(model());
         assertFalse(withChanges.previewHtmlForTest().contains(SpecPreviewRenderer.PROPOSE_HREF));

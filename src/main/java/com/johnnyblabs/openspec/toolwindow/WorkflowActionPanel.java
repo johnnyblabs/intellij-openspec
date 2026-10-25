@@ -1458,6 +1458,15 @@ public class WorkflowActionPanel extends JPanel {
         });
         card.add(proposeLink);
 
+        com.intellij.ui.HyperlinkLabel exploreLink = new com.intellij.ui.HyperlinkLabel("Explore an idea first");
+        exploreLink.addHyperlinkListener(ev -> {
+            AnAction action = ActionManager.getInstance().getAction("OpenSpec.Explore");
+            if (action != null) {
+                com.johnnyblabs.openspec.actions.ActionLauncher.launch(action, exploreLink, "WorkflowPanel");
+            }
+        });
+        card.add(exploreLink);
+
         DirectApiService apiService = project.getService(DirectApiService.class);
         if (apiService != null && apiService.isConfigured()) {
             JBLabel orLabel = new JBLabel(" or ");

@@ -274,6 +274,11 @@ public class ExplorePanel extends JPanel implements Disposable {
         setInputEnabled(true);
     }
 
+    /** Puts {@code text} in the input without sending it, so the user can add to it first. Call on the EDT. */
+    public void setInput(String text) {
+        inputArea.setText(text == null ? "" : text);
+    }
+
     /**
      * Focuses the inline input area. Called when Direct API mode activates the panel.
      */
@@ -341,6 +346,11 @@ public class ExplorePanel extends JPanel implements Disposable {
     @TestOnly
     public String sourceTextForTest() {
         return sourceLabel.isVisible() ? sourceLabel.getText() : "";
+    }
+
+    @TestOnly
+    public String inputTextForTest() {
+        return inputArea.getText();
     }
 
     @TestOnly
