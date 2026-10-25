@@ -30,7 +30,7 @@ npm install -g @fission-ai/openspec@latest   # needs Node.js 20.19+
 brew install openspec                        # macOS and Linux
 ```
 
-**Keep one copy of the CLI.** If you install it a second way, for example the standalone installer after an earlier npm install, your terminal runs whichever comes first in PATH, while the plugin uses the first copy it finds. Upgrade the copy you have the way you installed it: re-run the installer (or `openspec install`), `npm install -g @fission-ai/openspec@latest`, or `brew upgrade openspec`. To make the plugin use a specific copy, set **Settings → Tools → OpenSpec → CLI Path**. The plugin's **Update** action runs `openspec update`, which refreshes your project's instruction files; it doesn't upgrade the CLI.
+**Keep one copy of the CLI.** If you install it a second way, for example the standalone installer after an earlier npm install, your terminal runs whichever comes first in PATH. The plugin checks the IDE's PATH and the shell's PATH before the fixed locations, so it normally picks the same copy. **Windows:** `install.ps1` adds its folder to the user PATH, which an IDE that's already running doesn't see; restart the IDE after installing, or the plugin keeps the copy it found before (often npm's). Upgrade the copy you have the way you installed it: re-run the installer (or `openspec install`), `npm install -g @fission-ai/openspec@latest`, or `brew upgrade openspec`. To make the plugin use a specific copy, set **Settings → Tools → OpenSpec → CLI Path**. The plugin's **Update** action runs `openspec update`, which refreshes your project's instruction files; it doesn't upgrade the CLI.
 
 ### Detection Cascade
 The plugin tries these locations in order:
