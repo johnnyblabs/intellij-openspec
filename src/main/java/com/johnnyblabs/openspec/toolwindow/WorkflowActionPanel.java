@@ -1167,6 +1167,12 @@ public class WorkflowActionPanel extends JPanel {
     }
 
     private void showChipContextMenu(MouseEvent e, ArtifactInfo artifact) {
+        JPopupMenu menu = chipContextMenu(artifact, (Component) e.getSource());
+        if (menu != null) menu.show(e.getComponent(), e.getX(), e.getY());
+    }
+
+    /** The chip's right-click menu, or null when its state has none. */
+    @Nullable JPopupMenu chipContextMenu(ArtifactInfo artifact, Component chip) {
         JPopupMenu menu = new JPopupMenu();
 
         switch (artifact.status()) {
@@ -1182,12 +1188,26 @@ public class WorkflowActionPanel extends JPanel {
                 JMenuItem copyPromptItem = new JMenuItem("Copy prompt");
                 copyPromptItem.addActionListener(ev -> onCopyPromptForArtifact(artifact));
                 menu.add(copyPromptItem);
+
+                List<DiffVsCurrentSpec.Entry> diffs = DiffVsCurrentSpec.entries(
+                        artifact, activeChangeDirPath(), activeDeltaSpecNames());
+                if (!diffs.isEmpty()) {
+                    menu.addSeparator();
+                    JMenu diffMenu = new JMenu(DiffVsCurrentSpec.LABEL);
+                    for (DiffVsCurrentSpec.Entry entry : diffs) {
+                        JMenuItem item = new JMenuItem(entry.capability());
+                        item.setToolTipText(DiffVsCurrentSpec.tooltip(entry.capability()));
+                        item.addActionListener(ev -> openDiff(entry, chip));
+                        diffMenu.add(item);
+                    }
+                    menu.add(diffMenu);
+                }
             }
             case READY -> {
                 JMenuItem genItem = new JMenuItem("Generate");
                 genItem.addActionListener(ev -> {
                     nextArtifactId = artifact.id();
-                    lastClickedChip = (Component) e.getSource();
+                    lastClickedChip = chip;
                     onGenerate();
                 });
                 menu.add(genItem);
@@ -1209,11 +1229,71 @@ public class WorkflowActionPanel extends JPanel {
                 menu.add(cancelItem);
             }
             default -> {
-                return;
+                return null;
             }
         }
 
-        menu.show(e.getComponent(), e.getX(), e.getY());
+        return menu;
+    }
+
+    // --- Diff vs current spec ---
+
+    /** The active change's directory, or null when there is none. */
+    private @Nullable String activeChangeDirPath() {
+        if (activeChangeName == null) return null;
+        VirtualFile changesDir = com.johnnyblabs.openspec.util.OpenSpecFileUtil.getChangesDir(project);
+        VirtualFile changeDir = changesDir == null ? null : changesDir.findChild(activeChangeName);
+        return changeDir == null ? null : changeDir.getPath();
+    }
+
+    /** The active change's capabilities with a delta spec, read when asked so they reflect the files on disk. */
+    private List<String> activeDeltaSpecNames() {
+        if (activeChangeName == null) return List.of();
+        return project.getService(ChangeService.class).getDeltaSpecNames(new Change(activeChangeName, activeChangeDirPath()));
+    }
+
+    /** Opens one capability's diff against the current main spec, as Preview Diff does, launched from {@code source}. */
+    private void openDiff(DiffVsCurrentSpec.Entry entry, Component source) {
+        launcher.accept(new com.johnnyblabs.openspec.actions.DeltaSpecDiffAction(entry.deltaSpecPath()), source);
+    }
+
+    /**
+     * The popover link after generating specs: opens the diff of the only capability, or asks which one when there are
+     * several. The capabilities are read on click, so they are the files just written.
+     */
+    void openDiffVsCurrentSpec(Component source) {
+        List<DiffVsCurrentSpec.Entry> entries = DiffVsCurrentSpec.entries(activeChangeDirPath(), activeDeltaSpecNames());
+        if (entries.size() == 1) {
+            openDiff(entries.getFirst(), source);
+        } else if (entries.size() > 1) {
+            diffChooser.accept(entries, entry -> openDiff(entry, source));
+        }
+    }
+
+    /** Asks which capability's diff to open; replaced in tests, which can't show a popup. */
+    private java.util.function.BiConsumer<List<DiffVsCurrentSpec.Entry>, java.util.function.Consumer<DiffVsCurrentSpec.Entry>>
+            diffChooser = (entries, open) -> JBPopupFactory.getInstance()
+                    .createPopupChooserBuilder(entries.stream().map(DiffVsCurrentSpec.Entry::capability).toList())
+                    .setTitle(DiffVsCurrentSpec.LABEL)
+                    .setItemChosenCallback(capability -> entries.stream()
+                            .filter(entry -> entry.capability().equals(capability))
+                            .findFirst().ifPresent(open))
+                    .createPopup()
+                    .showInFocusCenter();
+
+    void setDiffChooserForTest(java.util.function.BiConsumer<List<DiffVsCurrentSpec.Entry>,
+            java.util.function.Consumer<DiffVsCurrentSpec.Entry>> chooser) {
+        this.diffChooser = chooser;
+    }
+
+    /** The extra popover link after a Direct API generation: "Diff vs current spec" for specs, none otherwise. */
+    @Nullable GuidanceLink directApiGuidanceLink(@Nullable String outputPath, Component anchor) {
+        if (!DiffVsCurrentSpec.isSpecsOutput(outputPath)) return null;
+        return new GuidanceLink(DiffVsCurrentSpec.LABEL, () -> openDiffVsCurrentSpec(anchor));
+    }
+
+    /** A link a guidance popover offers besides "Copy again". */
+    record GuidanceLink(String text, Runnable action) {
     }
 
     private void onRegenerateArtifact(ArtifactInfo artifact) {
@@ -2069,7 +2149,8 @@ public class WorkflowActionPanel extends JPanel {
                                         : instruction.changeDir() + "/" + instruction.outputPath();
                                 showGuidancePopover(chipAnchor,
                                         "\u2713 Generated " + what,
-                                        "Saved to: " + savedTo, null);
+                                        "Saved to: " + savedTo, null,
+                                        directApiGuidanceLink(instruction.outputPath(), chipAnchor));
                                 orchestration.invalidateCache(changeName);
                                 refresh();
                                 if (onRefreshRequested != null) onRefreshRequested.run();
@@ -2103,8 +2184,38 @@ public class WorkflowActionPanel extends JPanel {
     // --- Guidance popover ---
 
     private void showGuidancePopover(Component anchor, String title, String detail, Runnable copyAction) {
+        showGuidancePopover(anchor, title, detail, copyAction, null);
+    }
+
+    private void showGuidancePopover(Component anchor, String title, String detail, Runnable copyAction,
+                                     @Nullable GuidanceLink extraLink) {
         dismissActivePopup();
 
+        JPanel content = guidanceContent(title, detail, copyAction, extraLink);
+
+        activeGuidancePopup = JBPopupFactory.getInstance()
+                .createComponentPopupBuilder(content, null)
+                .setResizable(false)
+                .setMovable(false)
+                .setRequestFocus(false)
+                .setCancelOnClickOutside(true)
+                .setCancelOnOtherWindowOpen(true)
+                .createPopup();
+
+        if (anchor != null && anchor.isShowing()) {
+            activeGuidancePopup.showUnderneathOf(anchor);
+        } else {
+            activeGuidancePopup.showInFocusCenter();
+        }
+
+        // Auto-dismiss after 8 seconds
+        javax.swing.Timer dismissTimer = new javax.swing.Timer(8000, e -> dismissActivePopup());
+        dismissTimer.setRepeats(false);
+        dismissTimer.start();
+    }
+
+    /** The guidance popover's content: title, optional detail, optional "Copy again", optional extra link. */
+    static JPanel guidanceContent(String title, String detail, Runnable copyAction, @Nullable GuidanceLink extraLink) {
         JPanel content = new JPanel();
         content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
         content.setBorder(JBUI.Borders.empty(8));
@@ -2132,25 +2243,15 @@ public class WorkflowActionPanel extends JPanel {
             content.add(copyLink);
         }
 
-        activeGuidancePopup = JBPopupFactory.getInstance()
-                .createComponentPopupBuilder(content, null)
-                .setResizable(false)
-                .setMovable(false)
-                .setRequestFocus(false)
-                .setCancelOnClickOutside(true)
-                .setCancelOnOtherWindowOpen(true)
-                .createPopup();
-
-        if (anchor != null && anchor.isShowing()) {
-            activeGuidancePopup.showUnderneathOf(anchor);
-        } else {
-            activeGuidancePopup.showInFocusCenter();
+        if (extraLink != null) {
+            com.intellij.ui.HyperlinkLabel link = new com.intellij.ui.HyperlinkLabel(extraLink.text());
+            link.setAlignmentX(Component.LEFT_ALIGNMENT);
+            link.addHyperlinkListener(ev -> extraLink.action().run());
+            content.add(Box.createVerticalStrut(JBUI.scale(4)));
+            content.add(link);
         }
 
-        // Auto-dismiss after 8 seconds
-        javax.swing.Timer dismissTimer = new javax.swing.Timer(8000, e -> dismissActivePopup());
-        dismissTimer.setRepeats(false);
-        dismissTimer.start();
+        return content;
     }
 
     private void dismissActivePopup() {

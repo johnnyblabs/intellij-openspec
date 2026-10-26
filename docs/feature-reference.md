@@ -202,6 +202,8 @@ The **Workflow Action Panel** (below the tree) displays this as a row of status 
 
 Statuses are exactly what `openspec status` reports. When `openspec status` rejects the selected change (for example, it was renamed or deleted, or its `.openspec.yaml` is invalid), the panel says **Can't read change '<name>'** with the CLI's reason (the full message is in the tooltip), plus **Open .openspec.yaml** and **Refresh** links (Refresh saves your open edits first, since OpenSpec reads the files on disk). The change stays selected, and the card clears on the next refresh once OpenSpec accepts the change again. It doesn't keep showing the old chips. If the CLI couldn't be run at all, the last known status stays. The panel includes a **change selector** dropdown for switching between multiple active changes (the panel acts on the change selected there, not the one selected in the tree), and a **Generate** button that targets the next ready artifact.
 
+**Diff vs current spec.** Right-click the specs chip once it's done and the change has delta specs, and **Diff vs current spec** lists one entry per capability. Each opens the same diff as **Preview Diff**: the current main spec on the left, the change's delta spec on the right, or an empty "New capability — no existing spec" side when there's no main spec yet. After **Generate via API** writes or regenerates the specs, the confirmation popover has the same **Diff vs current spec** link; with several capabilities it asks which one. The diff shows what the change does compared with the current spec, not what the last generation changed. Clipboard and editor-tab delivery don't get the link, since your AI tool hasn't written the specs yet.
+
 ### Workflow Actions
 
 | Action | Menu | Description |
