@@ -8,6 +8,9 @@ import com.johnnyblabs.openspec.actions.DeltaSpecDiffAction;
 import com.johnnyblabs.openspec.integration.OpenSpecIntegrationTestBase;
 import com.johnnyblabs.openspec.model.ArtifactInfo;
 import com.johnnyblabs.openspec.model.ArtifactStatus;
+import com.intellij.testFramework.ServiceContainerUtil;
+import com.johnnyblabs.openspec.model.Change;
+import com.johnnyblabs.openspec.services.ChangeService;
 import com.johnnyblabs.openspec.services.CliDetectionService;
 import com.johnnyblabs.openspec.services.CliDetectionTestSupport;
 
@@ -21,14 +24,22 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
 /**
  * The workflow panel offers "Diff vs current spec": on the done specs chip's menu, one item per capability, and as a
  * link in the popover after Direct API generates specs. Headless tests capture launches instead of opening the diff.
  */
 public class DiffVsCurrentSpecPanelTest extends OpenSpecIntegrationTestBase {
 
-    /** The fixture project's active change; it has a delta spec for "actions", and setUp adds "billing". */
+    /** The one active change ChangeService reports, with delta specs for "actions" and "billing". */
     private static final String CHANGE = "test-change";
+    private static final String CHANGE_DIR = "/fixture/openspec/changes/" + CHANGE;
+
+    /** The capabilities ChangeService reports; a test may remove one. */
+    private final List<String> capabilities = new ArrayList<>(List.of("actions", "billing"));
 
     private WorkflowActionPanel workflowPanel;
     private final List<AnAction> launched = new ArrayList<>();
@@ -37,8 +48,13 @@ public class DiffVsCurrentSpecPanelTest extends OpenSpecIntegrationTestBase {
     @Override
     protected void setUp() throws Exception {
         super.setUp();
-        myFixture.addFileToProject("openspec/changes/" + CHANGE + "/specs/billing/spec.md", "## ADDED Requirements\n");
         CliDetectionTestSupport.fakeUnavailable(getProject().getService(CliDetectionService.class));
+        // The panel's change and its capabilities come from ChangeService. Stub it: the light fixture's change folder
+        // isn't found on Windows (its faked Unix base path gains a drive letter), so the panel would show no change.
+        ChangeService changes = mock(ChangeService.class);
+        when(changes.getActiveChanges()).thenReturn(List.of(new Change(CHANGE, CHANGE_DIR)));
+        when(changes.getDeltaSpecNames(any())).thenAnswer(inv -> List.copyOf(capabilities));
+        ServiceContainerUtil.replaceService(getProject(), ChangeService.class, changes, getTestRootDisposable());
         DefaultTreeModel model = new DefaultTreeModel(new DefaultMutableTreeNode("OpenSpec"));
         OpenSpecToolWindowPanel panel = new OpenSpecToolWindowPanel(getProject(), () -> model);
         Disposer.register(getTestRootDisposable(), panel);
@@ -120,7 +136,7 @@ public class DiffVsCurrentSpecPanelTest extends OpenSpecIntegrationTestBase {
         billing.doClick();
 
         assertEquals(1, launched.size());
-        assertTrue(launchedPath().endsWith("/openspec/changes/" + CHANGE + "/specs/billing/spec.md"));
+        assertEquals(CHANGE_DIR + "/specs/billing/spec.md", launchedPath());
         assertSame(chip, sources.getFirst());
     }
 
@@ -164,8 +180,7 @@ public class DiffVsCurrentSpecPanelTest extends OpenSpecIntegrationTestBase {
     }
 
     public void testWithOneCapabilityTheLinkOpensItsDiffWithoutAsking() throws Exception {
-        com.intellij.openapi.application.WriteAction.runAndWait(() ->
-                myFixture.findFileInTempDir("openspec/changes/" + CHANGE + "/specs/billing").delete(this));
+        capabilities.remove("billing");
         List<Object> offered = new ArrayList<>();
         workflowPanel.setDiffChooserForTest((entries, open) -> offered.add(entries));
 
