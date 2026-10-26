@@ -665,7 +665,26 @@ public class WorkflowActionPanel extends JPanel {
         return new ToolSelection(toolName, DeliveryMode.CLIPBOARD);
     }
 
+    /** Overrides the selected delivery mode in tests, whose tool selector has no Direct API item. */
+    private @Nullable DeliveryMode deliveryModeForTest;
+
+    void setDeliveryModeForTest(@Nullable DeliveryMode mode) {
+        this.deliveryModeForTest = mode;
+    }
+
+    /** The last editor-tab prompt, for tests. */
+    private volatile @Nullable com.intellij.testFramework.LightVirtualFile lastEditorTabPrompt;
+
+    @Nullable com.intellij.testFramework.LightVirtualFile lastEditorTabPromptForTest() {
+        return lastEditorTabPrompt;
+    }
+
+    @Nullable String lastPromptForTest() {
+        return lastPrompt;
+    }
+
     private DeliveryMode getSelectedDeliveryMode() {
+        if (deliveryModeForTest != null) return deliveryModeForTest;
         String selected = (String) toolSelector.getSelectedItem();
         return parseToolSelection(selected).mode;
     }
@@ -1182,7 +1201,10 @@ public class WorkflowActionPanel extends JPanel {
                 menu.add(openItem);
 
                 JMenuItem regenItem = new JMenuItem("Regenerate");
-                regenItem.addActionListener(ev -> onRegenerateArtifact(artifact));
+                regenItem.addActionListener(ev -> {
+                    lastClickedChip = chip;
+                    onRegenerateArtifact(artifact);
+                });
                 menu.add(regenItem);
 
                 JMenuItem copyPromptItem = new JMenuItem("Copy prompt");
@@ -1309,18 +1331,40 @@ public class WorkflowActionPanel extends JPanel {
         ArtifactOrchestrationService orchestration = project.getService(ArtifactOrchestrationService.class);
         List<String> downstream = orchestration.getCompletedDownstream(activeChangeName, artifact.id());
 
-        if (!downstream.isEmpty()) {
-            int result = Messages.showYesNoDialog(
-                    project,
-                    "Regenerating \"" + artifact.id() + "\" may make these downstream artifacts inconsistent:\n"
-                            + String.join(", ", downstream) + "\n\nContinue?",
-                    "Regenerate Artifact",
-                    Messages.getWarningIcon());
-            if (result != Messages.YES) return;
-        }
+        // One dialog: an optional one-off note, plus the downstream warning when there is one.
+        String note = regenerateDialog.apply(new RegenerateRequest(artifact.id(), downstream));
+        if (note == null) return;
 
         nextArtifactId = artifact.id();
-        executeGeneration(getSelectedDeliveryMode());
+        executeGeneration(getSelectedDeliveryMode(), note, true);
+    }
+
+    /** What the Regenerate dialog is asked: the artifact, and the completed artifacts that depend on it. */
+    record RegenerateRequest(String artifactId, List<String> downstream) {
+    }
+
+    /**
+     * Asks for the regeneration note: the note (possibly empty) to regenerate, or null to cancel. Replaced in tests,
+     * which can't show a dialog.
+     */
+    private java.util.function.Function<RegenerateRequest, @Nullable String> regenerateDialog = this::askRegenerateNote;
+
+    private @Nullable String askRegenerateNote(RegenerateRequest request) {
+        com.johnnyblabs.openspec.dialogs.RegenerateArtifactDialog dialog =
+                new com.johnnyblabs.openspec.dialogs.RegenerateArtifactDialog(project, request.artifactId(),
+                        request.downstream());
+        return dialog.showAndGet() ? dialog.getNote() : null;
+    }
+
+    void setRegenerateDialogForTest(java.util.function.Function<RegenerateRequest, @Nullable String> dialog) {
+        this.regenerateDialog = dialog;
+    }
+
+    /** Reviews a Direct API regeneration before it writes; replaced in tests, which can't show a dialog. */
+    private ArtifactReviewer reviewer = ArtifactReviewer.DIALOG;
+
+    void setReviewerForTest(ArtifactReviewer reviewer) {
+        this.reviewer = reviewer;
     }
 
     private void onCopyPromptForArtifact(ArtifactInfo artifact) {
@@ -2044,6 +2088,14 @@ public class WorkflowActionPanel extends JPanel {
     }
 
     private void executeGeneration(DeliveryMode mode) {
+        executeGeneration(mode, "", false);
+    }
+
+    /**
+     * Generates the next artifact through {@code mode}. {@code note} is the one-off regeneration note (empty for none),
+     * added to this run's prompt only. A Direct API {@code regenerate} is reviewed before anything is written.
+     */
+    private void executeGeneration(DeliveryMode mode, String note, boolean regenerate) {
         if (activeChangeName == null || nextArtifactId == null) return;
 
         String changeName = activeChangeName;
@@ -2051,13 +2103,32 @@ public class WorkflowActionPanel extends JPanel {
         Component chipAnchor = lastClickedChip;
 
         ProgressManager.getInstance().run(new Task.Backgroundable(project, "Generating " + artifactId, true) {
+            /** A Direct API regeneration's planned writes, waiting for review in onSuccess. */
+            private volatile List<ArtifactOrchestrationService.PlannedWrite> pendingReview;
+            private volatile ArtifactInstruction pendingInstruction;
+
+            @Override
+            public void onSuccess() {
+                // On the EDT, and skipped when the run was cancelled.
+                if (pendingReview != null && !project.isDisposed()) {
+                    reviewAndWrite(changeName, artifactId, pendingInstruction, pendingReview, chipAnchor);
+                }
+            }
+
+            private void notifyWriteFailed(IOException ex) {
+                ApplicationManager.getApplication().invokeLater(() ->
+                        OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_GENERATION, "Generate",
+                                "Failed to write artifact: " + ex.getMessage(),
+                                com.intellij.notification.NotificationType.ERROR));
+            }
+
             @Override
             public void run(@NotNull ProgressIndicator indicator) {
                 activeGenerations.put(artifactId, indicator);
                 try {
                     ArtifactOrchestrationService orchestration = project.getService(ArtifactOrchestrationService.class);
                     ArtifactInstruction instruction = orchestration.getInstruction(changeName, artifactId);
-                    String prompt = instruction.buildPrompt();
+                    String prompt = instruction.buildPrompt(note);
 
                     lastPrompt = prompt;
                     lastOutputPath = instruction.outputPath();
@@ -2095,73 +2166,50 @@ public class WorkflowActionPanel extends JPanel {
                             });
                         }
                         case EDITOR_TAB -> ApplicationManager.getApplication().invokeLater(() -> {
-                            try {
-                                VirtualFile scratch = com.intellij.openapi.application.WriteAction.compute(() -> {
-                                    VirtualFile tmp = LocalFileSystem.getInstance()
-                                            .findFileByPath(System.getProperty("java.io.tmpdir"));
-                                    if (tmp == null) return null;
-                                    String name = "openspec-" + artifactId + "-prompt.md";
-                                    VirtualFile file = tmp.findChild(name);
-                                    if (file != null) file.delete(this);
-                                    file = tmp.createChildData(this, name);
-                                    file.setBinaryContent(prompt.getBytes(StandardCharsets.UTF_8));
-                                    return file;
-                                });
-                                if (scratch != null) {
-                                    new OpenFileDescriptor(project, scratch).navigate(true);
-                                }
-                                String savePath = (instruction.changeDir() != null && lastOutputPath != null)
-                                        ? instruction.changeDir() + "/" + lastOutputPath : lastOutputPath;
-                                showGuidancePopover(chipAnchor, "\u2713 Opened in editor tab",
-                                        "Copy to your AI tool. Save response to: " + savePath, null);
-                                if (instruction.changeDir() != null && lastOutputPath != null) {
-                                    startFileWatcher(instruction.changeDir(), lastOutputPath);
-                                }
-                            } catch (IOException ex) {
-                                OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_GENERATION, "Generate",
-                                        "Failed to open prompt: " + ex.getMessage(), com.intellij.notification.NotificationType.ERROR);
+                            // An unsaved tab, like Explore and Revise: the prompt (and any regeneration note) is
+                            // never written to disk.
+                            com.intellij.testFramework.LightVirtualFile scratch =
+                                    new com.intellij.testFramework.LightVirtualFile(
+                                            "openspec-" + artifactId + "-prompt.md", prompt);
+                            lastEditorTabPrompt = scratch;
+                            new OpenFileDescriptor(project, scratch).navigate(true);
+                            String savePath = (instruction.changeDir() != null && lastOutputPath != null)
+                                    ? instruction.changeDir() + "/" + lastOutputPath : lastOutputPath;
+                            showGuidancePopover(chipAnchor, "\u2713 Opened in editor tab",
+                                    "Copy to your AI tool. Save response to: " + savePath, null);
+                            if (instruction.changeDir() != null && lastOutputPath != null) {
+                                startFileWatcher(instruction.changeDir(), lastOutputPath);
                             }
                         });
                         case DIRECT_API -> {
                             DirectApiService apiService = project.getService(DirectApiService.class);
-                            String result = apiService.generate(instruction);
+                            String result = apiService.generateRaw(instruction.buildDirectApiPrompt(note));
                             // Honor cancellation: the blocking HTTP call isn't interruptible, but a
                             // cancelled run must not write the artifact or show a success notification.
                             if (indicator.isCanceled()) return;
+                            if (regenerate) {
+                                // A regeneration overwrites files: plan here, off the EDT, and let the user review
+                                // the plan in onSuccess before anything is written.
+                                try {
+                                    pendingReview = ReviewedArtifactWriter.withLiveText(
+                                            orchestration.planArtifactResult(instruction, result));
+                                    pendingInstruction = instruction;
+                                } catch (IOException ex) {
+                                    notifyWriteFailed(ex);
+                                }
+                                return;
+                            }
                             // One writer for every Direct API path: it also handles a glob output path (specs), parsing
                             // the response into one file per capability. It runs here, off the EDT.
                             List<java.nio.file.Path> written;
                             try {
                                 written = orchestration.writeArtifactResult(instruction, result);
                             } catch (IOException ex) {
-                                ApplicationManager.getApplication().invokeLater(() ->
-                                        OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_GENERATION, "Generate",
-                                                "Failed to write artifact: " + ex.getMessage(),
-                                                com.intellij.notification.NotificationType.ERROR));
+                                notifyWriteFailed(ex);
                                 return;
                             }
-                            ApplicationManager.getApplication().invokeLater(() -> {
-                                VirtualFile generatedFile = written.isEmpty() ? null
-                                        : LocalFileSystem.getInstance().findFileByNioFile(written.getFirst());
-                                String what = written.size() > 1 ? artifactId + " (" + written.size() + " files)" : artifactId;
-                                if (generatedFile != null) {
-                                    OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_GENERATION, "Generate",
-                                            "Generated " + what, com.intellij.notification.NotificationType.INFORMATION,
-                                            OpenSpecNotifier.openFileAction(generatedFile));
-                                } else {
-                                    OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_GENERATION, "Generate",
-                                            "Generated " + what, com.intellij.notification.NotificationType.INFORMATION);
-                                }
-                                String savedTo = written.size() == 1 ? written.getFirst().toString()
-                                        : instruction.changeDir() + "/" + instruction.outputPath();
-                                showGuidancePopover(chipAnchor,
-                                        "\u2713 Generated " + what,
-                                        "Saved to: " + savedTo, null,
-                                        directApiGuidanceLink(instruction.outputPath(), chipAnchor));
-                                orchestration.invalidateCache(changeName);
-                                refresh();
-                                if (onRefreshRequested != null) onRefreshRequested.run();
-                            });
+                            ApplicationManager.getApplication().invokeLater(() ->
+                                    onDirectApiWritten(changeName, artifactId, instruction, written, chipAnchor, orchestration));
                         }
                     }
                 } catch (AiApiException ex) {
@@ -2188,6 +2236,67 @@ public class WorkflowActionPanel extends JPanel {
         });
     }
 
+    /**
+     * Shows a Direct API regeneration's planned files for review and writes them only on Accept. A file changed since
+     * the review aborts the write. Call on the EDT.
+     */
+    private void reviewAndWrite(String changeName, String artifactId, ArtifactInstruction instruction,
+                                List<ArtifactOrchestrationService.PlannedWrite> plan, Component anchor) {
+        String changeDir = instruction.changeDir() != null ? instruction.changeDir() : "";
+        List<ArtifactOrchestrationService.PlannedWrite> accepted = reviewer.review(project, artifactId, changeDir, plan);
+        if (accepted == null) {
+            OpenSpecNotifier.info(project, "Regenerate", "Discarded the regenerated " + artifactId + "; nothing was written");
+            return;
+        }
+        List<java.nio.file.Path> written;
+        try {
+            written = ReviewedArtifactWriter.write(project, "Regenerate " + artifactId, accepted);
+        } catch (ReviewedArtifactWriter.ChangedSinceReviewException ex) {
+            OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_GENERATION, "Regenerate",
+                    ex.getMessage() + ", so nothing was written. Regenerate again to review the current version.",
+                    com.intellij.notification.NotificationType.WARNING);
+            return;
+        } catch (IOException ex) {
+            OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_GENERATION, "Regenerate",
+                    "Failed to write artifact: " + ex.getMessage(), com.intellij.notification.NotificationType.ERROR);
+            return;
+        }
+        onDirectApiWritten(changeName, artifactId, instruction, written, anchor,
+                project.getService(ArtifactOrchestrationService.class), "Regenerated");
+    }
+
+    private void onDirectApiWritten(String changeName, String artifactId, ArtifactInstruction instruction,
+                                    List<java.nio.file.Path> written, Component chipAnchor,
+                                    ArtifactOrchestrationService orchestration) {
+        onDirectApiWritten(changeName, artifactId, instruction, written, chipAnchor, orchestration, "Generated");
+    }
+
+    /** Reports a Direct API write (notification and popover) and refreshes the panel. Call on the EDT. */
+    private void onDirectApiWritten(String changeName, String artifactId, ArtifactInstruction instruction,
+                                    List<java.nio.file.Path> written, Component chipAnchor,
+                                    ArtifactOrchestrationService orchestration, String verb) {
+        VirtualFile generatedFile = written.isEmpty() ? null
+                : LocalFileSystem.getInstance().findFileByNioFile(written.getFirst());
+        String what = written.size() > 1 ? artifactId + " (" + written.size() + " files)" : artifactId;
+        if (generatedFile != null) {
+            OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_GENERATION, "Generate",
+                    verb + " " + what, com.intellij.notification.NotificationType.INFORMATION,
+                    OpenSpecNotifier.openFileAction(generatedFile));
+        } else {
+            OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_GENERATION, "Generate",
+                    verb + " " + what, com.intellij.notification.NotificationType.INFORMATION);
+        }
+        String savedTo = written.size() == 1 ? written.getFirst().toString()
+                : instruction.changeDir() + "/" + instruction.outputPath();
+        showGuidancePopover(chipAnchor,
+                "\u2713 " + verb + " " + what,
+                "Saved to: " + savedTo, null,
+                directApiGuidanceLink(instruction.outputPath(), chipAnchor));
+        orchestration.invalidateCache(changeName);
+        refresh();
+        if (onRefreshRequested != null) onRefreshRequested.run();
+    }
+
     // --- Guidance popover ---
 
     private void showGuidancePopover(Component anchor, String title, String detail, Runnable copyAction) {
@@ -2211,15 +2320,19 @@ public class WorkflowActionPanel extends JPanel {
 
         if (anchor != null && anchor.isShowing()) {
             activeGuidancePopup.showUnderneathOf(anchor);
-        } else {
+        } else if (!ApplicationManager.getApplication().isHeadlessEnvironment()) {
             activeGuidancePopup.showInFocusCenter();
+        } else {
+            return; // nothing to show or dismiss in a headless run
         }
 
         // Auto-dismiss after 8 seconds
-        javax.swing.Timer dismissTimer = new javax.swing.Timer(8000, e -> dismissActivePopup());
-        dismissTimer.setRepeats(false);
-        dismissTimer.start();
+        guidanceDismissTimer = new javax.swing.Timer(8000, e -> dismissActivePopup());
+        guidanceDismissTimer.setRepeats(false);
+        guidanceDismissTimer.start();
     }
+
+    private javax.swing.Timer guidanceDismissTimer;
 
     /** The guidance popover's content: title, optional detail, optional "Copy again", optional extra link. */
     static JPanel guidanceContent(String title, String detail, Runnable copyAction, @Nullable GuidanceLink extraLink) {
@@ -2262,6 +2375,10 @@ public class WorkflowActionPanel extends JPanel {
     }
 
     private void dismissActivePopup() {
+        if (guidanceDismissTimer != null) {
+            guidanceDismissTimer.stop();
+            guidanceDismissTimer = null;
+        }
         if (activeGuidancePopup != null && !activeGuidancePopup.isDisposed()) {
             activeGuidancePopup.cancel();
         }
@@ -2293,6 +2410,14 @@ public class WorkflowActionPanel extends JPanel {
             activeWatcher.dispose();
             activeWatcher = null;
         }
+    }
+
+    /** Stops the artifact watcher, popover and animations, which a headless test's panel never removes. */
+    @org.jetbrains.annotations.TestOnly
+    void disposeForTest() {
+        disposeAnimations();
+        disposeWatcher();
+        dismissActivePopup();
     }
 
     // --- Generate All ---

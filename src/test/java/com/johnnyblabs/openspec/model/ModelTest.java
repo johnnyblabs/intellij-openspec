@@ -365,7 +365,7 @@ class ModelTest {
             ArtifactInstruction inst = new ArtifactInstruction("test-change", "tasks",
                     tempDir.toString(), "tasks.md", "Write tasks", null, List.of(dep), null);
 
-            String prompt = assertDoesNotThrow(inst::buildPrompt);
+            String prompt = assertDoesNotThrow(() -> inst.buildPrompt());
             int invoices = prompt.indexOf("#### specs/billing/invoices/spec.md\n\n```\nINVOICE-SPEC\n```");
             int auth = prompt.indexOf("#### specs/user-auth/spec.md\n\n```\nAUTH-SPEC\n```");
             assertTrue(invoices >= 0 && auth > invoices, "both specs inlined, labeled, in path order: " + prompt);
@@ -380,7 +380,7 @@ class ModelTest {
             ArtifactInstruction inst = new ArtifactInstruction("test-change", "tasks",
                     tempDir.toString(), "tasks.md", "Write tasks", null, List.of(dep), null);
 
-            String prompt = assertDoesNotThrow(inst::buildPrompt);
+            String prompt = assertDoesNotThrow(() -> inst.buildPrompt());
             assertTrue(prompt.contains("Path: specs/**/*.md"), "no match keeps the path-only reference");
         }
 
@@ -406,7 +406,7 @@ class ModelTest {
                     tempDir.toString(), "design.md",
                     "Write the design", null, List.of(dep), null);
 
-            String prompt = assertDoesNotThrow(inst::buildPrompt,
+            String prompt = assertDoesNotThrow(() -> inst.buildPrompt(),
                     "InvalidPathException (a RuntimeException) must be caught, not propagate past the IOException catch");
             assertTrue(prompt.contains("Path: bad\u0000name.md"),
                     "an unresolvable path falls back to a path-only reference");

@@ -5,6 +5,7 @@ import com.johnnyblabs.openspec.ai.AiApiException;
 import com.johnnyblabs.openspec.ai.DirectApiService;
 import com.johnnyblabs.openspec.model.ArtifactInfo;
 import com.johnnyblabs.openspec.model.ArtifactInstruction;
+import com.johnnyblabs.openspec.model.MultiFileArtifact;
 import com.johnnyblabs.openspec.model.ArtifactStatus;
 import com.johnnyblabs.openspec.model.ChangeArtifactDag;
 import com.johnnyblabs.openspec.util.CliOutputParser;
@@ -604,6 +605,49 @@ class ArtifactOrchestrationServiceTest {
             assertThrows(java.io.IOException.class, () -> service.writeArtifactResult(specs(changeDir), response));
             assertFalse(Files.exists(changeDir.resolve("specs")), "a rejected response must not write its valid files either");
             assertFalse(Files.exists(changeDir.getParent().resolve("escape.md")));
+        }
+
+        @Test
+        void planListsTheCapturedResponsesFilesWithoutWriting(@TempDir Path changeDir) throws Exception {
+            Path spec = changeDir.resolve("specs/greeting/spec.md");
+
+            List<ArtifactOrchestrationService.PlannedWrite> plan = service.planArtifactResult(specs(changeDir), liveSpecsText());
+
+            List<MultiFileArtifact.FileEntry> parsed = MultiFileArtifact.parse(liveSpecsText(), "specs/**/*.md");
+            assertEquals(parsed.size(), plan.size());
+            assertEquals(spec, plan.getFirst().path());
+            assertEquals(parsed.getFirst().content(), plan.getFirst().newText());
+            assertTrue(plan.getFirst().isNew(), "no file yet, so no current text");
+            assertFalse(Files.exists(changeDir.resolve("specs")), "planning writes nothing");
+        }
+
+        @Test
+        void planCarriesTheCurrentTextOfExistingFilesAndNullForNewOnes(@TempDir Path changeDir) throws Exception {
+            Files.createDirectories(changeDir.resolve("specs/auth"));
+            Files.writeString(changeDir.resolve("specs/auth/spec.md"), "# Old auth\n");
+            String response = "<!-- file: specs/auth/spec.md -->\n# New auth\n<!-- file: specs/billing/spec.md -->\n# Billing\n";
+
+            List<ArtifactOrchestrationService.PlannedWrite> plan = service.planArtifactResult(specs(changeDir), response);
+
+            assertEquals(List.of(changeDir.resolve("specs/auth/spec.md"), changeDir.resolve("specs/billing/spec.md")),
+                    plan.stream().map(ArtifactOrchestrationService.PlannedWrite::path).toList());
+            assertEquals("# Old auth\n", plan.get(0).currentText());
+            assertFalse(plan.get(0).isNew());
+            assertNull(plan.get(1).currentText());
+            assertEquals("# Old auth\n", Files.readString(changeDir.resolve("specs/auth/spec.md")), "planning writes nothing");
+        }
+
+        @Test
+        void aRefusedResponseFailsInPlanningWithTheSameMessage(@TempDir Path changeDir) {
+            String badPath = "<!-- file: specs/ok/spec.md -->\n# Ok\n<!-- file: specs/../escape.md -->\n# Bad\n";
+            String noMarkers = "# Just text\n";
+            for (String response : List.of(badPath, noMarkers)) {
+                java.io.IOException planned = assertThrows(java.io.IOException.class,
+                        () -> service.planArtifactResult(specs(changeDir), response));
+                java.io.IOException written = assertThrows(java.io.IOException.class,
+                        () -> service.writeArtifactResult(specs(changeDir), response));
+                assertEquals(written.getMessage(), planned.getMessage());
+            }
         }
 
         @Test

@@ -6,6 +6,7 @@
 
 ### Added
 
+- **Regenerate asks what should change, and Direct API shows the result before writing it.** Right-click a done chip and choose **Regenerate**: one dialog takes an optional note for this regeneration, which is never saved, and carries the warning about downstream artifacts. Over **Generate via API**, the result opens in a review comparing every file it would write with the current one, including new files. **Accept** writes them all as one undoable step; **Reject** writes nothing. If a file changes while you review, nothing is written. With no note, the prompt is unchanged.
 - **OpenSpec > Settings… opens the plugin's settings.** It's last in the OpenSpec menu and on the tool window toolbar. Manage AI Tools now has its own icon there, so the two aren't both gears.
 - **See what a change does to your specs from the workflow panel.** Right-click the done specs chip and choose **Diff vs current spec**, then a capability, to open the same diff as **Preview Diff**: the current spec against the change's delta spec. After **Generate via API** writes the specs, its confirmation popover links the same diff, asking which capability when there are several.
 - **Revise Change... sends your agent back to a change's plan.** Right-click an active change, use the edit icon in the workflow panel, or choose **OpenSpec > Revise Change...**, and say what should change, or leave it blank for a coherence review. The plugin hands your AI tool its own OpenSpec update workflow for that change, such as `/opsx:update add-auth drop the export feature`, which revises the proposal, specs, design and tasks together and asks before writing each revision. It completes the loop of propose, generate, revise and apply. **Update OpenSpec…** is unchanged, and its description now says it refreshes generated skills and commands.
@@ -16,6 +17,7 @@
 
 ### Changed
 
+- **Open in Editor Tab no longer writes the generation prompt to a temporary file.** It opens in an unsaved tab, as Explore and Revise Change already do.
 - **Agents and Direct API now say which is which, and point to each other.** Adding or configuring a tool in Manage AI Tools now says what it did: OpenSpec wrote its `/opsx` commands, and prompts are copied for it. Without Direct API, it offers **Set up Direct API…** for generating inside the IDE instead. The Direct API settings say an agent like Claude Code needs no key and link Manage AI Tools. With a provider configured, the button reads **Generate via Claude API** (or OpenAI, Gemini).
 - **The Explore tab sits right after Browse**, before Console, also when it appears after you configure Direct API.
 - **Explore hands your AI tool just the command to run.** When your tool has OpenSpec's explore command or skill installed, Explore's clipboard and editor-tab delivery now copy what you'd type, such as `/opsx:explore why caching`, `/opsx-explore …` in Cursor or `$openspec-explore …` in Codex, instead of a few hundred lines of instructions. Your tool then runs its own, up-to-date explore. The notice says what was copied and where to paste it. Without the command or skill, the full prompt is copied as before.
