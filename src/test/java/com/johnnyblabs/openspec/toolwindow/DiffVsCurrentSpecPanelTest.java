@@ -55,6 +55,7 @@ public class DiffVsCurrentSpecPanelTest extends OpenSpecIntegrationTestBase {
         when(changes.getActiveChanges()).thenReturn(List.of(new Change(CHANGE, CHANGE_DIR)));
         when(changes.getDeltaSpecNames(any())).thenAnswer(inv -> List.copyOf(capabilities));
         ServiceContainerUtil.replaceService(getProject(), ChangeService.class, changes, getTestRootDisposable());
+        PanelStatusTestSupport.feedCapturedStatus(getProject(), CHANGE, getTestRootDisposable());
         DefaultTreeModel model = new DefaultTreeModel(new DefaultMutableTreeNode("OpenSpec"));
         OpenSpecToolWindowPanel panel = new OpenSpecToolWindowPanel(getProject(), () -> model);
         Disposer.register(getTestRootDisposable(), panel);

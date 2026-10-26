@@ -42,6 +42,7 @@ public class ReviseHeaderButtonTest extends OpenSpecIntegrationTestBase {
         ChangeService changes = mock(ChangeService.class);
         when(changes.getActiveChanges()).thenReturn(List.of(new Change(CHANGE, "/tmp/" + CHANGE)));
         ServiceContainerUtil.replaceService(getProject(), ChangeService.class, changes, getTestRootDisposable());
+        PanelStatusTestSupport.feedCapturedStatus(getProject(), CHANGE, getTestRootDisposable());
         DefaultTreeModel model = new DefaultTreeModel(new DefaultMutableTreeNode("OpenSpec"));
         OpenSpecToolWindowPanel panel = new OpenSpecToolWindowPanel(getProject(), () -> model);
         Disposer.register(getTestRootDisposable(), panel);
