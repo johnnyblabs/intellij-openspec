@@ -30,7 +30,7 @@
 ## 3. Docs and gates
 
 - [x] 3.1 Update the feature reference (Regenerate, the review) and add a CHANGELOG line; update README if it describes Regenerate. Verify: `DocumentationHygieneTest` passes.
-- [ ] 3.2 Mutation-check three things, each of which must fail a test and then be reverted:
+- [x] 3.2 Mutation-check three things, each of which must fail a test and then be reverted:
   - drop the note from the prompt;
   - write on Reject;
   - skip the changed-since-review check.
