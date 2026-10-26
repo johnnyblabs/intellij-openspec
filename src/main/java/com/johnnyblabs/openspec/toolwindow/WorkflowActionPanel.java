@@ -1238,18 +1238,25 @@ public class WorkflowActionPanel extends JPanel {
 
     // --- Diff vs current spec ---
 
+    /** The active change as ChangeService lists it, or null when there is none. */
+    private @Nullable Change activeChange() {
+        if (activeChangeName == null) return null;
+        for (Change change : project.getService(ChangeService.class).getActiveChanges()) {
+            if (activeChangeName.equals(change.getName())) return change;
+        }
+        return null;
+    }
+
     /** The active change's directory, or null when there is none. */
     private @Nullable String activeChangeDirPath() {
-        if (activeChangeName == null) return null;
-        VirtualFile changesDir = com.johnnyblabs.openspec.util.OpenSpecFileUtil.getChangesDir(project);
-        VirtualFile changeDir = changesDir == null ? null : changesDir.findChild(activeChangeName);
-        return changeDir == null ? null : changeDir.getPath();
+        Change change = activeChange();
+        return change == null ? null : change.getPath();
     }
 
     /** The active change's capabilities with a delta spec, read when asked so they reflect the files on disk. */
     private List<String> activeDeltaSpecNames() {
-        if (activeChangeName == null) return List.of();
-        return project.getService(ChangeService.class).getDeltaSpecNames(new Change(activeChangeName, activeChangeDirPath()));
+        Change change = activeChange();
+        return change == null ? List.of() : project.getService(ChangeService.class).getDeltaSpecNames(change);
     }
 
     /** Opens one capability's diff against the current main spec, as Preview Diff does, launched from {@code source}. */
