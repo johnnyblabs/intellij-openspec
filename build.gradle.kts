@@ -442,10 +442,18 @@ intellijPlatform {
         // exists at the 242 floor, and lets these documented exceptions (no replacement at 242) stay until the
         // floor advances:
         //   - TerminalToolWindowManager.createShellWidget (OpenSpecTerminalLauncher; deprecated 2026.1+): its
-        //     replacement, the Reworked Terminal API, does not exist on 2024.2.
+        //     replacement, TerminalToolWindowTabsManager (Reworked Terminal tabs), first exists in 2025.3 and is
+        //     still @ApiStatus.Experimental through 2026.2, so no floor clears it yet.
         //   - SearchEverywhereContributor.getDataForItem (SpecSearchEverywhereContributor; deprecated 2026.2+):
-        //     abstract on 2024.2, so it must be overridden there; its replacement API does not exist on 2024.2
-        //     and is experimental and coroutine-only.
+        //     abstract on 2024.2 only (a null-returning default from 2024.3), so it must be overridden at the 242
+        //     floor. Its replacement, getDataProviders(), is stable from 2026.2; at a 243+ floor just delete the
+        //     override, since the default matches it.
+        //   Kept deliberately (decision 2026-10-25). Revisit when any of these happens:
+        //     (1) either method gains forRemoval, which the canary below fails on;
+        //     (2) TerminalToolWindowTabsManager drops @Experimental, then migrate behind a 253+ floor;
+        //     (3) the floor is raised to 243+ for any reason, then delete the getDataForItem override in that change;
+        //     (4) the first 2026.3 verifier run, where master already deprecates the whole
+        //         SearchEverywhereContributor interface in favour of the experimental SeItemsProvider.
         // (Migrated already, so not exceptions: ActionUtil.invokeAction → ActionLauncher, ReadAction.compute →
         // Application.runReadAction(ThrowableComputable), FileEditorManager.openFile(file, boolean) →
         // OpenFileDescriptor.navigate(true); DeprecatedPlatformApiHygieneTest and ActionInvocationHygieneTest
