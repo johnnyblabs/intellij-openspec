@@ -39,8 +39,9 @@ public final class DeliveryMethodResolver {
         // 2. Configured API provider
         AiProvider provider = AiProvider.fromString(settings.getAiProvider());
         if (provider != AiProvider.NONE) {
+            // "API" says this is the provider's API, not an agent of the same name (Claude Code).
             return new ResolvedMethod(DeliveryMode.DIRECT_API,
-                    "Generate via " + provider.getDisplayName());
+                    "Generate via " + provider.getDisplayName() + " API");
         }
 
         // 3. Detected tools — suggest clipboard with tool-specific label

@@ -6,6 +6,7 @@ import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowManager;
 import com.intellij.ui.content.Content;
 import com.intellij.ui.content.ContentFactory;
+import com.intellij.ui.content.ContentManager;
 import com.johnnyblabs.openspec.ai.DirectApiService;
 import org.jetbrains.annotations.Nullable;
 
@@ -46,7 +47,7 @@ public final class ExplorePanelService {
             ExplorePanel panel = new ExplorePanel(project);
             Content exploreContent = ContentFactory.getInstance().createContent(panel, "Explore", false);
             exploreContent.setDisposer(panel);
-            toolWindow.getContentManager().addContent(exploreContent);
+            addExploreTab(toolWindow.getContentManager(), exploreContent);
             this.explorePanel = panel;
         }
 
@@ -58,5 +59,18 @@ public final class ExplorePanelService {
             }
         });
         return explorePanel;
+    }
+
+    /**
+     * Adds the Explore tab right after Browse, before Console and Coordination: Explore is the first step, so it sits
+     * beside the tab it starts from, whenever it's created. Without a Browse tab it's appended.
+     */
+    static void addExploreTab(ContentManager contentManager, Content exploreContent) {
+        Content browse = contentManager.findContent("Browse");
+        if (browse == null) {
+            contentManager.addContent(exploreContent);
+        } else {
+            contentManager.addContent(exploreContent, contentManager.getIndexOfContent(browse) + 1);
+        }
     }
 }

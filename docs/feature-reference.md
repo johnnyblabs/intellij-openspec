@@ -10,13 +10,13 @@ Complete reference for all plugin features, organized by functional area.
 
 ### Tool Window
 
-The OpenSpec tool window (right sidebar, or **View > Tool Windows > OpenSpec**) has two permanent tabs, plus conditional Explore and Coordination tabs:
+The OpenSpec tool window (right sidebar, or **View > Tool Windows > OpenSpec**) has two permanent tabs, plus conditional Explore and Coordination tabs. Explore, when present, comes right after Browse:
 
 | Tab | Purpose |
 |-----|---------|
 | **Browse** | Changes-focused master/detail view: a tree of your changes (each with per-artifact status) beside a read-only rendered-markdown preview pane dedicated to change surfaces. Single-click to preview, double-click to open the file, right-click for context menu actions. Specs, archived changes, and `openspec/config.yaml` browse in the standard Project View and open in the editor; spec content search is via Search Everywhere. |
+| **Explore** | *(Only when Direct API is configured)* Thinking-space panel with inline topic input, markdown-rendered AI responses, and Copy/Clear toolbar. Appears automatically, right after Browse, when you configure a Direct API provider in Settings. |
 | **Console** | Output panel for CLI commands (init, validate, update, etc.). |
-| **Explore** | *(Only when Direct API is configured)* Thinking-space panel with inline topic input, markdown-rendered AI responses, and Copy/Clear toolbar. Appears automatically when you configure a Direct API provider in Settings. |
 | **Coordination** | *(Only when OpenSpec 1.4 coordination state or a coordination mode is detected)* Lists workspaces, context stores, and initiatives. See [Coordination Tab](#coordination-tab) below. |
 
 ### Coordination Tab
@@ -221,10 +221,11 @@ Statuses are exactly what `openspec status` reports. When `openspec status` reje
 | **Bulk Archive** | OpenSpec > Bulk Archive... | Archive multiple completed changes at once with conflict detection, one `openspec archive` call per change with CLI 1.5+. A change OpenSpec would refuse is marked Blocked (or Failed with the CLI's reason) and left untouched. |
 | **Sync Specs** | OpenSpec > Sync Specs | Merge delta specs from a completed change into main specs at `openspec/specs/`, by the same rules as `openspec archive`: fenced examples are left alone, names match exactly, and a change OpenSpec would refuse is refused with its reason in the preview, with nothing written. A new capability starts with `# <name> Specification` and OpenSpec's "TBD - created by archiving change …" Purpose, or the delta's own Purpose when it has one. Shows preview dialog. |
 | **Update** | OpenSpec > Update OpenSpec… | Run `openspec update` to refresh agent instruction files. Requires CLI. **On CLI 1.15 or later, Update first shows what it will change** (see [Update preview](#update-preview)) and runs only when you click **Apply**. When the CLI reports leftover legacy files from its skills migration (it exits 0 but asks for `--force` or an interactive run — neither reachable from the console), the plugin raises a **Review legacy cleanup** notice instead of bare success: every CLI-listed file appears with a checkbox and an open-to-inspect link (the review quotes what the CLI said and starts with no files ticked, since OpenSpec warns to back up custom content first), removal happens through the IDE as a single undoable step (Local History covers it), and a follow-up `openspec update` verifies the result (if that run fails, the plugin says the cleanup couldn't be verified rather than reporting a clean state). If that verification shows the CLI *regenerated* the files (a known inconsistency in some CLI versions' tool integrations), the plugin says so plainly and stops re-nagging until the CLI reports something different. Escape hatches: run interactively in the terminal, or **Not now** (no re-nag while the pending set is unchanged). **The plugin never runs `openspec update --force` on your behalf.** |
-| **Manage AI Tools** | OpenSpec > Manage AI Tools... | View and configure AI tool integrations detected in your project. |
+| **Manage AI Tools** | OpenSpec > Manage AI Tools... | Set up AI coding agents (Claude Code, Cursor, Copilot…): OpenSpec writes their `/opsx` commands into the project, and the plugin copies prompts for them. Adding or configuring a tool says what it did and, without Direct API, offers **Set up Direct API…** for generating inside the IDE instead. |
 | **List** | OpenSpec > List | List all specs and changes. |
 | **Refresh Tree** | OpenSpec > Refresh Tree | Manually refresh the tool window tree. |
 | **Setup Wizard** | OpenSpec > Setup Wizard... | Guided onboarding for new projects. |
+| **Settings…** | OpenSpec > Settings… (last in the menu; also last on the tool window toolbar) | Opens Settings > Tools > OpenSpec: CLI, delivery and Direct API. |
 
 ### Profile-Aware Action Visibility
 
@@ -239,7 +240,7 @@ The plugin works out the active workflows the way the OpenSpec CLI does, so it e
 
 Workflow-bound actions are enabled when their workflow is active: Propose, Explore, Revise Change (the `update` workflow), Apply, Archive, Fast-Forward, Continue, Verify and Bulk Archive.
 
-Utility actions (Init, Validate, List, Refresh, Update, Manage AI Tools, Setup Wizard) are always enabled regardless of profile.
+Utility actions (Init, Validate, List, Refresh, Update, Manage AI Tools, Setup Wizard, Settings) are always enabled regardless of profile.
 
 The profile is configured globally via `openspec config profile` or in **Settings → Tools → OpenSpec**. After changing the profile, action enablement updates immediately.
 
@@ -259,7 +260,9 @@ When you click Generate, the plugin delivers the assembled prompt via your confi
 |------|-------------|
 | **Copy for [Tool]** | Copies the prompt to clipboard with tool-specific guidance (e.g., "Paste into GitHub Copilot"). One entry per detected tool. |
 | **Open in Editor Tab** | Opens the prompt in a temporary editor tab for review before pasting into any AI tool. |
-| **Generate via API** | Sends the prompt directly to an AI provider's API and writes the response to disk automatically. Requires an API key. |
+| **Generate via API** | Sends the prompt directly to an AI provider's API and writes the response to disk automatically. Requires an API key. With a provider configured, the button reads **Generate via Claude API** (or OpenAI, Gemini). |
+
+Copying for an agent and Direct API are separate: an agent like Claude Code (set up in **Manage AI Tools**) needs no API key, and the plugin copies prompts for it to paste; Direct API is the plugin calling a provider's API with your own key. Each surface points to the other.
 
 ### AI Tool Detection
 
@@ -397,6 +400,8 @@ Fork, Validate and Open Templates act on the schema selected in the list, and st
 | **Deliver via** | Unified dropdown: Copy for [Tool], Open in Editor Tab, or Generate via API. |
 
 ### Direct API
+
+The section says Direct API is optional, that an agent like Claude Code needs no key, and links **Manage AI Tools…**.
 
 | Setting | Purpose |
 |---------|---------|

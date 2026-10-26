@@ -7,8 +7,11 @@ import com.intellij.openapi.actionSystem.DataProvider;
 import com.intellij.openapi.actionSystem.ex.AnActionListener;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.testFramework.PlatformTestUtil;
+import com.intellij.testFramework.ServiceContainerUtil;
 import com.johnnyblabs.openspec.actions.OpenSpecDataKeys;
 import com.johnnyblabs.openspec.integration.OpenSpecIntegrationTestBase;
+import com.johnnyblabs.openspec.model.Change;
+import com.johnnyblabs.openspec.services.ChangeService;
 import com.johnnyblabs.openspec.services.CliDetectionService;
 import com.johnnyblabs.openspec.services.CliDetectionTestSupport;
 
@@ -17,6 +20,9 @@ import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeModel;
 import java.util.ArrayList;
 import java.util.List;
+
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * The workflow panel's header has a Revise button that runs Revise Change... for the panel's change. Headless tests use
@@ -31,6 +37,11 @@ public class ReviseHeaderButtonTest extends OpenSpecIntegrationTestBase {
     protected void setUp() throws Exception {
         super.setUp();
         CliDetectionTestSupport.fakeUnavailable(getProject().getService(CliDetectionService.class));
+        // The panel's change comes from ChangeService. Stub it: the light fixture's change folder isn't found on
+        // Windows (its faked Unix base path gains a drive letter), so the panel would show no change there.
+        ChangeService changes = mock(ChangeService.class);
+        when(changes.getActiveChanges()).thenReturn(List.of(new Change(CHANGE, "/tmp/" + CHANGE)));
+        ServiceContainerUtil.replaceService(getProject(), ChangeService.class, changes, getTestRootDisposable());
         DefaultTreeModel model = new DefaultTreeModel(new DefaultMutableTreeNode("OpenSpec"));
         OpenSpecToolWindowPanel panel = new OpenSpecToolWindowPanel(getProject(), () -> model);
         Disposer.register(getTestRootDisposable(), panel);
@@ -42,7 +53,7 @@ public class ReviseHeaderButtonTest extends OpenSpecIntegrationTestBase {
         workflowPanel = panel.workflowPanelForTest();
     }
 
-    /** The fixture project's active change. */
+    /** The one active change ChangeService reports. */
     private static final String CHANGE = "test-change";
 
     private JButton button() throws Exception {

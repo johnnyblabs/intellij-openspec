@@ -1,6 +1,10 @@
 package com.johnnyblabs.openspec.dialogs;
 
 import com.intellij.icons.AllIcons;
+import com.intellij.notification.Notification;
+import com.intellij.notification.NotificationAction;
+import com.intellij.notification.NotificationType;
+import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.progress.ProcessCanceledException;
@@ -79,7 +83,7 @@ public class ManageAiToolsDialog extends DialogWrapper {
         JPanel headerPanel = new JPanel(new BorderLayout(JBUI.scale(8), 0));
         headerPanel.setBorder(JBUI.Borders.emptyBottom(8));
 
-        JBLabel title = new JBLabel("Configure AI tools for your project");
+        JBLabel title = new JBLabel(SUBTITLE);
         title.setForeground(JBColor.GRAY);
         headerPanel.add(title, BorderLayout.NORTH);
 
@@ -255,7 +259,7 @@ public class ManageAiToolsDialog extends DialogWrapper {
                     btn.setToolTipText("Generate OpenSpec skills and commands for " + tool.name());
                     btn.addActionListener(e -> runCliAction(
                             "init --tools " + tool.cliId(),
-                            "Configuring " + tool.name(), btn));
+                            "Configuring " + tool.name(), tool.name(), btn));
                 } else {
                     btn.setToolTipText("Set as preferred tool (install CLI for full skill generation)");
                     btn.addActionListener(e -> {
@@ -272,7 +276,7 @@ public class ManageAiToolsDialog extends DialogWrapper {
                     btn.setToolTipText("Add " + tool.name() + " to your project with OpenSpec skills");
                     btn.addActionListener(e -> runCliAction(
                             "init --tools " + tool.cliId(),
-                            "Adding " + tool.name(), btn));
+                            "Adding " + tool.name(), tool.name(), btn));
                 } else {
                     btn.setToolTipText("Create tool directory and set as preferred (install CLI for skill generation)");
                     btn.addActionListener(e -> {
@@ -294,7 +298,7 @@ public class ManageAiToolsDialog extends DialogWrapper {
         com.johnnyblabs.openspec.services.UpdatePreviewService preview =
                 com.johnnyblabs.openspec.services.UpdatePreviewService.getInstance(project);
         if (preview == null || !preview.supportsPreview()) {
-            runCliAction("update", "Updating " + tool.name(), sourceButton);
+            runCliAction("update", "Updating " + tool.name(), null, sourceButton);
             return;
         }
         String title = "Updating " + tool.name();
@@ -315,7 +319,53 @@ public class ManageAiToolsDialog extends DialogWrapper {
                 });
     }
 
-    private void runCliAction(String command, String title, JButton sourceButton) {
+    /** The dialog's subtitle: these are agents, and generating inside the IDE is something else. */
+    static final String SUBTITLE = "AI coding agents that run OpenSpec's /opsx commands. "
+            + "To generate inside the IDE instead, set up Direct API in Settings.";
+
+    /** What adding or configuring {@code tool} did, and, without Direct API, how to generate inside the IDE instead. */
+    static String toolSetUpNotice(String tool, boolean directApiConfigured) {
+        String notice = tool + " is set up: OpenSpec wrote its /opsx commands to this project. Prompts are labeled \"Copy for "
+                + tool + "\"; paste them into the agent.";
+        return directApiConfigured ? notice : notice + " To generate inside the IDE instead, set up Direct API.";
+    }
+
+    /**
+     * Says a CLI action succeeded: for setting up a tool ({@code setUpTool} non-null), what that did and, without Direct
+     * API, a "Set up Direct API…" action; otherwise that {@code title} is done.
+     */
+    static void notifySucceeded(Project project, String title, @Nullable String setUpTool, boolean directApiConfigured) {
+        if (setUpTool == null) {
+            OpenSpecNotifier.info(project, "AI Tools", title + " \u2014 done");
+            return;
+        }
+        String content = toolSetUpNotice(setUpTool, directApiConfigured);
+        if (directApiConfigured) {
+            OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_SYSTEM, "AI Tools", content, NotificationType.INFORMATION);
+        } else {
+            OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_SYSTEM, "AI Tools", content, NotificationType.INFORMATION,
+                    new NotificationAction(SET_UP_DIRECT_API) {
+                        @Override
+                        public void actionPerformed(@NotNull AnActionEvent e, @NotNull Notification notification) {
+                            // The notice outlives the dialog, so resolve the project now rather than trusting the capture.
+                            Project target = e.getProject() != null ? e.getProject() : project;
+                            if (!target.isDisposed()) {
+                                com.johnnyblabs.openspec.actions.OpenSpecOpenSettingsAction.open(target);
+                            }
+                            notification.expire();
+                        }
+                    });
+        }
+    }
+
+    static final String SET_UP_DIRECT_API = "Set up Direct API\u2026";
+
+    private boolean directApiConfigured() {
+        com.johnnyblabs.openspec.ai.DirectApiService api = project.getService(com.johnnyblabs.openspec.ai.DirectApiService.class);
+        return api != null && api.isConfigured();
+    }
+
+    private void runCliAction(String command, String title, @Nullable String setUpTool, JButton sourceButton) {
         sourceButton.setEnabled(false);
         sourceButton.setText("...");
 
@@ -335,7 +385,7 @@ public class ManageAiToolsDialog extends DialogWrapper {
                                 ? LocalFileSystem.getInstance().findFileByPath(basePath) : null;
                         refreshThenPost(projectDir, dialogModality, expired, () -> {
                             loadTools();
-                            OpenSpecNotifier.info(project, "AI Tools", title + " — done");
+                            notifySucceeded(project, title, setUpTool, directApiConfigured());
                         });
                     } else {
                         ApplicationManager.getApplication().invokeLater(() -> {
