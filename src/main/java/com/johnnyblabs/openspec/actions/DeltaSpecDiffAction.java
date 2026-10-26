@@ -26,6 +26,11 @@ public final class DeltaSpecDiffAction extends AnAction implements com.intellij.
         this.deltaSpecPath = deltaSpecPath;
     }
 
+    @org.jetbrains.annotations.TestOnly
+    public String deltaSpecPathForTest() {
+        return deltaSpecPath;
+    }
+
     @Override
     public void actionPerformed(@NotNull AnActionEvent e) {
         Project project = e.getProject();
