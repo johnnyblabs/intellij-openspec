@@ -135,7 +135,11 @@ public class RegenerateWithNotePanelTest extends OpenSpecIntegrationTestBase {
                 PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
                 Thread.sleep(50);
             }
-            if (changeDir != null) deleteTree(changeDir.getParent());
+            if (changeDir != null) {
+                deleteTree(changeDir.getParent());
+                // Tell the VFS now, while the root is still allowed, so no later refresh in another test reports it.
+                LocalFileSystem.getInstance().refreshNioFiles(List.of(changeDir.getParent()), false, true, null);
+            }
         } finally {
             super.tearDown();
         }
