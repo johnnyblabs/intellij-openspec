@@ -12,6 +12,7 @@ import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VfsUtil;
 import com.intellij.openapi.vfs.VfsUtilCore;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.johnnyblabs.openspec.services.ArtifactLocalHistory;
 import com.johnnyblabs.openspec.services.ArtifactOrchestrationService.PlannedWrite;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -54,10 +55,11 @@ final class ReviewedArtifactWriter {
 
     /**
      * Writes the reviewed files as one undoable command named {@code commandName}, or nothing if any of them changed
-     * since the review. Call on the EDT.
+     * since the review. Before the command, unsaved edits to the files are saved and {@code historyLabel} is put in
+     * Local History. Call on the EDT.
      */
-    static List<Path> write(@NotNull Project project, @NotNull String commandName, @NotNull List<PlannedWrite> reviewed)
-            throws IOException {
+    static List<Path> write(@NotNull Project project, @NotNull String commandName, @NotNull String historyLabel,
+                            @NotNull List<PlannedWrite> reviewed) throws IOException {
         List<VirtualFile> existing = new ArrayList<>();
         for (PlannedWrite write : reviewed) {
             // Refresh-and-find, so a file created outside the IDE since the review is seen rather than overwritten.
@@ -66,16 +68,15 @@ final class ReviewedArtifactWriter {
         }
         // Pick up edits made outside the IDE since the review, so the check below sees them.
         VfsUtil.markDirtyAndRefresh(false, false, false, existing.toArray(VirtualFile.EMPTY_ARRAY));
+        // Check first, so a refused write saves nothing and puts no label; the command checks again under its lock.
+        checkUnchanged(reviewed);
+        ArtifactLocalHistory.beforeWrite(project, historyLabel, reviewed.stream().map(PlannedWrite::path).toList());
 
         IOException[] failure = new IOException[1];
         List<Path> written = new ArrayList<>();
         WriteCommandAction.runWriteCommandAction(project, commandName, null, () -> {
             try {
-                for (PlannedWrite write : reviewed) {
-                    VirtualFile file = LocalFileSystem.getInstance().findFileByNioFile(write.path());
-                    String now = file == null ? null : liveText(file);
-                    if (!sameText(write.currentText(), now)) throw new ChangedSinceReviewException(write.path());
-                }
+                checkUnchanged(reviewed);
                 // Resolve every target before changing any, so a failure that can be foreseen writes no file.
                 List<Target> targets = new ArrayList<>();
                 for (PlannedWrite write : reviewed) targets.add(target(write));
@@ -93,6 +94,15 @@ final class ReviewedArtifactWriter {
         });
         if (failure[0] != null) throw failure[0];
         return written;
+    }
+
+    /** Throws when any reviewed file's live text differs from the text the review showed. Needs read access. */
+    private static void checkUnchanged(List<PlannedWrite> reviewed) throws IOException {
+        for (PlannedWrite write : reviewed) {
+            VirtualFile file = LocalFileSystem.getInstance().findFileByNioFile(write.path());
+            String now = file == null ? null : liveText(file);
+            if (!sameText(write.currentText(), now)) throw new ChangedSinceReviewException(write.path());
+        }
     }
 
     /** A reviewed write whose directory exists and whose existing file is writable; nothing has changed yet. */
