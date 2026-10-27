@@ -52,6 +52,19 @@ public class OpenSpecValidateAction extends OpenSpecBaseAction {
     }
 
     /**
+     * Runs Validate for one change, reporting where Validate always reports. The Change Deltas pane's
+     * "Show issues" link uses this, so the link and the pane's line come from the same run.
+     */
+    public static void validateChange(Project project, String changeName) {
+        new OpenSpecValidateAction().runValidation(project, ValidateTarget.change(changeName));
+    }
+
+    /** The CLI arguments Validate uses for one change, which the Change Deltas pane runs for its line. */
+    public static String[] changeCliArgs(String changeName) {
+        return cliArgs(ValidateTarget.change(changeName));
+    }
+
+    /**
      * Runs the built-in-plus-CLI validate pipeline in a background task, scoped to
      * {@code target}. {@link ValidateTarget.Kind#WHOLE_PROJECT} reproduces the classic
      * whole-project behavior ({@code validateAll()} + {@code validate --all --json});

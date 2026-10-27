@@ -583,6 +583,19 @@ Real CLI **1.15.0** captures, each run in an isolated environment (`HOME`/`XDG_C
 
 To re-capture, regenerate in the same isolated way. Never hand-edit a capture; if the CLI's output changes, re-capture and fix the tests.
 
+## `1.15.0/validate-change/` — one change's `validate --json` verdict
+
+Real CLI **1.15.0** captures of `openspec validate <change> --type change --json`, the command the Validate action and the Change Deltas pane run for one change. They were captured in a fresh scratch project (`openspec/config.yaml` with `schema: spec-driven`, one main spec `auth`) with an isolated `HOME`/`XDG_*` and `OPENSPEC_TELEMETRY=0`, stdout only, with each run's exit code in the matching `.exit` file. The project root is sanitized to `/fixture`.
+
+- `valid-change.json`: one ADDED requirement with a scenario. `valid: true`, no issues, exit 0.
+- `error-change.json`: the same requirement with no scenario. `valid: false`, one ERROR, exit 1.
+- `warning-change.json`: a valid delta plus an unknown `owner:` key in `.openspec.yaml`. `valid: true` with one WARNING, exit 0. The plugin's parser reports no issues for a valid item, so this reads as a plain pass.
+- `error-and-warning-change.json`: the error change plus the unknown key. `valid: false`, one ERROR and one WARNING.
+- `no-deltas-change.json`: a change with only `proposal.md`. `valid: false`, one ERROR ("Change must have at least one delta"). A change name the CLI doesn't know gives the same verdict, not an error response.
+- `invalid-name-envelope.json`: `validate ../escape --type change --json`. An `invalid_item` error response with no `items`, so there is no verdict. Exit 1.
+
+To re-capture, rebuild the same project in the same isolated way. Never hand-edit a capture.
+
 ## `1.3.0/schema-commands/` and `1.14.3/schema-commands/` — schema fork/init/list output
 
 Real captures from CLI **1.3.0** (run through `npx @fission-ai/openspec@1.3.0`, which reported `1.3.0`) and the installed **1.14.3**, each in a fresh scratch project (`openspec/config.yaml` with `schema: spec-driven`) with an isolated `HOME`/`XDG_*` and `OPENSPEC_TELEMETRY=0`. Stdout only: the "Schema commands are experimental" note goes to stderr. Project roots are sanitized to `/fixture`, and fork's `sourcePath` (the CLI's own install location, which the plugin never reads) to `/cli-install/schemas/spec-driven`.

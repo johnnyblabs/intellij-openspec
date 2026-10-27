@@ -1,0 +1,36 @@
+{
+  "items": [
+    {
+      "id": "error-change",
+      "type": "change",
+      "valid": false,
+      "issues": [
+        {
+          "level": "ERROR",
+          "path": "auth/spec.md",
+          "message": "ADDED \"Remember me\" must include at least one scenario"
+        }
+      ],
+      "durationMs": 8
+    }
+  ],
+  "summary": {
+    "totals": {
+      "items": 1,
+      "passed": 0,
+      "failed": 1
+    },
+    "byType": {
+      "change": {
+        "items": 1,
+        "passed": 0,
+        "failed": 1
+      }
+    }
+  },
+  "version": "1.0",
+  "root": {
+    "path": "/fixture",
+    "source": "nearest"
+  }
+}

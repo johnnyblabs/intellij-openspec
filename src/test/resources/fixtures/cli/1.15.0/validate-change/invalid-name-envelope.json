@@ -1,0 +1,9 @@
+{
+  "status": [
+    {
+      "severity": "error",
+      "code": "invalid_item",
+      "message": "Change name must not contain path separators"
+    }
+  ]
+}
