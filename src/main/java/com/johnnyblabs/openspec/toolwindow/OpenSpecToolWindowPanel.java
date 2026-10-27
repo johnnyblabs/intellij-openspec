@@ -29,10 +29,12 @@ import com.johnnyblabs.openspec.util.MarkdownHtmlRenderer;
 import com.johnnyblabs.openspec.actions.CreateDeltaSpecAction;
 import com.johnnyblabs.openspec.actions.DeltaSpecDiffAction;
 import com.johnnyblabs.openspec.actions.OpenSpecDataKeys;
+import com.johnnyblabs.openspec.actions.OpenSpecValidateAction;
 import com.johnnyblabs.openspec.services.AiToolDetectionService;
 import com.johnnyblabs.openspec.services.CliDetectionService;
 import com.johnnyblabs.openspec.settings.OpenSpecSettings;
 import com.johnnyblabs.openspec.util.OpenSpecFileUtil;
+import com.johnnyblabs.openspec.validation.BuiltInValidator;
 
 import javax.swing.*;
 import javax.swing.event.HyperlinkEvent;
@@ -195,6 +197,11 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
                 if (action != null) {
                     com.johnnyblabs.openspec.actions.ActionLauncher.launch(action, previewPane, "OpenSpecPreview");
                 }
+                return;
+            }
+            String validateChange = SpecPreviewRenderer.validateChangeFromHref(href);
+            if (validateChange != null) {
+                OpenSpecValidateAction.validateChange(project, validateChange);
                 return;
             }
             String openFile = SpecPreviewRenderer.openFileFromHref(href);
@@ -414,13 +421,34 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
             }
         }
         String fragment = outcome.fragment();
+        String validationLine = cliValidationLine(name);
+        if (validationLine != null) {
+            fragment = SpecPreviewRenderer.withValidationLine(fragment, validationLine);
+        }
 
-        // Only cache if no invalidation raced in during the CLI call — otherwise this now-stale
+        // Only cache if no invalidation raced in during the CLI calls — otherwise this now-stale
         // fragment would repopulate a just-cleared cache and be served on the next re-selection.
-        if (outcome.cacheable() && cacheEpoch == epochAtStart) {
+        // Without a verdict it isn't cached either, so reselecting the change asks again.
+        if (outcome.cacheable() && validationLine != null && cacheEpoch == epochAtStart) {
             changeDeltasCache.put(name, fragment);
         }
         applyChangeDeltas(generation, SpecPreviewRenderer.withOpenLink(fragment, openLink), changeDir);
+    }
+
+    /**
+     * The "Validate" line for a change: the same CLI run and reading as the Validate action for one change, or null
+     * when the CLI gave no verdict. Runs off the EDT.
+     */
+    private String cliValidationLine(String name) {
+        try {
+            return SpecPreviewRenderer.cliValidationLine(name,
+                    CliRunner.run(project, OpenSpecValidateAction.changeCliArgs(name)));
+        } catch (com.intellij.openapi.progress.ProcessCanceledException ex) {
+            throw ex;
+        } catch (CliRunner.CliException | RuntimeException ex) {
+            LOG.debug("openspec validate gave no verdict for change " + name, ex);
+            return null;
+        }
     }
 
     private void applyChangeDeltas(int generation, String fragment, String changeDir) {
@@ -457,7 +485,13 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
     }
 
     private void applyCliUnavailable(int generation, String changeDir, String changeName, String openLink) {
-        String fragment = SpecPreviewRenderer.withOpenLink(SpecPreviewRenderer.cliUnavailablePlaceholder(changeName), openLink);
+        String placeholder = SpecPreviewRenderer.withOpenLink(SpecPreviewRenderer.cliUnavailablePlaceholder(changeName), openLink);
+        // Without a CLI the plugin's own check is all there is; it is labelled as such and has no link, since
+        // Validate without a CLI runs this same check.
+        BuiltInValidator validator = project.getService(BuiltInValidator.class);
+        String fragment = validator == null ? placeholder
+                : SpecPreviewRenderer.withValidationLine(placeholder, SpecPreviewRenderer.validationLine(
+                        SpecPreviewRenderer.BUILT_IN_VALIDATION_LABEL, validator.validateChange(changeName), null));
         applyIfCurrent(generation, () -> {
             String css = MarkdownHtmlRenderer.buildThemeStylesheet() + DeltaBadgeDecorator.badgeCss() + SpecPreviewRenderer.paneCss();
             previewPane.setText(MarkdownHtmlRenderer.wrapInHtml(css, fragment));

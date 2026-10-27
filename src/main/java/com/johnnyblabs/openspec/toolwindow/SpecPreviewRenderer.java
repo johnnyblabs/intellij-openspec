@@ -9,9 +9,11 @@ import com.johnnyblabs.openspec.model.ChangeDeltaModel.Scenario;
 import com.johnnyblabs.openspec.model.DeltaSpecOperation.OperationType;
 import com.johnnyblabs.openspec.toolwindow.SpecTreeModel.TreeNodeType;
 import com.johnnyblabs.openspec.util.CliJson;
+import com.johnnyblabs.openspec.util.CliOutputParser;
 import com.johnnyblabs.openspec.util.CliRunner;
 import com.johnnyblabs.openspec.util.CliText;
 import com.johnnyblabs.openspec.util.MarkdownHtmlRenderer;
+import com.johnnyblabs.openspec.validation.ValidationResult;
 
 import java.util.List;
 
@@ -78,6 +80,21 @@ public final class SpecPreviewRenderer {
     public static final String DELTA_DIFF_LINK_CLASS = "openspec-diff-link";
     /** The one-line summary-counts paragraph under the deltas header. */
     public static final String DELTA_SUMMARY_CLASS = "openspec-delta-summary";
+    /** The one-line legend saying what archive does with each delta operation. */
+    public static final String DELTA_LEGEND_CLASS = "openspec-delta-legend";
+    /** Upstream's archive behaviour per operation (specs-apply), in one line. */
+    static final String DELTA_LEGEND = "On archive: ADDED adds the requirement to the main spec · "
+            + "MODIFIED replaces the whole requirement, so keep its scenarios · REMOVED deletes it · "
+            + "RENAMED renames it and keeps its text.";
+
+    /** The change's validation line under the header (and under the open-in-editor link). */
+    public static final String VALIDATION_LINE_CLASS = "openspec-validation-line";
+    /** Label of a validation line carrying the OpenSpec CLI's verdict. */
+    public static final String CLI_VALIDATION_LABEL = "Validate";
+    /** Label of a validation line carrying the plugin's own check, shown only without a CLI. */
+    public static final String BUILT_IN_VALIDATION_LABEL = "Built-in check";
+    /** Href scheme of the "Show issues" link; the rest is the change name. */
+    static final String VALIDATE_HREF_PREFIX = "openspec-validate:";
 
     /** How a selected node maps to a rendering interpretation. */
     public enum PreviewKind {
@@ -169,6 +186,7 @@ public final class SpecPreviewRenderer {
                 .append(" · ").append(model.operationCount(OperationType.REMOVED)).append(" REMOVED")
                 .append(" · ").append(model.operationCount(OperationType.RENAMED)).append(" RENAMED")
                 .append("</p>");
+        sb.append("<p class=\"").append(DELTA_LEGEND_CLASS).append("\">").append(DELTA_LEGEND).append("</p>");
 
         for (CapabilityGroup group : model.groupedByCapability()) {
             sb.append("<h2>").append(escape(group.capability())).append("</h2>");
@@ -242,7 +260,8 @@ public final class SpecPreviewRenderer {
         return "." + HEADER_MARKER + " { margin-bottom: 10px; }"
                 + "." + HEADER_MARKER + " p, ." + EMPTY_STATE_MARKER + " p, ." + CLI_UNAVAILABLE_MARKER + " p, ."
                 + CLI_REJECTED_MARKER + " p, ."
-                + OPEN_LINK_CLASS + " { margin-top: 0; margin-bottom: 8px; }";
+                + OPEN_LINK_CLASS + ", ." + VALIDATION_LINE_CLASS + ", ." + DELTA_LEGEND_CLASS
+                + " { margin-top: 0; margin-bottom: 8px; }";
     }
 
     /**
@@ -382,6 +401,76 @@ public final class SpecPreviewRenderer {
         }
         int cut = at + headerEnd.length();
         return fragment.substring(0, cut) + link + fragment.substring(cut);
+    }
+
+    /**
+     * A change's validation line: {@code "<label>: passed"} (with the warning count when the result carries
+     * warnings) or {@code "<label>: N errors, M warnings"}. With a change name, it ends with a "Show issues" link
+     * that runs Validate for that change. Pure and headless.
+     */
+    public static String validationLine(String label, ValidationResult result, String changeName) {
+        StringBuilder sb = new StringBuilder("<p class=\"").append(VALIDATION_LINE_CLASS).append("\">")
+                .append(escape(label)).append(": ");
+        int warnings = result.warningCount();
+        if (result.passed()) {
+            sb.append("passed");
+            if (warnings > 0) sb.append(", ").append(count(warnings, "warning"));
+        } else {
+            sb.append(count(result.errorCount(), "error")).append(", ").append(count(warnings, "warning"));
+        }
+        if (changeName != null && !changeName.isBlank()) {
+            sb.append(" · <a href=\"").append(escapeAttr(VALIDATE_HREF_PREFIX + changeName))
+                    .append("\">Show issues</a>");
+        }
+        return sb.append("</p>").toString();
+    }
+
+    private static String count(int n, String noun) {
+        return n + " " + noun + (n == 1 ? "" : "s");
+    }
+
+    /**
+     * The "Validate" line for one run of {@code openspec validate <change> --type change --json}, read exactly as the
+     * Validate action reads it ({@link CliOutputParser#parseJsonOutput}), or null when the run gave no verdict (an
+     * error response, unreadable output, no items).
+     */
+    public static String cliValidationLine(String changeName, CliRunner.CliResult result) {
+        try {
+            return validationLine(CLI_VALIDATION_LABEL, CliOutputParser.parseJsonOutput(result), changeName);
+        } catch (RuntimeException ex) {
+            // Anything but a verdict: Validate falls back on the same failures, so the pane shows no line.
+            return null;
+        }
+    }
+
+    /**
+     * Inserts a validation line after the header and after the open-in-editor link when there is one, so the order
+     * is the same whichever is inserted first. A fragment without the header gets the line in front.
+     */
+    public static String withValidationLine(String fragment, String line) {
+        if (fragment == null || line == null) {
+            return fragment;
+        }
+        String headerEnd = "</p></div>";
+        int at = fragment.startsWith("<div class=\"" + HEADER_MARKER + "\">") ? fragment.indexOf(headerEnd) : -1;
+        if (at < 0) {
+            return line + fragment;
+        }
+        int cut = at + headerEnd.length();
+        String openLink = "<p class=\"" + OPEN_LINK_CLASS + "\">";
+        if (fragment.startsWith(openLink, cut)) {
+            cut = fragment.indexOf("</p>", cut) + "</p>".length();
+        }
+        return fragment.substring(0, cut) + line + fragment.substring(cut);
+    }
+
+    /** The change name a "Show issues" href names, or null when the href is not one. */
+    public static String validateChangeFromHref(String href) {
+        if (href == null || !href.startsWith(VALIDATE_HREF_PREFIX)) {
+            return null;
+        }
+        String name = href.substring(VALIDATE_HREF_PREFIX.length());
+        return name.isBlank() ? null : name;
     }
 
     /**

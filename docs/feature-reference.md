@@ -151,13 +151,26 @@ if you collapse it, it stays collapsed when the tree refreshes.
   `RENAMED` delta shows its from→to without a requirement body. Each capability section offers a
   **Preview diff** link that opens that capability's delta-vs-current-main diff, so the consolidated
   *reading* view and the per-capability *machine diff* complement each other. A change with no spec
-  deltas shows an informative empty state.
+  deltas shows an informative empty state. Under the summary, a one-line legend says what archive
+  does with each operation: `ADDED` adds the requirement to the main spec, `MODIFIED` replaces the
+  whole requirement (so keep its scenarios), `REMOVED` deletes it, and `RENAMED` renames it and keeps
+  its text. The legend appears only when the change has deltas.
+- **Validation line.** Under the header, the pane shows the change's verdict from the OpenSpec CLI:
+  **Validate: passed** or **Validate: N errors, M warnings**. It is the same run Validate does for
+  one change (`openspec validate <change> --type change --json`), so the two never disagree; a
+  warning on a change that passes isn't counted, just as Validate doesn't list it. **Show issues**
+  runs Validate for that change, and its issues appear where Validate always reports them. The
+  verdict is fetched with the deltas and refreshed whenever a file under `openspec/` changes,
+  including the main specs it is checked against. If the CLI can't read the change or gives no
+  verdict, there's no line.
 - **Delta specs.** Selecting a change's delta spec (`changes/<change>/specs/<capability>/spec.md`)
   shows that file, with its operation headers badged. Main capability specs are not previewed in the
   pane; they open in the editor with the platform's Markdown preview.
 - **Without the CLI.** Selecting a change or one of its artifacts shows a placeholder saying the
-  consolidated deltas need the CLI, still with the header and the open-in-editor link. Delta-spec
-  files still preview without the CLI.
+  consolidated deltas need the CLI, still with the header and the open-in-editor link, and a
+  **Built-in check** line from the plugin's own validator. It is never labelled "Validate", because
+  the built-in check doesn't reproduce every CLI warning. Delta-spec files still preview without the
+  CLI.
 - **When the CLI can't read a change.** If the CLI is installed but rejects the change, the pane says
   **Can't read this change** and quotes the CLI's reason. That happens for a change with no
   `proposal.md` yet, a renamed or deleted change folder, or a CLI that timed out. It doesn't tell you
@@ -165,8 +178,9 @@ if you collapse it, it stays collapsed when the tree refreshes.
   deltas.
 - **On-model.** The pane renders the delta set the CLI reports, or your own delta-spec markdown. It
   does not synthesize a post-apply "effective" spec, and it does not score or show per-spec/per-delta
-  status, progress, or coverage; change-owned state follows the OpenSpec CLI: delta assembly comes
-  from the CLI, and task progress is counted with the CLI's own task-line grammar, so it matches
+  status, progress, or coverage. A change's validity is shown for the change as a whole, as upstream
+  validates it. Change-owned state follows the OpenSpec CLI: delta assembly and the validation
+  verdict come from the CLI (the built-in check only when there is no CLI), and task progress is counted with the CLI's own task-line grammar, so it matches
   `openspec list --json`.
 
 Rendering runs off the UI thread (the file is read and rendered on a background thread, then the pane

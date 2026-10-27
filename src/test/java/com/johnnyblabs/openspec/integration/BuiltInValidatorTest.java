@@ -810,4 +810,14 @@ public class BuiltInValidatorTest extends OpenSpecIntegrationTestBase {
         assertTrue("no config issue is merged for a single-item target",
                 result.issues().stream().noneMatch(i -> i.rule() != null && i.rule().startsWith("config-")));
     }
+
+    public void testAChangeTargetIsExactlyTheClisVerdict() {
+        // The Change Deltas pane shows the CLI's verdict for a change unmerged; Validate for that change must report
+        // the same verdict, or the pane's line and the "Show issues" run would disagree.
+        ValidationResult cli = new ValidationResult(false, List.of(new ValidationIssue(
+                ValidationIssue.Severity.ERROR, "change/x", 0, "boom", "cli")), "cli");
+        ValidationResult result = com.johnnyblabs.openspec.actions.OpenSpecValidateAction
+                .combineWithCli(validator, com.johnnyblabs.openspec.actions.ValidateTarget.change("x"), cli);
+        assertSame(cli, result);
+    }
 }
