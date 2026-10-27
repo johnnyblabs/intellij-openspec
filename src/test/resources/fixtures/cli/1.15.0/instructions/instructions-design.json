@@ -1,0 +1,33 @@
+{
+  "changeName": "demo",
+  "artifactId": "design",
+  "schemaName": "spec-driven",
+  "changeDir": "/fixture/demo-project/openspec/changes/demo",
+  "planningHome": {
+    "kind": "repo",
+    "root": "/fixture/demo-project",
+    "changesDir": "/fixture/demo-project/openspec/changes",
+    "defaultSchema": "spec-driven"
+  },
+  "outputPath": "design.md",
+  "resolvedOutputPath": "/fixture/demo-project/openspec/changes/demo/design.md",
+  "existingOutputPaths": [],
+  "description": "Technical design document with implementation details",
+  "instruction": "Create the design document that explains HOW to implement the change.\n\nWhen to include design.md (create only if any apply):\n- Cross-cutting change (multiple services/modules) or new architectural pattern\n- New external dependency or significant data model changes\n- Security, performance, or migration complexity\n- Ambiguity that benefits from technical decisions before coding\n\nSections:\n- **Context**: Only the current state and constraints needed to explain the approach. Reference the proposal for motivation instead of restating it (e.g., \"See proposal.md - Why\").\n- **Goals / Non-Goals**: What this design achieves and explicitly excludes. Don't restate the proposal's scope - add only design-level boundaries.\n- **Decisions**: Key technical choices with rationale (why X over Y?). Include alternatives considered for each decision.\n- **Risks / Trade-offs**: Known limitations, things that could go wrong. Format: [Risk] → Mitigation\n- **Migration Plan**: Steps to deploy, rollback strategy (if applicable)\n- **Open Questions**: Unknowns that can safely be answered later without\n  changing the specs, the approach, or the task breakdown. Omit if none.\n\nOpen questions are for genuinely deferrable unknowns, not decisions you\nskipped. If a question would change the specs, the chosen approach, or\nthe task breakdown, resolve it now - ask the user instead of guessing.\n\nFocus on architecture and approach, not line-by-line implementation.\nThe proposal covers why and what; design covers how. Reference the\nproposal for motivation and, once written, the specs for requirements -\nif a section would only restate them, point to them instead.\n\nGood design docs explain the \"why\" behind technical decisions.\n",
+  "template": "# Design\n\n## Context\n\n<!-- Current state and constraints that shape the approach. See proposal.md for motivation - don't restate it -->\n\n## Goals / Non-Goals\n\n**Goals:**\n<!-- What this design aims to achieve -->\n\n**Non-Goals:**\n<!-- What is explicitly out of scope -->\n\n## Decisions\n\n<!-- Key design decisions with rationale and alternatives considered -->\n\n## Risks / Trade-offs\n\n<!-- Known risks and trade-offs -->\n",
+  "dependencies": [
+    {
+      "id": "proposal",
+      "done": true,
+      "path": "proposal.md",
+      "description": "Initial proposal document outlining the change"
+    }
+  ],
+  "unlocks": [
+    "tasks"
+  ],
+  "root": {
+    "path": "/fixture/demo-project",
+    "source": "nearest"
+  }
+}

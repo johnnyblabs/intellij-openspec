@@ -6,6 +6,8 @@ import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.List;
 
+import org.jetbrains.annotations.Nullable;
+
 public record ArtifactInstruction(
         String changeName,
         String artifactId,
@@ -79,15 +81,52 @@ public record ArtifactInstruction(
         return sb.toString();
     }
 
+    /** Heads the one-off note a user gives when regenerating an artifact. */
+    public static final String NOTE_HEADING =
+            "Note for this regeneration (follow the instructions above; this note only says what to change):";
+
+    /** Heads the artifact's current content in a noted Direct API regeneration. */
+    public static final String CURRENT_VERSION_HEADING = "Current version (revise this):";
+
+    /**
+     * {@link #buildPrompt()} with a one-off note appended as its own trailing section. A null or blank note returns
+     * {@link #buildPrompt()} unchanged, byte for byte.
+     */
+    public String buildPrompt(@Nullable String note) {
+        String trimmed = trimNote(note);
+        return trimmed.isEmpty() ? buildPrompt() : buildPrompt() + noteSection(trimmed);
+    }
+
     /**
      * The prompt for a Direct API call: {@link #buildPrompt()}, plus, for an artifact whose output path is a glob, the
      * multi-file output format and the context an API call can't look up (see {@link MultiFileArtifact}). Copied
      * prompts keep using {@link #buildPrompt()}, because there an agent writes its own files.
      */
     public String buildDirectApiPrompt() {
-        String prompt = buildPrompt();
+        return buildDirectApiPrompt(null);
+    }
+
+    /**
+     * {@link #buildDirectApiPrompt()} with a one-off note. The note goes before the multi-file block, which stays last.
+     * With a note, a single-file artifact's current content is included so the model revises it; a glob artifact's
+     * existing files are already in the multi-file block. A null or blank note returns {@link #buildDirectApiPrompt()}
+     * unchanged.
+     */
+    public String buildDirectApiPrompt(@Nullable String note) {
+        String trimmed = trimNote(note);
+        StringBuilder prompt = new StringBuilder(buildPrompt());
+        if (!trimmed.isEmpty() && !isGlobPath(outputPath) && changeDir != null && outputPath != null) {
+            String current = readDependencyContent(changeDir, outputPath);
+            if (current != null) {
+                prompt.append("\n\n---\n\n").append(CURRENT_VERSION_HEADING).append("\n\n```\n")
+                        .append(current).append("\n```\n");
+            }
+        }
+        if (!trimmed.isEmpty()) {
+            prompt.append(noteSection(trimmed));
+        }
         if (!isGlobPath(outputPath)) {
-            return prompt;
+            return prompt.toString();
         }
         Path dir = null;
         try {
@@ -96,6 +135,14 @@ public record ArtifactInstruction(
             // An unresolvable change directory only loses the context lists, never the format.
         }
         return prompt + MultiFileArtifact.directApiPromptSection(dir, outputPath);
+    }
+
+    private static String trimNote(@Nullable String note) {
+        return note == null ? "" : note.strip();
+    }
+
+    private static String noteSection(String note) {
+        return "\n\n---\n\n" + NOTE_HEADING + "\n" + note + "\n";
     }
 
     private static String readDependencyContent(String changeDir, String relativePath) {

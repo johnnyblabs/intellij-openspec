@@ -280,15 +280,19 @@ class DirectApiFlowStructuralGuardTest {
     @Test
     void toolWindowGenerate_writesThroughTheSharedWriter() throws IOException {
         // The tool window's Direct API Generate wrote its own file and used the instruction's output path as a file
-        // name, which fails for the specs glob. It must use the one writer every Direct API path shares.
+        // name, which fails for the specs glob. It must use the one writer every Direct API path shares, and a
+        // regeneration must plan through the same parser before its review.
         String content = read(WORKFLOW);
-        // Anchor on the Generate branch, which calls apiService.generate (an earlier DIRECT_API case belongs to Apply).
-        int branch = content.lastIndexOf("case DIRECT_API -> {", content.indexOf("apiService.generate(instruction)"));
+        String call = "apiService.generateRaw(instruction.buildDirectApiPrompt(note))";
+        // Anchor on the Generate branch (an earlier DIRECT_API case belongs to Apply).
+        int branch = content.lastIndexOf("case DIRECT_API -> {", content.indexOf(call));
         assertTrue(branch >= 0, "expected the Generate DIRECT_API branch");
         String body = content.substring(branch, content.indexOf("} catch (AiApiException", branch));
-        assertTrue(body.contains("apiService.generate(instruction)"), "anti-vacuity: this is the generate branch");
+        assertTrue(body.contains(call), "anti-vacuity: this is the generate branch, sending the noted Direct API prompt");
         assertTrue(body.contains("orchestration.writeArtifactResult(instruction, result)"),
                 "Generate must write through ArtifactOrchestrationService.writeArtifactResult");
+        assertTrue(body.contains("orchestration.planArtifactResult(instruction, result)"),
+                "a regeneration must plan through the same parser, so refusals match");
         assertFalse(content.contains("createChildData(this, instruction.outputPath())"),
                 "the output path (possibly a glob) must never be used as a file name");
         // The write runs on the background thread, before the EDT hop for the notification.

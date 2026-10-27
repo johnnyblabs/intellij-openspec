@@ -711,3 +711,12 @@ Consumed by `WorkflowProfileServiceTest`.
 ## `1.15.0/workflows.json`: upstream's workflow set
 
 Upstream's exported `CORE_WORKFLOWS` and `ALL_WORKFLOWS`, in upstream's order, as `{cliVersion, core, all}`. Captured by `scripts/capture-workflow-ids.py`. The CLI has no command that prints them (`config set workflows` accepts any value without validating, and `config profile` is interactive), so the script loads the installed package's own `dist/core/profiles.js` with `node`. It fails rather than writing a guess if the exports move, and the standalone binary can't be used, since it has no JS to load. `WorkflowParityContractTest` checks the plugin's workflow-gated actions against `all`, and `CoreWorkflowsContractTest` checks the plugin's core set against `core`. Re-capture on every CLI bump.
+
+## `1.15.0/instructions/`: artifact instructions for the regeneration note
+
+These are real CLI 1.15.0 runs in a fresh isolated `HOME` and `XDG_*` environment with `OPENSPEC_TELEMETRY=0`. The project was created with `openspec init --tools none`, then `openspec new change demo`, with a filled `proposal.md` written by hand. The captures are:
+
+- `instructions-design.json`: `openspec instructions design --change demo --json`, a single-file artifact (`design.md`) that depends on `proposal`.
+- `instructions-specs.json`: `openspec instructions specs --change demo --json`, the glob artifact (`specs/**/*.md`).
+
+The project root is sanitized to `/fixture/demo-project`. `RegenerationNotePromptTest` reads these, along with every older `instructions-*.json`, to prove that a blank note leaves the prompt byte-identical. It also checks that a noted single-file Direct API prompt carries the current file. To re-capture, repeat the steps above with the new CLI version.

@@ -1244,7 +1244,7 @@ class CliContractTest {
             // threw InvalidPathException here — this is the assertion that bites there.
             ArtifactInstruction inst = CliOutputParser.parseArtifactInstruction(
                     fixture111("instructions-tasks-specs-done.json"));
-            String prompt = assertDoesNotThrow(inst::buildPrompt);
+            String prompt = assertDoesNotThrow(() -> inst.buildPrompt());
             assertTrue(prompt.contains("Path: specs/**/*.md"),
                     "a done glob dependency renders as a path-only reference, not inlined content");
         }

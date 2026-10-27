@@ -350,30 +350,61 @@ public final class ArtifactOrchestrationService {
     }
 
     /**
-     * Writes generated artifact content to the instruction's output path and returns the files written. A glob output
-     * path (the CLI declares {@code specs} as {@code specs/**}{@code /*.md}) is a set of files: the content is parsed as
-     * a multi-file response and every file is written, or none if the response is rejected (see
-     * {@link MultiFileArtifact}). Call off the EDT; the VFS write hops to the EDT itself.
+     * One file a generation result would write: where, its current text (null when the file doesn't exist yet), and
+     * the generated text.
      */
-    public List<Path> writeArtifactResult(ArtifactInstruction instruction, String content) throws IOException {
+    public record PlannedWrite(Path path, @org.jetbrains.annotations.Nullable String currentText, String newText) {
+
+        public boolean isNew() {
+            return currentText == null;
+        }
+
+        public PlannedWrite withCurrentText(@org.jetbrains.annotations.Nullable String text) {
+            return new PlannedWrite(path, text, newText);
+        }
+    }
+
+    /**
+     * The files a generation result would write, without writing anything. A glob output path (the CLI declares
+     * {@code specs} as {@code specs/**}{@code /*.md}) is a set of files: the content is parsed as a multi-file response,
+     * and a refused response throws with the reason (see {@link MultiFileArtifact}). Call off the EDT; it reads the
+     * current files from disk.
+     */
+    public List<PlannedWrite> planArtifactResult(ArtifactInstruction instruction, String content) throws IOException {
         String changeDir = instruction.changeDir();
         String outputPath = instruction.outputPath();
         if (changeDir == null || outputPath == null) {
             throw new IOException("Missing changeDir or outputPath in instruction");
         }
+        List<PlannedWrite> writes = new ArrayList<>();
         if (MultiFileArtifact.isGlob(outputPath)) {
-            List<MultiFileArtifact.FileEntry> files = MultiFileArtifact.parse(content, outputPath);
-            List<Path> written = new java.util.ArrayList<>();
-            for (MultiFileArtifact.FileEntry file : files) {
+            for (MultiFileArtifact.FileEntry file : MultiFileArtifact.parse(content, outputPath)) {
                 Path target = Path.of(changeDir, file.path().split("/"));
-                writeFile(target, file.content());
-                written.add(target);
+                writes.add(new PlannedWrite(target, readIfExists(target), file.content()));
             }
-            return written;
+            return writes;
         }
-        Path filePath = Path.of(changeDir, outputPath);
-        writeFile(filePath, content);
-        return List.of(filePath);
+        Path target = Path.of(changeDir, outputPath);
+        writes.add(new PlannedWrite(target, readIfExists(target), content));
+        return writes;
+    }
+
+    /**
+     * Writes generated artifact content to the instruction's output path and returns the files written: every file of
+     * {@link #planArtifactResult}, or none if the response is refused. Call off the EDT; the VFS write hops to the EDT
+     * itself.
+     */
+    public List<Path> writeArtifactResult(ArtifactInstruction instruction, String content) throws IOException {
+        List<Path> written = new ArrayList<>();
+        for (PlannedWrite write : planArtifactResult(instruction, content)) {
+            writeFile(write.path(), write.newText());
+            written.add(write.path());
+        }
+        return written;
+    }
+
+    private static @org.jetbrains.annotations.Nullable String readIfExists(Path path) throws IOException {
+        return Files.isRegularFile(path) ? Files.readString(path, StandardCharsets.UTF_8) : null;
     }
 
     private static void writeFile(Path filePath, String content) throws IOException {
