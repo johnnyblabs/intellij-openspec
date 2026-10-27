@@ -396,7 +396,11 @@ public final class ArtifactOrchestrationService {
      */
     public List<Path> writeArtifactResult(ArtifactInstruction instruction, String content) throws IOException {
         List<Path> written = new ArrayList<>();
-        for (PlannedWrite write : planArtifactResult(instruction, content)) {
+        List<PlannedWrite> plan = planArtifactResult(instruction, content);
+        // Mark the moment in Local History, so the user can see what this generation changed and get it back.
+        ArtifactLocalHistory.beforeWrite(project, ArtifactLocalHistory.generatingLabel(instruction.artifactId()),
+                plan.stream().map(PlannedWrite::path).toList());
+        for (PlannedWrite write : plan) {
             writeFile(write.path(), write.newText());
             written.add(write.path());
         }

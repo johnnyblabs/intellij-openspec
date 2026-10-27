@@ -155,8 +155,8 @@ public class DiffVsCurrentSpecPanelTest extends OpenSpecIntegrationTestBase {
 
     public void testThePopoverShowsTheLinkItIsGiven() {
         JPanel with = WorkflowActionPanel.guidanceContent("✓ Generated specs", "Saved to: x", null,
-                new WorkflowActionPanel.GuidanceLink("Diff vs current spec", () -> { }));
-        JPanel without = WorkflowActionPanel.guidanceContent("✓ Generated specs", "Saved to: x", null, null);
+                List.of(new WorkflowActionPanel.GuidanceLink("Diff vs current spec", () -> { })));
+        JPanel without = WorkflowActionPanel.guidanceContent("✓ Generated specs", "Saved to: x", null, List.of());
 
         assertEquals(List.of("Diff vs current spec"), links(with));
         assertEquals(List.of(), links(without));

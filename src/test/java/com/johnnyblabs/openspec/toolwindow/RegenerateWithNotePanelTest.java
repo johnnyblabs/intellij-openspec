@@ -19,6 +19,7 @@ import com.johnnyblabs.openspec.model.ArtifactInfo;
 import com.johnnyblabs.openspec.model.ArtifactInstruction;
 import com.johnnyblabs.openspec.model.ArtifactStatus;
 import com.johnnyblabs.openspec.model.Change;
+import com.johnnyblabs.openspec.services.ArtifactLocalHistory;
 import com.johnnyblabs.openspec.services.ArtifactOrchestrationService;
 import com.johnnyblabs.openspec.services.ArtifactOrchestrationService.PlannedWrite;
 import com.johnnyblabs.openspec.services.ChangeService;
@@ -66,6 +67,11 @@ public class RegenerateWithNotePanelTest extends OpenSpecIntegrationTestBase {
     private final List<WorkflowActionPanel.RegenerateRequest> asked = new ArrayList<>();
     private final List<List<PlannedWrite>> reviewed = new ArrayList<>();
     private final List<Notification> raised = new ArrayList<>();
+    /** A Local History label as it was put: its name, and design.md on disk and in the editor at that moment. */
+    private record LabelSeen(String name, String designOnDisk, boolean designUnsaved) {
+    }
+
+    private final List<LabelSeen> labels = new ArrayList<>();
     /** What the stubbed Direct API call returns. */
     private String response = GENERATED_DESIGN;
 
@@ -122,6 +128,8 @@ public class RegenerateWithNotePanelTest extends OpenSpecIntegrationTestBase {
         raised.clear();
         answerWith(NOTE);
         acceptReviews();
+        ArtifactLocalHistory.setLabelerForTest((project, name) -> labels.add(new LabelSeen(name, designOnDisk(),
+                designUnsaved())), getTestRootDisposable());
     }
 
     @Override
@@ -188,6 +196,21 @@ public class RegenerateWithNotePanelTest extends OpenSpecIntegrationTestBase {
 
     private static void dispatch() {
         for (int i = 0; i < 5; i++) PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
+    }
+
+    private String designOnDisk() {
+        try {
+            Path path = changeDir.resolve("design.md");
+            return Files.exists(path) ? Files.readString(path) : null;
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private boolean designUnsaved() {
+        VirtualFile file = LocalFileSystem.getInstance().findFileByNioFile(changeDir.resolve("design.md"));
+        Document document = file == null ? null : FileDocumentManager.getInstance().getCachedDocument(file);
+        return document != null && FileDocumentManager.getInstance().isDocumentUnsaved(document);
     }
 
     private String design() throws IOException {
@@ -536,5 +559,228 @@ public class RegenerateWithNotePanelTest extends OpenSpecIntegrationTestBase {
         assertTrue("no note dialog either", asked.isEmpty());
         assertEquals(GENERATED_DESIGN, design());
         verify(api).generateRaw(any());
+    }
+
+    // --- Local History ---
+
+    private void editDesignWithoutSaving(String text) {
+        VirtualFile file = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(changeDir.resolve("design.md"));
+        Document document = FileDocumentManager.getInstance().getDocument(file);
+        WriteCommandAction.runWriteCommandAction(getProject(), () -> document.setText(text));
+    }
+
+    private List<String> linkTexts() {
+        return workflowPanel.lastGuidanceLinksForTest().stream().map(WorkflowActionPanel.GuidanceLink::text).toList();
+    }
+
+    public void testAcceptedRegenerateIsLabelledWithTheOldContentStillOnDisk() throws Exception {
+        regenerate("design", "design.md", DeliveryMode.DIRECT_API);
+
+        assertEquals(List.of(new LabelSeen("OpenSpec: before regenerating design", CURRENT_DESIGN, false)), labels);
+        assertEquals(GENERATED_DESIGN, design());
+    }
+
+    public void testARejectedRegeneratePutsNoLabel() {
+        workflowPanel.setReviewerForTest((project, artifactId, dir, writes) -> null);
+
+        regenerate("design", "design.md", DeliveryMode.DIRECT_API);
+
+        assertTrue(labels.toString(), labels.isEmpty());
+    }
+
+    public void testARegenerateRefusedBecauseTheFileChangedPutsNoLabel() throws Exception {
+        workflowPanel.setReviewerForTest((project, artifactId, dir, writes) -> {
+            try {
+                Files.writeString(changeDir.resolve("design.md"), "# Design\n\nEdited outside.\n");
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            return writes;
+        });
+
+        regenerate("design", "design.md", DeliveryMode.DIRECT_API);
+
+        assertTrue(labels.toString(), labels.isEmpty());
+        assertEquals("# Design\n\nEdited outside.\n", design());
+    }
+
+    public void testAnUnsavedEditIsSavedBeforeTheLabelSoTheLabelHoldsIt() throws Exception {
+        editDesignWithoutSaving("# Design\n\nUnsaved before.\n");
+
+        regenerate("design", "design.md", DeliveryMode.DIRECT_API);
+
+        assertEquals(List.of(new LabelSeen("OpenSpec: before regenerating design", "# Design\n\nUnsaved before.\n",
+                false)), labels);
+        assertEquals(GENERATED_DESIGN, design());
+    }
+
+    public void testGeneratingFromAReadyChipIsLabelledBeforeTheFileExists() throws Exception {
+        Files.delete(changeDir.resolve("design.md"));
+        workflowPanel.setDeliveryModeForTest(DeliveryMode.DIRECT_API);
+        JPopupMenu menu = workflowPanel.chipContextMenu(
+                new ArtifactInfo("design", "design.md", ArtifactStatus.READY, List.of()), new JLabel("design"));
+        for (java.awt.Component c : menu.getComponents()) {
+            if (c instanceof JMenuItem item && "Generate".equals(item.getText())) item.doClick();
+        }
+        dispatch();
+
+        assertEquals(List.of(new LabelSeen("OpenSpec: before generating design", null, false)), labels);
+        assertEquals(GENERATED_DESIGN, design());
+    }
+
+    public void testCompareWithPreviousShowsTheReviewedTextAgainstTheWrittenFile() throws Exception {
+        editDesignWithoutSaving("# Design\n\nUnsaved before.\n");
+        List<List<com.intellij.diff.requests.SimpleDiffRequest>> shown = new ArrayList<>();
+        workflowPanel.setCompareShowerForTest(shown::add);
+
+        regenerate("design", "design.md", DeliveryMode.DIRECT_API);
+        assertEquals(List.of(WorkflowActionPanel.COMPARE_WITH_PREVIOUS_LABEL), linkTexts());
+        workflowPanel.lastGuidanceLinksForTest().getFirst().action().run();
+
+        assertEquals(1, shown.size());
+        com.intellij.diff.requests.SimpleDiffRequest request = shown.getFirst().getFirst();
+        var left = (com.intellij.diff.contents.DocumentContent) request.getContents().get(0);
+        var right = (com.intellij.diff.contents.DocumentContent) request.getContents().get(1);
+        assertEquals("the left side is what the user reviewed", "# Design\n\nUnsaved before.\n",
+                left.getDocument().getText());
+        VirtualFile design = LocalFileSystem.getInstance().findFileByNioFile(changeDir.resolve("design.md"));
+        assertEquals("the right side is the file itself", design,
+                FileDocumentManager.getInstance().getFile(right.getDocument()));
+        assertEquals(GENERATED_DESIGN, right.getDocument().getText());
+    }
+
+    public void testARegenerateThatOnlyCreatedFilesHasNoCompareLink() throws Exception {
+        Files.delete(changeDir.resolve("design.md"));
+        LocalFileSystem.getInstance().refreshAndFindFileByNioFile(changeDir);
+
+        regenerate("design", "design.md", DeliveryMode.DIRECT_API);
+
+        assertEquals(GENERATED_DESIGN, design());
+        assertFalse(linkTexts().toString(), linkTexts().contains(WorkflowActionPanel.COMPARE_WITH_PREVIOUS_LABEL));
+    }
+
+    public void testRegeneratedSpecsCompareOnlyTheReplacedFileAndKeepTheirDiffLink() throws Exception {
+        Files.createDirectories(changeDir.resolve("specs/auth"));
+        Files.writeString(changeDir.resolve("specs/auth/spec.md"), "# Old auth\n");
+        response = "<!-- file: specs/auth/spec.md -->\n# New auth\n<!-- file: specs/billing/spec.md -->\n# Billing\n";
+        List<List<com.intellij.diff.requests.SimpleDiffRequest>> shown = new ArrayList<>();
+        workflowPanel.setCompareShowerForTest(shown::add);
+
+        regenerate("specs", "specs/**/*.md", DeliveryMode.DIRECT_API);
+
+        assertEquals(List.of(WorkflowActionPanel.COMPARE_WITH_PREVIOUS_LABEL, DiffVsCurrentSpec.LABEL), linkTexts());
+        workflowPanel.lastGuidanceLinksForTest().getFirst().action().run();
+        assertEquals("the new billing spec has nothing to compare", 1, shown.getFirst().size());
+        var left = (com.intellij.diff.contents.DocumentContent) shown.getFirst().getFirst().getContents().get(0);
+        assertEquals("# Old auth\n", left.getDocument().getText());
+    }
+
+    // --- Show Local History ---
+
+    private List<String> doneMenu(String artifactId, String outputPath, List<java.awt.Component> launchedFrom) {
+        workflowPanel.setLauncherForTest((action, source) -> launchedFrom.add(source));
+        JPopupMenu menu = workflowPanel.chipContextMenu(
+                new ArtifactInfo(artifactId, outputPath, ArtifactStatus.DONE, List.of()), new JLabel(artifactId));
+        List<String> items = new ArrayList<>();
+        for (java.awt.Component c : menu.getComponents()) {
+            if (c instanceof JMenuItem item) items.add(item.getText());
+            else if (c instanceof JSeparator) items.add("---");
+        }
+        return items;
+    }
+
+    private void clickItem(String artifactId, String outputPath, String text) {
+        JPopupMenu menu = workflowPanel.chipContextMenu(
+                new ArtifactInfo(artifactId, outputPath, ArtifactStatus.DONE, List.of()), new JLabel(artifactId));
+        for (java.awt.Component c : menu.getComponents()) {
+            if (c instanceof JMenuItem item && text.equals(item.getText())) {
+                item.doClick();
+                return;
+            }
+        }
+        fail("no " + text + " item");
+    }
+
+    private static com.intellij.openapi.actionSystem.DataContext snapshot(java.awt.Component source) {
+        assertTrue(String.valueOf(source), source instanceof com.intellij.openapi.actionSystem.UiDataProvider);
+        var provider = (com.intellij.openapi.actionSystem.UiDataProvider) source;
+        return com.intellij.openapi.actionSystem.CustomizedDataContext.withSnapshot(
+                com.intellij.openapi.actionSystem.DataContext.EMPTY_CONTEXT, provider::uiDataSnapshot);
+    }
+
+    public void testTheRealShowHistoryActionIdIsRegistered() {
+        assertNotNull(com.intellij.openapi.actionSystem.ActionManager.getInstance()
+                .getAction(WorkflowActionPanel.SHOW_LOCAL_HISTORY_ACTION_ID));
+    }
+
+    public void testADoneChipShowsTheLocalHistoryOfItsFile() {
+        VirtualFile design = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(changeDir.resolve("design.md"));
+        assertTrue("a real file on disk is tracked by Local History", ArtifactLocalHistory.isTracked(design));
+        assertFalse("an in-memory file isn't", ArtifactLocalHistory.isTracked(new LightVirtualFile("x.md", "x")));
+        List<java.awt.Component> launched = new ArrayList<>();
+
+        assertEquals(List.of("Open file", "Regenerate", "Copy prompt", WorkflowActionPanel.SHOW_LOCAL_HISTORY_LABEL),
+                doneMenu("design", "design.md", launched));
+        clickItem("design", "design.md", WorkflowActionPanel.SHOW_LOCAL_HISTORY_LABEL);
+
+        assertEquals(1, launched.size());
+        var context = snapshot(launched.getFirst());
+        assertEquals(getProject(), context.getData(com.intellij.openapi.actionSystem.CommonDataKeys.PROJECT));
+        assertOrderedEquals(context.getData(com.intellij.openapi.actionSystem.CommonDataKeys.VIRTUAL_FILE_ARRAY), design);
+        assertEquals(List.of(design), context.getData(WorkflowActionPanel.LocalHistorySource.VCS_VIRTUAL_FILES));
+    }
+
+    public void testTheSpecsChipShowsTheLocalHistoryOfTheSpecsFolder() throws Exception {
+        Files.createDirectories(changeDir.resolve("specs/auth"));
+        Files.writeString(changeDir.resolve("specs/auth/spec.md"), "# Auth\n");
+        VirtualFile specs = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(changeDir.resolve("specs"));
+        List<java.awt.Component> launched = new ArrayList<>();
+
+        assertTrue(doneMenu("specs", "specs/**/*.md", launched).contains(WorkflowActionPanel.SHOW_LOCAL_HISTORY_LABEL));
+        clickItem("specs", "specs/**/*.md", WorkflowActionPanel.SHOW_LOCAL_HISTORY_LABEL);
+
+        assertEquals(List.of(specs), snapshot(launched.getFirst())
+                .getData(WorkflowActionPanel.LocalHistorySource.VCS_VIRTUAL_FILES));
+    }
+
+    public void testNoShowLocalHistoryWithoutAFileOrWithoutTheView() throws Exception {
+        List<java.awt.Component> launched = new ArrayList<>();
+        assertFalse(doneMenu("tasks", "tasks.md", launched).contains(WorkflowActionPanel.SHOW_LOCAL_HISTORY_LABEL));
+
+        workflowPanel.setShowHistoryActionForTest(() -> null);
+        assertFalse(doneMenu("design", "design.md", launched).contains(WorkflowActionPanel.SHOW_LOCAL_HISTORY_LABEL));
+    }
+
+    public void testHistoryPathsNameTheFileOrTheFolderBeforeTheGlob() {
+        assertEquals("design.md", WorkflowActionPanel.historyRelativePath("design.md"));
+        assertEquals("specs", WorkflowActionPanel.historyRelativePath("specs/**/*.md"));
+        assertNull(WorkflowActionPanel.historyRelativePath("**/*.md"));
+        assertNull(WorkflowActionPanel.historyRelativePath(null));
+    }
+
+    public void testSavingOffTheEdtRunsOnTheEdtBeforeTheLabel() throws Exception {
+        editDesignWithoutSaving("# Design\n\nUnsaved off EDT.\n");
+        var future = com.intellij.openapi.application.ApplicationManager.getApplication().executeOnPooledThread(() ->
+                ArtifactLocalHistory.beforeWrite(getProject(), "label", List.of(changeDir.resolve("design.md"),
+                        changeDir.resolve("missing.md"))));
+        long end = System.currentTimeMillis() + 10_000;
+        while (!future.isDone() && System.currentTimeMillis() < end) {
+            PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
+            Thread.sleep(10);
+        }
+        assertTrue(future.isDone());
+        assertEquals(List.of(new LabelSeen("label", "# Design\n\nUnsaved off EDT.\n", false)), labels);
+        assertFalse("a missing file is not created", Files.exists(changeDir.resolve("missing.md")));
+    }
+
+    public void testALabelThatCannotBePutNeverStopsTheWrite() throws Exception {
+        ArtifactLocalHistory.setLabelerForTest((project, name) -> {
+            throw new IllegalStateException("no Local History");
+        }, getTestRootDisposable());
+
+        regenerate("design", "design.md", DeliveryMode.DIRECT_API);
+
+        assertEquals(GENERATED_DESIGN, design());
+        assertTrue(raisedContaining("Regenerated design"));
     }
 }

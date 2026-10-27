@@ -37,6 +37,7 @@ import com.johnnyblabs.openspec.model.ArtifactStatus;
 import com.johnnyblabs.openspec.model.Change;
 import com.johnnyblabs.openspec.model.ChangeArtifactDag;
 import com.johnnyblabs.openspec.services.AiToolDetectionService;
+import com.johnnyblabs.openspec.services.ArtifactLocalHistory;
 import com.johnnyblabs.openspec.services.ArtifactOrchestrationService;
 import com.johnnyblabs.openspec.services.WorkflowSchemaContextService;
 import com.johnnyblabs.openspec.model.WorkflowSchemaContext;
@@ -1212,6 +1213,15 @@ public class WorkflowActionPanel extends JPanel {
                 copyPromptItem.addActionListener(ev -> onCopyPromptForArtifact(artifact));
                 menu.add(copyPromptItem);
 
+                VirtualFile historyTarget = localHistoryTarget(artifact);
+                AnAction showHistory = showHistoryAction.get();
+                if (historyTarget != null && showHistory != null) {
+                    JMenuItem historyItem = new JMenuItem(SHOW_LOCAL_HISTORY_LABEL);
+                    historyItem.addActionListener(ev ->
+                            launcher.accept(showHistory, new LocalHistorySource(project, historyTarget)));
+                    menu.add(historyItem);
+                }
+
                 List<DiffVsCurrentSpec.Entry> diffs = DiffVsCurrentSpec.entries(
                         artifact, activeChangeDirPath(), activeDeltaSpecNames());
                 if (!diffs.isEmpty()) {
@@ -1257,6 +1267,73 @@ public class WorkflowActionPanel extends JPanel {
         }
 
         return menu;
+    }
+
+    // --- Show Local History ---
+
+    static final String SHOW_LOCAL_HISTORY_LABEL = "Show Local History";
+    /** The IDE's own Local History view. There is no public API to open it, so it is run by its action id. */
+    static final String SHOW_LOCAL_HISTORY_ACTION_ID = "LocalHistory.ShowHistory";
+
+    private java.util.function.Supplier<@Nullable AnAction> showHistoryAction =
+            () -> ActionManager.getInstance().getAction(SHOW_LOCAL_HISTORY_ACTION_ID);
+
+    @org.jetbrains.annotations.TestOnly
+    void setShowHistoryActionForTest(java.util.function.Supplier<@Nullable AnAction> action) {
+        this.showHistoryAction = action;
+    }
+
+    /**
+     * What "Show Local History" opens for a done artifact: its file, or for a multi-file artifact (a glob output path,
+     * like {@code specs/**}/{@code *.md}) the folder the glob starts in. Null when it doesn't exist or Local History doesn't
+     * track it.
+     */
+    private @Nullable VirtualFile localHistoryTarget(ArtifactInfo artifact) {
+        String changeDir = activeChangeDirPath();
+        String relative = historyRelativePath(artifact.outputPath());
+        if (changeDir == null || relative == null) return null;
+        VirtualFile target = LocalFileSystem.getInstance().refreshAndFindFileByPath(changeDir + "/" + relative);
+        return ArtifactLocalHistory.isTracked(target) ? target : null;
+    }
+
+    /** The output path itself, or the folder before a glob's first wildcard; null when there is nothing to name. */
+    static @Nullable String historyRelativePath(@Nullable String outputPath) {
+        if (outputPath == null || outputPath.isBlank()) return null;
+        int star = outputPath.indexOf('*');
+        if (star < 0) return outputPath;
+        String folder = outputPath.substring(0, star);
+        while (folder.endsWith("/")) folder = folder.substring(0, folder.length() - 1);
+        return folder.isEmpty() ? null : folder;
+    }
+
+    /**
+     * The data context the Local History view reads: the project and the one file or folder to show. On 2024.2 the
+     * view reads only the VCS file list, so that is set too, by its key name ({@code VCS_VIRTUAL_FILES} on 2024.2
+     * through 2026.2), which needs no dependency on the VCS module.
+     */
+    static final class LocalHistorySource extends JComponent implements com.intellij.openapi.actionSystem.UiDataProvider {
+        static final com.intellij.openapi.actionSystem.DataKey<Iterable<VirtualFile>> VCS_VIRTUAL_FILES =
+                com.intellij.openapi.actionSystem.DataKey.create("VCS_VIRTUAL_FILES");
+
+        private final Project project;
+        private final VirtualFile target;
+
+        LocalHistorySource(Project project, VirtualFile target) {
+            this.project = project;
+            this.target = target;
+        }
+
+        VirtualFile target() {
+            return target;
+        }
+
+        @Override
+        public void uiDataSnapshot(@NotNull com.intellij.openapi.actionSystem.DataSink sink) {
+            sink.set(com.intellij.openapi.actionSystem.CommonDataKeys.PROJECT, project);
+            sink.set(com.intellij.openapi.actionSystem.CommonDataKeys.VIRTUAL_FILE, target);
+            sink.set(com.intellij.openapi.actionSystem.CommonDataKeys.VIRTUAL_FILE_ARRAY, new VirtualFile[] {target});
+            sink.set(VCS_VIRTUAL_FILES, List.of(target));
+        }
     }
 
     // --- Diff vs current spec ---
@@ -2248,7 +2325,8 @@ public class WorkflowActionPanel extends JPanel {
         }
         List<java.nio.file.Path> written;
         try {
-            written = ReviewedArtifactWriter.write(project, "Regenerate " + artifactId, accepted);
+            written = ReviewedArtifactWriter.write(project, "Regenerate " + artifactId,
+                    ArtifactLocalHistory.regeneratingLabel(artifactId), accepted);
         } catch (ReviewedArtifactWriter.ChangedSinceReviewException ex) {
             OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_GENERATION, "Regenerate",
                     ex.getMessage() + ", so nothing was written. Regenerate again to review the current version.",
@@ -2260,19 +2338,64 @@ public class WorkflowActionPanel extends JPanel {
             return;
         }
         onDirectApiWritten(changeName, artifactId, instruction, written, anchor,
-                project.getService(ArtifactOrchestrationService.class), "Regenerated");
+                project.getService(ArtifactOrchestrationService.class), "Regenerated", compareWithPreviousLink(accepted));
+    }
+
+    static final String COMPARE_WITH_PREVIOUS_LABEL = "Compare with previous";
+
+    /**
+     * The popover link after an accepted Regenerate: the text the user reviewed against what was written, for each file
+     * that existed before. Null when every file was new. The reviewed text lives only in this link, so it is gone when
+     * the popover closes; nothing is stored.
+     */
+    @Nullable GuidanceLink compareWithPreviousLink(List<ArtifactOrchestrationService.PlannedWrite> accepted) {
+        List<ArtifactOrchestrationService.PlannedWrite> replaced = accepted.stream().filter(w -> !w.isNew()).toList();
+        if (replaced.isEmpty()) return null;
+        return new GuidanceLink(COMPARE_WITH_PREVIOUS_LABEL, () -> compareShower.accept(compareRequests(replaced)));
+    }
+
+    /** One diff per replaced file: the reviewed text on the left, the file as written on the right. */
+    private List<com.intellij.diff.requests.SimpleDiffRequest> compareRequests(
+            List<ArtifactOrchestrationService.PlannedWrite> replaced) {
+        com.intellij.diff.DiffContentFactory factory = com.intellij.diff.DiffContentFactory.getInstance();
+        List<com.intellij.diff.requests.SimpleDiffRequest> requests = new java.util.ArrayList<>();
+        for (ArtifactOrchestrationService.PlannedWrite write : replaced) {
+            VirtualFile file = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(write.path());
+            if (file == null) continue;
+            requests.add(new com.intellij.diff.requests.SimpleDiffRequest(
+                    file.getName() + ": before regenerating vs now",
+                    factory.create(project, write.currentText(), file.getFileType()),
+                    factory.create(project, file),
+                    "Before regenerating", "Now"));
+        }
+        return requests;
+    }
+
+    /** Shows the compare diffs, one after another when there are several; replaced in tests, which can't show them. */
+    private java.util.function.Consumer<List<com.intellij.diff.requests.SimpleDiffRequest>> compareShower = this::showCompare;
+
+    private void showCompare(List<com.intellij.diff.requests.SimpleDiffRequest> requests) {
+        if (requests.isEmpty()) return;
+        com.intellij.diff.DiffManager.getInstance().showDiff(project,
+                new com.intellij.diff.chains.SimpleDiffRequestChain(requests), com.intellij.diff.DiffDialogHints.DEFAULT);
+    }
+
+    @org.jetbrains.annotations.TestOnly
+    void setCompareShowerForTest(java.util.function.Consumer<List<com.intellij.diff.requests.SimpleDiffRequest>> shower) {
+        this.compareShower = shower;
     }
 
     private void onDirectApiWritten(String changeName, String artifactId, ArtifactInstruction instruction,
                                     List<java.nio.file.Path> written, Component chipAnchor,
                                     ArtifactOrchestrationService orchestration) {
-        onDirectApiWritten(changeName, artifactId, instruction, written, chipAnchor, orchestration, "Generated");
+        onDirectApiWritten(changeName, artifactId, instruction, written, chipAnchor, orchestration, "Generated", null);
     }
 
     /** Reports a Direct API write (notification and popover) and refreshes the panel. Call on the EDT. */
     private void onDirectApiWritten(String changeName, String artifactId, ArtifactInstruction instruction,
                                     List<java.nio.file.Path> written, Component chipAnchor,
-                                    ArtifactOrchestrationService orchestration, String verb) {
+                                    ArtifactOrchestrationService orchestration, String verb,
+                                    @Nullable GuidanceLink compareLink) {
         VirtualFile generatedFile = written.isEmpty() ? null
                 : LocalFileSystem.getInstance().findFileByNioFile(written.getFirst());
         String what = written.size() > 1 ? artifactId + " (" + written.size() + " files)" : artifactId;
@@ -2286,10 +2409,13 @@ public class WorkflowActionPanel extends JPanel {
         }
         String savedTo = written.size() == 1 ? written.getFirst().toString()
                 : instruction.changeDir() + "/" + instruction.outputPath();
+        List<GuidanceLink> links = new java.util.ArrayList<>();
+        if (compareLink != null) links.add(compareLink);
+        GuidanceLink diffLink = directApiGuidanceLink(instruction.outputPath(), chipAnchor);
+        if (diffLink != null) links.add(diffLink);
         showGuidancePopover(chipAnchor,
                 "\u2713 " + verb + " " + what,
-                "Saved to: " + savedTo, null,
-                directApiGuidanceLink(instruction.outputPath(), chipAnchor));
+                "Saved to: " + savedTo, null, links);
         orchestration.invalidateCache(changeName);
         refresh();
         if (onRefreshRequested != null) onRefreshRequested.run();
@@ -2298,14 +2424,23 @@ public class WorkflowActionPanel extends JPanel {
     // --- Guidance popover ---
 
     private void showGuidancePopover(Component anchor, String title, String detail, Runnable copyAction) {
-        showGuidancePopover(anchor, title, detail, copyAction, null);
+        showGuidancePopover(anchor, title, detail, copyAction, List.of());
+    }
+
+    /** The links of the last popover shown, for tests: a headless run builds the popover but doesn't show it. */
+    private List<GuidanceLink> lastGuidanceLinks = List.of();
+
+    @org.jetbrains.annotations.TestOnly
+    List<GuidanceLink> lastGuidanceLinksForTest() {
+        return lastGuidanceLinks;
     }
 
     private void showGuidancePopover(Component anchor, String title, String detail, Runnable copyAction,
-                                     @Nullable GuidanceLink extraLink) {
+                                     List<GuidanceLink> extraLinks) {
         dismissActivePopup();
 
-        JPanel content = guidanceContent(title, detail, copyAction, extraLink);
+        lastGuidanceLinks = List.copyOf(extraLinks);
+        JPanel content = guidanceContent(title, detail, copyAction, extraLinks);
 
         activeGuidancePopup = JBPopupFactory.getInstance()
                 .createComponentPopupBuilder(content, null)
@@ -2333,7 +2468,7 @@ public class WorkflowActionPanel extends JPanel {
     private javax.swing.Timer guidanceDismissTimer;
 
     /** The guidance popover's content: title, optional detail, optional "Copy again", optional extra link. */
-    static JPanel guidanceContent(String title, String detail, Runnable copyAction, @Nullable GuidanceLink extraLink) {
+    static JPanel guidanceContent(String title, String detail, Runnable copyAction, List<GuidanceLink> extraLinks) {
         JPanel content = new JPanel();
         content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
         content.setBorder(JBUI.Borders.empty(8));
@@ -2361,7 +2496,7 @@ public class WorkflowActionPanel extends JPanel {
             content.add(copyLink);
         }
 
-        if (extraLink != null) {
+        for (GuidanceLink extraLink : extraLinks) {
             com.intellij.ui.HyperlinkLabel link = new com.intellij.ui.HyperlinkLabel(extraLink.text());
             link.setAlignmentX(Component.LEFT_ALIGNMENT);
             link.addHyperlinkListener(ev -> extraLink.action().run());
