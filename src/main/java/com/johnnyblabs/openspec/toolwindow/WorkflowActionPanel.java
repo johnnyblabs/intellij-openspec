@@ -2215,10 +2215,7 @@ public class WorkflowActionPanel extends JPanel {
                     }
                 } catch (AiApiException ex) {
                     ApplicationManager.getApplication().invokeLater(() -> {
-                        String content = "AI generation failed: " + ex.getMessage();
-                        if (ex.getSuggestion() != null) {
-                            content += "\n" + ex.getSuggestion();
-                        }
+                        String content = "AI generation failed: " + ex.describe();
                         OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_GENERATION, "Generate",
                                 content, com.intellij.notification.NotificationType.ERROR,
                                 OpenSpecNotifier.openSettingsAction());
@@ -2542,10 +2539,7 @@ public class WorkflowActionPanel extends JPanel {
                     }
 
                     // Show error details via notification
-                    String detail = exception.getMessage();
-                    if (exception instanceof AiApiException apiEx && apiEx.getSuggestion() != null) {
-                        detail += " \u2014 " + apiEx.getSuggestion();
-                    }
+                    String detail = exception instanceof AiApiException apiEx ? apiEx.describe() : exception.getMessage();
                     OpenSpecNotifier.error(project, "Generate All", msg + ": " + detail);
                 });
             }

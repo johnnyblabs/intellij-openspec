@@ -1,0 +1,8 @@
+{
+  "error": {
+    "message": "Your organization has no prepaid credits remaining.",
+    "type": "insufficient_quota",
+    "param": null,
+    "code": "credit_balance_exhausted"
+  }
+}

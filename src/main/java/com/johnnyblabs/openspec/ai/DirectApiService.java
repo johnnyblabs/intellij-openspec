@@ -14,6 +14,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.net.URI;
 import java.net.http.HttpClient;
+import java.net.http.HttpHeaders;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
@@ -277,7 +278,7 @@ public final class DirectApiService {
             HttpResponse<String> response = createHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() != 200) {
-                throw buildApiError("Claude", response.statusCode(), response.body());
+                throw buildApiError("Claude", response.statusCode(), response.body(), requestSettings, response.headers());
             }
             return parseClaudeResponse(response.body());
         } catch (AiApiException e) {
@@ -381,7 +382,7 @@ public final class DirectApiService {
             HttpResponse<String> response = createHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() != 200) {
-                throw buildApiError("OpenAI", response.statusCode(), response.body(), requestSettings);
+                throw buildApiError("OpenAI", response.statusCode(), response.body(), requestSettings, response.headers());
             }
             return parseOpenAiResponse(response.body());
         } catch (AiApiException e) {
@@ -480,7 +481,8 @@ public final class DirectApiService {
             HttpResponse<String> response = createHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() != 200) {
-                throw buildApiError("Gemini", response.statusCode(), response.body());
+                throw buildApiError("Gemini", response.statusCode(), response.body(), ProviderRequestSettings.NONE,
+                        response.headers());
             }
             return parseGeminiResponse(response.body());
         } catch (AiApiException e) {
@@ -590,7 +592,8 @@ public final class DirectApiService {
             HttpRequest request = buildListModelsRequest(provider, apiKey, requestSettings);
             HttpResponse<String> response = createHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() != 200) {
-                throw buildApiError(provider.getDisplayName(), response.statusCode(), response.body(), requestSettings);
+                throw buildApiError(provider.getDisplayName(), response.statusCode(), response.body(), requestSettings,
+                        response.headers());
             }
             java.util.List<String> models = switch (provider) {
                 case OPENAI -> parseOpenAiModels(response.body());
@@ -624,26 +627,34 @@ public final class DirectApiService {
 
     // Package-private so the mapping is testable against the live-captured error bodies.
     static AiApiException buildApiError(String providerName, int statusCode, String responseBody) {
-        return buildApiError(providerName, statusCode, responseBody, ProviderRequestSettings.NONE);
+        return buildApiError(providerName, statusCode, responseBody, ProviderRequestSettings.NONE, null);
+    }
+
+    static AiApiException buildApiError(String providerName, int statusCode, String responseBody,
+                                        ProviderRequestSettings requestSettings) {
+        return buildApiError(providerName, statusCode, responseBody, requestSettings, null);
     }
 
     public static final String OPENAI_SCOPE_SUGGESTION = "Check your API key, and that the Organization ID and Project ID "
             + "in Settings \u2192 Tools \u2192 OpenSpec \u2192 Direct API belong to it";
 
     /**
-     * The error for a failed request. With an OpenAI organization or project set, a 401 also points at those
+     * The error for a failed request. The body's documented error field picks the suggestion, the status only when it
+     * has none ({@link DirectApiErrors}). With an OpenAI organization or project set, a 401 also points at those
      * settings; that hint is chosen on the status alone, because OpenAI doesn't document the body for a mismatch.
+     * The provider's request ID, when the response carries one, ends the message. {@code headers} may be null.
      */
     static AiApiException buildApiError(String providerName, int statusCode, String responseBody,
-                                        ProviderRequestSettings requestSettings) {
-        LOG.warn(providerName + " API error (HTTP " + statusCode + "): " + responseBody);
-        String errorMessage = extractErrorMessage(responseBody);
-        String suggestion = suggestionForStatus(statusCode);
+                                        ProviderRequestSettings requestSettings, @Nullable HttpHeaders headers) {
+        String requestId = DirectApiErrors.requestId(providerName, headers, responseBody);
+        LOG.warn(errorLogLine(providerName, statusCode, requestId, responseBody));
+        ErrorKind kind = DirectApiErrors.classify(providerName, statusCode, DirectApiErrors.errorObject(responseBody));
+        String suggestion = DirectApiErrors.suggestion(providerName, kind);
         if (statusCode == 401 && AiProvider.OPENAI.getDisplayName().equals(providerName)
                 && requestSettings.hasOpenAiScope()) {
             suggestion = OPENAI_SCOPE_SUGGESTION;
         }
-        String userMessage = providerName + " API error: " + errorMessage;
+        String userMessage = providerName + " API error: " + extractErrorMessage(responseBody);
         if (AiProvider.CLAUDE.getDisplayName().equals(providerName)) {
             String mapped = claudeWorkspaceMessage(statusCode, responseBody);
             if (mapped != null) {
@@ -651,7 +662,15 @@ public final class DirectApiService {
                 suggestion = null;
             }
         }
-        return new AiApiException(userMessage, statusCode, providerName, suggestion);
+        if (requestId != null) {
+            userMessage += " (request ID: " + requestId + ")";
+        }
+        return new AiApiException(userMessage, statusCode, providerName, suggestion, kind, requestId, null);
+    }
+
+    static String errorLogLine(String providerName, int statusCode, @Nullable String requestId, String responseBody) {
+        return providerName + " API error (HTTP " + statusCode
+                + (requestId != null ? ", request ID " + requestId : "") + "): " + responseBody;
     }
 
     static final String UNSCOPED_KEY_MESSAGE = "This Claude API key isn't scoped to a workspace. Enter a "
@@ -701,17 +720,6 @@ public final class DirectApiService {
             return responseBody.substring(0, 200) + "...";
         }
         return responseBody;
-    }
-
-    private static String suggestionForStatus(int statusCode) {
-        if (statusCode == 401 || statusCode == 403) {
-            return "Check your API key in Settings \u2192 Tools \u2192 OpenSpec";
-        } else if (statusCode == 429) {
-            return "Rate limited \u2014 wait a moment and retry";
-        } else if (statusCode >= 500) {
-            return "The provider may be experiencing issues \u2014 try again shortly";
-        }
-        return null;
     }
 
     private AiProvider getProvider() {

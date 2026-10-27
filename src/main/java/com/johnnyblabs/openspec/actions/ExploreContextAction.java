@@ -413,10 +413,10 @@ public class ExploreContextAction extends OpenSpecBaseAction implements com.inte
                     onEdt(project, () -> {
                         ExplorePanel p = panelService != null ? panelService.getExplorePanel() : null;
                         if (p != null) {
-                            p.showError(topic, ex.getMessage());
+                            p.showError(topic, ex.describe());
                         }
                         OpenSpecNotifier.warn(project, "Explore",
-                                "API error: " + ex.getMessage());
+                                "API error: " + ex.describe());
                     });
                 } catch (ProcessCanceledException ex) {
                     throw ex;

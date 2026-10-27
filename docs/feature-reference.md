@@ -306,6 +306,19 @@ API keys are stored securely in your operating system's keychain via IntelliJ's 
 
 **OpenAI Organization ID and Project ID.** When OpenAI is the provider, the settings show **Organization ID (optional)** and **Project ID (optional)**. OpenAI needs them only if you use a legacy user API key or belong to more than one organization; otherwise leave them blank, and OpenAI uses your key's defaults. A filled-in field is sent with every OpenAI request, generation and Test alike, as `OpenAI-Organization` or `OpenAI-Project`; a blank one sends nothing. Find the organization ID under **Settings → Organization → General** (it usually starts with `org-`) and the project ID under **Settings → Project → General** (it starts with `proj_`). A value with a different prefix gets a warning but is still saved and sent, because OpenAI may change its ID formats. Both are regular per-project settings, not secrets, and are never written to OpenSpec project files. Test uses the values currently in the fields, even before you click Apply.
 
+**When a request fails.** The error keeps the provider's own message and adds a suggestion chosen from the error the provider reports, not only its HTTP status:
+
+| What the provider reports | Suggestion |
+|---|---|
+| A rejected key or missing permission, including Gemini's `400` for an invalid key | Check your API key |
+| A billing or payment problem: Claude or Gemini `402`, OpenAI `credit_balance_exhausted` | Where to add credits or fix billing in the provider's console. Never "retry", because waiting doesn't fix it |
+| A quota, spend or usage limit: Claude's spend cap or your own usage limit, OpenAI's spend and usage-limit codes or `insufficient_quota` | Where to see and raise the limit. Never "retry" |
+| A plain rate limit | Wait a moment and retry |
+| The provider is overloaded or unavailable (Claude `529`, `503`, other server errors) | Try again shortly |
+| OpenAI rejects the project's service tier | Check which service tiers the OpenAI project allows; the plugin requests none, so this means the project's default tier isn't allowed |
+
+When the response carries a request ID (Claude's `request-id`, OpenAI's `x-request-id`), it ends the error message, as "(request ID: …)", and is written to the IDE log. Quote it to the provider's support. Gemini sends none. The plugin doesn't retry failed requests itself. The suggestion appears wherever the failure is reported: Settings → Test, Generate, Generate All, Fast-Forward, Explore and Verify.
+
 **Model discovery.** The Model dropdown is populated from your provider account, not a hardcoded list. Clicking **Test** fetches your account's available models with your key — a free request that costs no tokens — and fills the dropdown with the models you can actually use; it also validates the key (a `401` means "check your API key"). If you're offline or haven't entered a key, the dropdown falls back to a built-in default list, and it stays editable so you can type any model name manually.
 
 **Choosing a model at operation time.** You don't have to open Settings to switch models: the OpenSpec tool window shows a model dropdown in its header (next to the delivery selector) whenever Direct API is the active delivery mode. It's populated from the same live model list, stays editable, shows the active model in the status strip, and your selection is what generation, Fast-Forward, Continue, and Explore use. It's hidden for Clipboard and Editor-Tab delivery, where no model is sent. If you configure a provider while the tool window is already open — in Settings or the Setup Wizard — the Direct API delivery option and this dropdown appear immediately, with no IDE restart, and your current delivery choice is left unchanged.

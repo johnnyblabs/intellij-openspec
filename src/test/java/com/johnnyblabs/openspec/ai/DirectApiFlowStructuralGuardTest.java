@@ -376,4 +376,20 @@ class DirectApiFlowStructuralGuardTest {
         }
         return n;
     }
+
+    @Test
+    void everyErrorResponsePassesItsHeadersToTheErrorBuilder() throws IOException {
+        // The request ID lives in the response headers; a request path that drops them silently loses it.
+        String service = read(SERVICE);
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("throw buildApiError\\((.*?)\\);",
+                java.util.regex.Pattern.DOTALL).matcher(service);
+        int sites = 0;
+        while (m.find()) {
+            sites++;
+            assertTrue(m.group(1).trim().endsWith("response.headers()"),
+                    "buildApiError call without the response headers: " + m.group(0));
+        }
+        // Claude, OpenAI and Gemini generation, and listModels. A new request path must be added here deliberately.
+        assertEquals(4, sites, "expected exactly four request paths that throw buildApiError");
+    }
 }

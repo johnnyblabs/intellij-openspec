@@ -1,0 +1,8 @@
+{
+  "type": "error",
+  "error": {
+    "type": "billing_error",
+    "message": "There's an issue with your billing or payment information."
+  },
+  "request_id": "req_DERIVED"
+}

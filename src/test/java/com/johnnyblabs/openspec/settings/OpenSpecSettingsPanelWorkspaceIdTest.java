@@ -5,6 +5,7 @@ import com.intellij.testFramework.ServiceContainerUtil;
 import com.intellij.testFramework.fixtures.BasePlatformTestCase;
 import com.johnnyblabs.openspec.ai.AiApiException;
 import com.johnnyblabs.openspec.ai.AiProvider;
+import com.johnnyblabs.openspec.ai.DirectApiErrorsContractTest;
 import com.johnnyblabs.openspec.services.CliDetectionService;
 import com.johnnyblabs.openspec.services.CliDetectionTestSupport;
 
@@ -154,5 +155,22 @@ public class OpenSpecSettingsPanelWorkspaceIdTest extends BasePlatformTestCase {
                 OpenSpecSettingsPanel.testFailureMessage(new AiApiException("mapped message", 400, "Claude", null)));
         assertEquals("Connection failed", OpenSpecSettingsPanel.testFailureMessage(new RuntimeException()));
         assertSame(AiProvider.CLAUDE, AiProvider.fromString("CLAUDE"));
+    }
+
+    public void testTestFailureMessageShowsTheClassifiedSuggestion() {
+        for (String fixture : List.of("claude/errors/messages-402-billing-error",
+                "openai/errors/429-project-spend-limit-exceeded", "claude/errors/messages-429-rate-limit",
+                "claude/errors/messages-529-overloaded", "openai/errors/400-service-tier-not-allowed")) {
+            AiApiException ex = DirectApiErrorsContractTest.build(fixture);
+            assertNotNull(fixture, ex.getSuggestion());
+            String shown = OpenSpecSettingsPanel.testFailureMessage(ex);
+            assertTrue(fixture + ": " + shown, shown.startsWith(ex.getMessage()));
+            assertTrue(fixture + ": " + shown, shown.endsWith(ex.getSuggestion()));
+        }
+        // A bad Gemini key is a 400, and Test still says to check the key.
+        assertEquals("Check your API key", OpenSpecSettingsPanel.testFailureMessage(
+                DirectApiErrorsContractTest.build("gemini/errors/generatecontent-400-api-key-invalid")));
+        assertEquals("Check your API key", OpenSpecSettingsPanel.testFailureMessage(
+                DirectApiErrorsContractTest.build("openai/errors/models-401-invalid-key")));
     }
 }

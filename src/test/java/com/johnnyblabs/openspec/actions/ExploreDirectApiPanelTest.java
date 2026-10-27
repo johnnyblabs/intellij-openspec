@@ -12,6 +12,7 @@ import com.intellij.openapi.wm.ToolWindowManager;
 import com.intellij.testFramework.PlatformTestUtil;
 import com.intellij.testFramework.fixtures.BasePlatformTestCase;
 import com.johnnyblabs.openspec.ai.AiApiException;
+import com.johnnyblabs.openspec.ai.DirectApiErrorsContractTest;
 import com.johnnyblabs.openspec.services.ExploreContextService;
 import com.johnnyblabs.openspec.services.ExplorePromptService;
 import com.johnnyblabs.openspec.util.CliRunner;
@@ -164,6 +165,20 @@ public class ExploreDirectApiPanelTest extends BasePlatformTestCase {
         assertTrue(panel.responseTextForTest(), panel.responseTextForTest().contains("rate limited"));
         assertEquals(contents().toString(), 1, raised.size());
         assertTrue(raised.get(0).getContent(), raised.get(0).getContent().startsWith("API error:"));
+    }
+
+    public void testAProviderErrorShowsItsSuggestion() {
+        AiApiException billing = DirectApiErrorsContractTest.build("claude/errors/messages-402-billing-error");
+        assertNotNull(billing.getSuggestion());
+        ExploreContextAction.setRawRequestForTest(request(prompt -> {
+            throw billing;
+        }));
+
+        send();
+
+        assertTrue(panel.responseTextForTest(), panel.responseTextForTest().contains("Claude Console"));
+        assertEquals(contents().toString(), 1, raised.size());
+        assertTrue(raised.get(0).getContent(), raised.get(0).getContent().contains("Claude Console"));
     }
 
     public void testASuccessfulResponseIsShown() {

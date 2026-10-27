@@ -23,6 +23,7 @@ import com.johnnyblabs.openspec.ai.AiCredentialStore;
 import com.johnnyblabs.openspec.ai.AiModelOptions;
 import com.johnnyblabs.openspec.ai.AiProvider;
 import com.johnnyblabs.openspec.ai.DirectApiService;
+import com.johnnyblabs.openspec.ai.ErrorKind;
 import com.johnnyblabs.openspec.ai.ProviderRequestSettings;
 import com.johnnyblabs.openspec.dialogs.NewSchemaDialog;
 import com.johnnyblabs.openspec.model.SchemaInfo;
@@ -988,16 +989,22 @@ public class OpenSpecSettingsPanel {
     }
 
     /**
-     * The message Test shows for a failure: "Check your API key" for 401/403, otherwise the exception's own
-     * message (for Claude workspace errors that is the mapped, actionable one from {@code DirectApiService}).
+     * The message Test shows for a failure: "Check your API key" for a rejected key or permission (any status the
+     * provider uses for it, such as Gemini's 400), the OpenAI ID hint for a 401 with an Organization or Project ID
+     * set, and otherwise the error's message with its suggestion (billing, limits, rate limit, overload).
      */
     static String testFailureMessage(Throwable cause) {
-        int status = (cause instanceof AiApiException aae) ? aae.getStatusCode() : 0;
-        if (status == 401 && DirectApiService.OPENAI_SCOPE_SUGGESTION.equals(((AiApiException) cause).getSuggestion())) {
-            return OPENAI_SCOPE_TEST_FAILURE;
-        }
-        if (status == 401 || status == 403) {
-            return "Check your API key";
+        if (cause instanceof AiApiException aae) {
+            if (aae.getKind() == ErrorKind.AUTH
+                    && DirectApiService.OPENAI_SCOPE_SUGGESTION.equals(aae.getSuggestion())) {
+                return OPENAI_SCOPE_TEST_FAILURE;
+            }
+            if (aae.getKind() == ErrorKind.AUTH || aae.getKind() == ErrorKind.PERMISSION) {
+                return "Check your API key";
+            }
+            if (aae.getMessage() != null) {
+                return aae.describe();
+            }
         }
         return cause.getMessage() != null ? cause.getMessage() : "Connection failed";
     }
