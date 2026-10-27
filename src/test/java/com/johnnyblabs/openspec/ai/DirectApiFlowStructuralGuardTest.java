@@ -238,7 +238,7 @@ class DirectApiFlowStructuralGuardTest {
                 "listModels must not run on the EDT before the pooled hop");
         assertTrue(body.substring(pooled).contains("listModels("),
                 "listModels must run inside the pooled lambda");
-        assertTrue(body.contains("ProviderRequestSettings.from(settings)")
+        assertTrue(body.substring(pooled).contains("ProviderRequestSettings.from(settings)")
                         && body.substring(pooled).contains("listModels(provider, key, requestSettings)"),
                 "the tool-window fetch must send the saved provider settings (Claude workspace, OpenAI scope)");
         // The post-fetch repopulate is posted back to the EDT via invokeLater with an explicit ModalityState.

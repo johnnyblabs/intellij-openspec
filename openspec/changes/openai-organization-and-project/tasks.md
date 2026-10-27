@@ -30,7 +30,7 @@
   - the help text names when the fields are needed and where to find each ID, and says nothing about project or service-account keys.
 - [x] 2.3 Pass `ProviderRequestSettings.from(settings)` from workflow-panel model discovery and every generation path. Verify:
   - the structural guard (`DirectApiFlowStructuralGuardTest`) shows discovery reads the saved settings inside its pooled task and passes them to `listModels`;
-  - generation sends the saved IDs (`generateRaw` test);
+  - `generate`, `generateRaw` and `testConnection` send the saved IDs, and a 401 during generation or from the model list carries the exact ID hint that Settings → Test recognizes;
   - `from()` maps each stored field.
 
   Together with the list-models header test, these cover discovery without a weaker panel-level test.

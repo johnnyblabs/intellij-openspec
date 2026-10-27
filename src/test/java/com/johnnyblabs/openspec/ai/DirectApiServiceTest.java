@@ -618,6 +618,19 @@ class DirectApiServiceTest {
             assertEquals(none.headers().map(), blank.headers().map());
         }
 
+        @Test
+        void withNoSettingsTheRequestsCarryOnlyTodaysHeaders() {
+            var generation = DirectApiService.buildOpenAiRequest("gpt-6-luna", "k", "p", ProviderRequestSettings.NONE);
+            var listModels = DirectApiService.buildListModelsRequest(AiProvider.OPENAI, "k", ProviderRequestSettings.NONE);
+            assertEquals(java.util.Set.of("authorization", "content-type"), headerNames(generation));
+            assertEquals(java.util.Set.of("authorization"), headerNames(listModels));
+        }
+
+        private static java.util.Set<String> headerNames(java.net.http.HttpRequest request) {
+            return request.headers().map().keySet().stream().map(n -> n.toLowerCase(java.util.Locale.ROOT))
+                    .collect(java.util.stream.Collectors.toSet());
+        }
+
         @ParameterizedTest
         @org.junit.jupiter.params.provider.MethodSource("openAiRequests")
         void onlyTheProjectWhenOnlyTheProjectIsSet(java.util.function.Function<ProviderRequestSettings, java.net.http.HttpRequest> build) {
@@ -688,6 +701,8 @@ class DirectApiServiceTest {
             for (var scope : List.of(ProviderRequestSettings.openAi("org-abc", ""), ProviderRequestSettings.openAi("", "proj_xyz"))) {
                 AiApiException ex = DirectApiService.buildApiError("OpenAI", 401, body, scope);
                 assertEquals("OpenAI API error: " + providerMessage(body), ex.getMessage());
+                // Exact: Settings \u2192 Test recognizes the hint by this string.
+                assertEquals(DirectApiService.OPENAI_SCOPE_SUGGESTION, ex.getSuggestion());
                 assertTrue(ex.getSuggestion().contains("Organization ID") && ex.getSuggestion().contains("Project ID"),
                         ex.getSuggestion());
                 assertTrue(ex.getSuggestion().contains("API key"), "still asks to check the key");
@@ -736,10 +751,15 @@ class DirectApiServiceTest {
 
         @SuppressWarnings("unchecked")
         private HttpClient stubClient(DirectApiService spy, String body) throws Exception {
+            return stubClient(spy, 200, body);
+        }
+
+        @SuppressWarnings("unchecked")
+        private HttpClient stubClient(DirectApiService spy, int status, String body) throws Exception {
             HttpClient client = mock(HttpClient.class);
             doReturn(client).when(spy).createHttpClient();
             HttpResponse<String> resp = mock(HttpResponse.class);
-            when(resp.statusCode()).thenReturn(200);
+            when(resp.statusCode()).thenReturn(status);
             when(resp.body()).thenReturn(body);
             doReturn(resp).when(client).send(any(), any());
             return client;
@@ -749,6 +769,64 @@ class DirectApiServiceTest {
             var captor = org.mockito.ArgumentCaptor.forClass(java.net.http.HttpRequest.class);
             verify(client).send(captor.capture(), any());
             return captor.getValue();
+        }
+
+        /** Runs {@code call} against saved OpenAI settings with org-saved / proj_saved and the key "k". */
+        private void withSavedOpenAiIds(org.junit.jupiter.api.function.Executable call) throws Throwable {
+            try (MockedStatic<OpenSpecSettings> settingsMock = mockStatic(OpenSpecSettings.class);
+                 MockedStatic<AiCredentialStore> credsMock = mockStatic(AiCredentialStore.class)) {
+                settingsMock.when(() -> OpenSpecSettings.getInstance(project)).thenReturn(settings);
+                lenient().when(settings.getAiProvider()).thenReturn("OPENAI");
+                lenient().when(settings.getAiModel()).thenReturn("gpt-6-luna");
+                lenient().when(settings.getAiOpenAiOrganization()).thenReturn("org-saved");
+                lenient().when(settings.getAiOpenAiProject()).thenReturn("proj_saved");
+                credsMock.when(() -> AiCredentialStore.getApiKey(AiProvider.OPENAI)).thenReturn("k");
+                call.execute();
+            }
+        }
+
+        private static final com.johnnyblabs.openspec.model.ArtifactInstruction DESIGN =
+                new com.johnnyblabs.openspec.model.ArtifactInstruction("add-auth", "design", null, "design.md",
+                        "Write the design.", null, List.of(), List.of());
+
+        @Test
+        void generate_sendsTheSavedIds() throws Throwable {
+            DirectApiService spy = spy(new DirectApiService(project));
+            HttpClient client = stubClient(spy, loadFixture("openai/chat-completion-response.json"));
+            withSavedOpenAiIds(() -> spy.generate(DESIGN));
+            var request = sent(client);
+            assertEquals("org-saved", request.headers().firstValue("OpenAI-Organization").orElse(null));
+            assertEquals("proj_saved", request.headers().firstValue("OpenAI-Project").orElse(null));
+        }
+
+        @Test
+        void testConnection_sendsTheSavedIds() throws Throwable {
+            DirectApiService spy = spy(new DirectApiService(project));
+            HttpClient client = stubClient(spy, loadFixture("openai/chat-completion-response.json"));
+            withSavedOpenAiIds(() -> spy.testConnection());
+            var request = sent(client);
+            assertEquals("org-saved", request.headers().firstValue("OpenAI-Organization").orElse(null));
+            assertEquals("proj_saved", request.headers().firstValue("OpenAI-Project").orElse(null));
+        }
+
+        @Test
+        void a401DuringGenerationCarriesTheIdHint() throws Throwable {
+            DirectApiService spy = spy(new DirectApiService(project));
+            stubClient(spy, 401, loadFixture("openai/chat-completions-401-invalid-key.json"));
+            AiApiException[] thrown = new AiApiException[1];
+            withSavedOpenAiIds(() -> thrown[0] = assertThrows(AiApiException.class, () -> spy.generateRaw("p")));
+            assertEquals(401, thrown[0].getStatusCode());
+            assertEquals(DirectApiService.OPENAI_SCOPE_SUGGESTION, thrown[0].getSuggestion());
+        }
+
+        @Test
+        void a401FromTheModelListCarriesTheIdHint() throws Exception {
+            DirectApiService spy = spy(new DirectApiService(project));
+            stubClient(spy, 401, loadFixture("openai/models-401-invalid-key.json"));
+            AiApiException ex = assertThrows(AiApiException.class,
+                    () -> spy.listModels(AiProvider.OPENAI, "k", ProviderRequestSettings.openAi("org-form", "")));
+            assertEquals(DirectApiService.OPENAI_SCOPE_SUGGESTION, ex.getSuggestion(),
+                    "Settings \u2192 Test shows its ID hint only for this exact suggestion");
         }
 
         @Test
