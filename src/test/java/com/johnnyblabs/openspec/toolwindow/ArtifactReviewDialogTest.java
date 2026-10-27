@@ -32,6 +32,20 @@ public class ArtifactReviewDialogTest extends OpenSpecIntegrationTestBase {
         assertEquals("Review Regenerated specs", dialog.getTitle());
     }
 
+    public void testAcceptAppliesEveryWriteAndRejectOrCloseAppliesNone() {
+        List<PlannedWrite> writes = List.of(EXISTING, NEW);
+
+        assertEquals(writes, ArtifactReviewer.outcome(true, writes));
+        assertNull(ArtifactReviewer.outcome(false, writes));
+    }
+
+    public void testLineSeparatorStyleIsNotAChange() {
+        assertTrue(ReviewedArtifactWriter.sameText("# A\r\n\nB\r\n", "# A\n\nB\n"));
+        assertFalse(ReviewedArtifactWriter.sameText("# A\n", "# B\n"));
+        assertFalse("a file that appeared is a change", ReviewedArtifactWriter.sameText(null, "# A\n"));
+        assertTrue(ReviewedArtifactWriter.sameText(null, null));
+    }
+
     public void testAnExistingFileIsComparedWithItsCurrentTextReadOnly() {
         SimpleDiffRequest request = ArtifactReviewDialog.request(getProject(), EXISTING);
 

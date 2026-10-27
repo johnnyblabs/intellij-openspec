@@ -30,6 +30,33 @@ public class RegenerateArtifactDialogTest extends OpenSpecIntegrationTestBase {
                 dialog.getDownstreamWarning());
     }
 
+    public void testTheWarningIsShownInTheDialog() {
+        RegenerateArtifactDialog dialog = dialog(List.of("specs", "tasks"));
+
+        assertTrue(labelTexts(dialog.createCenterPanel()).contains(dialog.getDownstreamWarning()));
+    }
+
+    public void testNoWarningIsShownWithoutDownstreamArtifacts() {
+        RegenerateArtifactDialog dialog = dialog(List.of());
+
+        assertTrue(labelTexts(dialog.createCenterPanel()).stream().noneMatch(t -> t.contains("inconsistent")));
+    }
+
+    public void testCancellingReturnsNoNoteAndConfirmingABlankNoteReturnsAnEmptyOne() {
+        RegenerateArtifactDialog dialog = dialog(List.of());
+
+        assertNull("Cancel regenerates nothing", dialog.outcome(false));
+        assertEquals("a blank note still regenerates", "", dialog.outcome(true));
+        dialog.setNoteForTest(" drop the caching section ");
+        assertNull(dialog.outcome(false));
+        assertEquals("drop the caching section", dialog.outcome(true));
+    }
+
+    private static List<String> labelTexts(javax.swing.JComponent root) {
+        return com.intellij.util.ui.UIUtil.findComponentsOfType(root, javax.swing.JLabel.class).stream()
+                .map(javax.swing.JLabel::getText).filter(java.util.Objects::nonNull).toList();
+    }
+
     public void testNoWarningWithoutDownstreamArtifacts() {
         assertNull(dialog(List.of()).getDownstreamWarning());
     }

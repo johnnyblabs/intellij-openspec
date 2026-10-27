@@ -19,5 +19,10 @@ public interface ArtifactReviewer {
 
     /** The modal review dialog. */
     ArtifactReviewer DIALOG = (project, artifactId, changeDir, writes) ->
-            new ArtifactReviewDialog(project, artifactId, changeDir, writes).showAndGet() ? writes : null;
+            outcome(new ArtifactReviewDialog(project, artifactId, changeDir, writes).showAndGet(), writes);
+
+    /** The writes to apply once the review closes: all of them on Accept, none (null) on Reject or close. */
+    static @Nullable List<PlannedWrite> outcome(boolean accepted, @NotNull List<PlannedWrite> writes) {
+        return accepted ? writes : null;
+    }
 }

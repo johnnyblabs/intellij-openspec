@@ -378,6 +378,84 @@ public class RegenerateWithNotePanelTest extends OpenSpecIntegrationTestBase {
         assertTrue(raisedContaining("changed since the review"));
     }
 
+    public void testAFileCreatedOutsideDuringTheReviewIsNotOverwritten() throws Exception {
+        Files.createDirectories(changeDir.resolve("specs/auth"));
+        Files.writeString(changeDir.resolve("specs/auth/spec.md"), "# Old auth\n");
+        response = "<!-- file: specs/auth/spec.md -->\n# New auth\n<!-- file: specs/billing/spec.md -->\n# Billing\n";
+        workflowPanel.setReviewerForTest((project, artifactId, dir, writes) -> {
+            try {
+                Files.createDirectories(changeDir.resolve("specs/billing"));
+                Files.writeString(changeDir.resolve("specs/billing/spec.md"), "# Billing by hand\n");
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            return writes;
+        });
+
+        regenerate("specs", "specs/**/*.md", DeliveryMode.DIRECT_API);
+
+        assertEquals("# Billing by hand\n", Files.readString(changeDir.resolve("specs/billing/spec.md")));
+        assertEquals("# Old auth\n", Files.readString(changeDir.resolve("specs/auth/spec.md")));
+        assertTrue(raisedContaining("changed since the review"));
+    }
+
+    public void testAMultiFileWriteThatCannotFinishWritesNoFile() throws Exception {
+        Files.createDirectories(changeDir.resolve("specs/auth"));
+        Files.createDirectories(changeDir.resolve("specs/billing"));
+        Files.writeString(changeDir.resolve("specs/auth/spec.md"), "# Old auth\n");
+        Path billing = changeDir.resolve("specs/billing/spec.md");
+        Files.writeString(billing, "# Old billing\n");
+        assertTrue(billing.toFile().setWritable(false));
+        try {
+            LocalFileSystem.getInstance().refreshAndFindFileByNioFile(billing).refresh(false, false);
+            response = "<!-- file: specs/auth/spec.md -->\n# New auth\n<!-- file: specs/billing/spec.md -->\n# New billing\n";
+
+            regenerate("specs", "specs/**/*.md", DeliveryMode.DIRECT_API);
+
+            assertEquals("the first file is not written", "# Old auth\n",
+                    Files.readString(changeDir.resolve("specs/auth/spec.md")));
+            assertEquals("# Old billing\n", Files.readString(billing));
+            assertTrue(raisedContaining("read-only"));
+        } finally {
+            billing.toFile().setWritable(true);
+        }
+    }
+
+    public void testASecondFileChangedDuringTheReviewWritesNoFile() throws Exception {
+        Files.createDirectories(changeDir.resolve("specs/auth"));
+        Files.createDirectories(changeDir.resolve("specs/billing"));
+        Files.writeString(changeDir.resolve("specs/auth/spec.md"), "# Old auth\n");
+        Files.writeString(changeDir.resolve("specs/billing/spec.md"), "# Old billing\n");
+        response = "<!-- file: specs/auth/spec.md -->\n# New auth\n<!-- file: specs/billing/spec.md -->\n# New billing\n";
+        workflowPanel.setReviewerForTest((project, artifactId, dir, writes) -> {
+            try {
+                Files.writeString(changeDir.resolve("specs/billing/spec.md"), "# Billing by hand\n");
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            return writes;
+        });
+
+        regenerate("specs", "specs/**/*.md", DeliveryMode.DIRECT_API);
+
+        assertEquals("the unchanged first file is not written either", "# Old auth\n",
+                Files.readString(changeDir.resolve("specs/auth/spec.md")));
+        assertEquals("# Billing by hand\n", Files.readString(changeDir.resolve("specs/billing/spec.md")));
+        assertTrue(raisedContaining("changed since the review"));
+    }
+
+    public void testTheReviewShowsAnUnsavedEditMadeBeforeRegenerating() throws Exception {
+        VirtualFile file = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(changeDir.resolve("design.md"));
+        Document document = FileDocumentManager.getInstance().getDocument(file);
+        WriteCommandAction.runWriteCommandAction(getProject(), () -> document.setText("# Design\n\nUnsaved before.\n"));
+
+        regenerate("design", "design.md", DeliveryMode.DIRECT_API);
+
+        assertEquals("the review compares with the editor's text", "# Design\n\nUnsaved before.\n",
+                reviewed.getFirst().getFirst().currentText());
+        assertEquals("and Accept writes, since nothing changed after the review", GENERATED_DESIGN, design());
+    }
+
     public void testAnUnsavedEditDuringTheReviewIsNotOverwritten() throws Exception {
         VirtualFile file = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(changeDir.resolve("design.md"));
         Document document = FileDocumentManager.getInstance().getDocument(file);
@@ -398,23 +476,32 @@ public class RegenerateWithNotePanelTest extends OpenSpecIntegrationTestBase {
         com.intellij.openapi.fileEditor.FileEditor editor = com.intellij.openapi.fileEditor.FileEditorManager
                 .getInstance(getProject()).openFile(file, false)[0];
 
-        regenerate("design", "design.md", DeliveryMode.DIRECT_API);
+        try {
+            regenerate("design", "design.md", DeliveryMode.DIRECT_API);
 
-        com.intellij.openapi.command.undo.UndoManager undo =
-                com.intellij.openapi.command.undo.UndoManager.getInstance(getProject());
-        assertTrue("the write is undoable", undo.isUndoAvailable(editor));
-        assertEquals("Regenerate design", undo.getUndoActionNameAndDescription(editor).first.replace("Undo ", "").replace("_", "").trim());
-        com.intellij.openapi.fileEditor.FileEditorManager.getInstance(getProject()).closeFile(file);
+            com.intellij.openapi.command.undo.UndoManager undo =
+                    com.intellij.openapi.command.undo.UndoManager.getInstance(getProject());
+            assertTrue("the write is undoable", undo.isUndoAvailable(editor));
+            assertEquals("Regenerate design", undo.getUndoActionNameAndDescription(editor).first.replace("Undo ", "").replace("_", "").trim());
+        } finally {
+            com.intellij.openapi.fileEditor.FileEditorManager.getInstance(getProject()).closeFile(file);
+        }
     }
 
     public void testACancelledRunIsNeverReviewed() throws Exception {
+        boolean[] returned = new boolean[1];
         when(api.generateRaw(anyString())).thenAnswer(inv -> {
-            ProgressManager.getInstance().getProgressIndicator().cancel();
+            com.intellij.openapi.progress.ProgressIndicator indicator =
+                    ProgressManager.getInstance().getProgressIndicator();
+            assertNotNull("the call runs under the task's indicator", indicator);
+            indicator.cancel();
+            returned[0] = true;
             return GENERATED_DESIGN;
         });
 
         regenerate("design", "design.md", DeliveryMode.DIRECT_API);
 
+        assertTrue("the response came back, cancelled", returned[0]);
         assertTrue(reviewed.isEmpty());
         assertEquals(CURRENT_DESIGN, design());
     }

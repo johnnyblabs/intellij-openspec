@@ -75,6 +75,11 @@ public class RegenerateArtifactDialog extends DialogWrapper {
         noteArea.setText(text);
     }
 
+    /** What the dialog returns once closed: the note (possibly empty) when confirmed, or null when cancelled. */
+    public @Nullable String outcome(boolean confirmed) {
+        return confirmed ? getNote() : null;
+    }
+
     /** The note with surrounding whitespace removed, keeping its line breaks; empty when left blank. */
     public String getNote() {
         return noteArea.getText() == null ? "" : noteArea.getText().strip();

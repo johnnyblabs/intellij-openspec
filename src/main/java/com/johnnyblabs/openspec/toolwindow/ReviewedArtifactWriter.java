@@ -4,6 +4,7 @@ import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.fileEditor.FileDocumentManager;
+import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.ThrowableComputable;
 import com.intellij.openapi.util.text.StringUtil;
@@ -40,12 +41,12 @@ final class ReviewedArtifactWriter {
     }
 
     /** The writes with each file's live text as its current text. Call off the EDT. */
-    static List<PlannedWrite> withLiveText(List<PlannedWrite> writes) {
+    static List<PlannedWrite> withLiveText(List<PlannedWrite> writes) throws IOException {
         List<PlannedWrite> live = new ArrayList<>();
         for (PlannedWrite write : writes) {
             VirtualFile file = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(write.path());
             live.add(file == null ? write.withCurrentText(null) : write.withCurrentText(
-                    ApplicationManager.getApplication().runReadAction((ThrowableComputable<String, RuntimeException>)
+                    ApplicationManager.getApplication().runReadAction((ThrowableComputable<String, IOException>)
                             () -> liveText(file))));
         }
         return live;
@@ -59,7 +60,8 @@ final class ReviewedArtifactWriter {
             throws IOException {
         List<VirtualFile> existing = new ArrayList<>();
         for (PlannedWrite write : reviewed) {
-            VirtualFile file = LocalFileSystem.getInstance().findFileByNioFile(write.path());
+            // Refresh-and-find, so a file created outside the IDE since the review is seen rather than overwritten.
+            VirtualFile file = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(write.path());
             if (file != null) existing.add(file);
         }
         // Pick up edits made outside the IDE since the review, so the check below sees them.
@@ -74,43 +76,55 @@ final class ReviewedArtifactWriter {
                     String now = file == null ? null : liveText(file);
                     if (!sameText(write.currentText(), now)) throw new ChangedSinceReviewException(write.path());
                 }
-                for (PlannedWrite write : reviewed) {
-                    writeOne(write);
-                    written.add(write.path());
+                // Resolve every target before changing any, so a failure that can be foreseen writes no file.
+                List<Target> targets = new ArrayList<>();
+                for (PlannedWrite write : reviewed) targets.add(target(write));
+                for (Target target : targets) {
+                    target.apply();
+                    written.add(target.write().path());
                 }
             } catch (IOException e) {
                 failure[0] = e;
+            } catch (ProcessCanceledException e) {
+                throw e;
+            } catch (RuntimeException e) {
+                failure[0] = new IOException(e.getMessage() != null ? e.getMessage() : e.toString(), e);
             }
         });
         if (failure[0] != null) throw failure[0];
         return written;
     }
 
-    private static void writeOne(PlannedWrite write) throws IOException {
+    /** A reviewed write whose directory exists and whose existing file is writable; nothing has changed yet. */
+    private record Target(PlannedWrite write, VirtualFile dir, @Nullable VirtualFile file) {
+        void apply() throws IOException {
+            VirtualFile target = file != null ? file
+                    : dir.createChildData(ReviewedArtifactWriter.class, write.path().getFileName().toString());
+            // Through the document, so the command can be undone, then saved so the CLI reads the new text from disk.
+            Document document = FileDocumentManager.getInstance().getDocument(target);
+            if (document == null) {
+                target.setBinaryContent(write.newText().getBytes(StandardCharsets.UTF_8));
+                return;
+            }
+            document.setText(StringUtil.convertLineSeparators(write.newText()));
+            FileDocumentManager.getInstance().saveDocument(document);
+        }
+    }
+
+    private static Target target(PlannedWrite write) throws IOException {
         Path path = write.path();
         VirtualFile dir = VfsUtil.createDirectoryIfMissing(path.getParent().toString());
         if (dir == null) throw new IOException("Failed to create directory: " + path.getParent());
-        String name = path.getFileName().toString();
-        VirtualFile file = dir.findChild(name);
-        if (file == null) file = dir.createChildData(ReviewedArtifactWriter.class, name);
-        // Through the document, so the command can be undone, then saved so the CLI reads the new text from disk.
-        Document document = FileDocumentManager.getInstance().getDocument(file);
-        if (document == null) {
-            file.setBinaryContent(write.newText().getBytes(StandardCharsets.UTF_8));
-            return;
-        }
-        document.setText(StringUtil.convertLineSeparators(write.newText()));
-        FileDocumentManager.getInstance().saveDocument(document);
+        VirtualFile file = dir.findChild(path.getFileName().toString());
+        if (file != null && !file.isWritable()) throw new IOException(path.getFileName() + " is read-only");
+        return new Target(write, dir, file);
     }
 
-    private static String liveText(VirtualFile file) {
+    /** An open editor's text, otherwise the file on disk. A file that can't be read fails rather than reading as absent. */
+    private static String liveText(VirtualFile file) throws IOException {
         Document document = FileDocumentManager.getInstance().getCachedDocument(file);
         if (document != null) return document.getText();
-        try {
-            return VfsUtilCore.loadText(file);
-        } catch (IOException e) {
-            return null;
-        }
+        return VfsUtilCore.loadText(file);
     }
 
     /** Equal ignoring line-separator style, so a CRLF file read from disk matches its editor text. */

@@ -1353,7 +1353,7 @@ public class WorkflowActionPanel extends JPanel {
         com.johnnyblabs.openspec.dialogs.RegenerateArtifactDialog dialog =
                 new com.johnnyblabs.openspec.dialogs.RegenerateArtifactDialog(project, request.artifactId(),
                         request.downstream());
-        return dialog.showAndGet() ? dialog.getNote() : null;
+        return dialog.outcome(dialog.showAndGet());
     }
 
     void setRegenerateDialogForTest(java.util.function.Function<RegenerateRequest, @Nullable String> dialog) {
