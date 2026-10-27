@@ -405,24 +405,17 @@ public class RegenerateWithNotePanelTest extends OpenSpecIntegrationTestBase {
 
     public void testAMultiFileWriteThatCannotFinishWritesNoFile() throws Exception {
         Files.createDirectories(changeDir.resolve("specs/auth"));
-        Files.createDirectories(changeDir.resolve("specs/billing"));
         Files.writeString(changeDir.resolve("specs/auth/spec.md"), "# Old auth\n");
-        Path billing = changeDir.resolve("specs/billing/spec.md");
-        Files.writeString(billing, "# Old billing\n");
-        assertTrue(billing.toFile().setWritable(false));
-        try {
-            LocalFileSystem.getInstance().refreshAndFindFileByNioFile(billing).refresh(false, false);
-            response = "<!-- file: specs/auth/spec.md -->\n# New auth\n<!-- file: specs/billing/spec.md -->\n# New billing\n";
+        // A plain file where the second file's directory would go: it can't be created, whoever runs the test.
+        Files.writeString(changeDir.resolve("specs/billing"), "not a directory\n");
+        response = "<!-- file: specs/auth/spec.md -->\n# New auth\n<!-- file: specs/billing/spec.md -->\n# Billing\n";
 
-            regenerate("specs", "specs/**/*.md", DeliveryMode.DIRECT_API);
+        regenerate("specs", "specs/**/*.md", DeliveryMode.DIRECT_API);
 
-            assertEquals("the first file is not written", "# Old auth\n",
-                    Files.readString(changeDir.resolve("specs/auth/spec.md")));
-            assertEquals("# Old billing\n", Files.readString(billing));
-            assertTrue(raisedContaining("read-only"));
-        } finally {
-            billing.toFile().setWritable(true);
-        }
+        assertEquals("the first file is not written", "# Old auth\n",
+                Files.readString(changeDir.resolve("specs/auth/spec.md")));
+        assertEquals("not a directory\n", Files.readString(changeDir.resolve("specs/billing")));
+        assertTrue(raisedContaining("Failed to write artifact"));
     }
 
     public void testASecondFileChangedDuringTheReviewWritesNoFile() throws Exception {

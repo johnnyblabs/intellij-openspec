@@ -114,7 +114,7 @@ final class ReviewedArtifactWriter {
     private static Target target(PlannedWrite write) throws IOException {
         Path path = write.path();
         VirtualFile dir = VfsUtil.createDirectoryIfMissing(path.getParent().toString());
-        if (dir == null) throw new IOException("Failed to create directory: " + path.getParent());
+        if (dir == null || !dir.isDirectory()) throw new IOException("Failed to create directory: " + path.getParent());
         VirtualFile file = dir.findChild(path.getFileName().toString());
         if (file != null && !file.isWritable()) throw new IOException(path.getFileName() + " is read-only");
         return new Target(write, dir, file);
