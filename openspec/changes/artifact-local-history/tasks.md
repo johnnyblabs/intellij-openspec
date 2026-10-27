@@ -26,8 +26,8 @@
 
 ## 4. Docs and checks
 
-- [ ] 4.1 Update `docs/feature-reference.md` (workflow panel chip menu, Direct API generation and Regenerate) and add a CHANGELOG Unreleased → Added entry. Verify with the leak grep and `DocumentationHygieneTest`.
-- [ ] 4.2 Run `./gradlew build` (exit 0) and `./gradlew verifyPlugin` (no internal, experimental or scheduled-for-removal API usages; grep the report for "will be removed"), plus `openspec validate artifact-local-history --strict`.
+- [x] 4.1 Update `docs/feature-reference.md` (workflow panel chip menu, Direct API generation and Regenerate) and add a CHANGELOG Unreleased → Added entry. Verify with the leak grep and `DocumentationHygieneTest`.
+- [x] 4.2 Run `./gradlew build` (exit 0) and `./gradlew verifyPlugin` (no internal, experimental or scheduled-for-removal API usages; grep the report for "will be removed"), plus `openspec validate artifact-local-history --strict`.
 
 ## Workflow follow-up
 
