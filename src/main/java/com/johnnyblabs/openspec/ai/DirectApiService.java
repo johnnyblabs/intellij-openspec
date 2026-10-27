@@ -412,6 +412,10 @@ public final class DirectApiService {
         JsonObject generationConfig = new JsonObject();
         generationConfig.addProperty("maxOutputTokens", MAX_TOKENS);
         body.add("generationConfig", generationConfig);
+        // Ask Google not to store the request: new paid-tier projects store generateContent requests by default
+        // (55 days, visible in AI Studio), and the request-level field overrides the project setting. It is a
+        // top-level field; inside generationConfig Google rejects it with 400 "Unknown name".
+        body.addProperty("store", false);
 
         String url = GEMINI_API_URL + model + ":generateContent";
         return HttpRequest.newBuilder()

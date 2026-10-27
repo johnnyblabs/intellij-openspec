@@ -33,16 +33,36 @@ is preserved.
 
 **Derived variants (no official example exists).** Neither provider publishes an example of an empty reply. The OpenAI null-content, refusal and token-limit cases, and the Gemini thought-part, missing-content and blocked-prompt cases, are built inside `DirectApiResponseContractTest` from the documented fixtures above. Each one changes only fields the provider's reference defines (OpenAI's nullable `content` and `refusal`, the `finish_reason` enum; Gemini's `Part.thought`, `FinishReason` and `promptFeedback.blockReason`). Replace them with live captures when keys are available.
 
+
+## `gemini/store/` — where the `store` field goes
+
+Captured live on 2026-10-27 from a standard `AIza…` AI Studio key, `v1beta` `:generateContent`, one request per file. Each case is the request body sent (`.request.json`), the raw response (`.response.json`) and the HTTP status (`.status`). The key was read from the environment and never written. Google's logs page documents `store` only in its SDKs, with no REST example, so these captures are the evidence for the REST placement.
+
+| Case | Model | Result |
+|---|---|---|
+| `accepted-top-level-store` | `gemini-3.8-flash` | **200**, a normal reply. Top-level `"store": false` is accepted (it needed one retry after a `503` overload). |
+| `rejected-generationconfig-store` | `gemini-3.8-flash` | **400** `INVALID_ARGUMENT`: `Unknown name "store" at 'generation_config'`. |
+
+Not kept as files, but run the same day:
+- top-level `"store": false` also got 200 on `gemini-3.6-flash`;
+- an unknown top-level field (`notAField`) got 400 `Unknown name "notAField"`. That shows Google validates top-level names, so the 200 means `store` is recognised, not ignored.
+
+Auth keys (`AQ.…`) were not probed.
 ## Gemini generateContent — live captures
 
-Captured 2026-10-25 with `scripts/capture-gemini-generatecontent.py`. It sends the plugin's own request (`DirectApiService.buildGeminiRequest`) with a free AI Studio key read from `$GEMINI_API_KEY`, and refuses to save a response that contains the key. They back the live Gemini tests in `DirectApiResponseContractTest`.
+Re-captured 2026-10-27 with `scripts/capture-gemini-generatecontent.py`, after the plugin started sending `"store": false`. The first capture was 2026-10-25. The script:
+- sends the plugin's own request (`DirectApiService.buildGeminiRequest`) with a free AI Studio key read from `$GEMINI_API_KEY`;
+- refuses to save a response that contains the key;
+- records the request body it sent (`<case>.request.json`) and the HTTP status (`<case>.status`) next to each response.
+
+`DirectApiResponseContractTest` checks that each recorded request equals the body the plugin builds, apart from the token budget, so the script and the plugin can't drift apart. The responses back the live Gemini tests in the same class.
 
 | File | Model | What it shows |
 |------|-------|---------------|
-| `gemini/live/generatecontent-text.json` | `gemini-3.8-flash`, the plugin's default, at the plugin's `maxOutputTokens` 16000 | `finishReason: STOP`. The reply's **only** part carries both `text` and a `thoughtSignature`. No thought part is returned, because the plugin doesn't ask for one (`includeThoughts`), but `usageMetadata.thoughtsTokenCount` shows the model thought. |
+| `gemini/live/generatecontent-text.json` | `gemini-3.6-flash`, at the plugin's `maxOutputTokens` 16000 | `finishReason: STOP`. The reply's **only** part carries both `text` and a `thoughtSignature`. No thought part is returned, because the plugin doesn't ask for one (`includeThoughts`), but `usageMetadata.thoughtsTokenCount` shows the model thought. |
 | `gemini/live/generatecontent-max-tokens.json` | `gemini-3.6-flash`, with `maxOutputTokens` 16 | `finishReason: MAX_TOKENS` with `content: {}`, an object with **no `parts`**. Thinking used the whole budget before any text. |
 
-The token-limit case is from `gemini-3.6-flash` because `gemini-3.8-flash` answered `503 UNAVAILABLE` ("This model is currently experiencing high demand…") on all four attempts that day. The script retries a 503 or a timeout up to four times. A blocked-prompt response isn't captured, since there's no benign way to trigger one, so that case stays derived (below).
+Both cases are from `gemini-3.6-flash` because `gemini-3.8-flash`, the plugin's default, answered `503 UNAVAILABLE` ("This model is currently experiencing high demand…") on every attempt: on 2026-10-25 for the token-limit case, and on 2026-10-27 for both. On 2026-10-27, `gemini-3.8-flash` did accept the same top-level `store` field in the `gemini/store/` probe. The script retries a 503 or a timeout up to four times. A blocked-prompt response isn't captured, since there's no benign way to trigger one, so that case stays derived (below).
 
 These are the live contract for the cases they cover. The documented `generatecontent-response.json` and the variants derived from it still cover thought parts, missing content and blocked prompts.
 

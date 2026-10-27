@@ -1,0 +1,15 @@
+{
+  "contents": [
+    {
+      "parts": [
+        {
+          "text": "Reply with exactly one word: ready"
+        }
+      ]
+    }
+  ],
+  "generationConfig": {
+    "maxOutputTokens": 16000
+  },
+  "store": false
+}

@@ -1,0 +1,15 @@
+{
+  "contents": [
+    {
+      "parts": [
+        {
+          "text": "Explain, step by step, why the sky looks blue during the day."
+        }
+      ]
+    }
+  ],
+  "generationConfig": {
+    "maxOutputTokens": 16
+  },
+  "store": false
+}

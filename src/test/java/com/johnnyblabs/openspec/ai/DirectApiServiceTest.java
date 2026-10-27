@@ -297,6 +297,58 @@ class DirectApiServiceTest {
             var request = DirectApiService.buildGeminiRequest("gemini-2.5-pro", "k", "p");
             assertEquals("POST", request.method());
         }
+
+        @Test
+        void asksGoogleNotToStoreTheRequestAtTheTopLevel() {
+            JsonObject body = bodyJson(DirectApiService.buildGeminiRequest("gemini-3.8-flash", "k", "p"));
+            var store = body.get("store");
+            assertNotNull(store, "the body carries store");
+            assertTrue(store.isJsonPrimitive() && store.getAsJsonPrimitive().isBoolean(), "store is a JSON boolean: " + store);
+            assertFalse(store.getAsBoolean(), "store is false");
+            assertFalse(body.getAsJsonObject("generationConfig").has("store"),
+                    "store inside generationConfig is rejected by Google with 400");
+            assertEquals(java.util.Set.of("contents", "generationConfig", "store"), body.keySet());
+        }
+    }
+
+    @Test
+    void claudeAndOpenAiBodiesCarryNoStoreField() {
+        assertFalse(bodyJson(DirectApiService.buildClaudeRequest("claude-sonnet-5-5", "k", "p",
+                ProviderRequestSettings.NONE)).has("store"));
+        assertFalse(bodyJson(DirectApiService.buildOpenAiRequest("gpt-6-luna", "k", "p",
+                ProviderRequestSettings.NONE)).has("store"));
+    }
+
+    /** The JSON body an {@link java.net.http.HttpRequest} would send, read from its body publisher. */
+    static JsonObject bodyJson(java.net.http.HttpRequest request) {
+        var publisher = request.bodyPublisher().orElseThrow();
+        var out = new java.io.ByteArrayOutputStream();
+        var done = new java.util.concurrent.CompletableFuture<Void>();
+        publisher.subscribe(new java.util.concurrent.Flow.Subscriber<java.nio.ByteBuffer>() {
+            @Override
+            public void onSubscribe(java.util.concurrent.Flow.Subscription subscription) {
+                subscription.request(Long.MAX_VALUE);
+            }
+
+            @Override
+            public void onNext(java.nio.ByteBuffer item) {
+                byte[] bytes = new byte[item.remaining()];
+                item.get(bytes);
+                out.writeBytes(bytes);
+            }
+
+            @Override
+            public void onError(Throwable throwable) {
+                done.completeExceptionally(throwable);
+            }
+
+            @Override
+            public void onComplete() {
+                done.complete(null);
+            }
+        });
+        done.join();
+        return JsonParser.parseString(out.toString(StandardCharsets.UTF_8)).getAsJsonObject();
     }
 
     @Nested
