@@ -1,0 +1,15 @@
+{
+  "contents": [
+    {
+      "role": "user",
+      "parts": [
+        {
+          "text": "Reply with the single word: ok"
+        }
+      ]
+    }
+  ],
+  "generationConfig": {
+    "store": false
+  }
+}

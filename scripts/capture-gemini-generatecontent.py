@@ -3,8 +3,10 @@
 
 Sends the request the plugin sends (DirectApiService.buildGeminiRequest: POST
 /v1beta/models/<model>:generateContent, header x-goog-api-key, body {contents:[{parts:[{text}]}],
-generationConfig:{maxOutputTokens}}) and records each raw response body under
-src/test/resources/fixtures/ai/gemini/live/:
+generationConfig:{maxOutputTokens}, store:false}) and records, under src/test/resources/fixtures/ai/gemini/live/,
+each raw response body (<case>.json), the request body it sent (<case>.request.json) and the HTTP status
+(<case>.status). DirectApiResponseContractTest checks that the recorded request equals the body the plugin builds,
+so this script and the plugin can't drift apart:
 
     generatecontent-text.json         a normal reply at the plugin's maxOutputTokens (16000); Gemini 3.x thinks
                                       by default, so this carries thought signatures
@@ -37,14 +39,19 @@ CASES = {
 }
 
 
-def call(key: str, model: str, prompt: str, max_tokens: int) -> str:
-    body = {"contents": [{"parts": [{"text": prompt}]}], "generationConfig": {"maxOutputTokens": max_tokens}}
+def request_body(prompt: str, max_tokens: int) -> dict:
+    """The plugin's Gemini request body, field for field (store: false opts out of Google's request storage)."""
+    return {"contents": [{"parts": [{"text": prompt}]}], "generationConfig": {"maxOutputTokens": max_tokens},
+            "store": False}
+
+
+def call(key: str, model: str, body: dict) -> tuple[int, str]:
     request = urllib.request.Request(URL.format(model=model), data=json.dumps(body).encode(), method="POST",
                                      headers={"Content-Type": "application/json", "x-goog-api-key": key})
     for attempt in range(1, 5):
         try:
             with urllib.request.urlopen(request, timeout=120) as response:
-                return response.read().decode()
+                return response.status, response.read().decode()
         except urllib.error.HTTPError as e:
             detail = e.read().decode()[:500]
             if e.code == 503 and attempt < 4:
@@ -71,12 +78,15 @@ def main():
     for name, (prompt, max_tokens) in CASES.items():
         if only and name != only:
             continue
-        text = call(key, model, prompt, max_tokens)
+        body = request_body(prompt, max_tokens)
+        status, text = call(key, model, body)
         if key in text:
             sys.exit(f"refusing to save {name}: the response contains the API key")
-        pretty = json.dumps(json.loads(text), indent=2) + "\n"
-        (OUT / name).write_text(pretty)
-        print(f"wrote {OUT / name}")
+        stem = name.removesuffix(".json")
+        (OUT / name).write_text(json.dumps(json.loads(text), indent=2) + "\n")
+        (OUT / f"{stem}.request.json").write_text(json.dumps(body, indent=2) + "\n")
+        (OUT / f"{stem}.status").write_text(f"{status}\n")
+        print(f"wrote {OUT / name} ({status}), its request and status")
 
 
 if __name__ == "__main__":

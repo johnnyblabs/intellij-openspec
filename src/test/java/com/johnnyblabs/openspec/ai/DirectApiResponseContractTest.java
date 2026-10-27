@@ -209,6 +209,67 @@ class DirectApiResponseContractTest {
     }
 
     @Nested
+    class GeminiStoreContract {
+        // LIVE probes of where Google accepts the request-level store field (gemini/store/, see the fixtures README),
+        // and the request bodies the capture script recorded next to the gemini/live/ responses.
+        private JsonObject json(String path) {
+            return JsonParser.parseString(loadFixture(path)).getAsJsonObject();
+        }
+
+        private int status(String path) {
+            return Integer.parseInt(loadFixture(path).strip());
+        }
+
+        /** Every dotted path in {@code object} that ends in a field named {@code name}. */
+        private java.util.Set<String> pathsOf(JsonObject object, String name, String prefix) {
+            java.util.Set<String> paths = new java.util.TreeSet<>();
+            for (var entry : object.entrySet()) {
+                String path = prefix + entry.getKey();
+                if (entry.getKey().equals(name)) paths.add(path);
+                if (entry.getValue().isJsonObject()) paths.addAll(pathsOf(entry.getValue().getAsJsonObject(), name, path + "."));
+            }
+            return paths;
+        }
+
+        @Test
+        void thePluginPutsStoreWhereGoogleAcceptedItAndNotWhereGoogleRejectedIt() throws Exception {
+            JsonObject plugin = DirectApiServiceTest.bodyJson(DirectApiService.buildGeminiRequest("gemini-3.8-flash", "k", "p"));
+            JsonObject accepted = json("gemini/store/accepted-top-level-store.request.json");
+            JsonObject rejected = json("gemini/store/rejected-generationconfig-store.request.json");
+
+            assertEquals(200, status("gemini/store/accepted-top-level-store.status"));
+            assertEquals("ok", DirectApiService.parseGeminiResponse(loadFixture("gemini/store/accepted-top-level-store.response.json")));
+            assertEquals(400, status("gemini/store/rejected-generationconfig-store.status"));
+            JsonObject violation = json("gemini/store/rejected-generationconfig-store.response.json").getAsJsonObject("error")
+                    .getAsJsonArray("details").get(0).getAsJsonObject().getAsJsonArray("fieldViolations").get(0).getAsJsonObject();
+            assertEquals("generation_config", violation.get("field").getAsString());
+            assertTrue(violation.get("description").getAsString().contains("Unknown name \"store\""), violation.toString());
+
+            assertEquals(pathsOf(accepted, "store", ""), pathsOf(plugin, "store", ""));
+            assertEquals(accepted.get("store"), plugin.get("store"));
+            java.util.Set<String> rejectedPaths = pathsOf(rejected, "store", "");
+            assertEquals(java.util.Set.of("generationConfig.store"), rejectedPaths);
+            assertTrue(java.util.Collections.disjoint(rejectedPaths, pathsOf(plugin, "store", "")));
+        }
+
+        @Test
+        void theLiveCapturesSentExactlyThePluginsBodyAndGotAReply() {
+            for (String name : List.of("generatecontent-text", "generatecontent-max-tokens")) {
+                JsonObject recorded = json("gemini/live/" + name + ".request.json");
+                assertEquals(200, status("gemini/live/" + name + ".status"), name);
+                String prompt = recorded.getAsJsonArray("contents").get(0).getAsJsonObject().getAsJsonArray("parts")
+                        .get(0).getAsJsonObject().get("text").getAsString();
+                JsonObject plugin = DirectApiServiceTest.bodyJson(DirectApiService.buildGeminiRequest("m", "k", prompt));
+                // The token-limit case sends a tiny budget on purpose; everything else is the plugin's body.
+                JsonObject expected = recorded.deepCopy();
+                expected.getAsJsonObject("generationConfig").add("maxOutputTokens",
+                        plugin.getAsJsonObject("generationConfig").get("maxOutputTokens"));
+                assertEquals(expected, plugin, name + ": the capture script must send the plugin's body");
+            }
+        }
+    }
+
+    @Nested
     class GeminiParserContract {
         // LIVE captures (scripts/capture-gemini-generatecontent.py; see the fixtures README). Gemini 3.x thinks by
         // default: the reply's only part carries the text AND a thoughtSignature, and no thought part is returned
