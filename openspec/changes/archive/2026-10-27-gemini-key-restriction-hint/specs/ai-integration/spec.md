@@ -2,7 +2,7 @@
 
 ### Requirement: Key and permission errors per provider
 
-A rejected API key SHALL get the "check your API key" suggestion whatever status the provider uses for it. Gemini rejects an invalid key with HTTP 400 and reason `API_KEY_INVALID`. When Gemini refuses a request as a permission error, the suggestion SHALL also say that Google rejects older keys that aren't restricted to the Gemini API, and blocks them when unused, and that creating a new key in Google AI Studio fixes it. That note is worded as a possible cause, because Google doesn't document a distinct error for such keys.
+A rejected API key SHALL get the "check your API key" suggestion whatever status the provider uses for it. Gemini rejects an invalid key with HTTP 400 and reason `API_KEY_INVALID`. A Gemini permission error SHALL also get a note that Google rejects or blocks older keys not restricted to the Gemini API, and that a new Google AI Studio key fixes it. Google documents no distinct error for such keys, so the note names a possible cause.
 
 #### Scenario: Gemini invalid key
 - **WHEN** Gemini returns HTTP 400 with a `details[].reason` of `API_KEY_INVALID`
