@@ -6,6 +6,7 @@ import com.intellij.testFramework.fixtures.BasePlatformTestCase;
 import com.johnnyblabs.openspec.ai.AiApiException;
 import com.johnnyblabs.openspec.ai.AiProvider;
 import com.johnnyblabs.openspec.ai.DirectApiErrorsContractTest;
+import com.johnnyblabs.openspec.ai.DirectApiService;
 import com.johnnyblabs.openspec.services.CliDetectionService;
 import com.johnnyblabs.openspec.services.CliDetectionTestSupport;
 
@@ -172,5 +173,14 @@ public class OpenSpecSettingsPanelWorkspaceIdTest extends BasePlatformTestCase {
                 DirectApiErrorsContractTest.build("gemini/errors/generatecontent-400-api-key-invalid")));
         assertEquals("Check your API key", OpenSpecSettingsPanel.testFailureMessage(
                 DirectApiErrorsContractTest.build("openai/errors/models-401-invalid-key")));
+    }
+
+    public void testGeminiPermissionFailureAddsTheKeyRestrictionNote() {
+        String shown = OpenSpecSettingsPanel.testFailureMessage(
+                DirectApiErrorsContractTest.build("gemini/errors/generatecontent-403-no-key"));
+        assertEquals("Check your API key. " + DirectApiService.GEMINI_KEY_RESTRICTION_NOTE, shown);
+        // Only Gemini's permission error carries the note.
+        assertEquals("Check your API key", OpenSpecSettingsPanel.testFailureMessage(
+                DirectApiErrorsContractTest.build("claude/errors/messages-403-permission-error")));
     }
 }

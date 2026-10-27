@@ -127,6 +127,7 @@ These back `DirectApiErrorsContractTest`, which classifies each body and reads e
 | `claude/errors/messages-401-header-and-body-ids` | DERIVED (live 401 with the IDs changed) | header `request-id` and body `request_id` differ, so the test can tell which one wins |
 | `claude/errors/messages-429-spend-cap` | DOCS (rate-limits, "Reaching your spend cap") | `rate_limit_error` with `details.error_code: enforced_spend_limit_reached`, no `retry-after` |
 | `claude/errors/messages-402-billing-error` | DERIVED (errors page, 402 row) | `billing_error` |
+| `claude/errors/messages-403-permission-error` | DERIVED (errors page, 403 row; message is that row's description) | `permission_error`, so a non-Gemini permission error is pinned by its body, not only by the status |
 | `claude/errors/messages-400-api-usage-limit` | DERIVED (errors page, spend limits) | `invalid_request_error`, message starts "You have reached your specified API usage limits" |
 | `claude/errors/messages-400-workspace-usage-limit` | DERIVED (same) | the workspace-limit prefix |
 | `claude/errors/messages-529-overloaded` | DERIVED (errors page, 529 row) | `overloaded_error` |
@@ -145,6 +146,8 @@ These back `DirectApiErrorsContractTest`, which classifies each body and reads e
 | `gemini/errors/generatecontent-400-api-key-invalid` | LIVE (`:generateContent`) | same, from generation |
 | `gemini/errors/models-403-no-key` | LIVE (no key) | `PERMISSION_DENIED` |
 | `gemini/errors/generatecontent-403-no-key` | LIVE (no key) | same, from generation |
+
+**No capture exists for a Gemini key that is blocked or not restricted to the Gemini API.** Google's API-key page says such keys are rejected, and that dormant ones are blocked, but documents no status, reason or message. A live probe on 2026-10-27 couldn't produce one: a standard key created before late May 2026 kept returning `200` for `generateContent` and `models` for 9 minutes after its API restriction was removed. So the key-restriction note is attached to every Gemini `PERMISSION_DENIED` (or bare `403`), pinned by the two `403-no-key` captures above. Both kinds of new key (AI Studio and Cloud console auth keys, `AQ.…`) returned `200` in the same probe with `x-goog-api-key` on `v1beta`. When a blocked key's real error is captured, add it here with its own rule.
 | `gemini/errors/generatecontent-400-invalid-argument` | DERIVED, message *placeholder* (live 400 without the `API_KEY_INVALID` detail) | a 400 that is **not** a key error (negative control) |
 | `gemini/errors/generatecontent-402-payment-required` | DERIVED (billing page) | HTTP 402; the RPC `status` string is undocumented, so the body has none and the HTTP status decides |
 | `gemini/errors/generatecontent-429-resource-exhausted` | DERIVED, message *placeholder* (rate-limits page) | `RESOURCE_EXHAUSTED`, which Google documents as wait-and-retry even when spend-based |

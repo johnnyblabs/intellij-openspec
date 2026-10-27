@@ -639,6 +639,13 @@ public final class DirectApiService {
             + "in Settings \u2192 Tools \u2192 OpenSpec \u2192 Direct API belong to it";
 
     /**
+     * Added to a Gemini permission error. Google rejects older standard keys that aren't restricted to the Gemini API
+     * but documents no distinct error for them, so this is worded as a possible cause, not a diagnosis.
+     */
+    public static final String GEMINI_KEY_RESTRICTION_NOTE = "Google rejects older keys that aren't restricted to the "
+            + "Gemini API, and blocks them when unused. If yours is one, create a new key in Google AI Studio";
+
+    /**
      * The error for a failed request. The body's documented error field picks the suggestion, the status only when it
      * has none ({@link DirectApiErrors}). With an OpenAI organization or project set, a 401 also points at those
      * settings; that hint is chosen on the status alone, because OpenAI doesn't document the body for a mismatch.

@@ -991,13 +991,17 @@ public class OpenSpecSettingsPanel {
     /**
      * The message Test shows for a failure: "Check your API key" for a rejected key or permission (any status the
      * provider uses for it, such as Gemini's 400), the OpenAI ID hint for a 401 with an Organization or Project ID
-     * set, and otherwise the error's message with its suggestion (billing, limits, rate limit, overload).
+     * set, the note about older unrestricted keys for a Gemini permission error, and otherwise the error's message with its suggestion (billing, limits, rate limit, overload).
      */
     static String testFailureMessage(Throwable cause) {
         if (cause instanceof AiApiException aae) {
             if (aae.getKind() == ErrorKind.AUTH
                     && DirectApiService.OPENAI_SCOPE_SUGGESTION.equals(aae.getSuggestion())) {
                 return OPENAI_SCOPE_TEST_FAILURE;
+            }
+            if (aae.getKind() == ErrorKind.PERMISSION
+                    && AiProvider.GEMINI.getDisplayName().equals(aae.getProvider())) {
+                return GEMINI_PERMISSION_TEST_FAILURE;
             }
             if (aae.getKind() == ErrorKind.AUTH || aae.getKind() == ErrorKind.PERMISSION) {
                 return "Check your API key";
@@ -1042,6 +1046,8 @@ public class OpenSpecSettingsPanel {
 
     static final String OPENAI_SCOPE_TEST_FAILURE =
             "Check your API key, and that the Organization ID and Project ID belong to it";
+    static final String GEMINI_PERMISSION_TEST_FAILURE =
+            "Check your API key. " + DirectApiService.GEMINI_KEY_RESTRICTION_NOTE;
     static final String OPENAI_ORG_LABEL = "Organization ID (optional)";
     static final String OPENAI_PROJECT_LABEL = "Project ID (optional)";
     static final String OPENAI_SCOPE_HELP = "<html>Only needed for legacy user API keys, or if you belong to more than "

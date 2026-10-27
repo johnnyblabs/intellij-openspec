@@ -42,6 +42,7 @@ public class DirectApiErrorsContractTest {
         EXPECTED.put("claude/errors/messages-401-header-and-body-ids", ErrorKind.AUTH);
         EXPECTED.put("claude/errors/messages-429-spend-cap", ErrorKind.SPEND_LIMIT);
         EXPECTED.put("claude/errors/messages-402-billing-error", ErrorKind.BILLING);
+        EXPECTED.put("claude/errors/messages-403-permission-error", ErrorKind.PERMISSION);
         EXPECTED.put("claude/errors/messages-400-api-usage-limit", ErrorKind.SPEND_LIMIT);
         EXPECTED.put("claude/errors/messages-400-workspace-usage-limit", ErrorKind.SPEND_LIMIT);
         EXPECTED.put("claude/errors/messages-529-overloaded", ErrorKind.OVERLOADED);
@@ -195,6 +196,38 @@ public class DirectApiErrorsContractTest {
         assertEquals(DirectApiErrors.KEY_SUGGESTION,
                 build("gemini/errors/generatecontent-400-api-key-invalid").getSuggestion());
         assertNull(build("gemini/errors/generatecontent-400-invalid-argument").getSuggestion());
+    }
+
+    @Test
+    void geminiPermissionErrorAddsTheKeyRestrictionNote() {
+        String note = DirectApiService.GEMINI_KEY_RESTRICTION_NOTE;
+        assertTrue(note.contains("restricted") && note.contains("AI Studio"), note);
+        String expected = DirectApiErrors.KEY_SUGGESTION + ". " + note;
+        // No capture exists for a blocked or unrestricted key (fixtures README), so the live 403s pin the rule.
+        for (String fixture : List.of("gemini/errors/generatecontent-403-no-key", "gemini/errors/models-403-no-key")) {
+            AiApiException ex = build(fixture);
+            assertEquals(ErrorKind.PERMISSION, ex.getKind(), fixture);
+            assertEquals(expected, ex.getSuggestion(), fixture);
+        }
+        // A bare 403 with no recognized body falls back to the status and gets the same note.
+        AiApiException bare = DirectApiService.buildApiError("Gemini", 403, "Forbidden");
+        assertEquals(ErrorKind.PERMISSION, bare.getKind());
+        assertEquals(expected, bare.getSuggestion());
+        // A key Google calls invalid isn't the restriction problem: plain key suggestion.
+        assertEquals(DirectApiErrors.KEY_SUGGESTION,
+                build("gemini/errors/generatecontent-400-api-key-invalid").getSuggestion());
+    }
+
+    @Test
+    void otherProvidersPermissionErrorsGetNoGeminiNote() {
+        // Each case must classify as PERMISSION first, or a leak of the note to every PERMISSION would go unseen.
+        List<AiApiException> cases = List.of(build("claude/errors/messages-403-permission-error"),
+                DirectApiService.buildApiError("Claude", 403, "Forbidden"),
+                DirectApiService.buildApiError("OpenAI", 403, "Forbidden"));
+        for (AiApiException ex : cases) {
+            assertEquals(ErrorKind.PERMISSION, ex.getKind(), ex.getMessage());
+            assertEquals(DirectApiErrors.KEY_SUGGESTION, ex.getSuggestion(), ex.getMessage());
+        }
     }
 
     @Test
