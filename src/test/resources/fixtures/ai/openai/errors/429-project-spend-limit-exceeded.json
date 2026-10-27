@@ -1,0 +1,8 @@
+{
+  "error": {
+    "message": "Your project reached its enforced spend limit.",
+    "type": "insufficient_quota",
+    "param": null,
+    "code": "project_spend_limit_exceeded"
+  }
+}

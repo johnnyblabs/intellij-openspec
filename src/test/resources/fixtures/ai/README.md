@@ -113,3 +113,41 @@ An invalid-key 401 needs no paid key, so these are **live** captures, an excepti
 | `openai/chat-completions-401-invalid-key.json` | `POST /v1/chat/completions` with `OpenAI-Project: proj_fixture` | HTTP 401, the same `error` object in a different key order, plus a top-level `"status": 401` |
 
 The two endpoints use different envelopes, so the tests read both. The organization and project headers did not change an invalid-key body, and OpenAI accepted both headers without a 400. A key that is valid but doesn't belong to the named organization or project needs a real key to capture, so the plugin's 401 hint for configured IDs is chosen on the status alone and parses nothing beyond `error.message`.
+
+## Error responses — live, docs and derived
+
+These back `DirectApiErrorsContractTest`, which classifies each body and reads each request ID. Every file under `<provider>/errors/` is a body (`.json`) plus the response headers that matter (`.headers`: `content-type`, the request-ID header, and `retry-after` when sent, one `name: value` per line). `DirectApiErrorsContractTest` fails if a file there isn't listed in this table.
+
+**LIVE** captures used fake keys or no key on 2026-10-27, so nothing needed sanitizing; the request IDs are the real ones the providers returned. Billing, quota, spend-limit and overload errors can't be produced on demand. **DOCS** is a provider's verbatim example. **DERIVED** is a live envelope from this table with only the documented fields changed: the type, code, param or status the docs name, and a message taken from the docs' description of that error. A derived message that the docs don't give verbatim is marked *placeholder*, and no test reads it. Docs checked 2026-10-27: Claude `platform.claude.com/docs/en/api/errors` and `/rate-limits`; OpenAI `developers.openai.com/api/docs/guides/error-codes`; Gemini `ai.google.dev/gemini-api/docs/troubleshooting`, `/rate-limits` and `/billing` (Gemini's `api-errors` page documents the Interactions API, a different shape, and is not used).
+
+| File | Provenance | What it shows |
+|------|------------|---------------|
+| `claude/errors/models-401-invalid-key` | LIVE (`GET /v1/models`) | `authentication_error`; `request-id` header equals body `request_id` |
+| `claude/errors/messages-401-invalid-key` | LIVE (`POST /v1/messages`) | same, from generation |
+| `claude/errors/messages-401-header-and-body-ids` | DERIVED (live 401 with the IDs changed) | header `request-id` and body `request_id` differ, so the test can tell which one wins |
+| `claude/errors/messages-429-spend-cap` | DOCS (rate-limits, "Reaching your spend cap") | `rate_limit_error` with `details.error_code: enforced_spend_limit_reached`, no `retry-after` |
+| `claude/errors/messages-402-billing-error` | DERIVED (errors page, 402 row) | `billing_error` |
+| `claude/errors/messages-400-api-usage-limit` | DERIVED (errors page, spend limits) | `invalid_request_error`, message starts "You have reached your specified API usage limits" |
+| `claude/errors/messages-400-workspace-usage-limit` | DERIVED (same) | the workspace-limit prefix |
+| `claude/errors/messages-529-overloaded` | DERIVED (errors page, 529 row) | `overloaded_error` |
+| `claude/errors/messages-429-rate-limit` | DERIVED, message *placeholder* | plain `rate_limit_error` with `retry-after` |
+| `openai/errors/models-401-invalid-key` | LIVE (`GET /v1/models`) | `x-request-id` header; no ID in the body |
+| `openai/errors/chat-completions-401-invalid-key` | LIVE (`POST /v1/chat/completions`) | JSON body sent as `content-type: text/plain` |
+| `openai/errors/429-credit-balance-exhausted` | DERIVED (error-codes table) | `code: credit_balance_exhausted`, `type: insufficient_quota` (the docs say the type "can still be" that) |
+| `openai/errors/429-organization-spend-limit-exceeded` | DERIVED (error-codes, spend-limits) | `code: organization_spend_limit_exceeded` |
+| `openai/errors/429-project-spend-limit-exceeded` | DERIVED (error-codes table) | `code: project_spend_limit_exceeded` |
+| `openai/errors/429-organization-usage-limit-exceeded` | DERIVED (error-codes table) | `code: organization_usage_limit_exceeded` |
+| `openai/errors/429-insufficient-quota` | DERIVED, message *placeholder* | `type: insufficient_quota`, `code: null` (the type fallback) |
+| `openai/errors/429-slow-down` | DERIVED (error-codes table) | `type: rate_limit_error`, `code: slow_down`, a plain rate limit |
+| `openai/errors/503-server-is-overloaded` | DERIVED (error-codes table) | `type: service_unavailable_error`, `code: server_is_overloaded` |
+| `openai/errors/400-service-tier-not-allowed` | DERIVED, message verbatim from the error-codes page | `invalid_request_error`, `param: service_tier` |
+| `gemini/errors/models-400-api-key-invalid` | LIVE (`GET models`) | **400**, not 401, for a bad key: `INVALID_ARGUMENT`, `details[].reason: API_KEY_INVALID`; no request-ID header |
+| `gemini/errors/generatecontent-400-api-key-invalid` | LIVE (`:generateContent`) | same, from generation |
+| `gemini/errors/models-403-no-key` | LIVE (no key) | `PERMISSION_DENIED` |
+| `gemini/errors/generatecontent-403-no-key` | LIVE (no key) | same, from generation |
+| `gemini/errors/generatecontent-400-invalid-argument` | DERIVED, message *placeholder* (live 400 without the `API_KEY_INVALID` detail) | a 400 that is **not** a key error (negative control) |
+| `gemini/errors/generatecontent-402-payment-required` | DERIVED (billing page) | HTTP 402; the RPC `status` string is undocumented, so the body has none and the HTTP status decides |
+| `gemini/errors/generatecontent-429-resource-exhausted` | DERIVED, message *placeholder* (rate-limits page) | `RESOURCE_EXHAUSTED`, which Google documents as wait-and-retry even when spend-based |
+| `gemini/errors/generatecontent-503-unavailable` | DERIVED, message from the live 503 noted above | `UNAVAILABLE` |
+
+Re-capture the LIVE rows with a fake key whenever a provider's error envelope changes; replace a DERIVED row with a live capture whenever one becomes possible.

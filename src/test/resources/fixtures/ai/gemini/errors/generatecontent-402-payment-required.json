@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": 402,
+    "message": "Your Prepay credit balance is depleted."
+  }
+}

@@ -475,12 +475,15 @@ class DirectApiServiceTest {
             }
         }
 
+        // The live captures' body request_id (sanitized) ends every Claude error message.
+        private static final String ID = " (request ID: req_SANITIZED)";
+
         @Test
         void liveUnscopedKey400_mapsToActionableMessage() {
             // LIVE capture: GET /v1/models with a key not scoped to a workspace and no workspace header.
             AiApiException ex = DirectApiService.buildApiError("Claude", 400,
                     loadFixture("claude/models-400-unscoped-key.json"));
-            assertEquals(DirectApiService.UNSCOPED_KEY_MESSAGE, ex.getMessage());
+            assertEquals(DirectApiService.UNSCOPED_KEY_MESSAGE + ID, ex.getMessage());
             assertTrue(ex.getMessage().contains("Workspace ID"));
             assertEquals(400, ex.getStatusCode());
         }
@@ -491,7 +494,7 @@ class DirectApiServiceTest {
             // header, so a header-name-only match would wrongly tell the user their key has no workspace.
             AiApiException ex = DirectApiService.buildApiError("Claude", 400,
                     loadFixture("claude/models-400-invalid-workspace-id.json"));
-            assertEquals(DirectApiService.INVALID_WORKSPACE_MESSAGE, ex.getMessage());
+            assertEquals(DirectApiService.INVALID_WORKSPACE_MESSAGE + ID, ex.getMessage());
         }
 
         @Test
@@ -503,7 +506,7 @@ class DirectApiServiceTest {
             error.addProperty("type", "not_found_error");
             error.addProperty("message", "Workspace not found");
             AiApiException ex = DirectApiService.buildApiError("Claude", 404, json.toString());
-            assertEquals(DirectApiService.WORKSPACE_NOT_FOUND_MESSAGE, ex.getMessage());
+            assertEquals(DirectApiService.WORKSPACE_NOT_FOUND_MESSAGE + ID, ex.getMessage());
         }
 
         @Test
@@ -511,7 +514,7 @@ class DirectApiServiceTest {
             // LIVE capture: POST /v1/messages without max_tokens — the same error type, no workspace involved.
             AiApiException ex = DirectApiService.buildApiError("Claude", 400,
                     loadFixture("claude/messages-400-missing-max-tokens.json"));
-            assertEquals("Claude API error: max_tokens: Field required", ex.getMessage());
+            assertEquals("Claude API error: max_tokens: Field required" + ID, ex.getMessage());
         }
 
         @Test
@@ -734,6 +737,81 @@ class DirectApiServiceTest {
             AiApiException claude = DirectApiService.buildApiError("Claude", 401, body,
                     new ProviderRequestSettings("", "org-abc", "proj_xyz"));
             assertEquals("Check your API key in Settings \u2192 Tools \u2192 OpenSpec", claude.getSuggestion());
+        }
+    }
+
+    /**
+     * Every request path hands the response headers and body to the error builder: the request ID and the
+     * body-first kind reach the exception from generation and from the model list, for each provider.
+     */
+    @Nested
+    class ErrorResponsePlumbing {
+
+        @SuppressWarnings("unchecked")
+        private void stubError(DirectApiService spy, String fixture) throws Exception {
+            HttpClient client = mock(HttpClient.class);
+            doReturn(client).when(spy).createHttpClient();
+            HttpResponse<String> resp = mock(HttpResponse.class);
+            when(resp.statusCode()).thenReturn(DirectApiErrorsContractTest.status(fixture));
+            when(resp.body()).thenReturn(DirectApiErrorsContractTest.body(fixture));
+            when(resp.headers()).thenReturn(DirectApiErrorsContractTest.headers(fixture));
+            doReturn(resp).when(client).send(any(), any());
+        }
+
+        private AiApiException generateRawFails(String providerSetting, AiProvider provider, String fixture)
+                throws Throwable {
+            DirectApiService spy = spy(new DirectApiService(project));
+            stubError(spy, fixture);
+            AiApiException[] thrown = new AiApiException[1];
+            try (MockedStatic<OpenSpecSettings> settingsMock = mockStatic(OpenSpecSettings.class);
+                 MockedStatic<AiCredentialStore> credsMock = mockStatic(AiCredentialStore.class)) {
+                settingsMock.when(() -> OpenSpecSettings.getInstance(project)).thenReturn(settings);
+                lenient().when(settings.getAiProvider()).thenReturn(providerSetting);
+                lenient().when(settings.getAiWorkspaceId()).thenReturn("");
+                lenient().when(settings.getAiOpenAiOrganization()).thenReturn("");
+                lenient().when(settings.getAiOpenAiProject()).thenReturn("");
+                credsMock.when(() -> AiCredentialStore.getApiKey(provider)).thenReturn("k");
+                thrown[0] = assertThrows(AiApiException.class, () -> spy.generateRaw("p"));
+            }
+            return thrown[0];
+        }
+
+        @Test
+        void claudeGenerationCarriesTheHeaderRequestId() throws Throwable {
+            String fixture = "claude/errors/messages-401-header-and-body-ids";
+            AiApiException ex = generateRawFails("CLAUDE", AiProvider.CLAUDE, fixture);
+            assertEquals(DirectApiErrorsContractTest.headers(fixture).firstValue("request-id").orElseThrow(),
+                    ex.getRequestId());
+        }
+
+        @Test
+        void openAiGenerationCarriesTheRequestIdAndTheBodyKind() throws Throwable {
+            String fixture = "openai/errors/429-credit-balance-exhausted";
+            AiApiException ex = generateRawFails("OPENAI", AiProvider.OPENAI, fixture);
+            assertEquals(DirectApiErrorsContractTest.headers(fixture).firstValue("x-request-id").orElseThrow(),
+                    ex.getRequestId());
+            assertEquals(ErrorKind.BILLING, ex.getKind());
+        }
+
+        @Test
+        void geminiGenerationClassifiesTheBadKey400() throws Throwable {
+            AiApiException ex = generateRawFails("GEMINI", AiProvider.GEMINI,
+                    "gemini/errors/generatecontent-400-api-key-invalid");
+            assertEquals(ErrorKind.AUTH, ex.getKind());
+            assertNull(ex.getRequestId());
+        }
+
+        @Test
+        void theModelListCarriesTheRequestId() throws Exception {
+            for (String fixture : List.of("claude/errors/models-401-invalid-key", "openai/errors/models-401-invalid-key")) {
+                DirectApiService spy = spy(new DirectApiService(project));
+                stubError(spy, fixture);
+                AiProvider provider = fixture.startsWith("claude") ? AiProvider.CLAUDE : AiProvider.OPENAI;
+                AiApiException ex = assertThrows(AiApiException.class,
+                        () -> spy.listModels(provider, "k", ProviderRequestSettings.NONE));
+                assertNotNull(ex.getRequestId(), fixture);
+                assertTrue(ex.getMessage().endsWith(" (request ID: " + ex.getRequestId() + ")"), ex.getMessage());
+            }
         }
     }
 

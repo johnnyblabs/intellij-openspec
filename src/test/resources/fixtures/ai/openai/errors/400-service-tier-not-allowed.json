@@ -1,0 +1,8 @@
+{
+  "error": {
+    "message": "Invalid `service_tier` argument: The requested service tier is not allowed for this project.",
+    "type": "invalid_request_error",
+    "param": "service_tier",
+    "code": null
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "error": {
+    "message": "Your organization reached its enforced spend limit.",
+    "type": "insufficient_quota",
+    "param": null,
+    "code": "organization_spend_limit_exceeded"
+  }
+}

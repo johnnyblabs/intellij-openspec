@@ -233,7 +233,7 @@ public final class VerificationService {
             }
         } catch (AiApiException e) {
             report.addFinding(new VerificationFinding(Severity.SUGGESTION, Dimension.CORRECTNESS,
-                    "Correctness/coherence check unavailable: " + e.getMessage()));
+                    "Correctness/coherence check unavailable: " + e.describe()));
         }
     }
 

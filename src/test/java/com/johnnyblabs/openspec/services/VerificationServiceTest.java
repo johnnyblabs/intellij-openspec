@@ -2,6 +2,7 @@ package com.johnnyblabs.openspec.services;
 
 import com.intellij.openapi.project.Project;
 import com.johnnyblabs.openspec.ai.AiApiException;
+import com.johnnyblabs.openspec.ai.DirectApiErrorsContractTest;
 import com.johnnyblabs.openspec.ai.DirectApiService;
 import com.johnnyblabs.openspec.model.ArtifactInfo;
 import com.johnnyblabs.openspec.model.ArtifactStatus;
@@ -483,6 +484,20 @@ class VerificationServiceTest {
             assertEquals(1, correctness.size());
             assertEquals(Severity.SUGGESTION, correctness.getFirst().severity());
             assertTrue(correctness.getFirst().description().contains("unavailable"));
+        }
+
+        @Test
+        void ai_failure_finding_includes_the_suggestion() throws Exception {
+            changeWithRequirement("my-change", "auth", "Authentication service");
+            lenient().when(project.getService(DirectApiService.class)).thenReturn(aiService);
+            when(aiService.isConfigured()).thenReturn(true);
+            AiApiException spend = DirectApiErrorsContractTest.build("openai/errors/429-project-spend-limit-exceeded");
+            when(aiService.generateRaw(anyString())).thenThrow(spend);
+
+            VerificationReport report = service.verify("my-change");
+            String description = report.getFindings(Dimension.CORRECTNESS).getFirst().description();
+            assertTrue(description.contains(spend.getMessage()), description);
+            assertTrue(description.endsWith(spend.getSuggestion()), description);
         }
 
         @Test

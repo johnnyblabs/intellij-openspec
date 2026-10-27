@@ -1,0 +1,8 @@
+{
+  "error": {
+    "message": "Your organization reached its OpenAI-assigned usage limit.",
+    "type": "insufficient_quota",
+    "param": null,
+    "code": "organization_usage_limit_exceeded"
+  }
+}
