@@ -102,3 +102,14 @@ Capture one when such an ID is available.
 later) return a `thinking` block whose `thinking` text is empty (`display: "omitted"`) **before** the
 `text` block. A parser that reads `content[0].text` fails on it. Do not trim the `thinking` block when
 refreshing this fixture.
+
+## OpenAI errors — live-captured without a key
+
+An invalid-key 401 needs no paid key, so these are **live** captures, an exception to the doc-sourced OpenAI files above. Captured 2026-10-27 with the fake key `sk-fixture-invalid-key` (OpenAI echoes it masked; nothing to sanitize). They back the OpenAI 401 tests in `DirectApiServiceTest`.
+
+| File | Request | What it shows |
+|------|---------|---------------|
+| `openai/models-401-invalid-key.json` | `GET /v1/models` with `OpenAI-Organization: org-fixture` and `OpenAI-Project: proj_fixture` | HTTP 401, `error.code: invalid_api_key`, `error.type: invalid_request_error` |
+| `openai/chat-completions-401-invalid-key.json` | `POST /v1/chat/completions` with `OpenAI-Project: proj_fixture` | HTTP 401, the same `error` object in a different key order, plus a top-level `"status": 401` |
+
+The two endpoints use different envelopes, so the tests read both. The organization and project headers did not change an invalid-key body, and OpenAI accepted both headers without a 400. A key that is valid but doesn't belong to the named organization or project needs a real key to capture, so the plugin's 401 hint for configured IDs is chosen on the status alone and parses nothing beyond `error.message`.

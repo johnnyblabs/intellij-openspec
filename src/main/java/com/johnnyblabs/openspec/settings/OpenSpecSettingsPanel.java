@@ -23,6 +23,7 @@ import com.johnnyblabs.openspec.ai.AiCredentialStore;
 import com.johnnyblabs.openspec.ai.AiModelOptions;
 import com.johnnyblabs.openspec.ai.AiProvider;
 import com.johnnyblabs.openspec.ai.DirectApiService;
+import com.johnnyblabs.openspec.ai.ProviderRequestSettings;
 import com.johnnyblabs.openspec.dialogs.NewSchemaDialog;
 import com.johnnyblabs.openspec.model.SchemaInfo;
 import com.johnnyblabs.openspec.services.CliDetectionService;
@@ -98,6 +99,15 @@ public class OpenSpecSettingsPanel {
     private com.intellij.ui.components.JBTextField aiWorkspaceField;
     private JBLabel aiWorkspaceLabel;
     private JBLabel aiWorkspaceHelpLabel;
+    // OpenAI-only: the organization and project for legacy user keys or multi-org users (sent as
+    // OpenAI-Organization / OpenAI-Project). An unexpected prefix warns below the field but never blocks.
+    private com.intellij.ui.components.JBTextField aiOpenAiOrgField;
+    private JBLabel aiOpenAiOrgLabel;
+    private JBLabel aiOpenAiOrgWarning;
+    private com.intellij.ui.components.JBTextField aiOpenAiProjectField;
+    private JBLabel aiOpenAiProjectLabel;
+    private JBLabel aiOpenAiProjectWarning;
+    private JBLabel aiOpenAiHelpLabel;
 
 
     // Config Profile section
@@ -780,6 +790,19 @@ public class OpenSpecSettingsPanel {
         aiWorkspaceHelpLabel = new JBLabel(WORKSPACE_ID_HELP);
         aiWorkspaceHelpLabel.setForeground(JBUI.CurrentTheme.ContextHelp.FOREGROUND);
 
+        aiOpenAiOrgField = new com.intellij.ui.components.JBTextField(30);
+        aiOpenAiOrgField.getEmptyText().setText(OPENAI_ORG_PREFIX + "\u2026");
+        aiOpenAiOrgLabel = new JBLabel(OPENAI_ORG_LABEL + ":");
+        aiOpenAiOrgWarning = warningLabel();
+        aiOpenAiProjectField = new com.intellij.ui.components.JBTextField(30);
+        aiOpenAiProjectField.getEmptyText().setText(OPENAI_PROJECT_PREFIX + "\u2026");
+        aiOpenAiProjectLabel = new JBLabel(OPENAI_PROJECT_LABEL + ":");
+        aiOpenAiProjectWarning = warningLabel();
+        aiOpenAiHelpLabel = new JBLabel(OPENAI_SCOPE_HELP);
+        aiOpenAiHelpLabel.setForeground(JBUI.CurrentTheme.ContextHelp.FOREGROUND);
+        watchPrefix(aiOpenAiOrgField, aiOpenAiOrgWarning, OpenSpecSettingsPanel::validateOpenAiOrganization);
+        watchPrefix(aiOpenAiProjectField, aiOpenAiProjectWarning, OpenSpecSettingsPanel::validateOpenAiProject);
+
         JPanel panel = FormBuilder.createFormBuilder()
                 .addComponent(helpLabel)
                 .addComponent(manageAiToolsLink)
@@ -788,6 +811,11 @@ public class OpenSpecSettingsPanel {
                 .addLabeledComponent(new JBLabel("API key:"), apiKeyRow)
                 .addLabeledComponent(aiWorkspaceLabel, aiWorkspaceField)
                 .addComponentToRightColumn(aiWorkspaceHelpLabel)
+                .addLabeledComponent(aiOpenAiOrgLabel, aiOpenAiOrgField)
+                .addComponentToRightColumn(aiOpenAiOrgWarning)
+                .addLabeledComponent(aiOpenAiProjectLabel, aiOpenAiProjectField)
+                .addComponentToRightColumn(aiOpenAiProjectWarning)
+                .addComponentToRightColumn(aiOpenAiHelpLabel)
                 .addLabeledComponent(new JBLabel("Model:"), aiModelCombo)
                 .addComponent(aiTestResultLabel)
                 .getPanel();
@@ -852,6 +880,15 @@ public class OpenSpecSettingsPanel {
         aiWorkspaceLabel.setVisible(claude);
         aiWorkspaceField.setVisible(claude);
         aiWorkspaceHelpLabel.setVisible(claude);
+        // The Organization and Project IDs apply to OpenAI only.
+        boolean openAi = provider == AiProvider.OPENAI;
+        aiOpenAiOrgLabel.setVisible(openAi);
+        aiOpenAiOrgField.setVisible(openAi);
+        aiOpenAiProjectLabel.setVisible(openAi);
+        aiOpenAiProjectField.setVisible(openAi);
+        aiOpenAiHelpLabel.setVisible(openAi);
+        updatePrefixWarning(aiOpenAiOrgField, aiOpenAiOrgWarning, OpenSpecSettingsPanel::validateOpenAiOrganization);
+        updatePrefixWarning(aiOpenAiProjectField, aiOpenAiProjectWarning, OpenSpecSettingsPanel::validateOpenAiProject);
         aiModelCombo.removeAllItems();
         for (String model : provider.getModels()) {
             aiModelCombo.addItem(model);
@@ -893,8 +930,10 @@ public class OpenSpecSettingsPanel {
         AiProvider provider = getSelectedProvider();
         // Read the UI fields on the EDT; the blocking PasswordSafe store/get happens in the worker below.
         final String uiKey = getApiKey();
-        // Test uses the Workspace ID as currently typed (like the unsaved key), and never sends an invalid one.
+        // Test uses the provider settings as currently typed (like the unsaved key), and never sends an invalid
+        // Workspace ID. An OpenAI ID with an unexpected prefix is still sent: its check only warns.
         final String workspaceId = provider == AiProvider.CLAUDE ? getAiWorkspaceId() : "";
+        final ProviderRequestSettings requestSettings = formRequestSettings(provider);
         String workspaceError = validateWorkspaceId(workspaceId);
         if (workspaceError != null) {
             aiTestResultLabel.setText("Failed: " + workspaceError);
@@ -922,7 +961,7 @@ public class OpenSpecSettingsPanel {
                 }
                 // Validate the key by listing the account's models — a free GET, no token cost — and
                 // return them to populate the selector. Network I/O runs here, off the EDT.
-                return apiService.listModels(provider, key, workspaceId);
+                return apiService.listModels(provider, key, requestSettings);
             }
 
             @Override
@@ -954,6 +993,9 @@ public class OpenSpecSettingsPanel {
      */
     static String testFailureMessage(Throwable cause) {
         int status = (cause instanceof AiApiException aae) ? aae.getStatusCode() : 0;
+        if (status == 401 && DirectApiService.OPENAI_SCOPE_SUGGESTION.equals(((AiApiException) cause).getSuggestion())) {
+            return OPENAI_SCOPE_TEST_FAILURE;
+        }
         if (status == 401 || status == 403) {
             return "Check your API key";
         }
@@ -980,6 +1022,72 @@ public class OpenSpecSettingsPanel {
             return "Workspace ID must start with \"" + WORKSPACE_ID_PREFIX + "\" (find it under Console \u2192 Settings \u2192 Workspaces)";
         }
         return null;
+    }
+
+    /** The provider's settings as currently typed in the form, which Test sends; other providers' fields are left out. */
+    ProviderRequestSettings formRequestSettings(AiProvider provider) {
+        return switch (provider) {
+            case CLAUDE -> ProviderRequestSettings.claudeWorkspace(getAiWorkspaceId());
+            case OPENAI -> ProviderRequestSettings.openAi(getAiOpenAiOrganization(), getAiOpenAiProject());
+            case GEMINI, NONE -> ProviderRequestSettings.NONE;
+        };
+    }
+
+    static final String OPENAI_SCOPE_TEST_FAILURE =
+            "Check your API key, and that the Organization ID and Project ID belong to it";
+    static final String OPENAI_ORG_LABEL = "Organization ID (optional)";
+    static final String OPENAI_PROJECT_LABEL = "Project ID (optional)";
+    static final String OPENAI_SCOPE_HELP = "<html>Only needed for legacy user API keys, or if you belong to more than "
+            + "one organization.<br>Organization ID: Settings \u2192 Organization \u2192 General. "
+            + "Project ID: Settings \u2192 Project \u2192 General.</html>";
+    private static final String OPENAI_ORG_PREFIX = "org-";
+    private static final String OPENAI_PROJECT_PREFIX = "proj_";
+
+    /**
+     * Checks an OpenAI Organization ID's prefix. Returns a warning, or {@code null} for a blank or {@code org-}
+     * value. Never blocks: OpenAI shows the prefix only by example and may change identifier formats.
+     */
+    static @org.jetbrains.annotations.Nullable String validateOpenAiOrganization(@org.jetbrains.annotations.Nullable String id) {
+        return prefixWarning(id, OPENAI_ORG_PREFIX, "Organization IDs usually start with");
+    }
+
+    /** Checks an OpenAI Project ID's prefix ({@code proj_}). Returns a warning or {@code null}; never blocks. */
+    static @org.jetbrains.annotations.Nullable String validateOpenAiProject(@org.jetbrains.annotations.Nullable String id) {
+        return prefixWarning(id, OPENAI_PROJECT_PREFIX, "Project IDs start with");
+    }
+
+    private static @org.jetbrains.annotations.Nullable String prefixWarning(@org.jetbrains.annotations.Nullable String id,
+                                                                           String prefix, String what) {
+        String value = id == null ? "" : id.trim();
+        if (value.isEmpty() || value.startsWith(prefix)) {
+            return null;
+        }
+        return what + " \"" + prefix + "\". It will still be sent as entered.";
+    }
+
+    private static JBLabel warningLabel() {
+        JBLabel label = new JBLabel(" ", com.intellij.icons.AllIcons.General.Warning, SwingConstants.LEADING);
+        label.setForeground(JBUI.CurrentTheme.ContextHelp.FOREGROUND);
+        label.setVisible(false);
+        return label;
+    }
+
+    private void watchPrefix(com.intellij.ui.components.JBTextField field, JBLabel warning,
+                             java.util.function.Function<String, @org.jetbrains.annotations.Nullable String> check) {
+        field.getDocument().addDocumentListener(new com.intellij.ui.DocumentAdapter() {
+            @Override
+            protected void textChanged(@org.jetbrains.annotations.NotNull javax.swing.event.DocumentEvent e) {
+                updatePrefixWarning(field, warning, check);
+            }
+        });
+    }
+
+    /** Shows the field's warning only while the field is shown and its value has an unexpected prefix. */
+    private static void updatePrefixWarning(com.intellij.ui.components.JBTextField field, JBLabel warning,
+                                            java.util.function.Function<String, @org.jetbrains.annotations.Nullable String> check) {
+        String message = check.apply(field.getText());
+        warning.setText(message != null ? message : " ");
+        warning.setVisible(field.isVisible() && message != null);
     }
 
     /**
@@ -1123,6 +1231,49 @@ public class OpenSpecSettingsPanel {
 
     public void setAiWorkspaceId(String workspaceId) {
         aiWorkspaceField.setText(workspaceId != null ? workspaceId : "");
+    }
+
+    public String getAiOpenAiOrganization() {
+        return aiOpenAiOrgField.getText().trim();
+    }
+
+    public void setAiOpenAiOrganization(String organization) {
+        aiOpenAiOrgField.setText(organization != null ? organization : "");
+    }
+
+    public String getAiOpenAiProject() {
+        return aiOpenAiProjectField.getText().trim();
+    }
+
+    public void setAiOpenAiProject(String project) {
+        aiOpenAiProjectField.setText(project != null ? project : "");
+    }
+
+    @TestOnly
+    boolean isOpenAiScopeRowsVisible() {
+        return aiOpenAiOrgField.isVisible() && aiOpenAiOrgLabel.isVisible() && aiOpenAiProjectField.isVisible()
+                && aiOpenAiProjectLabel.isVisible() && aiOpenAiHelpLabel.isVisible();
+    }
+
+    @TestOnly
+    boolean isOpenAiScopeRowsHidden() {
+        return !aiOpenAiOrgField.isVisible() && !aiOpenAiOrgLabel.isVisible() && !aiOpenAiProjectField.isVisible()
+                && !aiOpenAiProjectLabel.isVisible() && !aiOpenAiHelpLabel.isVisible()
+                && !aiOpenAiOrgWarning.isVisible() && !aiOpenAiProjectWarning.isVisible();
+    }
+
+    /** The prefix warnings currently shown, organization first; empty when none is. */
+    @TestOnly
+    List<String> visibleOpenAiWarningsForTest() {
+        List<String> shown = new java.util.ArrayList<>();
+        if (aiOpenAiOrgWarning.isVisible()) shown.add(aiOpenAiOrgWarning.getText());
+        if (aiOpenAiProjectWarning.isVisible()) shown.add(aiOpenAiProjectWarning.getText());
+        return shown;
+    }
+
+    @TestOnly
+    String openAiHelpTextForTest() {
+        return aiOpenAiHelpLabel.getText();
     }
 
     @TestOnly

@@ -150,8 +150,12 @@ class DirectApiFlowStructuralGuardTest {
         int workspaceCheck = body.indexOf("validateWorkspaceId(");
         assertTrue(workspaceRead >= 0 && workspaceRead < worker, "Test must read the form's Workspace ID before the worker");
         assertTrue(workspaceCheck >= 0 && workspaceCheck < worker, "Test must validate the Workspace ID before sending it");
-        assertTrue(body.substring(worker).contains("listModels(provider, key, workspaceId)"),
-                "the worker must pass the form's Workspace ID to listModels");
+        // The OpenAI Organization and Project IDs are read from the form before the worker too, and the
+        // provider's settings as typed are what the worker sends.
+        int formRead = body.indexOf("formRequestSettings(provider)");
+        assertTrue(formRead >= 0 && formRead < worker, "Test must read the form's provider settings before the worker");
+        assertTrue(body.substring(worker).contains("listModels(provider, key, requestSettings)"),
+                "the worker must pass the form's provider settings to listModels");
         assertFalse(body.substring(0, worker).contains("listModels("),
                 "the models fetch must not run on the EDT before the worker");
         assertFalse(body.contains(".testConnection("),
@@ -234,8 +238,9 @@ class DirectApiFlowStructuralGuardTest {
                 "listModels must not run on the EDT before the pooled hop");
         assertTrue(body.substring(pooled).contains("listModels("),
                 "listModels must run inside the pooled lambda");
-        assertTrue(body.contains("getAiWorkspaceId()") && body.substring(pooled).contains("listModels(provider, key, workspaceId)"),
-                "the tool-window fetch must send the saved Claude Workspace ID");
+        assertTrue(body.contains("ProviderRequestSettings.from(settings)")
+                        && body.substring(pooled).contains("listModels(provider, key, requestSettings)"),
+                "the tool-window fetch must send the saved provider settings (Claude workspace, OpenAI scope)");
         // The post-fetch repopulate is posted back to the EDT via invokeLater with an explicit ModalityState.
         String afterPooled = body.substring(pooled);
         int later = afterPooled.indexOf("invokeLater(");

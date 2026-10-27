@@ -91,8 +91,8 @@ public final class DirectApiService {
         String prompt = instruction.buildDirectApiPrompt();
 
         return switch (provider) {
-            case CLAUDE -> callClaude(apiKey, model, prompt, getWorkspaceId());
-            case OPENAI -> callOpenAi(apiKey, model, prompt);
+            case CLAUDE -> callClaude(apiKey, model, prompt, requestSettings());
+            case OPENAI -> callOpenAi(apiKey, model, prompt, requestSettings());
             case GEMINI -> callGemini(apiKey, model, prompt);
             case NONE -> throw new AiApiException("No AI provider configured");
         };
@@ -116,8 +116,8 @@ public final class DirectApiService {
         String model = getModel(provider);
 
         return switch (provider) {
-            case CLAUDE -> callClaude(apiKey, model, prompt, getWorkspaceId());
-            case OPENAI -> callOpenAi(apiKey, model, prompt);
+            case CLAUDE -> callClaude(apiKey, model, prompt, requestSettings());
+            case OPENAI -> callOpenAi(apiKey, model, prompt, requestSettings());
             case GEMINI -> callGemini(apiKey, model, prompt);
             case NONE -> throw new AiApiException("No AI provider configured");
         };
@@ -154,8 +154,8 @@ public final class DirectApiService {
 
         try {
             String response = switch (provider) {
-                case CLAUDE -> callClaude(apiKey, model, testPrompt, getWorkspaceId());
-                case OPENAI -> callOpenAi(apiKey, model, testPrompt);
+                case CLAUDE -> callClaude(apiKey, model, testPrompt, requestSettings());
+                case OPENAI -> callOpenAi(apiKey, model, testPrompt, requestSettings());
                 case GEMINI -> callGemini(apiKey, model, testPrompt);
                 case NONE -> throw new AiApiException("No provider");
             };
@@ -174,14 +174,17 @@ public final class DirectApiService {
 
     /** Header that selects the workspace for a Claude key that isn't scoped to one. */
     static final String ANTHROPIC_WORKSPACE_HEADER = "anthropic-workspace-id";
+    /** Headers that select the OpenAI organization and project for a legacy user key or a multi-org user. */
+    static final String OPENAI_ORGANIZATION_HEADER = "OpenAI-Organization";
+    static final String OPENAI_PROJECT_HEADER = "OpenAI-Project";
 
     /**
      * Builds a Claude Messages API request. Extracted (mirroring {@link #buildGeminiRequest})
      * so the auth, {@code anthropic-version} and workspace headers are assertable in a unit test.
-     * The workspace header is sent only when {@code workspaceId} is non-blank.
+     * The workspace header is sent only when the request settings name a workspace.
      */
     static HttpRequest buildClaudeRequest(String model, String apiKey, String prompt,
-                                          @Nullable String workspaceId) {
+                                          ProviderRequestSettings requestSettings) {
         JsonObject body = new JsonObject();
         body.addProperty("model", model);
         body.addProperty("max_tokens", MAX_TOKENS);
@@ -198,7 +201,7 @@ public final class DirectApiService {
                 .header("Content-Type", "application/json")
                 .timeout(TIMEOUT)
                 .POST(HttpRequest.BodyPublishers.ofString(new Gson().toJson(body)));
-        addClaudeAuthHeaders(builder, apiKey, workspaceId);
+        addClaudeAuthHeaders(builder, apiKey, requestSettings);
         return builder.build();
     }
 
@@ -207,11 +210,26 @@ public final class DirectApiService {
      * legacy {@code x-api-key} is not sent), the API version, and the workspace when one is set.
      */
     private static void addClaudeAuthHeaders(HttpRequest.Builder builder, String apiKey,
-                                             @Nullable String workspaceId) {
+                                             ProviderRequestSettings requestSettings) {
         builder.header("Authorization", "Bearer " + apiKey)
                 .header("anthropic-version", ANTHROPIC_VERSION);
-        if (workspaceId != null && !workspaceId.isBlank()) {
-            builder.header(ANTHROPIC_WORKSPACE_HEADER, workspaceId.trim());
+        if (!requestSettings.claudeWorkspaceId().isEmpty()) {
+            builder.header(ANTHROPIC_WORKSPACE_HEADER, requestSettings.claudeWorkspaceId());
+        }
+    }
+
+    /**
+     * OpenAI auth headers shared by generation and list-models: {@code Authorization: Bearer}, and the
+     * organization and project only when set, so requests without them are unchanged.
+     */
+    private static void addOpenAiAuthHeaders(HttpRequest.Builder builder, String apiKey,
+                                             ProviderRequestSettings requestSettings) {
+        builder.header("Authorization", "Bearer " + apiKey);
+        if (!requestSettings.openAiOrganization().isEmpty()) {
+            builder.header(OPENAI_ORGANIZATION_HEADER, requestSettings.openAiOrganization());
+        }
+        if (!requestSettings.openAiProject().isEmpty()) {
+            builder.header(OPENAI_PROJECT_HEADER, requestSettings.openAiProject());
         }
     }
 
@@ -252,10 +270,10 @@ public final class DirectApiService {
         throw new AiApiException(message);
     }
 
-    private String callClaude(String apiKey, String model, String prompt, @Nullable String workspaceId)
+    private String callClaude(String apiKey, String model, String prompt, ProviderRequestSettings requestSettings)
             throws AiApiException {
         try {
-            HttpRequest request = buildClaudeRequest(model, apiKey, prompt, workspaceId);
+            HttpRequest request = buildClaudeRequest(model, apiKey, prompt, requestSettings);
             HttpResponse<String> response = createHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() != 200) {
@@ -293,9 +311,10 @@ public final class DirectApiService {
 
     /**
      * Builds an OpenAI Chat Completions request. Extracted (mirroring {@link #buildGeminiRequest})
-     * so the model-dependent token-limit parameter placement is assertable.
+     * so the model-dependent token-limit parameter placement and the auth headers are assertable.
      */
-    static HttpRequest buildOpenAiRequest(String model, String apiKey, String prompt) {
+    static HttpRequest buildOpenAiRequest(String model, String apiKey, String prompt,
+                                          ProviderRequestSettings requestSettings) {
         JsonObject body = new JsonObject();
         body.addProperty("model", model);
         body.addProperty(openAiTokenParam(model), MAX_TOKENS);
@@ -307,13 +326,13 @@ public final class DirectApiService {
         messages.add(message);
         body.add("messages", messages);
 
-        return HttpRequest.newBuilder()
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
                 .uri(URI.create(OPENAI_API_URL))
                 .header("Content-Type", "application/json")
-                .header("Authorization", "Bearer " + apiKey)
                 .timeout(TIMEOUT)
-                .POST(HttpRequest.BodyPublishers.ofString(new Gson().toJson(body)))
-                .build();
+                .POST(HttpRequest.BodyPublishers.ofString(new Gson().toJson(body)));
+        addOpenAiAuthHeaders(builder, apiKey, requestSettings);
+        return builder.build();
     }
 
     /**
@@ -355,13 +374,14 @@ public final class DirectApiService {
         return el != null && el.isJsonPrimitive() && el.getAsJsonPrimitive().isString() ? el.getAsString() : null;
     }
 
-    private String callOpenAi(String apiKey, String model, String prompt) throws AiApiException {
+    private String callOpenAi(String apiKey, String model, String prompt, ProviderRequestSettings requestSettings)
+            throws AiApiException {
         try {
-            HttpRequest request = buildOpenAiRequest(model, apiKey, prompt);
+            HttpRequest request = buildOpenAiRequest(model, apiKey, prompt, requestSettings);
             HttpResponse<String> response = createHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() != 200) {
-                throw buildApiError("OpenAI", response.statusCode(), response.body());
+                throw buildApiError("OpenAI", response.statusCode(), response.body(), requestSettings);
             }
             return parseOpenAiResponse(response.body());
         } catch (AiApiException e) {
@@ -475,14 +495,14 @@ public final class DirectApiService {
     /**
      * Builds the list-models {@code GET} for a provider, reusing the same auth headers as generation.
      * Extracted (mirroring {@link #buildGeminiRequest}) so the endpoint/headers are assertable and so
-     * the key is verified this can never be embedded in the URL. {@code workspaceId} applies to Claude only.
+     * the key is verified this can never be embedded in the URL. Each provider reads only its own request settings.
      */
-    static HttpRequest buildListModelsRequest(AiProvider provider, String apiKey, @Nullable String workspaceId) {
+    static HttpRequest buildListModelsRequest(AiProvider provider, String apiKey,
+                                              ProviderRequestSettings requestSettings) {
         HttpRequest.Builder builder = HttpRequest.newBuilder().timeout(TIMEOUT).GET();
         switch (provider) {
-            case OPENAI -> builder.uri(URI.create(OPENAI_MODELS_URL))
-                    .header("Authorization", "Bearer " + apiKey);
-            case CLAUDE -> addClaudeAuthHeaders(builder.uri(URI.create(CLAUDE_MODELS_URL)), apiKey, workspaceId);
+            case OPENAI -> addOpenAiAuthHeaders(builder.uri(URI.create(OPENAI_MODELS_URL)), apiKey, requestSettings);
+            case CLAUDE -> addClaudeAuthHeaders(builder.uri(URI.create(CLAUDE_MODELS_URL)), apiKey, requestSettings);
             case GEMINI -> builder.uri(URI.create(GEMINI_MODELS_URL))
                     .header("x-goog-api-key", apiKey);
             case NONE -> throw new IllegalArgumentException("No AI provider selected");
@@ -555,10 +575,10 @@ public final class DirectApiService {
      * Fetches the account's available models for the given provider using the configured key — a free
      * {@code GET}, no token cost, which doubles as key validation. Blocking (network I/O) — call off
      * the EDT. Non-200 throws {@link AiApiException} via {@link #buildApiError}. Callers treat any
-     * failure (or an empty list) as a signal to fall back to the static model list. {@code workspaceId} is
-     * the Claude workspace to send (Settings passes the unsaved form value); other providers ignore it.
+     * failure (or an empty list) as a signal to fall back to the static model list. {@code requestSettings}
+     * are the provider-specific settings to send (Settings passes the unsaved form values).
      */
-    public java.util.List<String> listModels(AiProvider provider, String apiKey, @Nullable String workspaceId)
+    public java.util.List<String> listModels(AiProvider provider, String apiKey, ProviderRequestSettings requestSettings)
             throws AiApiException {
         if (provider == null || provider == AiProvider.NONE) {
             throw new AiApiException("No AI provider selected");
@@ -567,10 +587,10 @@ public final class DirectApiService {
             throw new AiApiException("No API key provided for " + provider.getDisplayName());
         }
         try {
-            HttpRequest request = buildListModelsRequest(provider, apiKey, workspaceId);
+            HttpRequest request = buildListModelsRequest(provider, apiKey, requestSettings);
             HttpResponse<String> response = createHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() != 200) {
-                throw buildApiError(provider.getDisplayName(), response.statusCode(), response.body());
+                throw buildApiError(provider.getDisplayName(), response.statusCode(), response.body(), requestSettings);
             }
             java.util.List<String> models = switch (provider) {
                 case OPENAI -> parseOpenAiModels(response.body());
@@ -604,9 +624,25 @@ public final class DirectApiService {
 
     // Package-private so the mapping is testable against the live-captured error bodies.
     static AiApiException buildApiError(String providerName, int statusCode, String responseBody) {
+        return buildApiError(providerName, statusCode, responseBody, ProviderRequestSettings.NONE);
+    }
+
+    public static final String OPENAI_SCOPE_SUGGESTION = "Check your API key, and that the Organization ID and Project ID "
+            + "in Settings \u2192 Tools \u2192 OpenSpec \u2192 Direct API belong to it";
+
+    /**
+     * The error for a failed request. With an OpenAI organization or project set, a 401 also points at those
+     * settings; that hint is chosen on the status alone, because OpenAI doesn't document the body for a mismatch.
+     */
+    static AiApiException buildApiError(String providerName, int statusCode, String responseBody,
+                                        ProviderRequestSettings requestSettings) {
         LOG.warn(providerName + " API error (HTTP " + statusCode + "): " + responseBody);
         String errorMessage = extractErrorMessage(responseBody);
         String suggestion = suggestionForStatus(statusCode);
+        if (statusCode == 401 && AiProvider.OPENAI.getDisplayName().equals(providerName)
+                && requestSettings.hasOpenAiScope()) {
+            suggestion = OPENAI_SCOPE_SUGGESTION;
+        }
         String userMessage = providerName + " API error: " + errorMessage;
         if (AiProvider.CLAUDE.getDisplayName().equals(providerName)) {
             String mapped = claudeWorkspaceMessage(statusCode, responseBody);
@@ -683,8 +719,8 @@ public final class DirectApiService {
         return AiProvider.fromString(settings.getAiProvider());
     }
 
-    private String getWorkspaceId() {
-        return OpenSpecSettings.getInstance(project).getAiWorkspaceId();
+    private ProviderRequestSettings requestSettings() {
+        return ProviderRequestSettings.from(OpenSpecSettings.getInstance(project));
     }
 
     private String getModel(AiProvider provider) {

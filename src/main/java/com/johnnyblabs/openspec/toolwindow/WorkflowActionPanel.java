@@ -784,11 +784,12 @@ public class WorkflowActionPanel extends JPanel {
                     com.intellij.openapi.application.ModalityState.stateForComponent(this);
             ApplicationManager.getApplication().executeOnPooledThread(() -> {
                 String key = AiCredentialStore.getApiKey(provider);
-                String workspaceId = settings.getAiWorkspaceId();
+                com.johnnyblabs.openspec.ai.ProviderRequestSettings requestSettings =
+                        com.johnnyblabs.openspec.ai.ProviderRequestSettings.from(settings);
                 List<String> fetched = null;
                 boolean ok = false;
                 try {
-                    fetched = apiService.listModels(provider, key, workspaceId);
+                    fetched = apiService.listModels(provider, key, requestSettings);
                     ok = true;
                 } catch (Exception ignored) {
                     // Fetch failed \u2014 keep the static fill already shown.
