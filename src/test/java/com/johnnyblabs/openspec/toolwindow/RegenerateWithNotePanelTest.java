@@ -343,6 +343,25 @@ public class RegenerateWithNotePanelTest extends OpenSpecIntegrationTestBase {
         assertEquals("# Billing\n", Files.readString(changeDir.resolve("specs/billing/spec.md")));
     }
 
+    public void testANewFileIsWrittenAsGeneratedWhateverTheProjectsLineSeparator() throws Exception {
+        com.intellij.psi.codeStyle.CodeStyleSettings settings = com.intellij.application.options.CodeStyle.createTestSettings();
+        settings.LINE_SEPARATOR = "\r\n";
+        com.intellij.application.options.CodeStyle.setTemporarySettings(getProject(), settings);
+        try {
+            Files.createDirectories(changeDir.resolve("specs/auth"));
+            Files.writeString(changeDir.resolve("specs/auth/spec.md"), "# Old auth\n");
+            response = "<!-- file: specs/auth/spec.md -->\n# New auth\n<!-- file: specs/billing/spec.md -->\n# Billing\n";
+
+            regenerate("specs", "specs/**/*.md", DeliveryMode.DIRECT_API);
+
+            assertEquals("# Billing\n", Files.readString(changeDir.resolve("specs/billing/spec.md")));
+            assertEquals("an existing file keeps its own separator", "# New auth\n",
+                    Files.readString(changeDir.resolve("specs/auth/spec.md")));
+        } finally {
+            com.intellij.application.options.CodeStyle.dropTemporarySettings(getProject());
+        }
+    }
+
     public void testARejectedMultiFileResultWritesNeitherFile() throws Exception {
         Files.createDirectories(changeDir.resolve("specs/auth"));
         Files.writeString(changeDir.resolve("specs/auth/spec.md"), "# Old auth\n");

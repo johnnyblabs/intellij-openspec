@@ -98,12 +98,18 @@ final class ReviewedArtifactWriter {
     /** A reviewed write whose directory exists and whose existing file is writable; nothing has changed yet. */
     private record Target(PlannedWrite write, VirtualFile dir, @Nullable VirtualFile file) {
         void apply() throws IOException {
-            VirtualFile target = file != null ? file
-                    : dir.createChildData(ReviewedArtifactWriter.class, write.path().getFileName().toString());
-            // Through the document, so the command can be undone, then saved so the CLI reads the new text from disk.
-            Document document = FileDocumentManager.getInstance().getDocument(target);
+            byte[] bytes = write.newText().getBytes(StandardCharsets.UTF_8);
+            if (file == null) {
+                // A new file gets the text as generated; a new document would save it with the platform's separator.
+                dir.createChildData(ReviewedArtifactWriter.class, write.path().getFileName().toString())
+                        .setBinaryContent(bytes);
+                return;
+            }
+            // Through the document, so the command can be undone and the file keeps its line separator, then saved so
+            // the CLI reads the new text from disk.
+            Document document = FileDocumentManager.getInstance().getDocument(file);
             if (document == null) {
-                target.setBinaryContent(write.newText().getBytes(StandardCharsets.UTF_8));
+                file.setBinaryContent(bytes);
                 return;
             }
             document.setText(StringUtil.convertLineSeparators(write.newText()));
