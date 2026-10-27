@@ -15,6 +15,13 @@ For Claude, the plugin SHALL offer an optional **Workspace ID** setting.
 - It SHALL be validated as a workspace identifier (the `wrkspc_` prefix).
 - It is not a secret. It SHALL be stored as a regular setting, never in PasswordSafe, and SHALL never be written to any OpenSpec project file.
 
+For OpenAI, the plugin SHALL offer optional **Organization ID** and **Project ID** settings.
+- When the Organization ID is set, every OpenAI request (list-models and generation) SHALL carry it as the `OpenAI-Organization` header; when the Project ID is set, as the `OpenAI-Project` header. A blank field SHALL send no header.
+- The settings SHALL be shown only when OpenAI is the selected provider.
+- A value that does not start with the expected prefix (`org-` for an organization, `proj_` for a project) SHALL be flagged with a warning, but SHALL still be saved and sent. No other format check SHALL be applied, because OpenAI treats identifier formats as free to change.
+- The help text SHALL say the settings are needed only for legacy user API keys or when the user belongs to more than one organization, and where each ID is found in the OpenAI dashboard. It SHALL NOT state how project or service-account keys behave with them.
+- They are not secrets. They SHALL be stored as regular settings, never in PasswordSafe, and SHALL never be written to any OpenSpec project file.
+
 The plugin SHALL call each provider using a valid, current API contract:
 - The default model for each provider SHALL be a valid current model identifier. Claude defaults SHALL be dateless aliases, so they resolve to the current snapshot and don't carry a fabricated release date.
 - Anthropic requests SHALL send the current required `anthropic-version` value (`2023-06-01`).
@@ -29,7 +36,7 @@ The Claude parser SHALL return the concatenated text of every `text` content blo
 
 #### Scenario: Test connection
 - **WHEN** the user clicks "Test Connection"
-- **THEN** the plugin SHALL verify the key by requesting the provider's model list, a read-only call with no generation or token cost. It SHALL then either show success and populate the model selector from the returned list, or show a provider-specific error message. For Claude, the request SHALL use the Workspace ID currently entered in the settings form.
+- **THEN** the plugin SHALL verify the key by requesting the provider's model list, a read-only call with no generation or token cost. It SHALL then either show success and populate the model selector from the returned list, or show a provider-specific error message. For Claude, the request SHALL use the Workspace ID currently entered in the settings form; for OpenAI, the Organization ID and Project ID currently entered.
 
 #### Scenario: Gemini auth header
 - **WHEN** the plugin builds a Gemini API request
@@ -50,6 +57,26 @@ The Claude parser SHALL return the concatenated text of every `text` content blo
 #### Scenario: Workspace ID validation
 - **WHEN** the user enters a Workspace ID that does not start with `wrkspc_`
 - **THEN** the settings form SHALL flag the value as invalid and SHALL NOT send it
+
+#### Scenario: OpenAI organization and project headers when configured
+- **WHEN** an OpenAI Organization ID and Project ID are configured and the plugin builds an OpenAI list-models or generation request
+- **THEN** the request SHALL carry `OpenAI-Organization` and `OpenAI-Project` with those values
+
+#### Scenario: OpenAI headers omitted when blank
+- **WHEN** neither OpenAI field is configured
+- **THEN** OpenAI requests SHALL carry neither `OpenAI-Organization` nor `OpenAI-Project`, so they are byte-identical in their headers to requests before these settings existed
+
+#### Scenario: Only the configured OpenAI header is sent
+- **WHEN** only the Project ID is configured
+- **THEN** OpenAI requests SHALL carry `OpenAI-Project` and SHALL NOT carry `OpenAI-Organization`
+
+#### Scenario: Unexpected OpenAI ID prefix
+- **WHEN** the user enters an Organization ID that does not start with `org-`, or a Project ID that does not start with `proj_`
+- **THEN** the settings form SHALL show a warning for that field, and the value SHALL still be saved and sent as entered (trimmed)
+
+#### Scenario: OpenAI settings only for OpenAI
+- **WHEN** the selected provider is Claude or Gemini
+- **THEN** the Organization ID and Project ID fields SHALL be hidden, and requests to that provider SHALL carry neither OpenAI header
 
 #### Scenario: Valid provider defaults
 - **WHEN** a user selects a provider without choosing an explicit model, and live discovery is unavailable
@@ -296,3 +323,15 @@ When Regenerate runs through Direct API, the plugin SHALL show the generated res
 #### Scenario: Only Regenerate is reviewed
 - **WHEN** an artifact is generated over Direct API from a READY chip, Generate All Remaining or Fast-Forward
 - **THEN** the plugin SHALL write the result without a review, as today
+
+### Requirement: OpenAI organization and project errors
+
+When OpenAI rejects a request as unauthenticated (HTTP 401) and an Organization ID or Project ID is configured, the plugin SHALL keep OpenAI's own error message and SHALL suggest checking that the configured IDs belong to this API key, in addition to checking the key. This applies to both Test and generation. The plugin SHALL NOT infer the cause from the error body.
+
+#### Scenario: 401 with an OpenAI ID configured
+- **WHEN** OpenAI returns HTTP 401 and an Organization ID or a Project ID is configured
+- **THEN** the error SHALL show OpenAI's message and a suggestion to check the API key and that the Organization and Project IDs in the Direct API settings belong to it
+
+#### Scenario: 401 with no OpenAI ID configured
+- **WHEN** OpenAI returns HTTP 401 and neither field is configured
+- **THEN** the error SHALL be reported as it is today, suggesting only to check the API key
