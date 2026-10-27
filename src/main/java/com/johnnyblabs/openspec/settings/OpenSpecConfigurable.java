@@ -54,6 +54,8 @@ public class OpenSpecConfigurable implements Configurable {
                 || !panel.getAiProvider().equals(safe(settings.getAiProvider(), "NONE"))
                 || !panel.getAiModel().equals(safe(settings.getAiModel()))
                 || !panel.getAiWorkspaceId().equals(settings.getAiWorkspaceId())
+                || !panel.getAiOpenAiOrganization().equals(settings.getAiOpenAiOrganization())
+                || !panel.getAiOpenAiProject().equals(settings.getAiOpenAiProject())
                 || !panel.getDefaultSchema().equals(safe(settings.getDefaultSchema()))
                 || isApiKeyModified();
     }
@@ -90,6 +92,9 @@ public class OpenSpecConfigurable implements Configurable {
         settings.setAiProvider(panel.getAiProvider());
         settings.setAiModel(panel.getAiModel());
         settings.setAiWorkspaceId(panel.getAiWorkspaceId());
+        // Saved as entered: an unexpected OpenAI ID prefix only warns in the form.
+        settings.setAiOpenAiOrganization(panel.getAiOpenAiOrganization());
+        settings.setAiOpenAiProject(panel.getAiOpenAiProject());
         settings.setDefaultSchema(panel.getDefaultSchema());
         // Store API key securely via PasswordSafe. set() is blocking (@RequiresBackgroundThread) and
         // apply() runs on the EDT, so persist off the EDT; the has-key cache is updated inside storeApiKey.
@@ -153,6 +158,8 @@ public class OpenSpecConfigurable implements Configurable {
         panel.setAiProvider(settings.getAiProvider());
         panel.setAiModel(settings.getAiModel());
         panel.setAiWorkspaceId(settings.getAiWorkspaceId());
+        panel.setAiOpenAiOrganization(settings.getAiOpenAiOrganization());
+        panel.setAiOpenAiProject(settings.getAiOpenAiProject());
         panel.setDefaultSchema(settings.getDefaultSchema());
 
         // D3 fallback refresh: catches the case where the user customized via the CLI

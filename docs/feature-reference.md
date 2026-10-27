@@ -304,6 +304,8 @@ API keys are stored securely in your operating system's keychain via IntelliJ's 
 
 **Claude Workspace ID.** When Claude is the provider, the settings show a **Workspace ID (optional)** field. Fill it in when your Claude API key isn't scoped to a single workspace: such keys must name a workspace on every request, and Claude rejects them otherwise (the plugin then tells you to enter a Workspace ID). Copy the ID, which starts with `wrkspc_`, from **Console → Settings → Workspaces**. Leave it blank for a key that belongs to one workspace. The ID is a regular per-project setting, not a secret, and is never written to OpenSpec project files. Test uses the value currently in the field, even before you click Apply.
 
+**OpenAI Organization ID and Project ID.** When OpenAI is the provider, the settings show **Organization ID (optional)** and **Project ID (optional)**. OpenAI needs them only if you use a legacy user API key or belong to more than one organization; otherwise leave them blank, and OpenAI uses your key's defaults. A filled-in field is sent with every OpenAI request, generation and Test alike, as `OpenAI-Organization` or `OpenAI-Project`; a blank one sends nothing. Find the organization ID under **Settings → Organization → General** (it usually starts with `org-`) and the project ID under **Settings → Project → General** (it starts with `proj_`). A value with a different prefix gets a warning but is still saved and sent, because OpenAI may change its ID formats. Both are regular per-project settings, not secrets, and are never written to OpenSpec project files. Test uses the values currently in the fields, even before you click Apply.
+
 **Model discovery.** The Model dropdown is populated from your provider account, not a hardcoded list. Clicking **Test** fetches your account's available models with your key — a free request that costs no tokens — and fills the dropdown with the models you can actually use; it also validates the key (a `401` means "check your API key"). If you're offline or haven't entered a key, the dropdown falls back to a built-in default list, and it stays editable so you can type any model name manually.
 
 **Choosing a model at operation time.** You don't have to open Settings to switch models: the OpenSpec tool window shows a model dropdown in its header (next to the delivery selector) whenever Direct API is the active delivery mode. It's populated from the same live model list, stays editable, shows the active model in the status strip, and your selection is what generation, Fast-Forward, Continue, and Explore use. It's hidden for Clipboard and Editor-Tab delivery, where no model is sent. If you configure a provider while the tool window is already open — in Settings or the Setup Wizard — the Direct API delivery option and this dropdown appear immediately, with no IDE restart, and your current delivery choice is left unchanged.
@@ -413,6 +415,7 @@ The section says Direct API is optional, that an agent like Claude Code needs no
 | **API key** | Stored securely in the OS keychain — never in project files. |
 | **Model** | Model to use (pre-populated per provider, editable). |
 | **Workspace ID (optional)** | Claude only. Needed when your Claude API key isn't scoped to a single workspace; see [Claude Workspace ID](#direct-api-providers). |
+| **Organization ID / Project ID (optional)** | OpenAI only. Needed for a legacy user API key or if you belong to more than one organization; see [OpenAI Organization ID and Project ID](#direct-api-providers). |
 | **Test** | Verify your API key and connection. |
 
 > An API key is only needed for Direct API delivery. Clipboard and Editor Tab modes work without any API key.
@@ -483,6 +486,7 @@ The **Update** action runs `openspec update` (on CLI 1.15+, after showing you th
 
 - Verify your API key is correct (Claude: `sk-ant-`, OpenAI: `sk-`, Gemini: Google API key)
 - Claude says the key isn't scoped to a workspace, or the workspace wasn't found: enter or correct the **Workspace ID** (starts with `wrkspc_`, from **Console → Settings → Workspaces**)
+- OpenAI rejects the key (401) while an **Organization ID** or **Project ID** is filled in: check the key, and that both IDs belong to it, or clear them if you don't need them
 - Check that your network allows outbound HTTPS to the provider's API endpoint
 
 ### Tree doesn't auto-refresh

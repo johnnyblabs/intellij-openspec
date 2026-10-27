@@ -214,7 +214,7 @@ class DirectApiServiceTest {
 
         @Test
         void setsCurrentAnthropicVersionHeader() {
-            var request = DirectApiService.buildClaudeRequest("claude-sonnet-4-5", "k", "p", null);
+            var request = DirectApiService.buildClaudeRequest("claude-sonnet-4-5", "k", "p", ProviderRequestSettings.NONE);
             assertEquals("2023-06-01",
                     request.headers().firstValue("anthropic-version").orElse(null),
                     "anthropic-version must be the current required value 2023-06-01");
@@ -222,7 +222,7 @@ class DirectApiServiceTest {
 
         @Test
         void sendsBearerAuth_noLegacyKeyHeader_keyNotInUrl() {
-            var request = DirectApiService.buildClaudeRequest("claude-sonnet-4-5", "test-secret-key", "p", null);
+            var request = DirectApiService.buildClaudeRequest("claude-sonnet-4-5", "test-secret-key", "p", ProviderRequestSettings.NONE);
             assertEquals("Bearer test-secret-key", request.headers().firstValue("Authorization").orElse(null));
             assertTrue(request.headers().firstValue("x-api-key").isEmpty(), "the legacy x-api-key must not be sent");
             assertFalse(request.uri().toString().contains("test-secret-key"),
@@ -231,26 +231,26 @@ class DirectApiServiceTest {
 
         @Test
         void sendsWorkspaceHeaderWhenSet() {
-            var request = DirectApiService.buildClaudeRequest("claude-sonnet-4-5", "k", "p", "wrkspc_example");
+            var request = DirectApiService.buildClaudeRequest("claude-sonnet-4-5", "k", "p", ProviderRequestSettings.claudeWorkspace("wrkspc_example"));
             assertEquals("wrkspc_example", request.headers().firstValue("anthropic-workspace-id").orElse(null));
         }
 
         @ParameterizedTest
         @ValueSource(strings = {"", "   "})
         void omitsWorkspaceHeaderWhenBlank(String blank) {
-            var request = DirectApiService.buildClaudeRequest("claude-sonnet-4-5", "k", "p", blank);
+            var request = DirectApiService.buildClaudeRequest("claude-sonnet-4-5", "k", "p", ProviderRequestSettings.claudeWorkspace(blank));
             assertTrue(request.headers().firstValue("anthropic-workspace-id").isEmpty());
         }
 
         @Test
         void omitsWorkspaceHeaderWhenNull() {
-            var request = DirectApiService.buildClaudeRequest("claude-sonnet-4-5", "k", "p", null);
+            var request = DirectApiService.buildClaudeRequest("claude-sonnet-4-5", "k", "p", ProviderRequestSettings.NONE);
             assertTrue(request.headers().firstValue("anthropic-workspace-id").isEmpty());
         }
 
         @Test
         void usesPostToMessagesEndpoint() {
-            var request = DirectApiService.buildClaudeRequest("claude-sonnet-4-5", "k", "p", null);
+            var request = DirectApiService.buildClaudeRequest("claude-sonnet-4-5", "k", "p", ProviderRequestSettings.NONE);
             assertEquals("POST", request.method());
             assertTrue(request.uri().toString().endsWith("/v1/messages"),
                     "URI must be the Messages endpoint: " + request.uri());
@@ -343,7 +343,7 @@ class DirectApiServiceTest {
 
         @Test
         void openAiListRequestHitsModelsEndpointWithBearerAuth() {
-            var request = DirectApiService.buildListModelsRequest(AiProvider.OPENAI, "test-secret-key", null);
+            var request = DirectApiService.buildListModelsRequest(AiProvider.OPENAI, "test-secret-key", ProviderRequestSettings.NONE);
             assertEquals("GET", request.method());
             assertTrue(request.uri().toString().endsWith("/v1/models"),
                     "OpenAI list endpoint must be /v1/models: " + request.uri());
@@ -355,7 +355,7 @@ class DirectApiServiceTest {
 
         @Test
         void anthropicListRequestSendsBearerAndVersionHeaders() {
-            var request = DirectApiService.buildListModelsRequest(AiProvider.CLAUDE, "test-secret-key", null);
+            var request = DirectApiService.buildListModelsRequest(AiProvider.CLAUDE, "test-secret-key", ProviderRequestSettings.NONE);
             assertEquals("GET", request.method());
             // limit=1000 asks for every model in one page (the default page is 20).
             assertEquals(java.net.URI.create("https://api.anthropic.com/v1/models?limit=1000"), request.uri());
@@ -370,14 +370,14 @@ class DirectApiServiceTest {
 
         @Test
         void anthropicListRequestSendsWorkspaceHeaderWhenSet() {
-            var request = DirectApiService.buildListModelsRequest(AiProvider.CLAUDE, "k", "wrkspc_example");
+            var request = DirectApiService.buildListModelsRequest(AiProvider.CLAUDE, "k", ProviderRequestSettings.claudeWorkspace("wrkspc_example"));
             assertEquals("wrkspc_example", request.headers().firstValue("anthropic-workspace-id").orElse(null));
         }
 
         @Test
         void workspaceHeaderIsClaudeOnly() {
             for (AiProvider p : List.of(AiProvider.OPENAI, AiProvider.GEMINI)) {
-                var request = DirectApiService.buildListModelsRequest(p, "k", "wrkspc_example");
+                var request = DirectApiService.buildListModelsRequest(p, "k", ProviderRequestSettings.claudeWorkspace("wrkspc_example"));
                 assertTrue(request.headers().firstValue("anthropic-workspace-id").isEmpty(),
                         p + " must never carry the Claude workspace header");
             }
@@ -385,7 +385,7 @@ class DirectApiServiceTest {
 
         @Test
         void geminiListRequestSendsKeyHeaderNotInUrl() {
-            var request = DirectApiService.buildListModelsRequest(AiProvider.GEMINI, "test-secret-key", null);
+            var request = DirectApiService.buildListModelsRequest(AiProvider.GEMINI, "test-secret-key", ProviderRequestSettings.NONE);
             assertEquals("GET", request.method());
             String url = request.uri().toString();
             assertTrue(url.startsWith("https://generativelanguage.googleapis.com/v1beta/models"),
@@ -397,7 +397,7 @@ class DirectApiServiceTest {
         @Test
         void noneProviderIsRejected() {
             assertThrows(IllegalArgumentException.class,
-                    () -> DirectApiService.buildListModelsRequest(AiProvider.NONE, "k", null));
+                    () -> DirectApiService.buildListModelsRequest(AiProvider.NONE, "k", ProviderRequestSettings.NONE));
         }
     }
 
@@ -408,20 +408,20 @@ class DirectApiServiceTest {
         @Test
         void noneProviderThrows() {
             AiApiException ex = assertThrows(AiApiException.class,
-                    () -> service.listModels(AiProvider.NONE, "k", null));
+                    () -> service.listModels(AiProvider.NONE, "k", ProviderRequestSettings.NONE));
             assertTrue(ex.getMessage().contains("No AI provider"));
         }
 
         @Test
         void nullKeyThrows() {
             AiApiException ex = assertThrows(AiApiException.class,
-                    () -> service.listModels(AiProvider.CLAUDE, null, null));
+                    () -> service.listModels(AiProvider.CLAUDE, null, ProviderRequestSettings.NONE));
             assertTrue(ex.getMessage().contains("No API key"));
         }
 
         @Test
         void blankKeyThrows() {
-            assertThrows(AiApiException.class, () -> service.listModels(AiProvider.CLAUDE, "   ", null));
+            assertThrows(AiApiException.class, () -> service.listModels(AiProvider.CLAUDE, "   ", ProviderRequestSettings.NONE));
         }
     }
 
@@ -453,7 +453,7 @@ class DirectApiServiceTest {
             // Cold: nothing cached before the first fetch.
             assertNull(spy.getDiscoveredModels(AiProvider.OPENAI));
 
-            List<String> models = spy.listModels(AiProvider.OPENAI, "k", null);
+            List<String> models = spy.listModels(AiProvider.OPENAI, "k", ProviderRequestSettings.NONE);
             assertEquals(List.of("model-id-0", "model-id-1", "model-id-2"), models);
 
             // Warm: the accessor returns the fetched list (write-on-success)...
@@ -558,7 +558,7 @@ class DirectApiServiceTest {
                 settingsMock.when(() -> OpenSpecSettings.getInstance(project)).thenReturn(settings);
                 lenient().when(settings.getAiWorkspaceId()).thenReturn("wrkspc_saved");
 
-                spy.listModels(AiProvider.CLAUDE, "k", "wrkspc_form");
+                spy.listModels(AiProvider.CLAUDE, "k", ProviderRequestSettings.claudeWorkspace("wrkspc_form"));
             }
             assertEquals("wrkspc_form", sent(client).headers().firstValue("anthropic-workspace-id").orElse(null),
                     "Settings \u2192 Test must send the unsaved form value");
@@ -582,6 +582,288 @@ class DirectApiServiceTest {
             var request = sent(client);
             assertEquals("wrkspc_saved", request.headers().firstValue("anthropic-workspace-id").orElse(null));
             assertEquals("Bearer k", request.headers().firstValue("Authorization").orElse(null));
+        }
+    }
+
+    /**
+     * OpenAI organization and project headers, on both OpenAI request kinds. Header names are written as literals,
+     * never the production constants, so a misspelt constant fails here.
+     */
+    @Nested
+    class OpenAiScopeHeaders {
+
+        static java.util.stream.Stream<org.junit.jupiter.api.Named<java.util.function.Function<ProviderRequestSettings, java.net.http.HttpRequest>>> openAiRequests() {
+            return java.util.stream.Stream.of(
+                    org.junit.jupiter.api.Named.of("generation", s -> DirectApiService.buildOpenAiRequest("gpt-6-luna", "k", "p", s)),
+                    org.junit.jupiter.api.Named.of("list-models", s -> DirectApiService.buildListModelsRequest(AiProvider.OPENAI, "k", s)));
+        }
+
+        @ParameterizedTest
+        @org.junit.jupiter.params.provider.MethodSource("openAiRequests")
+        void bothHeadersWhenBothAreSet(java.util.function.Function<ProviderRequestSettings, java.net.http.HttpRequest> build) {
+            var request = build.apply(ProviderRequestSettings.openAi("org-abc", "proj_xyz"));
+            assertEquals("org-abc", request.headers().firstValue("OpenAI-Organization").orElse(null));
+            assertEquals("proj_xyz", request.headers().firstValue("OpenAI-Project").orElse(null));
+            assertEquals("Bearer k", request.headers().firstValue("Authorization").orElse(null));
+        }
+
+        @ParameterizedTest
+        @org.junit.jupiter.params.provider.MethodSource("openAiRequests")
+        void noOptionalHeaderWhenBothAreBlank(java.util.function.Function<ProviderRequestSettings, java.net.http.HttpRequest> build) {
+            var blank = build.apply(ProviderRequestSettings.openAi("  ", null));
+            var none = build.apply(ProviderRequestSettings.NONE);
+            assertTrue(blank.headers().firstValue("OpenAI-Organization").isEmpty());
+            assertTrue(blank.headers().firstValue("OpenAI-Project").isEmpty());
+            // The same header set as a request with no settings at all, so nothing else can drift in.
+            assertEquals(none.headers().map(), blank.headers().map());
+        }
+
+        @Test
+        void withNoSettingsTheRequestsCarryOnlyTodaysHeaders() {
+            var generation = DirectApiService.buildOpenAiRequest("gpt-6-luna", "k", "p", ProviderRequestSettings.NONE);
+            var listModels = DirectApiService.buildListModelsRequest(AiProvider.OPENAI, "k", ProviderRequestSettings.NONE);
+            assertEquals(java.util.Set.of("authorization", "content-type"), headerNames(generation));
+            assertEquals(java.util.Set.of("authorization"), headerNames(listModels));
+        }
+
+        private static java.util.Set<String> headerNames(java.net.http.HttpRequest request) {
+            return request.headers().map().keySet().stream().map(n -> n.toLowerCase(java.util.Locale.ROOT))
+                    .collect(java.util.stream.Collectors.toSet());
+        }
+
+        @ParameterizedTest
+        @org.junit.jupiter.params.provider.MethodSource("openAiRequests")
+        void onlyTheProjectWhenOnlyTheProjectIsSet(java.util.function.Function<ProviderRequestSettings, java.net.http.HttpRequest> build) {
+            var request = build.apply(ProviderRequestSettings.openAi("", " proj_xyz "));
+            assertTrue(request.headers().firstValue("OpenAI-Organization").isEmpty());
+            assertEquals("proj_xyz", request.headers().firstValue("OpenAI-Project").orElse(null), "sent trimmed");
+        }
+
+        @ParameterizedTest
+        @org.junit.jupiter.params.provider.MethodSource("openAiRequests")
+        void onlyTheOrganizationWhenOnlyTheOrganizationIsSet(java.util.function.Function<ProviderRequestSettings, java.net.http.HttpRequest> build) {
+            var request = build.apply(ProviderRequestSettings.openAi(" org-abc", ""));
+            assertEquals("org-abc", request.headers().firstValue("OpenAI-Organization").orElse(null));
+            assertTrue(request.headers().firstValue("OpenAI-Project").isEmpty());
+        }
+
+        @Test
+        void anUnexpectedPrefixIsStillSent() {
+            var request = DirectApiService.buildOpenAiRequest("gpt-6-luna", "k", "p",
+                    ProviderRequestSettings.openAi("acme", "project-1"));
+            assertEquals("acme", request.headers().firstValue("OpenAI-Organization").orElse(null));
+            assertEquals("project-1", request.headers().firstValue("OpenAI-Project").orElse(null));
+        }
+
+        @Test
+        void otherProvidersNeverCarryTheOpenAiHeaders() {
+            var all = new ProviderRequestSettings("wrkspc_example", "org-abc", "proj_xyz");
+            var requests = List.of(
+                    DirectApiService.buildClaudeRequest("claude-sonnet-5-5", "k", "p", all),
+                    DirectApiService.buildListModelsRequest(AiProvider.CLAUDE, "k", all),
+                    DirectApiService.buildListModelsRequest(AiProvider.GEMINI, "k", all));
+            for (var request : requests) {
+                assertTrue(request.headers().firstValue("OpenAI-Organization").isEmpty(), request.uri().toString());
+                assertTrue(request.headers().firstValue("OpenAI-Project").isEmpty(), request.uri().toString());
+            }
+            assertEquals("wrkspc_example", requests.get(0).headers().firstValue("anthropic-workspace-id").orElse(null),
+                    "Claude still reads its own setting");
+        }
+
+        @Test
+        void openAiNeverCarriesTheClaudeWorkspace() {
+            var request = DirectApiService.buildOpenAiRequest("gpt-6-luna", "k", "p",
+                    new ProviderRequestSettings("wrkspc_example", "", ""));
+            assertTrue(request.headers().firstValue("anthropic-workspace-id").isEmpty());
+        }
+    }
+
+    /** The 401 hint, against live-captured invalid-key bodies from both OpenAI endpoints. */
+    @Nested
+    class OpenAiAuthErrors {
+        private String loadFixture(String path) {
+            try (InputStream in = getClass().getResourceAsStream("/fixtures/ai/" + path)) {
+                assertNotNull(in, "fixture not found: " + path);
+                return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        private String providerMessage(String body) {
+            return JsonParser.parseString(body).getAsJsonObject().getAsJsonObject("error").get("message").getAsString();
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"openai/models-401-invalid-key.json", "openai/chat-completions-401-invalid-key.json"})
+        void a401WithAnIdSetKeepsOpenAisMessageAndPointsAtTheIds(String fixture) {
+            String body = loadFixture(fixture);
+            for (var scope : List.of(ProviderRequestSettings.openAi("org-abc", ""), ProviderRequestSettings.openAi("", "proj_xyz"))) {
+                AiApiException ex = DirectApiService.buildApiError("OpenAI", 401, body, scope);
+                assertEquals("OpenAI API error: " + providerMessage(body), ex.getMessage());
+                // Exact: Settings \u2192 Test recognizes the hint by this string.
+                assertEquals(DirectApiService.OPENAI_SCOPE_SUGGESTION, ex.getSuggestion());
+                assertTrue(ex.getSuggestion().contains("Organization ID") && ex.getSuggestion().contains("Project ID"),
+                        ex.getSuggestion());
+                assertTrue(ex.getSuggestion().contains("API key"), "still asks to check the key");
+            }
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"openai/models-401-invalid-key.json", "openai/chat-completions-401-invalid-key.json"})
+        void a401WithNoIdSetIsUnchanged(String fixture) {
+            String body = loadFixture(fixture);
+            AiApiException withNone = DirectApiService.buildApiError("OpenAI", 401, body, ProviderRequestSettings.NONE);
+            AiApiException legacy = DirectApiService.buildApiError("OpenAI", 401, body);
+            assertEquals("Check your API key in Settings \u2192 Tools \u2192 OpenSpec", withNone.getSuggestion());
+            assertEquals(legacy.getSuggestion(), withNone.getSuggestion());
+            assertEquals(legacy.getMessage(), withNone.getMessage());
+        }
+
+        @Test
+        void onlyA401GetsTheHint() {
+            String body = loadFixture("openai/models-401-invalid-key.json");
+            AiApiException forbidden = DirectApiService.buildApiError("OpenAI", 403, body,
+                    ProviderRequestSettings.openAi("org-abc", "proj_xyz"));
+            assertEquals("Check your API key in Settings \u2192 Tools \u2192 OpenSpec", forbidden.getSuggestion());
+        }
+
+        @Test
+        void otherProvidersNeverGetTheHint() {
+            String body = loadFixture("claude/models-400-unscoped-key.json");
+            AiApiException claude = DirectApiService.buildApiError("Claude", 401, body,
+                    new ProviderRequestSettings("", "org-abc", "proj_xyz"));
+            assertEquals("Check your API key in Settings \u2192 Tools \u2192 OpenSpec", claude.getSuggestion());
+        }
+    }
+
+    /** Generation sends the saved IDs; Test (list-models) sends the ones passed in. */
+    @Nested
+    class OpenAiPlumbing {
+        private String loadFixture(String path) {
+            try (InputStream in = getClass().getResourceAsStream("/fixtures/ai/" + path)) {
+                assertNotNull(in, "fixture not found: " + path);
+                return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        @SuppressWarnings("unchecked")
+        private HttpClient stubClient(DirectApiService spy, String body) throws Exception {
+            return stubClient(spy, 200, body);
+        }
+
+        @SuppressWarnings("unchecked")
+        private HttpClient stubClient(DirectApiService spy, int status, String body) throws Exception {
+            HttpClient client = mock(HttpClient.class);
+            doReturn(client).when(spy).createHttpClient();
+            HttpResponse<String> resp = mock(HttpResponse.class);
+            when(resp.statusCode()).thenReturn(status);
+            when(resp.body()).thenReturn(body);
+            doReturn(resp).when(client).send(any(), any());
+            return client;
+        }
+
+        private java.net.http.HttpRequest sent(HttpClient client) throws Exception {
+            var captor = org.mockito.ArgumentCaptor.forClass(java.net.http.HttpRequest.class);
+            verify(client).send(captor.capture(), any());
+            return captor.getValue();
+        }
+
+        /** Runs {@code call} against saved OpenAI settings with org-saved / proj_saved and the key "k". */
+        private void withSavedOpenAiIds(org.junit.jupiter.api.function.Executable call) throws Throwable {
+            try (MockedStatic<OpenSpecSettings> settingsMock = mockStatic(OpenSpecSettings.class);
+                 MockedStatic<AiCredentialStore> credsMock = mockStatic(AiCredentialStore.class)) {
+                settingsMock.when(() -> OpenSpecSettings.getInstance(project)).thenReturn(settings);
+                lenient().when(settings.getAiProvider()).thenReturn("OPENAI");
+                lenient().when(settings.getAiModel()).thenReturn("gpt-6-luna");
+                lenient().when(settings.getAiOpenAiOrganization()).thenReturn("org-saved");
+                lenient().when(settings.getAiOpenAiProject()).thenReturn("proj_saved");
+                credsMock.when(() -> AiCredentialStore.getApiKey(AiProvider.OPENAI)).thenReturn("k");
+                call.execute();
+            }
+        }
+
+        private static final com.johnnyblabs.openspec.model.ArtifactInstruction DESIGN =
+                new com.johnnyblabs.openspec.model.ArtifactInstruction("add-auth", "design", null, "design.md",
+                        "Write the design.", null, List.of(), List.of());
+
+        @Test
+        void generate_sendsTheSavedIds() throws Throwable {
+            DirectApiService spy = spy(new DirectApiService(project));
+            HttpClient client = stubClient(spy, loadFixture("openai/chat-completion-response.json"));
+            withSavedOpenAiIds(() -> spy.generate(DESIGN));
+            var request = sent(client);
+            assertEquals("org-saved", request.headers().firstValue("OpenAI-Organization").orElse(null));
+            assertEquals("proj_saved", request.headers().firstValue("OpenAI-Project").orElse(null));
+        }
+
+        @Test
+        void testConnection_sendsTheSavedIds() throws Throwable {
+            DirectApiService spy = spy(new DirectApiService(project));
+            HttpClient client = stubClient(spy, loadFixture("openai/chat-completion-response.json"));
+            withSavedOpenAiIds(() -> spy.testConnection());
+            var request = sent(client);
+            assertEquals("org-saved", request.headers().firstValue("OpenAI-Organization").orElse(null));
+            assertEquals("proj_saved", request.headers().firstValue("OpenAI-Project").orElse(null));
+        }
+
+        @Test
+        void a401DuringGenerationCarriesTheIdHint() throws Throwable {
+            DirectApiService spy = spy(new DirectApiService(project));
+            stubClient(spy, 401, loadFixture("openai/chat-completions-401-invalid-key.json"));
+            AiApiException[] thrown = new AiApiException[1];
+            withSavedOpenAiIds(() -> thrown[0] = assertThrows(AiApiException.class, () -> spy.generateRaw("p")));
+            assertEquals(401, thrown[0].getStatusCode());
+            assertEquals(DirectApiService.OPENAI_SCOPE_SUGGESTION, thrown[0].getSuggestion());
+        }
+
+        @Test
+        void a401FromTheModelListCarriesTheIdHint() throws Exception {
+            DirectApiService spy = spy(new DirectApiService(project));
+            stubClient(spy, 401, loadFixture("openai/models-401-invalid-key.json"));
+            AiApiException ex = assertThrows(AiApiException.class,
+                    () -> spy.listModels(AiProvider.OPENAI, "k", ProviderRequestSettings.openAi("org-form", "")));
+            assertEquals(DirectApiService.OPENAI_SCOPE_SUGGESTION, ex.getSuggestion(),
+                    "Settings \u2192 Test shows its ID hint only for this exact suggestion");
+        }
+
+        @Test
+        void generateRaw_sendsTheSavedIds() throws Exception {
+            DirectApiService spy = spy(new DirectApiService(project));
+            HttpClient client = stubClient(spy, loadFixture("openai/chat-completion-response.json"));
+            try (MockedStatic<OpenSpecSettings> settingsMock = mockStatic(OpenSpecSettings.class);
+                 MockedStatic<AiCredentialStore> credsMock = mockStatic(AiCredentialStore.class)) {
+                settingsMock.when(() -> OpenSpecSettings.getInstance(project)).thenReturn(settings);
+                when(settings.getAiProvider()).thenReturn("OPENAI");
+                when(settings.getAiModel()).thenReturn("gpt-6-luna");
+                when(settings.getAiOpenAiOrganization()).thenReturn("org-saved");
+                when(settings.getAiOpenAiProject()).thenReturn("proj_saved");
+                credsMock.when(() -> AiCredentialStore.getApiKey(AiProvider.OPENAI)).thenReturn("k");
+
+                spy.generateRaw("p");
+            }
+            var request = sent(client);
+            assertEquals("org-saved", request.headers().firstValue("OpenAI-Organization").orElse(null));
+            assertEquals("proj_saved", request.headers().firstValue("OpenAI-Project").orElse(null));
+        }
+
+        @Test
+        void listModels_sendsThePassedIds_notTheSavedOnes() throws Exception {
+            DirectApiService spy = spy(new DirectApiService(project));
+            HttpClient client = stubClient(spy, loadFixture("openai/models-list.json"));
+            try (MockedStatic<OpenSpecSettings> settingsMock = mockStatic(OpenSpecSettings.class)) {
+                settingsMock.when(() -> OpenSpecSettings.getInstance(project)).thenReturn(settings);
+                lenient().when(settings.getAiOpenAiOrganization()).thenReturn("org-saved");
+                lenient().when(settings.getAiOpenAiProject()).thenReturn("proj_saved");
+
+                spy.listModels(AiProvider.OPENAI, "k", ProviderRequestSettings.openAi("org-form", "proj_form"));
+            }
+            var request = sent(client);
+            assertEquals("org-form", request.headers().firstValue("OpenAI-Organization").orElse(null),
+                    "Settings \u2192 Test must send the unsaved form values");
+            assertEquals("proj_form", request.headers().firstValue("OpenAI-Project").orElse(null));
         }
     }
 }

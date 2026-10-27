@@ -116,6 +116,27 @@ public final class OpenSpecSettings implements PersistentStateComponent<OpenSpec
         state.aiWorkspaceId = workspaceId == null ? "" : workspaceId.trim();
     }
 
+    /**
+     * The OpenAI organization ID sent as {@code OpenAI-Organization}, or {@code ""} when unset. Needed only for
+     * legacy user keys or users in several organizations. Not a secret, so it lives here, not in PasswordSafe.
+     */
+    public String getAiOpenAiOrganization() {
+        return state.aiOpenAiOrganization == null ? "" : state.aiOpenAiOrganization;
+    }
+
+    public void setAiOpenAiOrganization(String organization) {
+        state.aiOpenAiOrganization = organization == null ? "" : organization.trim();
+    }
+
+    /** The OpenAI project ID sent as {@code OpenAI-Project}, or {@code ""} when unset. Not a secret. */
+    public String getAiOpenAiProject() {
+        return state.aiOpenAiProject == null ? "" : state.aiOpenAiProject;
+    }
+
+    public void setAiOpenAiProject(String project) {
+        state.aiOpenAiProject = project == null ? "" : project.trim();
+    }
+
     public String getPreferredDeliveryMethod() {
         return state.preferredDeliveryMethod;
     }
@@ -247,6 +268,8 @@ public final class OpenSpecSettings implements PersistentStateComponent<OpenSpec
         public String aiProvider = "NONE";
         public String aiModel = "";
         public String aiWorkspaceId = "";
+        public String aiOpenAiOrganization = "";
+        public String aiOpenAiProject = "";
         public String preferredDeliveryMethod = "";
         public String preferredTool = "";
         public boolean setupCompleted = false;

@@ -32,6 +32,8 @@ public class OpenSpecSettingsPanelWorkspaceIdTest extends BasePlatformTestCase {
         saved.aiProvider = s.aiProvider;
         saved.aiModel = s.aiModel;
         saved.aiWorkspaceId = s.aiWorkspaceId;
+        saved.aiOpenAiOrganization = s.aiOpenAiOrganization;
+        saved.aiOpenAiProject = s.aiOpenAiProject;
         saved.cliTimeoutSeconds = s.cliTimeoutSeconds;
     }
 
@@ -42,6 +44,8 @@ public class OpenSpecSettingsPanelWorkspaceIdTest extends BasePlatformTestCase {
             s.aiProvider = saved.aiProvider;
             s.aiModel = saved.aiModel;
             s.aiWorkspaceId = saved.aiWorkspaceId;
+            s.aiOpenAiOrganization = saved.aiOpenAiOrganization;
+            s.aiOpenAiProject = saved.aiOpenAiProject;
             s.cliTimeoutSeconds = saved.cliTimeoutSeconds;
         } finally {
             super.tearDown();
