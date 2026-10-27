@@ -311,6 +311,7 @@ API keys are stored securely in your operating system's keychain via IntelliJ's 
 | What the provider reports | Suggestion |
 |---|---|
 | A rejected key or missing permission, including Gemini's `400` for an invalid key | Check your API key |
+| Gemini refuses the key with `403` (`PERMISSION_DENIED`) | Check your API key, plus a note that Google rejects older keys that aren't restricted to the Gemini API, and blocks them when unused, so a new key from Google AI Studio fixes it. Google doesn't report this case with a distinct error, so the note is a possible cause, not a diagnosis |
 | A billing or payment problem: Claude or Gemini `402`, OpenAI `credit_balance_exhausted` | Where to add credits or fix billing in the provider's console. Never "retry", because waiting doesn't fix it |
 | A quota, spend or usage limit: Claude's spend cap or your own usage limit, OpenAI's spend and usage-limit codes or `insufficient_quota` | Where to see and raise the limit. Never "retry" |
 | A plain rate limit | Wait a moment and retry |
@@ -497,7 +498,8 @@ The **Update** action runs `openspec update` (on CLI 1.15+, after showing you th
 
 ### API test fails
 
-- Verify your API key is correct (Claude: `sk-ant-`, OpenAI: `sk-`, Gemini: Google API key)
+- Verify your API key is correct (Claude: `sk-ant-`, OpenAI: `sk-`, Gemini: a Google API key, either an older `AIza…` key or a newer auth key)
+- Gemini refuses the key with a permission error: keys created before late May 2026 that aren't restricted to the Gemini API are rejected, and blocked after a period unused. Create a new key in Google AI Studio; new keys are restricted to the Gemini API by default
 - Claude says the key isn't scoped to a workspace, or the workspace wasn't found: enter or correct the **Workspace ID** (starts with `wrkspc_`, from **Console → Settings → Workspaces**)
 - OpenAI rejects the key (401) while an **Organization ID** or **Project ID** is filled in: check the key, and that both IDs belong to it, or clear them if you don't need them
 - Check that your network allows outbound HTTPS to the provider's API endpoint

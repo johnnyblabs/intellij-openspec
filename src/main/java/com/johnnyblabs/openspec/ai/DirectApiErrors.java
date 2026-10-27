@@ -154,7 +154,10 @@ final class DirectApiErrors {
     /** The suggestion for a kind, worded for the provider where its settings live somewhere specific. */
     static @Nullable String suggestion(String provider, ErrorKind kind) {
         return switch (kind) {
-            case AUTH, PERMISSION -> KEY_SUGGESTION;
+            case AUTH -> KEY_SUGGESTION;
+            case PERMISSION -> GEMINI.equals(provider)
+                    ? KEY_SUGGESTION + ". " + DirectApiService.GEMINI_KEY_RESTRICTION_NOTE
+                    : KEY_SUGGESTION;
             case BILLING -> {
                 if (CLAUDE.equals(provider)) {
                     yield "Check your billing and payment details in the Claude Console → Settings → Billing";
