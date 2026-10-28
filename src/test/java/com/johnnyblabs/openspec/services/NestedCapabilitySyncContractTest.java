@@ -49,6 +49,20 @@ public class NestedCapabilitySyncContractTest extends BasePlatformTestCase {
         service = new SpecSyncService(project);
     }
 
+    @Override
+    protected void tearDown() throws Exception {
+        try {
+            // Delete the tree and tell the VFS now, while its root is still allowed; otherwise a later test's refresh
+            // reports these files as accessed outside the allowed roots.
+            if (base != null) {
+                FileUtil.delete(base);
+                LocalFileSystem.getInstance().refreshNioFiles(List.of(base), false, true, null);
+            }
+        } finally {
+            super.tearDown();
+        }
+    }
+
     public void testCapabilitiesAreKeyedByRelativePathInArchiveOrder() {
         List<String> caps = service.parseDeltaSpecs("c1").stream()
                 .map(DeltaSpecOperation::capabilityName).distinct().toList();
