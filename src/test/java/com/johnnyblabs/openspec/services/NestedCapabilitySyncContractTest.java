@@ -67,6 +67,28 @@ public class NestedCapabilitySyncContractTest extends BasePlatformTestCase {
         assertEquals(Map.of("identity/user-auth", List.of("c1", "c2")), service.detectConflicts(List.of("c1", "c2")));
     }
 
+    /**
+     * The archive doesn't follow symlinked folders (checked against CLI 1.15.0: a link to a capability folder outside the
+     * change and a {@code ..} loop are both ignored). The links are made here, since git can't carry a loop as a fixture.
+     */
+    public void testSymlinkedFoldersAreNotFollowed() throws IOException {
+        Path outside = base.resolve("elsewhere/linked");
+        Files.createDirectories(outside);
+        Files.copy(FIXTURE.resolve("change/specs/flat/spec.md"), outside.resolve("spec.md"));
+        Path specs = base.resolve("openspec/changes/c1/specs");
+        try {
+            Files.createSymbolicLink(specs.resolve("linked"), outside);
+            Files.createSymbolicLink(specs.resolve("identity/loop"), Path.of(".."));
+        } catch (UnsupportedOperationException | IOException e) {
+            return; // e.g. Windows without the symlink privilege: nothing to test there
+        }
+        refresh();
+
+        List<String> caps = service.parseDeltaSpecs("c1").stream()
+                .map(DeltaSpecOperation::capabilityName).distinct().toList();
+        assertEquals(List.of("flat", "identity", "identity/sessions", "identity/user-auth"), caps);
+    }
+
     public void testSyncWritesExactlyWhatTheArchiveWrote() throws IOException {
         List<SpecSyncResult> results = service.computeSync("c1");
         for (SpecSyncResult r : results) {

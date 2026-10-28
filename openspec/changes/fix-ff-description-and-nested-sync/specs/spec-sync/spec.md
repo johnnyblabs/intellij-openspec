@@ -41,6 +41,10 @@ The plugin SHALL parse every delta spec file named `spec.md` at any depth under 
 - **WHEN** a change has delta specs at `specs/flat/spec.md`, `specs/identity/sessions/spec.md` and `specs/identity/user-auth/spec.md`
 - **THEN** the service SHALL read all three, ordered by capability path (`flat`, `identity/sessions`, `identity/user-auth`) as OpenSpec's archive lists them
 
+#### Scenario: Dot-folders and symlinked folders are not read
+- **WHEN** a change's `specs/` folder contains a dot-folder, a symlink to a folder outside the change, or a symlink back to one of its own ancestors
+- **THEN** the service SHALL read none of them, as OpenSpec's archive reads none of them, and SHALL finish without following the loop
+
 ## ADDED Requirements
 
 ### Requirement: Nested capabilities sync to the matching main spec path

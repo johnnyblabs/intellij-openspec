@@ -7,6 +7,7 @@ import com.intellij.openapi.components.Service;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.LocalFileSystem;
+import com.intellij.openapi.vfs.VFileProperty;
 import com.intellij.openapi.vfs.VfsUtil;
 import com.intellij.openapi.vfs.VfsUtilCore;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -48,7 +49,8 @@ public final class SpecSyncService {
     /**
      * Each capability's delta spec text, keyed by capability path: the folder's path relative to the change's
      * {@code specs/}, with {@code /} separators on every OS (e.g. {@code identity/user-auth}), sorted as OpenSpec's
-     * archive lists them. Nested capabilities are found at any depth, as the archive finds them.
+     * archive lists them. Nested capabilities are found at any depth, as the archive finds them; dot-folders and
+     * symlinked folders are skipped, as the archive skips them.
      */
     private Map<String, String> readDeltaSpecs(String changeName) {
         Map<String, String> deltas = new TreeMap<>();
@@ -62,7 +64,8 @@ public final class SpecSyncService {
 
     private static void collectDeltaSpecs(VirtualFile specsDir, VirtualFile dir, Map<String, String> deltas) {
         for (VirtualFile capDir : dir.getChildren()) {
-            if (!capDir.isDirectory() || capDir.getName().startsWith(".")) continue;
+            // Symlinked folders aren't followed, as OpenSpec's archive doesn't follow them; it also rules out loops.
+            if (!capDir.isDirectory() || capDir.getName().startsWith(".") || capDir.is(VFileProperty.SYMLINK)) continue;
             VirtualFile specFile = capDir.findChild("spec.md");
             if (specFile != null && !specFile.isDirectory()) {
                 try {
