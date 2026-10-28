@@ -36,4 +36,14 @@ public final class CliDetectionTestSupport {
     public static void setRunner(CliDetectionService service, Runner runner) {
         service.setProcessRunnerForTest(runner::run);
     }
+
+    /** The command the login-shell PATH lookup runs, for tests outside this package that count shell calls. */
+    public static String printPathCommand() {
+        return CliDetectionService.PRINT_PATH;
+    }
+
+    /** Shell output carrying {@code path} between the lookup's markers. */
+    public static String markedPath(String path) {
+        return CliDetectionService.PATH_BEGIN + path + CliDetectionService.PATH_END;
+    }
 }

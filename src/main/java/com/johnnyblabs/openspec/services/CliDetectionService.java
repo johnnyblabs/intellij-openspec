@@ -14,7 +14,6 @@ import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.TestOnly;
 
 import java.io.File;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
@@ -25,7 +24,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -36,6 +34,8 @@ public final class CliDetectionService {
     private static final Logger LOG = Logger.getInstance(CliDetectionService.class);
     private static final int TIMEOUT_MS = 10_000;
     private static final Duration DETECTION_STALENESS = Duration.ofSeconds(30);
+    /** How long a resolved login-shell PATH is reused before a detection starts the shell again. */
+    static final Duration SHELL_PATH_TTL = Duration.ofMinutes(10);
 
     /**
      * Fixed install locations for openspec on macOS/Linux that need no environment: Homebrew, the system paths, then
@@ -84,6 +84,9 @@ public final class CliDetectionService {
     private volatile Detection current = Detection.NONE;
     private volatile boolean detectedOnce;
     private volatile String loginShellPath;
+    /** When the login-shell PATH was last resolved (or last tried); null until the first try. */
+    private volatile @Nullable Instant loginShellPathResolvedAt;
+    private volatile Supplier<Instant> clock = Instant::now;
     private volatile Instant lastDetectionTime;
     private volatile @Nullable Boolean isWindowsOverride;
     private volatile ProcessRunner processRunner = CliDetectionService::defaultRunAndCapture;
@@ -102,6 +105,11 @@ public final class CliDetectionService {
     @TestOnly
     public void setIsWindowsForTest(@Nullable Boolean override) {
         this.isWindowsOverride = override;
+    }
+
+    @TestOnly
+    public void setClockForTest(Supplier<Instant> testClock) {
+        this.clock = testClock;
     }
 
     @TestOnly
@@ -157,14 +165,29 @@ public final class CliDetectionService {
 
     /**
      * Probes for the CLI and publishes the result when done. The previous result stays visible to readers until then:
-     * a detection in progress never reads as "unavailable".
+     * a detection in progress never reads as "unavailable". Reuses a login-shell PATH resolved in the last
+     * {@link #SHELL_PATH_TTL}.
      */
     public void detect() {
+        detect(false);
+    }
+
+    /**
+     * Probes for the CLI. With {@code freshShellPath}, the login-shell PATH is resolved again whatever was resolved
+     * before: the user asked to find the CLI, perhaps after changing their shell setup.
+     */
+    public void detect(boolean freshShellPath) {
         Detection found = null;
         try {
             // Read the PATH the user's interactive login shell sets (Unix; no-op on Windows). A GUI-launched IDE
-            // may not have it, and every CLI run gets the entries the IDE's PATH lacks.
-            resolveLoginShellPath();
+            // may not have it, and every CLI run gets the entries the IDE's PATH lacks. Starting an interactive shell
+            // can take seconds, so a recent result is reused.
+            Instant resolvedAt = loginShellPathResolvedAt;
+            if (freshShellPath || resolvedAt == null
+                    || Duration.between(resolvedAt, clock.get()).compareTo(SHELL_PATH_TTL) >= 0) {
+                resolveLoginShellPath();
+                loginShellPathResolvedAt = clock.get();
+            }
 
             // 1. Check settings path first
             if (project != null) {
@@ -483,35 +506,34 @@ public final class CliDetectionService {
      * Uses Process directly instead of OSProcessHandler to avoid ReadAction threading checks.
      * Drains stdout asynchronously so the timeout on waitFor is effective.
      */
-    private static String defaultRunAndCapture(GeneralCommandLine cmd) throws Exception {
-        Process process = cmd.createProcess();
-
-        // Drain both streams async — readAllBytes blocks until EOF, so we must not call it
-        // before waitFor or the timeout becomes dead code when the process hangs.
-        // Stderr must also be drained to prevent the process blocking on a full pipe buffer.
-        CompletableFuture<String> stdoutFuture = drainAsync(process.getInputStream());
-        drainAsync(process.getErrorStream());
-
-        if (!process.waitFor(TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
-            process.destroyForcibly();
-            return null;
-        }
-
-        if (process.exitValue() == 0) {
-            String output = stdoutFuture.join().trim();
-            return output.isEmpty() ? null : output;
-        }
-        return null;
+    static String defaultRunAndCapture(GeneralCommandLine cmd) throws Exception {
+        return runAndCapture(cmd, TIMEOUT_MS);
     }
 
-    private static CompletableFuture<String> drainAsync(InputStream stream) {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                return new String(stream.readAllBytes(), StandardCharsets.UTF_8);
-            } catch (Exception e) {
-                return "";
+    /**
+     * Runs a command and returns trimmed stdout if it exits 0 within {@code timeoutMs}, or null otherwise. Stdout goes
+     * to a temporary file, not a pipe: a pipe ends only when every process holding it exits, so a background process
+     * an rc file starts (an agent, a tmux server) would keep a pipe read waiting after the shell itself has exited.
+     * Package-private for tests.
+     */
+    static String runAndCapture(GeneralCommandLine cmd, long timeoutMs) throws Exception {
+        Path out = Files.createTempFile("openspec-detect", ".out");
+        try {
+            // toProcessBuilder() keeps the command line's input file (the shell's /dev/null); a test pins that.
+            ProcessBuilder builder = cmd.toProcessBuilder()
+                    .redirectOutput(out.toFile())
+                    .redirectError(ProcessBuilder.Redirect.DISCARD);
+            Process process = builder.start();
+            if (!process.waitFor(timeoutMs, TimeUnit.MILLISECONDS)) {
+                process.destroyForcibly();
+                return null;
             }
-        });
+            if (process.exitValue() != 0) return null;
+            String output = Files.readString(out, StandardCharsets.UTF_8).trim();
+            return output.isEmpty() ? null : output;
+        } finally {
+            Files.deleteIfExists(out);
+        }
     }
 
     /**

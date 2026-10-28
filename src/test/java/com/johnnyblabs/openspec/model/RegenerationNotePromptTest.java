@@ -116,6 +116,32 @@ class RegenerationNotePromptTest {
     }
 
     @Test
+    void codeBlocksInTheCurrentFileStayInsideItsFence(@TempDir Path changeDir) throws IOException {
+        String current = "# Design\n\n```java\nclass Cache {}\n```\n\nAlso ````md\nnested\n````\n";
+        Files.writeString(changeDir.resolve("design.md"), current);
+        ArtifactInstruction design = new ArtifactInstruction("add-auth", "design", changeDir.toString(), "design.md",
+                "Write the design.", "# Design", List.of(), List.of());
+
+        String noted = design.buildDirectApiPrompt("drop the caching section");
+
+        String start = ArtifactInstruction.CURRENT_VERSION_HEADING + "\n\n`````\n";
+        assertTrue(noted.contains(start + current + "\n`````\n"),
+                "a five-backtick fence wraps content whose longest run is four: " + noted);
+        int body = noted.indexOf(start) + start.length();
+        int close = noted.indexOf("\n`````\n", body);
+        assertEquals(current, noted.substring(body, close), "nothing in the content closes the fence early");
+        assertTrue(noted.indexOf(ArtifactInstruction.NOTE_HEADING) > close, "the note comes after the closed fence");
+    }
+
+    @Test
+    void theFenceIsThreeBackticksUnlessTheContentNeedsMore() {
+        assertEquals("```", ArtifactInstruction.fenceFor("no backticks"));
+        assertEquals("```", ArtifactInstruction.fenceFor("an `inline` span and ``two``"));
+        assertEquals("````", ArtifactInstruction.fenceFor("```\ncode\n```"));
+        assertEquals("``````", ArtifactInstruction.fenceFor("`````"));
+    }
+
+    @Test
     void theCapturedDesignInstructionOnDiskInlinesItsDependencyAndCurrentFile(@TempDir Path changeDir) throws IOException {
         ArtifactInstruction captured = captured("1.15.0/instructions/instructions-design.json");
         Files.writeString(changeDir.resolve("proposal.md"), "# Proposal\n\n## Why\n\nDemo.\n");

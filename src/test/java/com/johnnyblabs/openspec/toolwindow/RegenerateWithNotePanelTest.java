@@ -783,4 +783,30 @@ public class RegenerateWithNotePanelTest extends OpenSpecIntegrationTestBase {
         assertEquals(GENERATED_DESIGN, design());
         assertTrue(raisedContaining("Regenerated design"));
     }
+
+    public void testWithNothingUnsavedTheLabelNeedsNoUiThread() throws Exception {
+        // The test thread is the EDT and blocks on get(): a hop to the EDT would time out here.
+        var future = com.intellij.openapi.application.ApplicationManager.getApplication().executeOnPooledThread(() ->
+                ArtifactLocalHistory.beforeWrite(getProject(), "label", List.of(changeDir.resolve("design.md"),
+                        changeDir.resolve("new.md"))));
+
+        future.get(5, java.util.concurrent.TimeUnit.SECONDS);
+
+        assertEquals(List.of(new LabelSeen("label", CURRENT_DESIGN, false)), labels);
+    }
+
+    public void testShowLocalHistoryDoesNotRefreshTheFileSystemToFindTheFile() throws Exception {
+        // tasks.md appears on disk without the VFS being told; the menu must not refresh on the EDT to find it. Load the
+        // folder's children first, so the VFS holds a snapshot and only a refresh would show the new file.
+        VirtualFile dir = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(changeDir);
+        assertNotNull(dir);
+        dir.getChildren();
+        Files.writeString(changeDir.resolve("tasks.md"), "# Tasks\n");
+        assertNull("precondition: the VFS doesn't know the file yet",
+                LocalFileSystem.getInstance().findFileByNioFile(changeDir.resolve("tasks.md")));
+
+        assertFalse(doneMenu("tasks", "tasks.md", new ArrayList<>()).contains(WorkflowActionPanel.SHOW_LOCAL_HISTORY_LABEL));
+        assertNull("opening the menu didn't refresh it into the VFS",
+                LocalFileSystem.getInstance().findFileByNioFile(changeDir.resolve("tasks.md")));
+    }
 }

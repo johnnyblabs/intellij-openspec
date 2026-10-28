@@ -25,6 +25,9 @@
         <projectService serviceImplementation="com.johnnyblabs.openspec.services.OpenSpecProjectService"/>
         <projectService serviceImplementation="com.johnnyblabs.openspec.services.ConfigService"/>
         <projectService serviceImplementation="com.johnnyblabs.openspec.services.SpecParsingService"/>
+        <projectService serviceImplementation="com.johnnyblabs.openspec.services.UpdatePreviewService"/>
+        <projectService serviceImplementation="com.johnnyblabs.openspec.services.UpdateLegacyCleanupService"/>
+        <projectService serviceImplementation="com.johnnyblabs.openspec.services.WorkflowSchemaContextService"/>
         <projectService serviceImplementation="com.johnnyblabs.openspec.services.ChangeService"/>
         <projectService serviceImplementation="com.johnnyblabs.openspec.services.CliDetectionService"/>
         <projectService serviceImplementation="com.johnnyblabs.openspec.validation.BuiltInValidator"/>

@@ -101,18 +101,29 @@ public final class UpdatePreviewService {
      * after {@link #supportsPreview()}; {@code focusTool} (a tool id) is listed first and expanded.
      */
     public void previewAndApply(Origin origin, @Nullable String focusTool, Consumer<CliRunner.CliResult> onApplied) {
+        previewAndApply(origin, focusTool, onApplied, () -> { });
+    }
+
+    /**
+     * As {@link #previewAndApply(Origin, String, Consumer)}, and then runs {@code onFinished} on the EDT exactly once,
+     * whatever the outcome: applied (after {@code onApplied}), cancelled, failed, or nothing to update. A caller that
+     * shows a busy state restores it there.
+     */
+    public void previewAndApply(Origin origin, @Nullable String focusTool, Consumer<CliRunner.CliResult> onApplied,
+                                Runnable onFinished) {
         ModalityState modality = ModalityState.current();
         background.run("Previewing openspec update", () -> {
             UpdatePlanParser.Result result = dryRun("update", "--dry-run", "--json");
-            ui.run(modality, () -> decide(result, focusTool, onApplied, modality));
+            ui.run(modality, () -> decide(result, focusTool, onApplied, onFinished, modality));
         });
     }
 
     private void decide(UpdatePlanParser.Result result, @Nullable String focusTool,
-                        Consumer<CliRunner.CliResult> onApplied, ModalityState modality) {
+                        Consumer<CliRunner.CliResult> onApplied, Runnable onFinished, ModalityState modality) {
         if (result instanceof UpdatePlanParser.Failed failed) {
             LOG.info("Update preview failed: " + failed.message());
             reportFailure("openspec update --dry-run --json", "The update preview failed: " + failed.message());
+            onFinished.run();
             return;
         }
         UpdatePlanParser.Plan plan = (UpdatePlanParser.Plan) result;
@@ -120,12 +131,14 @@ public final class UpdatePreviewService {
             LOG.info("Update preview: nothing to update");
             OpenSpecNotifier.info(project, "OpenSpec update",
                     "Already up to date: openspec update has nothing to change.");
+            onFinished.run();
             return;
         }
         LOG.info("Update preview: " + plan.changes().size() + " change(s), " + plan.notes().size() + " note(s), "
                 + plan.failures().size() + " failure(s)" + (focusTool != null ? ", focus " + focusTool : ""));
         if (!decider.apply(UpdatePreviewModel.of(plan, focusTool))) {
             LOG.info("Update preview cancelled");
+            onFinished.run();
             return;
         }
         LOG.info("Update preview applied: running openspec update");
@@ -135,11 +148,17 @@ public final class UpdatePreviewService {
                 applied = cli.run(project, NON_INTERACTIVE, "update");
             } catch (CliRunner.CliException e) {
                 LOG.info("openspec update could not run: " + e.getMessage());
-                ui.run(modality, () -> reportFailure("openspec update", "openspec update failed: " + e.getMessage()));
+                ui.run(modality, () -> {
+                    reportFailure("openspec update", "openspec update failed: " + e.getMessage());
+                    onFinished.run();
+                });
                 return;
             }
             LOG.info("openspec update finished with exit code " + applied.exitCode());
-            ui.run(modality, () -> onApplied.accept(applied));
+            ui.run(modality, () -> {
+                onApplied.accept(applied);
+                onFinished.run();
+            });
             if (applied.isSuccess() && plan.hasNote(UpdatePlanParser.LEGACY_ARTIFACTS)) {
                 offerLegacyCleanup(plan, modality);
             }
