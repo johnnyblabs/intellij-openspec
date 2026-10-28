@@ -40,7 +40,7 @@ public class WorkflowParityContractTest extends BasePlatformTestCase {
     static final Map<String, String> NOT_SURFACED = Map.of(
             "new", "no scaffold-only action yet; Propose currently behaves like it (tracked: Propose = upstream propose, New Change = new)",
             "onboard", "undecided whether the plugin offers a guided tour (tracked with the menu alignment work)",
-            "sync", "the built-in Sync Specs action is a utility, deliberately not gated on the workflow");
+            "sync", "Sync Specs is the built-in merge that writes main specs without the CLI or an agent, deliberately not gated on the agent workflow");
 
     /** Workflow-gated actions registered today; the test must find at least these, so it can't pass on an empty list. */
     private static final Set<String> KNOWN_GATED = Set.of(

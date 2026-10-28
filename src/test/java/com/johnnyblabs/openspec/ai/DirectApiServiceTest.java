@@ -3,6 +3,7 @@ package com.johnnyblabs.openspec.ai;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.intellij.openapi.project.Project;
+import com.johnnyblabs.openspec.model.ArtifactInstruction;
 import com.johnnyblabs.openspec.settings.OpenSpecSettings;
 import java.io.InputStream;
 import java.net.http.HttpClient;
@@ -637,6 +638,65 @@ class DirectApiServiceTest {
             var request = sent(client);
             assertEquals("wrkspc_saved", request.headers().firstValue("anthropic-workspace-id").orElse(null));
             assertEquals("Bearer k", request.headers().firstValue("Authorization").orElse(null));
+        }
+    }
+
+    /** A Fast-Forward request reaches the request body sent to the provider; without one the body is unchanged. */
+    @Nested
+    class FastForwardRequest {
+
+        @Mock HttpResponse<String> resp;
+
+        private String sentPrompt(java.util.function.Consumer<DirectApiService> call) throws Exception {
+            DirectApiService spy = spy(new DirectApiService(project));
+            HttpClient client = mock(HttpClient.class);
+            doReturn(client).when(spy).createHttpClient();
+            when(resp.statusCode()).thenReturn(200);
+            try (InputStream in = getClass().getResourceAsStream("/fixtures/ai/claude/messages-thinking-first.json")) {
+                when(resp.body()).thenReturn(new String(in.readAllBytes(), StandardCharsets.UTF_8));
+            }
+            doReturn(resp).when(client).send(any(), any());
+            try (MockedStatic<OpenSpecSettings> settingsMock = mockStatic(OpenSpecSettings.class);
+                 MockedStatic<AiCredentialStore> credsMock = mockStatic(AiCredentialStore.class)) {
+                settingsMock.when(() -> OpenSpecSettings.getInstance(project)).thenReturn(settings);
+                when(settings.getAiProvider()).thenReturn("CLAUDE");
+                when(settings.getAiModel()).thenReturn("claude-sonnet-5-5");
+                credsMock.when(() -> AiCredentialStore.getApiKey(AiProvider.CLAUDE)).thenReturn("k");
+                call.accept(spy);
+            }
+            var captor = org.mockito.ArgumentCaptor.forClass(java.net.http.HttpRequest.class);
+            verify(client).send(captor.capture(), any());
+            return bodyJson(captor.getValue()).getAsJsonArray("messages").get(0).getAsJsonObject()
+                    .get("content").getAsString();
+        }
+
+        private static final ArtifactInstruction PROPOSAL = new ArtifactInstruction("add-login", "proposal", null,
+                "proposal.md", "Write the proposal.", "# Proposal", List.of(), List.of());
+
+        @Test
+        void theRequestIsInTheSentPrompt() throws Exception {
+            String prompt = sentPrompt(s -> {
+                try {
+                    s.generate(PROPOSAL, "add login with email and password");
+                } catch (AiApiException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+            assertEquals(PROPOSAL.buildDirectApiPrompt("add login with email and password", null), prompt);
+            assertTrue(prompt.contains(ArtifactInstruction.REQUEST_HEADING + "\nadd login with email and password\n"));
+        }
+
+        @Test
+        void withoutARequestTheSentPromptIsUnchanged() throws Exception {
+            String prompt = sentPrompt(s -> {
+                try {
+                    s.generate(PROPOSAL);
+                } catch (AiApiException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+            assertEquals(PROPOSAL.buildDirectApiPrompt(), prompt);
+            assertFalse(prompt.contains(ArtifactInstruction.REQUEST_HEADING));
         }
     }
 

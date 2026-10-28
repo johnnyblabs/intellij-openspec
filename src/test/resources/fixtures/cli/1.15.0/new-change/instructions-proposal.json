@@ -1,0 +1,27 @@
+{
+  "changeName": "demo",
+  "artifactId": "proposal",
+  "schemaName": "spec-driven",
+  "changeDir": "/fixture/demo-project/openspec/changes/demo",
+  "planningHome": {
+    "kind": "repo",
+    "root": "/fixture/demo-project",
+    "changesDir": "/fixture/demo-project/openspec/changes",
+    "defaultSchema": "spec-driven"
+  },
+  "outputPath": "proposal.md",
+  "resolvedOutputPath": "/fixture/demo-project/openspec/changes/demo/proposal.md",
+  "existingOutputPaths": [],
+  "description": "Initial proposal document outlining the change",
+  "instruction": "Create the proposal document that establishes WHY this change is needed.\n\nSections:\n- **Why**: 1-2 sentences on the problem or opportunity. What problem does this solve? Why now?\n- **What Changes**: Bullet list of changes. Be specific about new capabilities, modifications, or removals. Mark breaking changes with **BREAKING**.\n- **Capabilities**: Identify which specs will be created or modified:\n  - **New Capabilities**: List capabilities being introduced. Each becomes a new `specs/<capability-path>/spec.md`. Name each capability for a durable system behavior (for example, `user-auth`), not the work in this change (for example, `add-login-endpoint`). Choose a cohesive boundary that can own related requirements as the system evolves; avoid broad catch-all capabilities. Use kebab-case for path segments you introduce (e.g., `user-auth` or `identity/user-auth`) and follow the project's existing spec organization.\n  - **Modified Capabilities**: List existing capabilities whose REQUIREMENTS are changing. Only include if spec-level behavior changes (not just implementation details). Each needs a delta spec file. Use the exact existing path under `openspec/specs/`. Leave empty if no requirement changes.\n- **Impact**: Affected code, APIs, dependencies, or systems.\n\nIMPORTANT: The Capabilities section is critical. It creates the contract between\nproposal and specs phases. Research existing specs before filling this in:\nrun `openspec list --specs` for the project's capability inventory, then\n`openspec show \"<spec-id>\" --type spec --json --no-scenarios` for any that\nlook related - that returns a capability's purpose and requirement texts\nwithout pulling whole spec files into context. Append `--store \"<id>\"` to\nboth commands only for a registered standalone store, and keep `--type\nspec`: a change and a spec sharing a name is otherwise an ambiguous-item\nerror. `openspec list` without `--specs` lists in-flight changes, not\nspecs - it never shows what the project already covers. Reuse an existing\ncapability's exact path instead of introducing a near-duplicate name.\nThe filtered read is only an overview. Before deciding what is already\ncovered or what should change, read each relevant spec in full, including\nscenarios, with `openspec show \"<spec-id>\" --type spec` (same `--store` rule).\nEach capability listed here will need a corresponding spec file.\n\nEvery change must either declare at least one capability (new or\nmodified) or explicitly opt out of specs: `openspec validate` rejects a\nchange with zero deltas unless the change's `.openspec.yaml` sets\n`skip_specs: true`. Use `skip_specs: true` only when no spec-level\nbehavior changes (pure refactor, tooling, docs) - specs describe\nbehavior, so if behavior does not change, no spec should change either.\nDo not invent a requirement just to satisfy validation.\n\nKeep it concise (1-2 pages). Focus on the \"why\" not the \"how\" -\nimplementation details belong in design.md.\n\nThis is the foundation - specs, design, and tasks all build on this.\n",
+  "template": "# Proposal\n\n## Why\n\n<!-- Explain the motivation for this change. What problem does this solve? Why now? -->\n\n## What Changes\n\n<!-- Describe what will change. Be specific about new capabilities, modifications, or removals. -->\n\n## Capabilities\n\n### New Capabilities\n<!-- Capabilities being introduced. Name each capability for a cohesive system\n     behavior that can own related requirements as the system evolves. Do not name\n     implementation tasks or proposal sections. Avoid broad catch-all names. Use\n     kebab-case for path segments you introduce (e.g., user-auth or identity/user-auth)\n     that follow the project's existing spec organization. Each creates\n     specs/<capability-path>/spec.md. -->\n- `<capability-path>`: <brief description of what this capability covers>\n\n### Modified Capabilities\n<!-- Existing capabilities whose REQUIREMENTS are changing (not just implementation).\n     Only list here if spec-level behavior changes. Each needs a delta spec file.\n     Use the exact existing path under openspec/specs/. Leave empty if no requirement\n     changes. A change with no capabilities at all (pure refactor, tooling, docs)\n     must set `skip_specs: true` in its .openspec.yaml - openspec validate rejects\n     a zero-delta change without that marker. Do not invent a requirement just to\n     satisfy validation. -->\n- `<existing-capability-path>`: <what requirement is changing>\n\n## Impact\n\n<!-- Affected code, APIs, dependencies, systems -->\n",
+  "dependencies": [],
+  "unlocks": [
+    "specs",
+    "design"
+  ],
+  "root": {
+    "path": "/fixture/demo-project",
+    "source": "nearest"
+  }
+}

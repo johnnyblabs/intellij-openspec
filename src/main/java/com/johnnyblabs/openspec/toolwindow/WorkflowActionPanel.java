@@ -684,6 +684,11 @@ public class WorkflowActionPanel extends JPanel {
         return lastPrompt;
     }
 
+    /** Clicks Generate for the next ready artifact, for tests. */
+    void generateNextForTest() {
+        onGenerate();
+    }
+
     private DeliveryMode getSelectedDeliveryMode() {
         if (deliveryModeForTest != null) return deliveryModeForTest;
         String selected = (String) toolSelector.getSelectedItem();
@@ -1988,17 +1993,7 @@ public class WorkflowActionPanel extends JPanel {
 
                         if (onRefreshRequested != null) onRefreshRequested.run();
 
-                        ApplicationManager.getApplication().executeOnPooledThread(() -> {
-                            refreshForChangeOnPool(finalChangeName);
-                            ApplicationManager.getApplication().invokeLater(() -> {
-                                DeliveryMode mode = getSelectedDeliveryMode();
-                                if (mode == DeliveryMode.DIRECT_API) {
-                                    onGenerateAll();
-                                } else {
-                                    onGenerate();
-                                }
-                            });
-                        });
+                        startFastForwardGeneration(finalChangeName, description);
                     });
                 } catch (com.johnnyblabs.openspec.util.CliRunner.CliException e) {
                     ApplicationManager.getApplication().invokeLater(() -> {
@@ -2011,6 +2006,25 @@ public class WorkflowActionPanel extends JPanel {
                     });
                 }
             }
+        });
+    }
+
+    /**
+     * The generation a Fast-Forward run starts once its change exists: Generate All over Direct API, otherwise the
+     * first ready artifact through the selected delivery mode. The user's {@code description} goes into those prompts
+     * as the request, as OpenSpec's ff workflow uses it; it isn't kept, so later generations don't carry it.
+     */
+    void startFastForwardGeneration(String changeName, String description) {
+        ApplicationManager.getApplication().executeOnPooledThread(() -> {
+            refreshForChangeOnPool(changeName);
+            ApplicationManager.getApplication().invokeLater(() -> {
+                DeliveryMode mode = getSelectedDeliveryMode();
+                if (mode == DeliveryMode.DIRECT_API) {
+                    onGenerateAll(description);
+                } else if (activeChangeName != null && nextArtifactId != null) {
+                    executeGeneration(mode, "", false, description);
+                }
+            });
         });
     }
 
@@ -2175,6 +2189,11 @@ public class WorkflowActionPanel extends JPanel {
      * added to this run's prompt only. A Direct API {@code regenerate} is reviewed before anything is written.
      */
     private void executeGeneration(DeliveryMode mode, String note, boolean regenerate) {
+        executeGeneration(mode, note, regenerate, null);
+    }
+
+    /** {@link #executeGeneration(DeliveryMode, String, boolean)} with a Fast-Forward request (null for none). */
+    private void executeGeneration(DeliveryMode mode, String note, boolean regenerate, @Nullable String request) {
         if (activeChangeName == null || nextArtifactId == null) return;
 
         String changeName = activeChangeName;
@@ -2207,7 +2226,7 @@ public class WorkflowActionPanel extends JPanel {
                 try {
                     ArtifactOrchestrationService orchestration = project.getService(ArtifactOrchestrationService.class);
                     ArtifactInstruction instruction = orchestration.getInstruction(changeName, artifactId);
-                    String prompt = instruction.buildPrompt(note);
+                    String prompt = instruction.buildPrompt(request, note);
 
                     lastPrompt = prompt;
                     lastOutputPath = instruction.outputPath();
@@ -2262,7 +2281,7 @@ public class WorkflowActionPanel extends JPanel {
                         });
                         case DIRECT_API -> {
                             DirectApiService apiService = project.getService(DirectApiService.class);
-                            String result = apiService.generateRaw(instruction.buildDirectApiPrompt(note));
+                            String result = apiService.generateRaw(instruction.buildDirectApiPrompt(request, note));
                             // Honor cancellation: the blocking HTTP call isn't interruptible, but a
                             // cancelled run must not write the artifact or show a success notification.
                             if (indicator.isCanceled()) return;
@@ -2558,6 +2577,11 @@ public class WorkflowActionPanel extends JPanel {
     // --- Generate All ---
 
     private void onGenerateAll() {
+        onGenerateAll(null);
+    }
+
+    /** Generate All, with a Fast-Forward request for every artifact in the run (null for none). */
+    private void onGenerateAll(@Nullable String request) {
         if (activeChangeName == null) return;
 
         String changeName = activeChangeName;
@@ -2700,7 +2724,7 @@ public class WorkflowActionPanel extends JPanel {
         ApplicationManager.getApplication().executeOnPooledThread(() -> {
             ArtifactOrchestrationService orchestration = project.getService(ArtifactOrchestrationService.class);
             DirectApiService apiService = project.getService(DirectApiService.class);
-            orchestration.generateAllRemaining(changeName, apiService, listener);
+            orchestration.generateAllRemaining(changeName, apiService, listener, request);
         });
     }
 

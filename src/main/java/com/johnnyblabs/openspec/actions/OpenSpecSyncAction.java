@@ -20,8 +20,9 @@ import java.util.List;
 
 public class OpenSpecSyncAction extends OpenSpecBaseAction {
 
-    // No getWorkflowId() override — sync is a view/diff utility (like Validate, List, Refresh)
-    // and not appropriate to gate by workflow profile. See profile-ui-cli-alignment design D1.
+    // No getWorkflowId() override. Sync Specs is the plugin's built-in merge: it previews the change's deltas and,
+    // once confirmed, writes them into the main specs as OpenSpec's archive would. It runs without the CLI or an
+    // agent, so it isn't gated on the agent's sync workflow. See profile-ui-cli-alignment design D1.
 
     @Override
     public void actionPerformed(@NotNull AnActionEvent e) {

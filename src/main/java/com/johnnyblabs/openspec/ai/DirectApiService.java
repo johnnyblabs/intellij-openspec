@@ -78,6 +78,14 @@ public final class DirectApiService {
      * Generates artifact content using the configured AI provider.
      */
     public String generate(ArtifactInstruction instruction) throws AiApiException {
+        return generate(instruction, null);
+    }
+
+    /**
+     * {@link #generate(ArtifactInstruction)} with the user's Fast-Forward request in the prompt (see
+     * {@link ArtifactInstruction#REQUEST_HEADING}). A null or blank request sends the same prompt as without one.
+     */
+    public String generate(ArtifactInstruction instruction, @Nullable String request) throws AiApiException {
         AiProvider provider = getProvider();
         if (provider == AiProvider.NONE) {
             throw new AiApiException("No AI provider configured");
@@ -89,7 +97,7 @@ public final class DirectApiService {
         }
 
         String model = getModel(provider);
-        String prompt = instruction.buildDirectApiPrompt();
+        String prompt = instruction.buildDirectApiPrompt(request, null);
 
         return switch (provider) {
             case CLAUDE -> callClaude(apiKey, model, prompt, requestSettings());
