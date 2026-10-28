@@ -174,6 +174,36 @@ public class UpdatePreviewServiceTest extends BasePlatformTestCase {
         assertTrue(messages(NotificationType.WARNING).get(0).contains("timed out"));
     }
 
+    // ---------- onFinished: exactly once, whatever the outcome ----------
+
+    private int finishedCount(UpdatePreviewService.UpdateCli cli, UpdatePreviewService.Decider decider,
+                              List<CliRunner.CliResult> applied) {
+        service.setSeamsForTest(cli, decider);
+        int[] finished = {0};
+        service.previewAndApply(UpdatePreviewService.Origin.MANAGE_TOOLS, null, r -> {
+            assertEquals("onApplied runs before onFinished", 0, finished[0]);
+            applied.add(r);
+        }, () -> finished[0]++);
+        return finished[0];
+    }
+
+    public void testOnFinishedRunsOnceForEveryOutcome() {
+        List<CliRunner.CliResult> applied = new ArrayList<>();
+        assertEquals("nothing to update", 1, finishedCount(cli(captured("up-to-date"), null, null), NEVER, applied));
+        assertEquals("dry run failed", 1, finishedCount(cli(captured("no-openspec-dir"), null, null), NEVER, applied));
+        assertEquals("cancelled", 1, finishedCount(cli(captured("windsurf-move"), null, null), model -> false, applied));
+        assertTrue(applied.isEmpty());
+
+        assertEquals("applied", 1, finishedCount(cli(captured("windsurf-move"), OK, null), model -> true, applied));
+        assertEquals(List.of(OK), applied);
+
+        UpdatePreviewService.UpdateCli applyCannotRun = (project, env, args) -> {
+            if (List.of(args).equals(DRY)) return captured("windsurf-move");
+            throw new CliRunner.CliException("OpenSpec CLI command timed out after 30s");
+        };
+        assertEquals("apply could not run", 1, finishedCount(applyCannotRun, model -> true, new ArrayList<>()));
+    }
+
     // ---------- A plan: Apply runs once, Cancel runs nothing more ----------
 
     public void testApplyRunsThePlainUpdateExactlyOnceNonInteractively() {

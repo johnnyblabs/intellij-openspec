@@ -935,4 +935,169 @@ class CliDetectionServiceTest {
         svc.applyLoginShellPath(ownPath);
         assertEquals("/home/me/.nvm/bin:/usr/bin", ownPath.getEnvironment().get("PATH"), "nothing missing, unchanged");
     }
+
+    // --- Capture: a background child holding the shell's output must not hang detection ---
+
+    private static boolean posix() {
+        return !System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT).startsWith("windows")
+                && new java.io.File("/bin/sh").canExecute();
+    }
+
+    @Test
+    void captureReturnsTheOutputWhileABackgroundChildStillHoldsIt() throws Exception {
+        org.junit.jupiter.api.Assumptions.assumeTrue(posix(), "needs /bin/sh");
+        java.nio.file.Path pidFile = java.nio.file.Files.createTempFile("detect-child", ".pid");
+        try {
+            // The child inherits stdout and outlives the shell, as an agent or tmux server started from ~/.zshrc does.
+            // With a pipe, the read would wait for the child (30 s); the hard timeout fails such a regression fast.
+            GeneralCommandLine cmd = new GeneralCommandLine("/bin/sh", "-c",
+                    "printf 'ready'; sleep 30 & echo $! > '" + pidFile + "'");
+            long start = System.nanoTime();
+
+            String out = assertTimeoutPreemptively(Duration.ofSeconds(8),
+                    () -> CliDetectionService.runAndCapture(cmd, 10_000));
+
+            long elapsedMs = (System.nanoTime() - start) / 1_000_000;
+            assertEquals("ready", out);
+            assertTrue(elapsedMs < 3_000, "returned once the shell exited, not when the child did: " + elapsedMs + " ms");
+        } finally {
+            String pid = java.nio.file.Files.readString(pidFile).strip();
+            if (!pid.isEmpty()) ProcessHandle.of(Long.parseLong(pid)).ifPresent(ProcessHandle::destroyForcibly);
+            java.nio.file.Files.deleteIfExists(pidFile);
+        }
+    }
+
+    @Test
+    void aLotOfStderrDoesNotBlockTheCapture() throws Exception {
+        org.junit.jupiter.api.Assumptions.assumeTrue(posix(), "needs /bin/sh");
+        // More than a pipe buffer on stderr: an unread stderr pipe would block the process until the timeout.
+        GeneralCommandLine cmd = new GeneralCommandLine("/bin/sh", "-c", "printf x; head -c 300000 /dev/zero >&2");
+        assertEquals("x", assertTimeoutPreemptively(Duration.ofSeconds(8),
+                () -> CliDetectionService.runAndCapture(cmd, 10_000)));
+    }
+
+    @Test
+    void captureReturnsNullOnFailureAndOnTimeout() throws Exception {
+        org.junit.jupiter.api.Assumptions.assumeTrue(posix(), "needs /bin/sh");
+        assertNull(CliDetectionService.runAndCapture(new GeneralCommandLine("/bin/sh", "-c", "printf x; exit 3"), 10_000));
+        long start = System.nanoTime();
+        assertNull(CliDetectionService.runAndCapture(new GeneralCommandLine("/bin/sh", "-c", "sleep 30"), 300));
+        assertTrue((System.nanoTime() - start) / 1_000_000 < 5_000, "the timeout bounds the wait");
+    }
+
+    @Test
+    void captureKeepsTheCommandsInputFileAndLeavesNoTemporaryFile() throws Exception {
+        org.junit.jupiter.api.Assumptions.assumeTrue(posix(), "needs /bin/sh");
+        java.nio.file.Path input = java.nio.file.Files.createTempFile("detect-in", ".txt");
+        java.nio.file.Path tmp = java.nio.file.Path.of(System.getProperty("java.io.tmpdir"));
+        try {
+            java.nio.file.Files.writeString(input, "from-input");
+            long before = countCaptureFiles(tmp);
+            GeneralCommandLine cmd = new GeneralCommandLine("/bin/sh", "-c", "cat").withInput(input.toFile());
+
+            assertEquals("from-input", CliDetectionService.runAndCapture(cmd, 10_000));
+            assertEquals(before, countCaptureFiles(tmp), "the capture file is deleted");
+        } finally {
+            java.nio.file.Files.deleteIfExists(input);
+        }
+    }
+
+    private static long countCaptureFiles(java.nio.file.Path dir) throws java.io.IOException {
+        try (var files = java.nio.file.Files.list(dir)) {
+            return files.filter(f -> f.getFileName().toString().startsWith("openspec-detect")).count();
+        }
+    }
+
+    // --- The login-shell PATH is reused ---
+
+    private CliDetectionService countingShell(List<Integer> shellCalls, Instant[] now) {
+        CliDetectionService svc = hermetic();
+        svc.setIsWindowsForTest(false);
+        svc.setEnvForTest(name -> name.equals("SHELL") ? "/bin/zsh" : null);
+        svc.setUserHomeForTest(null);
+        svc.setClockForTest(() -> now[0]);
+        svc.setProcessRunnerForTest(cmd -> {
+            if (cmd.getParametersList().getList().contains(CliDetectionService.PRINT_PATH)) {
+                shellCalls.add(1);
+                return CliDetectionService.PATH_BEGIN + "/usr/bin:/shell" + shellCalls.size() + "/bin"
+                        + CliDetectionService.PATH_END;
+            }
+            return null;
+        });
+        svc.setExecutableCheckForTest(path -> false);
+        return svc;
+    }
+
+    @Test
+    void theShellPathIsReusedUntilItExpires() {
+        List<Integer> shells = new ArrayList<>();
+        Instant[] now = {Instant.parse("2026-10-27T10:00:00Z")};
+        CliDetectionService svc = countingShell(shells, now);
+
+        svc.detect();
+        now[0] = now[0].plus(CliDetectionService.SHELL_PATH_TTL).minusSeconds(1);
+        svc.detect();
+        assertEquals(1, shells.size(), "a second detection inside the window starts no shell");
+        assertEquals("/usr/bin:/shell1/bin", svc.getLoginShellPath());
+
+        now[0] = now[0].plusSeconds(1);
+        svc.detect();
+        assertEquals(2, shells.size(), "an expired PATH is resolved again");
+        assertEquals("/usr/bin:/shell2/bin", svc.getLoginShellPath());
+    }
+
+    @Test
+    void aFreshDetectionAlwaysStartsTheShell() {
+        List<Integer> shells = new ArrayList<>();
+        Instant[] now = {Instant.parse("2026-10-27T10:00:00Z")};
+        CliDetectionService svc = countingShell(shells, now);
+
+        svc.detect();
+        svc.detect(true);
+
+        assertEquals(2, shells.size());
+        assertEquals("/usr/bin:/shell2/bin", svc.getLoginShellPath());
+    }
+
+    @Test
+    void aShellThatFailsTheFirstTimeIsNotRetriedOnEveryDetection() {
+        List<Integer> shells = new ArrayList<>();
+        Instant[] now = {Instant.parse("2026-10-27T10:00:00Z")};
+        CliDetectionService svc = countingShell(shells, now);
+        svc.setProcessRunnerForTest(cmd -> {
+            if (cmd.getParametersList().getList().contains(CliDetectionService.PRINT_PATH)) {
+                shells.add(1);
+                return null;
+            }
+            return null;
+        });
+
+        svc.detect();
+        svc.detect();
+
+        assertEquals(1, shells.size(), "a broken rc file costs one shell per window, not one per detection");
+        assertNull(svc.getLoginShellPath());
+    }
+
+    @Test
+    void aFailedShellKeepsThePreviousPathAndIsNotRetriedAtOnce() {
+        List<Integer> shells = new ArrayList<>();
+        Instant[] now = {Instant.parse("2026-10-27T10:00:00Z")};
+        CliDetectionService svc = countingShell(shells, now);
+        svc.detect();
+        svc.setProcessRunnerForTest(cmd -> {
+            if (cmd.getParametersList().getList().contains(CliDetectionService.PRINT_PATH)) {
+                shells.add(1);
+                return "no markers";
+            }
+            return null;
+        });
+
+        now[0] = now[0].plus(CliDetectionService.SHELL_PATH_TTL);
+        svc.detect();
+        svc.detect();
+
+        assertEquals(2, shells.size(), "the failed resolution counts as a try");
+        assertEquals("/usr/bin:/shell1/bin", svc.getLoginShellPath(), "the previous PATH is kept");
+    }
 }

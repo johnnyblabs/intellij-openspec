@@ -509,6 +509,8 @@ The plugin uses the first copy it finds, in this order:
 
 Every command the plugin runs keeps the IDE's PATH and gains any of your shell's PATH entries it lacks, so a CLI that needs `node` from a version manager starts too.
 
+Starting an interactive shell can take a few seconds, so the plugin reads your shell's PATH once and reuses it for 10 minutes. After changing your shell setup, press **Detect** in **Settings > Tools > OpenSpec** to read it again. A program your `~/.zshrc` starts in the background, such as an agent or a tmux server, can't hold detection up.
+
 With more than one copy, the plugin normally picks the one your terminal runs, because it looks on the same PATH first. On Windows, an IDE that's already open doesn't see PATH changes until it restarts, so after installing the standalone CLI next to an npm copy, restart the IDE or the plugin keeps using the npm copy. Even so, keep one copy, and upgrade it the way you installed it: re-run the installer (or `openspec install`), `npm install -g @fission-ai/openspec@latest`, or `brew upgrade openspec`. To pin a copy, set its full path in **Settings > Tools > OpenSpec > CLI path**.
 
 The **Update** action runs `openspec update` (on CLI 1.15+, after showing you the [preview](#update-preview)). That refreshes your project's generated instruction files (skills and commands) to match the CLI you have; it doesn't upgrade the CLI itself.

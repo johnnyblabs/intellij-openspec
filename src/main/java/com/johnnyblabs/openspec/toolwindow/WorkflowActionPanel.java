@@ -1292,7 +1292,8 @@ public class WorkflowActionPanel extends JPanel {
         String changeDir = activeChangeDirPath();
         String relative = historyRelativePath(artifact.outputPath());
         if (changeDir == null || relative == null) return null;
-        VirtualFile target = LocalFileSystem.getInstance().refreshAndFindFileByPath(changeDir + "/" + relative);
+        // A plain find: this runs on the EDT each time the menu opens, and a done artifact is already in the VFS.
+        VirtualFile target = LocalFileSystem.getInstance().findFileByPath(changeDir + "/" + relative);
         return ArtifactLocalHistory.isTracked(target) ? target : null;
     }
 
@@ -2360,7 +2361,8 @@ public class WorkflowActionPanel extends JPanel {
         com.intellij.diff.DiffContentFactory factory = com.intellij.diff.DiffContentFactory.getInstance();
         List<com.intellij.diff.requests.SimpleDiffRequest> requests = new java.util.ArrayList<>();
         for (ArtifactOrchestrationService.PlannedWrite write : replaced) {
-            VirtualFile file = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(write.path());
+            // A plain find on the EDT: the plugin just wrote these files through the VFS.
+            VirtualFile file = LocalFileSystem.getInstance().findFileByNioFile(write.path());
             if (file == null) continue;
             requests.add(new com.intellij.diff.requests.SimpleDiffRequest(
                     file.getName() + ": before regenerating vs now",

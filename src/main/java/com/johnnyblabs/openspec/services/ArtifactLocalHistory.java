@@ -9,6 +9,7 @@ import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.Computable;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -61,7 +62,9 @@ public final class ArtifactLocalHistory {
         Runnable save = () -> saveUnsaved(paths);
         if (app.isDispatchThread()) {
             save.run();
-        } else {
+        } else if (app.runReadAction((Computable<Boolean>) () -> anyUnsaved(paths))) {
+            // Hop only when there is something to save: from a background thread the hop waits for any open modal
+            // dialog to close, and writes of new files (Generate All, Fast-Forward, Continue) never need it.
             app.invokeAndWait(save);
         }
         try {
@@ -72,6 +75,16 @@ public final class ArtifactLocalHistory {
             // The label is a convenience beside the write, never a condition for it.
             LOG.warn("Could not put Local History label '" + labelName + "'", e);
         }
+    }
+
+    private static boolean anyUnsaved(List<Path> paths) {
+        FileDocumentManager documents = FileDocumentManager.getInstance();
+        for (Path path : paths) {
+            VirtualFile file = LocalFileSystem.getInstance().findFileByNioFile(path);
+            Document document = file == null ? null : documents.getCachedDocument(file);
+            if (document != null && documents.isDocumentUnsaved(document)) return true;
+        }
+        return false;
     }
 
     private static void saveUnsaved(List<Path> paths) {

@@ -112,14 +112,30 @@ public record ArtifactInstruction(
      * existing files are already in the multi-file block. A null or blank note returns {@link #buildDirectApiPrompt()}
      * unchanged.
      */
+    /**
+     * A backtick fence that {@code content} can't close: one longer than its longest run of backticks, and at least
+     * three. Under CommonMark a fence of N backticks ends only at a run of N or more, so code blocks inside the
+     * artifact stay inside the quoted current version.
+     */
+    static String fenceFor(String content) {
+        int longest = 0;
+        int run = 0;
+        for (int i = 0; i < content.length(); i++) {
+            run = content.charAt(i) == '`' ? run + 1 : 0;
+            longest = Math.max(longest, run);
+        }
+        return "`".repeat(Math.max(3, longest + 1));
+    }
+
     public String buildDirectApiPrompt(@Nullable String note) {
         String trimmed = trimNote(note);
         StringBuilder prompt = new StringBuilder(buildPrompt());
         if (!trimmed.isEmpty() && !isGlobPath(outputPath) && changeDir != null && outputPath != null) {
             String current = readDependencyContent(changeDir, outputPath);
             if (current != null) {
-                prompt.append("\n\n---\n\n").append(CURRENT_VERSION_HEADING).append("\n\n```\n")
-                        .append(current).append("\n```\n");
+                String fence = fenceFor(current);
+                prompt.append("\n\n---\n\n").append(CURRENT_VERSION_HEADING).append("\n\n").append(fence).append("\n")
+                        .append(current).append("\n").append(fence).append("\n");
             }
         }
         if (!trimmed.isEmpty()) {

@@ -32,7 +32,7 @@ public class ToolWindowCliStatusStartupTest extends OpenSpecIntegrationTestBase 
         ServiceContainerUtil.replaceService(getProject(), CliDetectionService.class, detection, getTestRootDisposable());
 
         // Startup detection begins (as the post-startup activity does) and is held at its first probe.
-        Future<?> startup = ApplicationManager.getApplication().executeOnPooledThread(detection::detect);
+        Future<?> startup = ApplicationManager.getApplication().executeOnPooledThread(() -> detection.detect());
         assertTrue(probing.await(10, TimeUnit.SECONDS));
 
         OpenSpecToolWindowPanel panel = new OpenSpecToolWindowPanel(getProject());

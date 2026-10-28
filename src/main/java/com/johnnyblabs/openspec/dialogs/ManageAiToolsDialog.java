@@ -302,20 +302,43 @@ public class ManageAiToolsDialog extends DialogWrapper {
             return;
         }
         String title = "Updating " + tool.name();
-        preview.previewAndApply(com.johnnyblabs.openspec.services.UpdatePreviewService.Origin.MANAGE_TOOLS, tool.cliId(),
+        previewWithBusyButton(preview, tool.cliId(), sourceButton, () -> isDisposed() || project.isDisposed(), result -> {
+            if (result.isSuccess()) {
+                String basePath = project.getBasePath();
+                VirtualFile projectDir = basePath != null
+                        ? LocalFileSystem.getInstance().findFileByPath(basePath) : null;
+                refreshThenPost(projectDir, dialogModality, ignored -> isDisposed() || project.isDisposed(), () -> {
+                    loadTools();
+                    OpenSpecNotifier.info(project, "AI Tools", title + " — done");
+                });
+            } else {
+                OpenSpecNotifier.warn(project, "AI Tools", title + " failed: " + result.stderr().trim());
+            }
+        });
+    }
+
+    /**
+     * Runs the update preview with {@code button} busy until the preview finishes, whatever its outcome, so a second
+     * click can't start another preview. After a successful apply the caller's reload rebuilds the row; until then, and
+     * on every other outcome, the button is usable again, reading "Retry" after a failed apply. Package-private for tests.
+     */
+    static void previewWithBusyButton(com.johnnyblabs.openspec.services.UpdatePreviewService preview,
+                                      @Nullable String focusTool, JButton button, java.util.function.BooleanSupplier gone,
+                                      java.util.function.Consumer<CliRunner.CliResult> onApplied) {
+        String idleText = button.getText();
+        boolean[] applyFailed = {false};
+        button.setEnabled(false);
+        button.setText("...");
+        preview.previewAndApply(com.johnnyblabs.openspec.services.UpdatePreviewService.Origin.MANAGE_TOOLS, focusTool,
                 result -> {
-                    if (isDisposed() || project.isDisposed()) return;
-                    if (result.isSuccess()) {
-                        String basePath = project.getBasePath();
-                        VirtualFile projectDir = basePath != null
-                                ? LocalFileSystem.getInstance().findFileByPath(basePath) : null;
-                        refreshThenPost(projectDir, dialogModality, ignored -> isDisposed() || project.isDisposed(), () -> {
-                            loadTools();
-                            OpenSpecNotifier.info(project, "AI Tools", title + " — done");
-                        });
-                    } else {
-                        OpenSpecNotifier.warn(project, "AI Tools", title + " failed: " + result.stderr().trim());
-                    }
+                    if (gone.getAsBoolean()) return;
+                    applyFailed[0] = !result.isSuccess();
+                    onApplied.accept(result);
+                },
+                () -> {
+                    if (gone.getAsBoolean()) return;
+                    button.setEnabled(true);
+                    button.setText(applyFailed[0] ? "Retry" : idleText);
                 });
     }
 

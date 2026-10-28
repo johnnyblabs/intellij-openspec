@@ -146,7 +146,7 @@ public class OpenSpecSettingsPanel {
         cliPathField.setToolTipText(com.johnnyblabs.openspec.util.CliInstallHints.cliPathTooltip(com.intellij.openapi.util.SystemInfo.isWindows));
 
         JButton detectButton = new JButton("Detect");
-        detectButton.addActionListener(e -> detectCli());
+        detectButton.addActionListener(e -> detectCli(true));
 
         JPanel cliPathRow = new JPanel();
         cliPathRow.setLayout(new BoxLayout(cliPathRow, BoxLayout.X_AXIS));
@@ -291,7 +291,7 @@ public class OpenSpecSettingsPanel {
         // detection (which marks the CLI unavailable until its probe finishes).
         refreshConfigProfileSection();
         updateSchemaSectionVisibility();
-        detectCli();
+        detectCli(false);
     }
 
     /** Headless stand-in for the panel being shown in the Settings dialog (a light test can't show a window). */
@@ -826,7 +826,8 @@ public class OpenSpecSettingsPanel {
 
     // --- CLI detection ---
 
-    private void detectCli() {
+    /** Detects the CLI off the EDT. {@code freshShellPath} when the user pressed Detect: read the shell's PATH again. */
+    private void detectCli(boolean freshShellPath) {
         CliDetectionService detection = project.getService(CliDetectionService.class);
         if (detection == null) return;
 
@@ -836,7 +837,7 @@ public class OpenSpecSettingsPanel {
                 com.intellij.openapi.application.ModalityState.stateForComponent(mainPanel);
         com.intellij.openapi.application.ApplicationManager.getApplication().executeOnPooledThread(() -> {
             try {
-                detection.detect();
+                detection.detect(freshShellPath);
                 com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater(() -> {
                     if (detection.isAvailable()) {
                         cliPathField.setText(detection.getDetectedPath());
