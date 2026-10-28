@@ -14,8 +14,8 @@ The OpenSpec tool window (right sidebar, or **View > Tool Windows > OpenSpec**) 
 
 | Tab | Purpose |
 |-----|---------|
-| **Browse** | Changes-focused master/detail view: a tree of your changes (each with per-artifact status) beside a read-only rendered-markdown preview pane dedicated to change surfaces. Single-click to preview, double-click to open the file, right-click for context menu actions. Specs, archived changes, and `openspec/config.yaml` browse in the standard Project View and open in the editor; spec content search is via Search Everywhere. |
-| **Explore** | *(Only when Direct API is configured)* Thinking-space panel with inline topic input, markdown-rendered AI responses, and Copy/Clear toolbar. Appears automatically, right after Browse, when you configure a Direct API provider in Settings. |
+| **Browse** | Changes-focused master/detail view: a tree of your changes (each with per-artifact status) beside the read-only **Change Deltas** pane, which shows what the selected change will add, modify or remove in your specs (see [Change Deltas Pane](#change-deltas-pane-masterdetail)). Single-click to preview, double-click to open the file, right-click for context menu actions. Specs, archived changes, and `openspec/config.yaml` browse in the standard Project View and open in the editor; spec content search is via Search Everywhere. |
+| **Explore** | *(Only when Direct API is configured)* Thinking-space panel with inline topic input, markdown-rendered AI responses, and Copy/Clear toolbar. Appears automatically, right after Browse, when you configure a Direct API provider in Settings. It shows which explore instructions file it used. When Explore isn't in your workflow profile, Send says so instead of sending; if no provider is configured any more, the tab says the prompt was copied, and the input stays usable. |
 | **Console** | Output panel for CLI commands (init, validate, update, etc.). |
 | **Coordination** | *(Only when OpenSpec 1.4 coordination state or a coordination mode is detected)* Lists workspaces, context stores, and initiatives. See [Coordination Tab](#coordination-tab) below. |
 
@@ -245,7 +245,7 @@ The plugin stores no history of its own. Local History is the IDE's, follows its
 | **Archive** | OpenSpec > Archive | Archive a completed change: with OpenSpec CLI 1.5+ through `openspec archive` (its validation, rules and messages; "Archive Without Syncing" adds `--skip-specs`), otherwise by the plugin, which applies the delta specs and moves the change to `openspec/changes/archive/YYYY-MM-DD-<name>/` (refused if that folder exists). Runs in the background; a refusal shows the reason and leaves the change active. |
 | **Bulk Archive** | OpenSpec > Bulk Archive... | Archive multiple completed changes at once with conflict detection, one `openspec archive` call per change with CLI 1.5+. A change OpenSpec would refuse is marked Blocked (or Failed with the CLI's reason) and left untouched. |
 | **Sync Specs** | OpenSpec > Sync Specs | Merge delta specs from a completed change into main specs at `openspec/specs/`, by the same rules as `openspec archive`: fenced examples are left alone, names match exactly, and a change OpenSpec would refuse is refused with its reason in the preview, with nothing written. A new capability starts with `# <name> Specification` and OpenSpec's "TBD - created by archiving change …" Purpose, or the delta's own Purpose when it has one. Shows preview dialog. |
-| **Update** | OpenSpec > Update OpenSpec… | Run `openspec update` to refresh agent instruction files. Requires CLI. **On CLI 1.15 or later, Update first shows what it will change** (see [Update preview](#update-preview)) and runs only when you click **Apply**. When the CLI reports leftover legacy files from its skills migration (it exits 0 but asks for `--force` or an interactive run — neither reachable from the console), the plugin raises a **Review legacy cleanup** notice instead of bare success: every CLI-listed file appears with a checkbox and an open-to-inspect link (the review quotes what the CLI said and starts with no files ticked, since OpenSpec warns to back up custom content first), removal happens through the IDE as a single undoable step (Local History covers it), and a follow-up `openspec update` verifies the result (if that run fails, the plugin says the cleanup couldn't be verified rather than reporting a clean state). If that verification shows the CLI *regenerated* the files (a known inconsistency in some CLI versions' tool integrations), the plugin says so plainly and stops re-nagging until the CLI reports something different. Escape hatches: run interactively in the terminal, or **Not now** (no re-nag while the pending set is unchanged). **The plugin never runs `openspec update --force` on your behalf.** |
+| **Update OpenSpec…** | OpenSpec > Update OpenSpec… | Run `openspec update` to refresh the skills and commands OpenSpec generated for your AI tools. Requires CLI. **On CLI 1.15 or later, it first shows what it will change** (see [Update preview](#update-preview)) and runs only when you click **Apply**. When the CLI reports leftover legacy files from its skills migration (it exits 0 but asks for `--force` or an interactive run — neither reachable from the console), the plugin raises a **Review legacy cleanup** notice instead of bare success: every CLI-listed file appears with a checkbox and an open-to-inspect link (the review quotes what the CLI said and starts with no files ticked, since OpenSpec warns to back up custom content first), removal happens through the IDE as a single undoable step (Local History covers it), and a follow-up `openspec update` verifies the result (if that run fails, the plugin says the cleanup couldn't be verified rather than reporting a clean state). If that verification shows the CLI *regenerated* the files (a known inconsistency in some CLI versions' tool integrations), the plugin says so plainly and stops re-nagging until the CLI reports something different. Escape hatches: run interactively in the terminal (the command is copied to the clipboard instead if the Terminal plugin is disabled), or **Not now** (no re-nag while the pending set is unchanged). **The plugin never runs `openspec update --force` on your behalf.** |
 | **Manage AI Tools** | OpenSpec > Manage AI Tools... | Set up AI coding agents (Claude Code, Cursor, Copilot…): OpenSpec writes their `/opsx` commands into the project, and the plugin copies prompts for them. Adding or configuring a tool says what it did and, without Direct API, offers **Set up Direct API…** for generating inside the IDE instead. |
 | **List** | OpenSpec > List | List all specs and changes. |
 | **Refresh Tree** | OpenSpec > Refresh Tree | Manually refresh the tool window tree. |
@@ -265,9 +265,11 @@ The plugin works out the active workflows the way the OpenSpec CLI does, so it e
 
 Workflow-bound actions are enabled when their workflow is active: Propose, Explore, Revise Change (the `update` workflow), Apply, Archive, Fast-Forward, Continue, Verify and Bulk Archive.
 
-Utility actions (Init, Validate, List, Refresh, Update, Manage AI Tools, Setup Wizard, Settings) are always enabled regardless of profile.
+Utility actions (Init, Validate, List, Refresh, Update OpenSpec…, Manage AI Tools, Setup Wizard, Settings) are always enabled regardless of profile.
 
 The profile is configured globally via `openspec config profile` or in **Settings → Tools → OpenSpec**. After changing the profile, action enablement updates immediately.
+
+**Customize workflows…** (in **Settings → Tools → OpenSpec**, beside the profile) opens the CLI's interactive workflow picker, `openspec config profile`, in a Terminal tab. If the Terminal plugin is disabled, the command is copied to the clipboard instead.
 
 ### Scaffolding Detection
 
@@ -291,7 +293,7 @@ Copying for an agent and Direct API are separate: an agent like Claude Code (set
 
 ### AI Tool Detection
 
-The plugin knows every AI tool the OpenSpec CLI can set up (**50 tools** as of OpenSpec 1.14) and detects them the way the CLI does, using the same names as OpenSpec's tool picker. A representative subset is shown below:
+The plugin knows every AI tool the OpenSpec CLI can set up (**50 tools** as of OpenSpec 1.15) and detects them the way the CLI does, using the same names as OpenSpec's tool picker. A representative subset is shown below:
 
 | Detected from | Tool | Type |
 |---------------|------|------|
@@ -415,7 +417,7 @@ you return to the IDE, without reopening the project. Re-checks happen at most o
 | Setting | Purpose |
 |---------|---------|
 | **Schema profile** | Workflow profile: `spec-driven`, `tdd`, `rapid`, or custom. |
-| **Auto-refresh** | Automatically refresh the tree when OpenSpec files change on disk. |
+| **Auto-refresh** | Automatically refresh the tree when OpenSpec files change on disk. A refresh keeps your selected node, expanded changes and preview. |
 
 ### Config Profile
 
@@ -482,11 +484,11 @@ The plan isn't saved anywhere: each Update asks the CLI again.
 
 ### "CLI: not found" in the status bar
 
-The plugin works without the CLI, but some features (schema management, CLI-enhanced validation, Update action) require it.
+The plugin works without the CLI, but some features (schema management, CLI-enhanced validation, **Update OpenSpec…**) require it.
 
 1. Install it with OpenSpec's standalone installer, which needs no Node.js (`curl -fsSL https://raw.githubusercontent.com/Fission-AI/OpenSpec/main/scripts/binary/install.sh | sh` on macOS and Linux, `irm https://raw.githubusercontent.com/Fission-AI/OpenSpec/main/scripts/binary/install.ps1 | iex` on Windows), or with `npm install -g @fission-ai/openspec@latest` or `brew install openspec`. See [OpenSpec's installation page](https://openspec.dev/docs/installation)
 2. If installed but not detected: **Settings > Tools > OpenSpec > Detect**, or set the path manually
-3. On macOS, GUI apps don't inherit your terminal's PATH — the plugin reads the PATH your interactive login shell sets (`~/.zshrc` included) and tries Homebrew paths (including Homebrew on Linux), `/usr/local/bin`, and `~/.local/bin` (where OpenSpec's standalone installer puts it) automatically. On Windows it also checks `%LOCALAPPDATA%\Programs\openspec\openspec.exe`. If you installed the standalone binary with `OPENSPEC_INSTALL_DIR`, the plugin checks that folder only when the IDE's environment carries the variable; otherwise set the path manually
+3. On macOS and Linux, an IDE opened from the Dock or a launcher may not inherit your terminal's PATH. The plugin uses the PATH the IDE loaded from your shell, reads your interactive shell's PATH (`~/.zshrc` or `~/.bashrc`) as a fallback, and tries Homebrew paths (including Homebrew on Linux), `/usr/local/bin`, and `~/.local/bin` (where OpenSpec's standalone installer puts it) automatically. On Windows it also checks `%LOCALAPPDATA%\Programs\openspec\openspec.exe`. If you installed the standalone binary with `OPENSPEC_INSTALL_DIR`, the plugin checks that folder only when the IDE's environment carries the variable; otherwise set the path manually
 4. Just installed or upgraded the CLI? Switch away from the IDE and back (after 30 seconds) and the status updates on its own
 5. If the tool window shows "CLI: detecting…", detection is still running; it updates on its own when it finishes
 
@@ -513,7 +515,7 @@ Starting an interactive shell can take a few seconds, so the plugin reads your s
 
 With more than one copy, the plugin normally picks the one your terminal runs, because it looks on the same PATH first. On Windows, an IDE that's already open doesn't see PATH changes until it restarts, so after installing the standalone CLI next to an npm copy, restart the IDE or the plugin keeps using the npm copy. Even so, keep one copy, and upgrade it the way you installed it: re-run the installer (or `openspec install`), `npm install -g @fission-ai/openspec@latest`, or `brew upgrade openspec`. To pin a copy, set its full path in **Settings > Tools > OpenSpec > CLI path**.
 
-The **Update** action runs `openspec update` (on CLI 1.15+, after showing you the [preview](#update-preview)). That refreshes your project's generated instruction files (skills and commands) to match the CLI you have; it doesn't upgrade the CLI itself.
+The **Update OpenSpec…** action runs `openspec update` (on CLI 1.15+, after showing you the [preview](#update-preview)). That refreshes your project's generated instruction files (skills and commands) to match the CLI you have; it doesn't upgrade the CLI itself.
 
 ### "Fast-Forward", "Continue", or other actions are grayed out
 

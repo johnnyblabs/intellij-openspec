@@ -33,8 +33,9 @@ A comprehensive comparison of the OpenSpec IntelliJ plugin against known VS Code
 | Verify (check completeness) | Yes (report dialog) | No | No | No | No |
 | Sync delta specs to main specs | Yes (preview dialog) | No | No | No | No |
 | Bulk archive (multi-change) | Yes (conflict detection) | No | No | No | No |
-| CLI update (refresh agent files) | Yes | No | No | No | No |
-| Explore (project context assembly) | Yes (panel + copy) | No | No | No | No |
+| CLI update (refresh generated skills and commands) | Yes (Update OpenSpec…, previews every planned change on CLI 1.15+) | No | No | No | No |
+| Explore (first step, before a change) | Yes (uses your AI tool's own explore command; panel + copy; per-change Explore) | No | No | No | No |
+| Revise a change's plan (agent's own update workflow) | Yes (Revise Change…; optional note or coherence review) | No | No | No | No |
 | Coordination surface (1.4 workspaces/initiatives; 1.5 stores/worksets) | Yes (Coordination tab: read + write, CLI-version-gated) | No | No | No | No |
 
 ---
@@ -54,6 +55,10 @@ A comprehensive comparison of the OpenSpec IntelliJ plugin against known VS Code
 | Post-generation guidance card | Yes (tool-aware) | No | No | No | No |
 | Next artifact indicator | Yes | No | No | No | No |
 | Unfilled-template flag on done artifacts | Yes ("template" chip, points to Regenerate) | No | No | No | No |
+| Review before overwrite (Direct API regenerate) | Yes (per-file diff, Accept/Reject, one undoable step) | No | No | No | No |
+| Regenerate with a note | Yes (one-off "What should change?") | No | No | No | No |
+| Local History checkpoint per API write | Yes (labelled; Show Local History from the chip) | No | No | No | No |
+| Diff vs current spec from the pipeline | Yes | No | No | No | No |
 
 ---
 
@@ -66,6 +71,7 @@ A comprehensive comparison of the OpenSpec IntelliJ plugin against known VS Code
 | Direct API: Gemini | Yes | No | No | No | No |
 | Secure credential storage (OS keychain) | Yes (PasswordSafe) | No | No | No | No |
 | API connection test | Yes | No | No | No | No |
+| Actionable provider errors | Yes (billing/limit vs retry, request ID) | No | No | No | No |
 | AI tool auto-detection | Yes (all 50 tools OpenSpec supports, detected as the CLI detects them) | No | No | No | No |
 | Tool type classification (CLI/IDE panel) | Yes | No | No | No | No |
 | Tool-aware guidance text | Yes | No | No | No | No |
@@ -87,10 +93,10 @@ A comprehensive comparison of the OpenSpec IntelliJ plugin against known VS Code
 | Archive tree browser | Yes (Project View) | No | No | No | No |
 | Artifact nodes in tree | Yes (with status icons) | No | No | Partial | Yes |
 | Artifact-status badge overlays on tree icons | Yes (done/ready/blocked + X/Y task progress; check mark + "all tasks done" when a change is finished) | No | No | No | No |
-| Change Deltas pane beside the tree (master/detail) | Yes | No | No | No | No |
+| Change Deltas pane beside the tree (master/detail) | Yes (with the CLI's Validate verdict and an archive-operation legend) | No | No | No | No |
 | Consolidated change-deltas view (CLI-sourced) | Yes (grouped by capability/operation, badged) | No | No | No | No |
 | Content search (requirement + scenario text) | Yes (Search Everywhere) | No | No | No | No |
-| Tree auto-refresh on file changes | Yes (file watcher) | No | No | No | Yes |
+| Tree auto-refresh on file changes | Yes (file watcher; keeps selection, expansion and preview) | No | No | No | Yes |
 | Context menu actions on tree nodes | Yes (full action set) | No | No | Partial | No |
 | Workflow Action Panel (below tree) | Yes | No | No | No | No |
 | Change selector (multi-change) | Yes (combo box) | No | No | No | No |
@@ -119,7 +125,7 @@ A comprehensive comparison of the OpenSpec IntelliJ plugin against known VS Code
 | CLI-enhanced validation | Yes (merged results) | No | No | No | No |
 | Config.yaml validation | Yes | No | No | No | No |
 | Delta spec validation | Yes | No | No | No | No |
-| Per-change validation | Yes | No | No | No | No |
+| Per-change validation | Yes (also as a verdict line in the Change Deltas pane) | No | No | No | No |
 | Auto-validation at phase transitions | Yes | No | No | No | No |
 | Strict validation | Yes (per-run "Validate (Strict)" action → `--strict`) | No | No | No | No |
 | Real-time inline validation | Yes (inspections) | No | No | No | No |
@@ -133,7 +139,7 @@ A comprehensive comparison of the OpenSpec IntelliJ plugin against known VS Code
 | Feature | IntelliJ | Codder13 | atman-dev | AngDrew | AvantMedia |
 |---|---|---|---|---|---|
 | Dedicated settings panel | Yes (Settings > Tools) | Minimal | No | No | No |
-| CLI path configuration | Yes (manual + auto-detect) | No | No | No | No |
+| CLI path configuration | Yes (manual + auto-detect, including your shell's PATH and the standalone installer's locations) | No | No | No | No |
 | Profile selection | Yes | No | No | No | No |
 | Auto-refresh toggle | Yes | No | No | No | No |
 | AI provider/model selection | Yes (live model discovery from your account; also switchable from the tool window) | No | No | No | No |
@@ -172,7 +178,9 @@ A comprehensive comparison of the OpenSpec IntelliJ plugin against known VS Code
 - Fast-Forward: one-click change creation + full artifact generation
 - Spec sync: merge delta specs into main specs with preview dialog
 - Bulk archive with conflict detection for multi-change projects
-- Explore panel: assembled project context for AI conversations
+- Explore as the first step: hands your AI tool its own OpenSpec explore command, or assembles full project context (nested capabilities, every artifact) for the Explore tab
+- Revise Change: send your agent back to a change's plan through OpenSpec's own update workflow
+- Direct API regenerations reviewed before they're written, and every API write labelled in Local History
 - Custom schema management: fork, create, and switch workflow schemas
 - Config profile display and workflow management
 - Verify action: completeness and task-progress checking with report dialog
