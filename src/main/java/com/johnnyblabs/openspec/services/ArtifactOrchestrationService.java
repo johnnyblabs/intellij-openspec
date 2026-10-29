@@ -36,6 +36,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
+import org.jetbrains.annotations.Nullable;
+
 @Service(Service.Level.PROJECT)
 public final class ArtifactOrchestrationService {
     private static final Logger LOG = Logger.getInstance(ArtifactOrchestrationService.class);
@@ -277,6 +279,16 @@ public final class ArtifactOrchestrationService {
      */
     public void generateAllRemaining(String changeName, DirectApiService apiService,
                                      GenerateAllListener listener) {
+        generateAllRemaining(changeName, apiService, listener, null);
+    }
+
+    /**
+     * {@link #generateAllRemaining(String, DirectApiService, GenerateAllListener)} for a Fast-Forward run: every
+     * artifact it generates gets the user's {@code request} in its prompt. A null or blank request is a plain run.
+     */
+    public void generateAllRemaining(String changeName, DirectApiService apiService,
+                                     GenerateAllListener listener, @Nullable String request) {
+        boolean requested = request != null && !request.isBlank();
         generateAllCancelled.set(false);
 
         // Count total remaining artifacts
@@ -322,7 +334,8 @@ public final class ArtifactOrchestrationService {
 
             try {
                 ArtifactInstruction instruction = getInstruction(changeName, artifactId);
-                String result = apiService.generate(instruction);
+                // Without a request, the one-argument call, so the plain run is exactly what it was.
+                String result = requested ? apiService.generate(instruction, request) : apiService.generate(instruction);
                 writeArtifactResult(instruction, result);
                 invalidateCache(changeName);
                 listener.onArtifactCompleted(artifactId);

@@ -7,7 +7,9 @@ import com.intellij.openapi.components.Service;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.LocalFileSystem;
+import com.intellij.openapi.vfs.VFileProperty;
 import com.intellij.openapi.vfs.VfsUtil;
+import com.intellij.openapi.vfs.VfsUtilCore;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.johnnyblabs.openspec.model.DeltaSpecOperation;
 import com.johnnyblabs.openspec.model.SpecSyncResult;
@@ -44,24 +46,37 @@ public final class SpecSyncService {
         return operations;
     }
 
-    /** Each capability's delta spec text, keyed by capability folder name, in folder order. */
+    /**
+     * Each capability's delta spec text, keyed by capability path: the folder's path relative to the change's
+     * {@code specs/}, with {@code /} separators on every OS (e.g. {@code identity/user-auth}), sorted as OpenSpec's
+     * archive lists them. Nested capabilities are found at any depth, as the archive finds them; dot-folders and
+     * symlinked folders are skipped, as the archive skips them.
+     */
     private Map<String, String> readDeltaSpecs(String changeName) {
         Map<String, String> deltas = new TreeMap<>();
         VirtualFile changesDir = OpenSpecFileUtil.getChangesDir(project);
         VirtualFile changeDir = changesDir == null ? null : changesDir.findChild(changeName);
         VirtualFile specsDir = changeDir == null ? null : changeDir.findChild("specs");
         if (specsDir == null) return deltas;
-        for (VirtualFile capDir : specsDir.getChildren()) {
-            if (!capDir.isDirectory()) continue;
-            VirtualFile specFile = capDir.findChild("spec.md");
-            if (specFile == null) continue;
-            try {
-                deltas.put(capDir.getName(), new String(specFile.contentsToByteArray(), StandardCharsets.UTF_8));
-            } catch (IOException e) {
-                LOG.warn("Failed to read delta spec: " + specFile.getPath(), e);
-            }
-        }
+        collectDeltaSpecs(specsDir, specsDir, deltas);
         return deltas;
+    }
+
+    private static void collectDeltaSpecs(VirtualFile specsDir, VirtualFile dir, Map<String, String> deltas) {
+        for (VirtualFile capDir : dir.getChildren()) {
+            // Symlinked folders aren't followed, as OpenSpec's archive doesn't follow them; it also rules out loops.
+            if (!capDir.isDirectory() || capDir.getName().startsWith(".") || capDir.is(VFileProperty.SYMLINK)) continue;
+            VirtualFile specFile = capDir.findChild("spec.md");
+            if (specFile != null && !specFile.isDirectory()) {
+                try {
+                    deltas.put(VfsUtilCore.getRelativePath(capDir, specsDir, '/'),
+                            new String(specFile.contentsToByteArray(), StandardCharsets.UTF_8));
+                } catch (IOException e) {
+                    LOG.warn("Failed to read delta spec: " + specFile.getPath(), e);
+                }
+            }
+            collectDeltaSpecs(specsDir, capDir, deltas);
+        }
     }
 
     /**

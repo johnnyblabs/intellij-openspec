@@ -18,7 +18,8 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * The one-off regeneration note: without one, prompts are byte-identical to before; with one, it is appended once,
  * after the dependencies and before the multi-file block, and a noted single-file Direct API prompt carries the current
- * file. Every artifact instruction is parsed from captured CLI output.
+ * file. A Fast-Forward request is its own section after the dependencies and before any note. Every artifact
+ * instruction is parsed from captured CLI output.
  */
 class RegenerationNotePromptTest {
 
@@ -166,6 +167,67 @@ class RegenerationNotePromptTest {
                 "Write the design.", null, List.of(), List.of());
 
         assertEquals(design.buildPrompt("x"), design.buildDirectApiPrompt("x"));
+    }
+
+    // --- Fast-Forward request (a separate section from the regeneration note) ---
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", "   ", " \n\t "})
+    void aBlankRequestLeavesEveryCapturedPromptByteIdentical(String blank) {
+        for (String name : FIXTURES) {
+            ArtifactInstruction inst = captured(name);
+            assertEquals(inst.buildPrompt(), inst.buildPrompt(blank, null), name);
+            assertEquals(inst.buildPrompt(), inst.buildPrompt(null, null), name);
+            assertEquals(directApiPromptWithoutNotes(inst), inst.buildDirectApiPrompt(blank, null), name);
+            assertEquals(directApiPromptWithoutNotes(inst), inst.buildDirectApiPrompt(null, null), name);
+        }
+    }
+
+    @Test
+    void aRequestIsAppendedOnceAfterTheDependenciesUnderItsOwnHeading() {
+        for (String name : FIXTURES) {
+            ArtifactInstruction inst = captured(name);
+            String prompt = inst.buildPrompt("  add login with email and password\n", null);
+
+            assertEquals(inst.buildPrompt() + "\n\n---\n\n" + ArtifactInstruction.REQUEST_HEADING
+                    + "\nadd login with email and password\n", prompt, name);
+            assertEquals(1, count(prompt, ArtifactInstruction.REQUEST_HEADING), name);
+            assertFalse(prompt.contains(ArtifactInstruction.NOTE_HEADING), name + ": a request is not a regeneration note");
+        }
+    }
+
+    @Test
+    void theRequestComesBeforeTheNoteAndAMultiLineRequestIsKeptVerbatim() {
+        ArtifactInstruction proposal = captured("instructions-proposal.json");
+        String request = "Add login.\n\n- email and password\n- ${not a placeholder} {braces} %s";
+
+        String prompt = proposal.buildPrompt(request, "keep it short");
+
+        assertTrue(prompt.contains(ArtifactInstruction.REQUEST_HEADING + "\n" + request + "\n"), prompt);
+        assertTrue(prompt.indexOf(ArtifactInstruction.REQUEST_HEADING) < prompt.indexOf(ArtifactInstruction.NOTE_HEADING));
+        assertNotEquals(ArtifactInstruction.REQUEST_HEADING, ArtifactInstruction.NOTE_HEADING);
+    }
+
+    @Test
+    void aGlobArtifactsRequestComesBeforeTheMultiFileBlock() {
+        ArtifactInstruction specs = captured("1.7.0/instructions-specs.json");
+        assertTrue(MultiFileArtifact.isGlob(specs.outputPath()), specs.outputPath());
+
+        String prompt = specs.buildDirectApiPrompt("add login", null);
+
+        String requested = specs.buildPrompt("add login", null);
+        assertTrue(prompt.startsWith(requested), "the request follows the dependencies");
+        assertEquals(directApiPromptWithoutNotes(specs).substring(specs.buildPrompt().length()),
+                prompt.substring(requested.length()), "the multi-file block is unchanged and last");
+    }
+
+    @Test
+    void aRequestAloneNeverSendsTheCurrentFile(@TempDir Path changeDir) throws IOException {
+        Files.writeString(changeDir.resolve("design.md"), "# Design\n\nUse a cache.\n");
+        ArtifactInstruction design = new ArtifactInstruction("add-auth", "design", changeDir.toString(), "design.md",
+                "Write the design.", "# Design", List.of(), List.of());
+
+        assertEquals(design.buildPrompt("add login", null), design.buildDirectApiPrompt("add login", null));
     }
 
     private static int count(String text, String part) {

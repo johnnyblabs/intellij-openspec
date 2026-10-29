@@ -251,6 +251,97 @@ class ArtifactOrchestrationServiceTest {
             return dag;
         }
 
+        /**
+         * Stubs the CLI for a three-artifact run (proposal, then design, then tasks), each becoming ready as the one
+         * before it is written, and the run complete after tasks.
+         */
+        private void stubThreeArtifactRun(MockedStatic<CliRunner> cli, Path changeDir) {
+            AtomicInteger callCount = new AtomicInteger(0);
+
+            // Mock status calls — evolving DAG state
+            cli.when(() -> CliRunner.run(eq(project), eq("status"), eq("--change"), eq("c"), eq("--json")))
+                    .thenAnswer(inv -> {
+                        int n = callCount.getAndIncrement();
+                        String json = switch (n) {
+                            case 0 -> // Initial count call: 3 remaining
+                                    "{\"changeName\":\"c\",\"isComplete\":false,\"artifacts\":[" +
+                                    "{\"id\":\"proposal\",\"outputPath\":\"proposal.md\",\"status\":\"ready\",\"missingDeps\":[]}," +
+                                    "{\"id\":\"design\",\"outputPath\":\"design.md\",\"status\":\"blocked\",\"missingDeps\":[\"proposal\"]}," +
+                                    "{\"id\":\"tasks\",\"outputPath\":\"tasks.md\",\"status\":\"blocked\",\"missingDeps\":[\"design\"]}" +
+                                    "]}";
+                            case 1 -> // After invalidate, loop iteration 1: proposal still ready
+                                    "{\"changeName\":\"c\",\"isComplete\":false,\"artifacts\":[" +
+                                    "{\"id\":\"proposal\",\"outputPath\":\"proposal.md\",\"status\":\"ready\",\"missingDeps\":[]}," +
+                                    "{\"id\":\"design\",\"outputPath\":\"design.md\",\"status\":\"blocked\",\"missingDeps\":[\"proposal\"]}," +
+                                    "{\"id\":\"tasks\",\"outputPath\":\"tasks.md\",\"status\":\"blocked\",\"missingDeps\":[\"design\"]}" +
+                                    "]}";
+                            case 2 -> // After proposal done, iteration 2: design now ready
+                                    "{\"changeName\":\"c\",\"isComplete\":false,\"artifacts\":[" +
+                                    "{\"id\":\"proposal\",\"outputPath\":\"proposal.md\",\"status\":\"done\",\"missingDeps\":[]}," +
+                                    "{\"id\":\"design\",\"outputPath\":\"design.md\",\"status\":\"ready\",\"missingDeps\":[]}," +
+                                    "{\"id\":\"tasks\",\"outputPath\":\"tasks.md\",\"status\":\"blocked\",\"missingDeps\":[\"design\"]}" +
+                                    "]}";
+                            case 3 -> // After design done, iteration 3: tasks now ready
+                                    "{\"changeName\":\"c\",\"isComplete\":false,\"artifacts\":[" +
+                                    "{\"id\":\"proposal\",\"outputPath\":\"proposal.md\",\"status\":\"done\",\"missingDeps\":[]}," +
+                                    "{\"id\":\"design\",\"outputPath\":\"design.md\",\"status\":\"done\",\"missingDeps\":[]}," +
+                                    "{\"id\":\"tasks\",\"outputPath\":\"tasks.md\",\"status\":\"ready\",\"missingDeps\":[]}" +
+                                    "]}";
+                            default -> // After tasks done: all complete
+                                    "{\"changeName\":\"c\",\"isComplete\":true,\"artifacts\":[" +
+                                    "{\"id\":\"proposal\",\"outputPath\":\"proposal.md\",\"status\":\"done\",\"missingDeps\":[]}," +
+                                    "{\"id\":\"design\",\"outputPath\":\"design.md\",\"status\":\"done\",\"missingDeps\":[]}," +
+                                    "{\"id\":\"tasks\",\"outputPath\":\"tasks.md\",\"status\":\"done\",\"missingDeps\":[]}" +
+                                    "]}";
+                        };
+                        return new CliRunner.CliResult(0, json, "");
+                    });
+
+            // Mock instruction calls
+            ArtifactInstruction proposalInstr = new ArtifactInstruction("c", "proposal", changeDir.toString(), "proposal.md", "write proposal", null, List.of(), List.of());
+            ArtifactInstruction designInstr = new ArtifactInstruction("c", "design", changeDir.toString(), "design.md", "write design", null, List.of(), List.of());
+            ArtifactInstruction tasksInstr = new ArtifactInstruction("c", "tasks", changeDir.toString(), "tasks.md", "write tasks", null, List.of(), List.of());
+
+            cli.when(() -> CliRunner.run(eq(project), eq("instructions"), eq("proposal"), eq("--change"), eq("c"), eq("--json")))
+                    .thenReturn(new CliRunner.CliResult(0, "{\"changeName\":\"c\",\"artifactId\":\"proposal\",\"changeDir\":\"" + jsonEscapedPath(changeDir) + "\",\"outputPath\":\"proposal.md\",\"instruction\":\"write proposal\"}", ""));
+            cli.when(() -> CliRunner.run(eq(project), eq("instructions"), eq("design"), eq("--change"), eq("c"), eq("--json")))
+                    .thenReturn(new CliRunner.CliResult(0, "{\"changeName\":\"c\",\"artifactId\":\"design\",\"changeDir\":\"" + jsonEscapedPath(changeDir) + "\",\"outputPath\":\"design.md\",\"instruction\":\"write design\"}", ""));
+            cli.when(() -> CliRunner.run(eq(project), eq("instructions"), eq("tasks"), eq("--change"), eq("c"), eq("--json")))
+                    .thenReturn(new CliRunner.CliResult(0, "{\"changeName\":\"c\",\"artifactId\":\"tasks\",\"changeDir\":\"" + jsonEscapedPath(changeDir) + "\",\"outputPath\":\"tasks.md\",\"instruction\":\"write tasks\"}", ""));
+        }
+
+        @Test
+        void aFastForwardRequestReachesEveryArtifactInTheRun() throws Exception {
+            Path changeDir = tempDir.resolve("openspec/changes/c");
+            Files.createDirectories(changeDir);
+            List<String> generated = new ArrayList<>();
+            try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
+                stubThreeArtifactRun(cli, changeDir);
+                when(apiService.generate(any(), eq("add login"))).thenAnswer(inv -> {
+                    generated.add(inv.<ArtifactInstruction>getArgument(0).artifactId());
+                    return "content";
+                });
+
+                service.generateAllRemaining("c", apiService, mock(GenerateAllListener.class), "add login");
+            }
+            assertEquals(List.of("proposal", "design", "tasks"), generated, "not only the first artifact");
+            verify(apiService, never()).generate(any());
+        }
+
+        @Test
+        void aRunWithoutARequestUsesThePlainCall() throws Exception {
+            Path changeDir = tempDir.resolve("openspec/changes/c");
+            Files.createDirectories(changeDir);
+            try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
+                stubThreeArtifactRun(cli, changeDir);
+                when(apiService.generate(any())).thenReturn("content");
+
+                service.generateAllRemaining("c", apiService, mock(GenerateAllListener.class), "  ");
+            }
+            verify(apiService, times(3)).generate(any());
+            verify(apiService, never()).generate(any(), any());
+        }
+
         @Test
         void generatesInDependencyOrder_firesCallbacksCorrectly() throws Exception {
             // Track listener calls
@@ -278,60 +369,8 @@ class ArtifactOrchestrationServiceTest {
             Path changeDir = tempDir.resolve("openspec/changes/c");
             Files.createDirectories(changeDir);
 
-            AtomicInteger callCount = new AtomicInteger(0);
-
             try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
-
-                // Mock status calls — evolving DAG state
-                cli.when(() -> CliRunner.run(eq(project), eq("status"), eq("--change"), eq("c"), eq("--json")))
-                        .thenAnswer(inv -> {
-                            int n = callCount.getAndIncrement();
-                            String json = switch (n) {
-                                case 0 -> // Initial count call: 3 remaining
-                                        "{\"changeName\":\"c\",\"isComplete\":false,\"artifacts\":[" +
-                                        "{\"id\":\"proposal\",\"outputPath\":\"proposal.md\",\"status\":\"ready\",\"missingDeps\":[]}," +
-                                        "{\"id\":\"design\",\"outputPath\":\"design.md\",\"status\":\"blocked\",\"missingDeps\":[\"proposal\"]}," +
-                                        "{\"id\":\"tasks\",\"outputPath\":\"tasks.md\",\"status\":\"blocked\",\"missingDeps\":[\"design\"]}" +
-                                        "]}";
-                                case 1 -> // After invalidate, loop iteration 1: proposal still ready
-                                        "{\"changeName\":\"c\",\"isComplete\":false,\"artifacts\":[" +
-                                        "{\"id\":\"proposal\",\"outputPath\":\"proposal.md\",\"status\":\"ready\",\"missingDeps\":[]}," +
-                                        "{\"id\":\"design\",\"outputPath\":\"design.md\",\"status\":\"blocked\",\"missingDeps\":[\"proposal\"]}," +
-                                        "{\"id\":\"tasks\",\"outputPath\":\"tasks.md\",\"status\":\"blocked\",\"missingDeps\":[\"design\"]}" +
-                                        "]}";
-                                case 2 -> // After proposal done, iteration 2: design now ready
-                                        "{\"changeName\":\"c\",\"isComplete\":false,\"artifacts\":[" +
-                                        "{\"id\":\"proposal\",\"outputPath\":\"proposal.md\",\"status\":\"done\",\"missingDeps\":[]}," +
-                                        "{\"id\":\"design\",\"outputPath\":\"design.md\",\"status\":\"ready\",\"missingDeps\":[]}," +
-                                        "{\"id\":\"tasks\",\"outputPath\":\"tasks.md\",\"status\":\"blocked\",\"missingDeps\":[\"design\"]}" +
-                                        "]}";
-                                case 3 -> // After design done, iteration 3: tasks now ready
-                                        "{\"changeName\":\"c\",\"isComplete\":false,\"artifacts\":[" +
-                                        "{\"id\":\"proposal\",\"outputPath\":\"proposal.md\",\"status\":\"done\",\"missingDeps\":[]}," +
-                                        "{\"id\":\"design\",\"outputPath\":\"design.md\",\"status\":\"done\",\"missingDeps\":[]}," +
-                                        "{\"id\":\"tasks\",\"outputPath\":\"tasks.md\",\"status\":\"ready\",\"missingDeps\":[]}" +
-                                        "]}";
-                                default -> // After tasks done: all complete
-                                        "{\"changeName\":\"c\",\"isComplete\":true,\"artifacts\":[" +
-                                        "{\"id\":\"proposal\",\"outputPath\":\"proposal.md\",\"status\":\"done\",\"missingDeps\":[]}," +
-                                        "{\"id\":\"design\",\"outputPath\":\"design.md\",\"status\":\"done\",\"missingDeps\":[]}," +
-                                        "{\"id\":\"tasks\",\"outputPath\":\"tasks.md\",\"status\":\"done\",\"missingDeps\":[]}" +
-                                        "]}";
-                            };
-                            return new CliRunner.CliResult(0, json, "");
-                        });
-
-                // Mock instruction calls
-                ArtifactInstruction proposalInstr = new ArtifactInstruction("c", "proposal", changeDir.toString(), "proposal.md", "write proposal", null, List.of(), List.of());
-                ArtifactInstruction designInstr = new ArtifactInstruction("c", "design", changeDir.toString(), "design.md", "write design", null, List.of(), List.of());
-                ArtifactInstruction tasksInstr = new ArtifactInstruction("c", "tasks", changeDir.toString(), "tasks.md", "write tasks", null, List.of(), List.of());
-
-                cli.when(() -> CliRunner.run(eq(project), eq("instructions"), eq("proposal"), eq("--change"), eq("c"), eq("--json")))
-                        .thenReturn(new CliRunner.CliResult(0, "{\"changeName\":\"c\",\"artifactId\":\"proposal\",\"changeDir\":\"" + jsonEscapedPath(changeDir) + "\",\"outputPath\":\"proposal.md\",\"instruction\":\"write proposal\"}", ""));
-                cli.when(() -> CliRunner.run(eq(project), eq("instructions"), eq("design"), eq("--change"), eq("c"), eq("--json")))
-                        .thenReturn(new CliRunner.CliResult(0, "{\"changeName\":\"c\",\"artifactId\":\"design\",\"changeDir\":\"" + jsonEscapedPath(changeDir) + "\",\"outputPath\":\"design.md\",\"instruction\":\"write design\"}", ""));
-                cli.when(() -> CliRunner.run(eq(project), eq("instructions"), eq("tasks"), eq("--change"), eq("c"), eq("--json")))
-                        .thenReturn(new CliRunner.CliResult(0, "{\"changeName\":\"c\",\"artifactId\":\"tasks\",\"changeDir\":\"" + jsonEscapedPath(changeDir) + "\",\"outputPath\":\"tasks.md\",\"instruction\":\"write tasks\"}", ""));
+                stubThreeArtifactRun(cli, changeDir);
 
                 // Mock API generate
                 when(apiService.generate(any())).thenReturn("generated content");

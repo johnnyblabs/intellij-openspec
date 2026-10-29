@@ -288,12 +288,12 @@ class DirectApiFlowStructuralGuardTest {
         // name, which fails for the specs glob. It must use the one writer every Direct API path shares, and a
         // regeneration must plan through the same parser before its review.
         String content = read(WORKFLOW);
-        String call = "apiService.generateRaw(instruction.buildDirectApiPrompt(note))";
+        String call = "apiService.generateRaw(instruction.buildDirectApiPrompt(request, note))";
         // Anchor on the Generate branch (an earlier DIRECT_API case belongs to Apply).
         int branch = content.lastIndexOf("case DIRECT_API -> {", content.indexOf(call));
         assertTrue(branch >= 0, "expected the Generate DIRECT_API branch");
         String body = content.substring(branch, content.indexOf("} catch (AiApiException", branch));
-        assertTrue(body.contains(call), "anti-vacuity: this is the generate branch, sending the noted Direct API prompt");
+        assertTrue(body.contains(call), "anti-vacuity: this is the generate branch, sending the Direct API prompt with any request and note");
         assertTrue(body.contains("orchestration.writeArtifactResult(instruction, result)"),
                 "Generate must write through ArtifactOrchestrationService.writeArtifactResult");
         assertTrue(body.contains("orchestration.planArtifactResult(instruction, result)"),
@@ -309,8 +309,11 @@ class DirectApiFlowStructuralGuardTest {
 
     @Test
     void directApiGeneration_usesTheDirectApiPrompt() throws IOException {
-        String body = methodBody(read(SERVICE), "public String generate(ArtifactInstruction instruction)");
-        assertTrue(body.contains("instruction.buildDirectApiPrompt()"),
+        String service = read(SERVICE);
+        assertTrue(methodBody(service, "public String generate(ArtifactInstruction instruction)")
+                .contains("return generate(instruction, null);"), "the plain call is the request-less one");
+        String body = methodBody(service, "public String generate(ArtifactInstruction instruction, @Nullable String request)");
+        assertTrue(body.contains("instruction.buildDirectApiPrompt(request, null)"),
                 "Direct API generation must add the multi-file format for glob outputs");
     }
 

@@ -85,6 +85,13 @@ public record ArtifactInstruction(
     public static final String NOTE_HEADING =
             "Note for this regeneration (follow the instructions above; this note only says what to change):";
 
+    /**
+     * Heads the user's request in a Fast-Forward run: what they described wanting to build, which OpenSpec's ff
+     * workflow uses as the context for every artifact. Distinct from {@link #NOTE_HEADING}, which revises content.
+     */
+    public static final String REQUEST_HEADING =
+            "The user's request for this change (what they want to build; use it as the context for this artifact):";
+
     /** Heads the artifact's current content in a noted Direct API regeneration. */
     public static final String CURRENT_VERSION_HEADING = "Current version (revise this):";
 
@@ -93,8 +100,17 @@ public record ArtifactInstruction(
      * {@link #buildPrompt()} unchanged, byte for byte.
      */
     public String buildPrompt(@Nullable String note) {
+        return buildPrompt(null, note);
+    }
+
+    /**
+     * {@link #buildPrompt(String)} with the user's Fast-Forward request as its own section after the instructions and
+     * before any note. A null or blank request returns {@link #buildPrompt(String)} unchanged, byte for byte.
+     */
+    public String buildPrompt(@Nullable String request, @Nullable String note) {
         String trimmed = trimNote(note);
-        return trimmed.isEmpty() ? buildPrompt() : buildPrompt() + noteSection(trimmed);
+        String base = buildPrompt() + requestSection(request);
+        return trimmed.isEmpty() ? base : base + noteSection(trimmed);
     }
 
     /**
@@ -128,8 +144,17 @@ public record ArtifactInstruction(
     }
 
     public String buildDirectApiPrompt(@Nullable String note) {
+        return buildDirectApiPrompt(null, note);
+    }
+
+    /**
+     * {@link #buildDirectApiPrompt(String)} with the user's Fast-Forward request as its own section after the
+     * instructions, before any current version and note. A null or blank request returns
+     * {@link #buildDirectApiPrompt(String)} unchanged, byte for byte.
+     */
+    public String buildDirectApiPrompt(@Nullable String request, @Nullable String note) {
         String trimmed = trimNote(note);
-        StringBuilder prompt = new StringBuilder(buildPrompt());
+        StringBuilder prompt = new StringBuilder(buildPrompt()).append(requestSection(request));
         if (!trimmed.isEmpty() && !isGlobPath(outputPath) && changeDir != null && outputPath != null) {
             String current = readDependencyContent(changeDir, outputPath);
             if (current != null) {
@@ -155,6 +180,11 @@ public record ArtifactInstruction(
 
     private static String trimNote(@Nullable String note) {
         return note == null ? "" : note.strip();
+    }
+
+    private static String requestSection(@Nullable String request) {
+        String trimmed = trimNote(request);
+        return trimmed.isEmpty() ? "" : "\n\n---\n\n" + REQUEST_HEADING + "\n" + trimmed + "\n";
     }
 
     private static String noteSection(String note) {
