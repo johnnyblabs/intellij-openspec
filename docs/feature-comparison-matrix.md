@@ -2,7 +2,7 @@
 
 A comprehensive comparison of the OpenSpec IntelliJ plugin against known VS Code extensions.
 
-> **Maintenance: Snapshot** — reviewed per release, not per-change. This plugin's own row is kept current; the VS Code extension data (versions, install counts, features) is a point-in-time competitive survey and may lag reality. **Last reviewed: 2026-10-24** (plugin v0.14.1 — a Direct API fix release: Claude Workspace ID for keys not scoped to a workspace, thinking-first replies, specs over Direct API, refreshed default models; no row changes. Previously v0.14.0 — the OpenSpec 1.14.x-support release; archiving runs through `openspec archive` on CLI 1.5+, the plugin's own merge follows 1.14's archive rules, artifact status follows `openspec status`, and all 50 AI tools OpenSpec supports are known; 1.14's new warnings surface through CLI validation and are deliberately not copied into the built-in validator; competitive changes: the archive, unfilled-template and propose rows). For the version-by-version support matrix (what the plugin covers vs. the OpenSpec client), see [OpenSpec Client Coverage](openspec-support.md) instead.
+> **Maintenance: Snapshot** — reviewed per release, not per-change. This plugin's own row is kept current; the VS Code extension data (versions, install counts, features) is a point-in-time competitive survey and may lag reality. **Last reviewed: 2026-10-28** (plugin v0.15.0 — the OpenSpec 1.15.x-support release: the standalone CLI is detected and suggested first, Update previews every planned change on CLI 1.15+, Explore is the first step and uses your AI tool's own explore command, Revise Change sends your agent back to a change's plan, Direct API regenerate takes a note and shows a per-file review before writing, every API write is a Local History checkpoint, and the Change Deltas pane shows the CLI's Validate verdict; competitive changes: the CLI update, Explore, revise, regenerate-review, regenerate-note, Local History, diff-vs-spec, provider-errors, Change Deltas, auto-refresh, per-change validation and CLI path rows. Previously v0.14.1 — a Direct API fix release: Claude Workspace ID for keys not scoped to a workspace, thinking-first replies, specs over Direct API, refreshed default models; no row changes. Previously v0.14.0 — the OpenSpec 1.14.x-support release; archiving runs through `openspec archive` on CLI 1.5+, the plugin's own merge follows 1.14's archive rules, artifact status follows `openspec status`, and all 50 AI tools OpenSpec supports are known; 1.14's new warnings surface through CLI validation and are deliberately not copied into the built-in validator; competitive changes: the archive, unfilled-template and propose rows). For the version-by-version support matrix (what the plugin covers vs. the OpenSpec client), see [OpenSpec Client Coverage](openspec-support.md) instead.
 
 ---
 
@@ -10,7 +10,7 @@ A comprehensive comparison of the OpenSpec IntelliJ plugin against known VS Code
 
 | Extension | IDE | Publisher | Version | Installs | Status |
 |---|---|---|---|---|---|
-| **OpenSpec IntelliJ Plugin** | IntelliJ IDEA 2024.2+ | johnnyblabs | 0.10.0 | — | Published |
+| **OpenSpec IntelliJ Plugin** | IntelliJ IDEA 2024.2+ | johnnyblabs | 0.15.0 | — | Published |
 | **OpenSpec** (Codder13) | VS Code | Denis Bolba | 0.0.5 | 1,972 | Community, proposed official |
 | **OpenSpec for Copilot** | VS Code | atman-dev | 1.0.0 | 956 | Community |
 | **OpenSpec VSCode** | VS Code | AngDrew | 1.3.0 | 592 | Community |
