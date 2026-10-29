@@ -7,7 +7,7 @@ Parsing, applying, and previewing delta spec merges into main specs.
 
 ### Requirement: Delta spec parsing
 
-The plugin SHALL parse delta spec files from a change's `specs/*/spec.md` directories, extracting sections headed by `## ADDED Requirements`, `## MODIFIED Requirements`, `## REMOVED Requirements`, and `## RENAMED Requirements` (titles matched case-insensitively, repeated sections all read) into structured operation objects, recognizing entries exactly as OpenSpec's archive does.
+The plugin SHALL parse every delta spec file named `spec.md` at any depth under a change's `specs/` folder, identifying each by its capability path (the folder's path relative to `specs/`, with `/` separators, such as `user-auth` or `identity/user-auth`), extracting sections headed by `## ADDED Requirements`, `## MODIFIED Requirements`, `## REMOVED Requirements`, and `## RENAMED Requirements` (titles matched case-insensitively, repeated sections all read) into structured operation objects, recognizing entries exactly as OpenSpec's archive does.
 
 #### Scenario: Parse ADDED section
 - **WHEN** a delta spec contains `## ADDED Requirements` with one or more `### Requirement:` blocks
@@ -37,6 +37,18 @@ The plugin SHALL parse delta spec files from a change's `specs/*/spec.md` direct
 #### Scenario: No delta sections
 - **WHEN** a change has no delta spec sections in any spec file
 - **THEN** the service SHALL return an empty operation list
+
+#### Scenario: Nested capability delta is read
+- **WHEN** a change has a delta spec at `specs/identity/user-auth/spec.md`
+- **THEN** the service SHALL produce its operations for capability `identity/user-auth`, exactly as OpenSpec's archive keys it, and the change SHALL count as having delta specs
+
+#### Scenario: Flat and nested deltas in one change
+- **WHEN** a change has delta specs at `specs/flat/spec.md`, `specs/identity/sessions/spec.md` and `specs/identity/user-auth/spec.md`
+- **THEN** the service SHALL read all three, ordered by capability path (`flat`, `identity/sessions`, `identity/user-auth`) as OpenSpec's archive lists them
+
+#### Scenario: Dot-folders and symlinked folders are not read
+- **WHEN** a change's `specs/` folder contains a dot-folder, a symlink to a folder outside the change, or a symlink back to one of its own ancestors
+- **THEN** the service SHALL read none of them, as OpenSpec's archive reads none of them, and SHALL finish without following the loop
 
 ### Requirement: Spec sync application
 
@@ -145,3 +157,15 @@ The plugin SHALL refuse to apply a change that OpenSpec's archive would refuse, 
 #### Scenario: ADDED name already exists with different content
 - **WHEN** an ADDED requirement's name exists exactly and its content differs
 - **THEN** the change SHALL be refused; when the content is identical the operation SHALL be a no-op
+
+### Requirement: Nested capabilities sync to the matching main spec path
+
+The plugin SHALL merge a nested capability's delta into the main spec at the same relative path under `openspec/specs/`, following OpenSpec's archive, so syncing then archiving a change yields the same main specs as `openspec archive`.
+
+#### Scenario: Update an existing nested main spec
+- **WHEN** a change's `specs/identity/sessions/spec.md` adds a requirement and `openspec/specs/identity/sessions/spec.md` exists
+- **THEN** sync SHALL append the requirement to `openspec/specs/identity/sessions/spec.md` and leave every other main spec untouched
+
+#### Scenario: Create a new nested main spec
+- **WHEN** a change's `specs/identity/user-auth/spec.md` adds requirements and no main spec exists at that path
+- **THEN** sync SHALL create `openspec/specs/identity/user-auth/spec.md`, including missing parent folders, titled `# identity/user-auth Specification`, with OpenSpec's new-capability Purpose and the added requirements, byte-identical to what `openspec archive` writes for the same change
