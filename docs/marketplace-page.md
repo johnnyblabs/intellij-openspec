@@ -38,16 +38,16 @@ These fields are edited by hand in the Marketplace dashboard; only the Descripti
 The tour shots live in [`docs/screenshots/`](screenshots/) — regenerate them with `./gradlew screenshotTour`, which emits the whole set. The listing has 11 (the count is checked against `listing.json`). When a shot changes, replace the whole set rather than patching single images, and upload in this order:
 
 1. **Spec + change overview** (`01-spec-browser`) — a spec open in the editor beside the Browse tree, the workflow chips and the change's consolidated deltas
-2. **Change deltas** (`08-change-deltas`) — the consolidated deltas view, grouped by capability with operation badges
-3. **Tree badges** (`09-tree-badges`) — a change expanded showing artifact-status badges (done / ready / blocked, X/Y progress)
-4. **Explore first** (`11-explore-first-step`) — an Explore topic handed to the AI agent as its explore command, before any change exists
-5. **Workflow / pipeline** (`02-change-workflow`) — pipeline chips showing progress on an active change
-6. **Regenerate with a note** (`12-regenerate-note`) — what should change, added to one regeneration's prompt, with the downstream warning
-7. **Revise Change** (`13-revise-change`) — a note for the agent's own update workflow, which confirms each revision
-8. **Validation + quick-fix** (`03-validation-quickfix`) — inspection highlighting on a spec with the Validate result
-9. **Validation console** (`10-validation-console`) — a failed run grouped by file, colored by severity
-10. **Coordination** (`04-coordination-stores`) — stores with health, worksets and their members
-11. **Safe upgrades** (`06-update-legacy-cleanup`) — Update OpenSpec offering to clean up legacy files
+2. **Change deltas** (`02-change-deltas`) — the consolidated deltas view, grouped by capability with operation badges
+3. **Tree badges** (`03-tree-badges`) — a change expanded showing artifact-status badges (done / ready / blocked, X/Y progress)
+4. **Explore first** (`04-explore-first-step`) — an Explore topic handed to the AI agent as its explore command, before any change exists
+5. **Workflow / pipeline** (`05-change-workflow`) — pipeline chips showing progress on an active change
+6. **Regenerate with a note** (`06-regenerate-note`) — what should change, added to one regeneration's prompt, with the downstream warning
+7. **Revise Change** (`07-revise-change`) — a note for the agent's own update workflow, which confirms each revision
+8. **Validation + quick-fix** (`08-validation-quickfix`) — inspection highlighting on a spec with the Validate result
+9. **Validation console** (`09-validation-console`) — a failed run grouped by file, colored by severity
+10. **Coordination** (`10-coordination-stores`) — stores with health, worksets and their members
+11. **Safe upgrades** (`11-update-legacy-cleanup`) — Update OpenSpec offering to clean up legacy files
 
 **Tips:**
 - Use the default IntelliJ light theme (most recognizable on the marketplace)

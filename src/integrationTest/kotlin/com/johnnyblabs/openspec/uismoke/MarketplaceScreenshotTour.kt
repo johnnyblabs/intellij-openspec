@@ -41,11 +41,11 @@ import kotlin.time.Duration.Companion.seconds
  *
  * The shot list mirrors scripts/capture-screenshots.sh (the single source of truth for
  * shot names); docs/marketplace-page.md gives the upload order. Where the tour differs from a hand capture:
- *  - 03: captures the inspection highlighting + Console results WITHOUT the Alt+Enter
+ *  - 08: captures the inspection highlighting + Console results WITHOUT the Alt+Enter
  *    intention popup (driving the popup remotely is deferred).
- *  - 06: captures the sticky cleanup notification over the IDE, not the opened review
+ *  - 11: captures the sticky cleanup notification over the IDE, not the opened review
  *    dialog (notification-action invocation is deferred).
- *  - 12, 13: the plugin's own dialogs are built and filled remotely and shown non-modally,
+ *  - 06, 07: the plugin's own dialogs are built and filled remotely and shown non-modally,
  *    and their capture is drawn over the frame where the dialog sits.
  *
  * Requirements: a GUI session (AWT Robot screen capture — grant Screen Recording to the
@@ -116,7 +116,7 @@ class MarketplaceScreenshotTour {
         fun getHeight(): Int
     }
 
-    // Clicks don't land reliably in this environment, so shots 12 and 13 reach the plugin's dialogs through events and
+    // Clicks don't land reliably in this environment, so shots 06 and 07 reach the plugin's dialogs through events and
     // listeners instead: a popup-trigger mouse event on a chip, and the menu item's own listener fired from a Swing timer
     // (a modal dialog opened inside a driver call would block that call until it closed).
     @Remote("java.awt.Component")
@@ -230,7 +230,7 @@ class MarketplaceScreenshotTour {
 
         // 1.6 register needs: a config.yaml, a git history, and --yes on a never-a-store root.
         Files.writeString(projectPath.resolve("openspec/config.yaml"), "schema: spec-driven\n")
-        // Give the demo change a spec-level delta so shot 08 (consolidated deltas view) has an
+        // Give the demo change a spec-level delta so shot 02 (consolidated deltas view) has an
         // ADDED requirement to badge. The `greeting` main spec already exists in the demo project.
         val demoDelta = projectPath.resolve("openspec/changes/demo-add-farewell/specs/greeting/spec.md")
         Files.createDirectories(demoDelta.parent)
@@ -245,7 +245,7 @@ class MarketplaceScreenshotTour {
             - **WHEN** the user ends the session
             - **THEN** a farewell message is shown
             """.trimIndent() + "\n")
-        // A deliberate failure so shot 10 (grouped validation console) shows a FAILED run with both
+        // A deliberate failure so shot 09 (grouped validation console) shows a FAILED run with both
         // severities: a main spec whose requirement has no scenario (a CLI ERROR) and lacks SHALL/MUST
         // (a CLI WARNING since OpenSpec 1.8, so on its own it no longer fails the project).
         Files.createDirectories(projectPath.resolve("openspec/specs/formatting-demo"))
@@ -263,8 +263,8 @@ class MarketplaceScreenshotTour {
             ### Requirement: Legacy widget
             The legacy widget is retired.
             """.trimIndent() + "\n")
-        // Claude Code's explore and update workflows, so Explore (shot 11) and Revise Change (shot 13) hand off a real
-        // /opsx: command. The demo project's own AI-tool files are kept as they are for shot 06's legacy cleanup.
+        // Claude Code's explore and update workflows, so Explore (shot 04) and Revise Change (shot 07) hand off a real
+        // /opsx: command. The demo project's own AI-tool files are kept as they are for shot 11's legacy cleanup.
         val repoRoot = outputDir.parent.parent
         for (file in listOf("commands/opsx/explore.md", "commands/opsx/update.md",
                 "skills/openspec-explore/SKILL.md", "skills/openspec-update-change/SKILL.md")) {
@@ -391,12 +391,12 @@ class MarketplaceScreenshotTour {
             // Best-effort: if the platform API differs, fall back to the default docked layout.
             setOpenSpecMaximized(true)
 
-            // (Shot 07 retired: the in-panel Specs tree + plain-spec preview pane were removed in the
+            // (The old spec-preview shot is retired: the in-panel Specs tree + plain-spec preview pane were removed in the
             // tool-window restructure — specs are now browsed in the Project View and opened in the
             // editor, shown by the hero shot 01 (spec in the editor). Content search re-homed to the
             // Search Everywhere contributor is exercised headfully by the uiSmoke gate, not the tour.)
 
-            // 08 — consolidated change deltas: select the change NODE (its path is the change dir,
+            // 02 — consolidated change deltas: select the change NODE (its path is the change dir,
             // not a .md file), which renders the CLI-sourced deltas grouped by capability with the
             // operation badges. The pane's accessible name flips to the badged change-deltas marker
             // only after a successful CLI→parse→render with an op badge present.
@@ -408,25 +408,25 @@ class MarketplaceScreenshotTour {
                     x { byAccessibleName("OpenSpec preview change deltas badged") }.present()
                 }
             }
-            snap("08-change-deltas")
+            snap("02-change-deltas")
 
-            // 09 — tree status badges: expand the change to reveal its artifact nodes, each carrying
+            // 03 — tree status badges: expand the change to reveal its artifact nodes, each carrying
             // a corner status badge on the icon (done / ready / blocked / not-created) instead of a
             // label glyph, plus the change node's apply-ready done badge and X/Y task-count suffix.
             // The visual IS the badged tree, so the shot just needs the artifacts expanded.
             ideFrame {
                 val browseTree = tree("//div[@class='Tree']")
-                // Shot 08 left the change node selected but COLLAPSED. Force it open (retry the async
+                // Shot 02 left the change node selected but COLLAPSED. Force it open (retry the async
                 // populate race) and verify via the tree PATH — the old hasText("proposal") guard
                 // false-passed on the bottom pipeline panel's "proposal" chip, snapping the collapsed
-                // tree (a visual duplicate of 08). Expanding to the "specs" child forces the change
+                // tree (a visual duplicate of 02). Expanding to the "specs" child forces the change
                 // node open so its badged artifact nodes are actually visible.
                 waitUntil("the change node expands to reveal its badged artifact nodes") {
                     browseTree.expandPath("OpenSpec", "Changes", "demo-add-farewell", "specs", fullMatch = false)
                     true
                 }
             }
-            snap("09-tree-badges")
+            snap("03-tree-badges")
 
             // Restore the normal docked layout so the remaining shots frame the editor + tool window.
             setOpenSpecMaximized(false)
@@ -451,10 +451,10 @@ class MarketplaceScreenshotTour {
             ideFrame { waitUntil("workflow panel shows the seeded change") { hasText("demo-add-farewell") } }
             snap("01-spec-browser")
 
-            // 02 — change lifecycle: proposal open, chips prominent.
+            // 05 — change lifecycle: proposal open, chips prominent.
             openFile("openspec/changes/demo-add-farewell/proposal.md", project)
             waitUntil("editor settles") { !isCodeAnalysisRunning(project) }
-            snap("02-change-workflow")
+            snap("05-change-workflow")
 
             fun expireNotifications() {
                 withContext(OnDispatcher.EDT) {
@@ -477,7 +477,7 @@ class MarketplaceScreenshotTour {
                 waitUntil("'$title' closes") { dialog.notPresent() }
             }
 
-            // 12 — Regenerate with a note: a done chip's right-click → Regenerate, over the proposal.
+            // 06 — Regenerate with a note: a done chip's right-click → Regenerate, over the proposal.
             withContext(OnDispatcher.EDT) {
                 val chip = cast(ui.x { and(byClass("JBLabel"), byVisibleText("proposal")) }.component,
                     ComponentRef::class).getParent()
@@ -491,15 +491,15 @@ class MarketplaceScreenshotTour {
                 utility(MenuSelectionManagerRef::class).defaultManager().clearSelectedPath()
                 new(TimerRef::class, 0, listener).apply { setRepeats(false); start() }
             }
-            snapNoteDialog("12-regenerate-note", "Regenerate proposal",
+            snapNoteDialog("06-regenerate-note", "Regenerate proposal",
                 "Say the farewell is shown once per session, and only after the user has signed in.")
 
-            // 13 — Revise Change: the note the agent's own update workflow gets with the change.
+            // 07 — Revise Change: the note the agent's own update workflow gets with the change.
             invokeAction("OpenSpec.ReviseChange", now = false)
-            snapNoteDialog("13-revise-change", "Revise Change: demo-add-farewell",
+            snapNoteDialog("07-revise-change", "Revise Change: demo-add-farewell",
                 "The farewell should be configurable: add a setting to turn it off.")
 
-            // 11 — Explore: a topic in, and the /opsx:explore handoff copied for the agent, before any change exists.
+            // 04 — Explore: a topic in, and the /opsx:explore handoff copied for the agent, before any change exists.
             expireNotifications()
             withContext(OnDispatcher.EDT) {
                 utility(ExploreContextActionRef::class)
@@ -508,19 +508,19 @@ class MarketplaceScreenshotTour {
             waitUntil("Explore copied notice", timeout = 2.minutes) {
                 utility(ActionCenterRef::class).getNotifications(project).any { it.getContent().contains("explore") }
             }
-            snap("11-explore-first-step")
+            snap("04-explore-first-step")
             expireNotifications()
 
-            // 04 — coordination: stores + workset from the isolated registry.
+            // 10 — coordination: stores + workset from the isolated registry.
             selectToolWindowContent("Coordination")
             ideFrame {
                 waitUntil("store rows render", timeout = 3.minutes) { hasText("demo-platform") }
             }
-            snap("04-coordination-stores")
+            snap("10-coordination-stores")
 
-            // 03 — validation: Console filled by Validate, inspection-highlighted spec open.
+            // 08 — validation: Console filled by Validate, inspection-highlighted spec open.
             // Clear the startup "add settings to Git" notification (it appears after VCS detection,
-            // so an early expire misses it) right before firing Validate, mirroring shot 06.
+            // so an early expire misses it) right before firing Validate, mirroring shot 11.
             expireNotifications()
             invokeAction("OpenSpec.Validate", now = false)
             waitUntil("validation summary notification", timeout = 3.minutes) {
@@ -540,9 +540,9 @@ class MarketplaceScreenshotTour {
                         .forEach { it.expire() }
                 }
             }
-            snap("03-validation-quickfix")
+            snap("08-validation-quickfix")
 
-            // 10 — grouped validation console: the Validate run above already filled the OpenSpec
+            // 09 — grouped validation console: the Validate run above already filled the OpenSpec
             // Console with the structured report — select that tab and capture it showing the
             // FAILED verdict, the error/warning/info count line, per-file group headers, per-severity
             // coloring (the seeded ERROR and WARNING).
@@ -552,9 +552,9 @@ class MarketplaceScreenshotTour {
                     hasSubtext("Validation FAILED")
                 }
             }
-            snap("10-validation-console")
+            snap("09-validation-console")
 
-            // 06 — update cleanup: sticky notification over the IDE (captured LAST; the
+            // 11 — update cleanup: sticky notification over the IDE (captured LAST; the
             // flow stops re-raising once resolved).
             selectToolWindowContent("Browse")
             expireNotifications()
@@ -571,16 +571,15 @@ class MarketplaceScreenshotTour {
                 utility(ActionCenterRef::class).getNotifications(project)
                     .any { it.getContent().contains("legacy file(s)") }
             }
-            snap("06-update-legacy-cleanup")
+            snap("11-update-legacy-cleanup")
         }
 
         // Sanity: every emitted PNG must be non-trivial AND distinct. Without macOS
         // Screen Recording permission, AWT Robot returns the bare desktop wallpaper —
         // large enough to pass a size check but byte-identical across all shots.
-        val emitted = listOf("01-spec-browser", "02-change-workflow", "03-validation-quickfix",
-            "04-coordination-stores", "06-update-legacy-cleanup", "08-change-deltas",
-            "09-tree-badges", "10-validation-console", "11-explore-first-step", "12-regenerate-note",
-            "13-revise-change")
+        val emitted = listOf("01-spec-browser", "02-change-deltas", "03-tree-badges", "04-explore-first-step",
+            "05-change-workflow", "06-regenerate-note", "07-revise-change", "08-validation-quickfix",
+            "09-validation-console", "10-coordination-stores", "11-update-legacy-cleanup")
         val small = emitted.filter { Files.size(outputDir.resolve("$it.png")) < 50_000 }
         check(small.isEmpty()) { "suspiciously small captures (blank?): $small" }
         val distinctSizes = emitted.map { Files.size(outputDir.resolve("$it.png")) }.distinct()
