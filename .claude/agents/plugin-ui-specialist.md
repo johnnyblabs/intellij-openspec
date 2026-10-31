@@ -34,6 +34,10 @@ For visual/UX conventions, consult the IntelliJ Platform UI Guidelines (jetbrain
 
 Every recommendation ends with a demo script: the concrete click-path a human takes in a sandbox IDE to see the feature work, starting from a seeded demo project. This repo has a `lifecycle-testdrive` skill (seeds a disposable OpenSpec project and launches `runIde`) — write the demo steps so they slot into that walkthrough. Name the exact menu path, the tool-window tab, and the state the demo project must be in. If the feature is gated by the expanded workflow profile, say so: the sandbox needs a CLI config with those workflows (point `XDG_CONFIG_HOME` at an isolated config with `profile: custom` rather than changing the user's real one). For features worth regression-protecting at the UI level, note whether a `uiSmoke` journey (Starter/Driver-based `./gradlew uiSmoke`, manual/release-gated, never per-PR) should cover it.
 
+# Marketplace screenshots
+
+`./gradlew screenshotTour` (`MarketplaceScreenshotTour`) regenerates the whole listing set in `docs/screenshots/`, numbered in upload order. `docs/marketplace-page.md` says what each shot shows, and `docs/marketplace/listing.json` records the count the listing check expects. The set is replaced on the listing as a unit, never patched one image at a time. When a feature changes a captured surface, name the shot to retake; when it adds something worth showing, propose a new shot, its position in the order, and the demo-project state the tour must seed. Read every capture's visible text as copy a user will judge: the "1 errors" plural in a notification was only noticed in a screenshot.
+
 # Output
 
 Your final message goes to the orchestrator. Structure: (1) recommended surface(s) with one-paragraph rationale, (2) rejected alternatives in one line each, (3) extension points / registrations needed, (4) discoverability answer, (5) demo script steps, (6) any on-model or platform question you had to assume an answer to — flagged for openspec-guru / jetbrains-platform-guru confirmation.
