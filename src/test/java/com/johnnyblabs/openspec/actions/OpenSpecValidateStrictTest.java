@@ -69,6 +69,15 @@ class OpenSpecValidateStrictTest {
         assertTrue(OpenSpecValidateAction.summaryText("whole project", pass, true).contains("passed ("));
     }
 
+    @Test
+    void summaryText_countsAreSingularForOne() {
+        ValidationResult oneEach = new ValidationResult(false, List.of(error("a"), warning("b")), "built-in");
+        assertEquals("whole project failed (1 error, 1 warning)",
+                OpenSpecValidateAction.summaryText("whole project", oneEach, false));
+        ValidationResult pass = new ValidationResult(true, List.of(warning("x"), warning("y")), "built-in");
+        assertEquals("whole project passed (2 warnings)", OpenSpecValidateAction.summaryText("whole project", pass, false));
+    }
+
     // --- CLI-absent verdict flip (allow-list): a plugin-invented lint WARNING must NOT flip strict,
     //     because the real CLI never emits it — flipping would make the plugin stricter than the CLI ---
 

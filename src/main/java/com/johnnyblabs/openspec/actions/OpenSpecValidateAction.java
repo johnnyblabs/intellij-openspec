@@ -265,9 +265,10 @@ public class OpenSpecValidateAction extends OpenSpecBaseAction {
      */
     static String summaryText(String scope, ValidationResult result, boolean strict) {
         if (result.passed()) {
-            return scope + " passed (" + result.warningCount() + " warnings)";
+            return scope + " passed (" + ValidationConsoleFormatter.count(result.warningCount(), "warning") + ")";
         }
-        String body = scope + " failed (" + result.errorCount() + " errors, " + result.warningCount() + " warnings)";
+        String body = scope + " failed (" + ValidationConsoleFormatter.count(result.errorCount(), "error") + ", "
+                + ValidationConsoleFormatter.count(result.warningCount(), "warning") + ")";
         if (strict && result.errorCount() == 0) {
             body += " — strict: warnings count as failures";
         }

@@ -4,6 +4,10 @@
 
 ## Unreleased
 
+### Fixed
+
+- **The Validate notification counts in the singular when there's one.** It said "1 errors" or "1 warnings"; it now reads, for example, "whole project failed (1 error, 2 warnings)".
+
 ## v0.15.0
 
 ### Added

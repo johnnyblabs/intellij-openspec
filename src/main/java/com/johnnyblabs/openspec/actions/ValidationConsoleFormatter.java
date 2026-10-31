@@ -206,7 +206,7 @@ final class ValidationConsoleFormatter {
         return idx >= 0 ? path.substring(idx) : path;
     }
 
-    private static String count(int n, String word) {
+    static String count(int n, String word) {
         return n + " " + word + (n == 1 ? "" : "s");
     }
 }
