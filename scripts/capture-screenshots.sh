@@ -2,8 +2,8 @@
 # Capture JetBrains Marketplace screenshots at 1280x800
 # Usage: ./scripts/capture-screenshots.sh
 #
-# Automated alternative: ./gradlew screenshotTour (see MarketplaceScreenshotTour) emits
-# shots 01-04+06 unattended; this manual flow remains for shot 05 (Settings) and re-takes.
+# Automated: ./gradlew screenshotTour (see MarketplaceScreenshotTour) emits the whole set
+# unattended and is the normal way to regenerate it; this manual flow is for one-off re-takes.
 #
 # Prerequisites: IDE must be running with the plugin loaded
 # The script will resize the frontmost window and capture it.
@@ -13,25 +13,26 @@ set -e
 OUTPUT_DIR="docs/screenshots"
 mkdir -p "$OUTPUT_DIR"
 
-# v0.4.0 set (designed 2026-07-16). Carousel narrative: daily loop → catches
-# mistakes → 1.5/1.6 stores → safe upgrades. Capture 06 LAST — the cleanup flow
-# stops re-raising once resolved.
+# Marketplace set. Upload order (docs/marketplace-page.md): 01, 08, 09, 11, 02, 12, 13,
+# 03, 10, 04, 06. Capture 06 LAST — the cleanup flow stops re-raising once resolved.
 SHOTS=(
-    "01-spec-browser:Hero — Browse tab with Specs+Changes tree expanded, greeting spec.md open in the editor"
+    "01-spec-browser:Hero — a spec open in the editor beside the Browse tree, workflow chips and the change's deltas"
     "02-change-workflow:Browse tab with demo-add-farewell selected — workflow chips showing done/ready/blocked and the Generate button"
-    "03-validation-quickfix:keyword-in-header spec.md with the keyword-placement inspection + Alt+Enter quick-fix, Console tab showing validate results"
+    "03-validation-quickfix:keyword-in-header spec.md with the keyword-placement inspection, after Validate"
     "04-coordination-stores:Coordination tab — Stores with store-doctor health, Worksets with members, health strip, Full-tier toolbar actions"
-    "05-schema-authoring:Settings > Tools > OpenSpec, Schemas section — provenance tags, inline Validate result, Open Templates"
-    "06-update-legacy-cleanup:OpenSpec Legacy File Cleanup dialog listing CLI-reported opsx files with checkboxes"
-    "07-spec-preview:Browse tab master/detail — a spec selected in the tree with its rendered markdown in the preview pane beside it"
+    "06-update-legacy-cleanup:Update OpenSpec's legacy file cleanup notice over the IDE"
     "08-change-deltas:Browse tab — a change selected in the tree with its consolidated, badged spec deltas (ADDED/MODIFIED/REMOVED/RENAMED) in the preview pane, grouped by capability"
     "09-tree-badges:Browse tab — a change expanded in the tree showing corner status badges on the artifact icons (done/ready/blocked/not-created) plus the change node's apply-ready badge and X/Y task count"
+    "10-validation-console:Console tab — a failed Validate run grouped by file, colored by severity"
+    "11-explore-first-step:Explore with a topic — the notice that the explore command was copied for the AI agent"
+    "12-regenerate-note:A done chip's Regenerate dialog with a note and the downstream warning"
+    "13-revise-change:Revise Change dialog with a note for the agent's update workflow"
 )
 
 # Shots where a popup/dialog is the frontmost window: window-id capture would
 # snap only the popup, so capture the fixed screen region of the IDE frame
 # (positioned at 50,50 sized 1280x800 by the resize step above) instead.
-REGION_SHOTS="03-validation-quickfix 06-update-legacy-cleanup"
+REGION_SHOTS="03-validation-quickfix 06-update-legacy-cleanup 12-regenerate-note 13-revise-change"
 
 echo "=== OpenSpec Screenshot Capture ==="
 echo "Make sure IntelliJ IDEA is running with the OpenSpec plugin loaded."

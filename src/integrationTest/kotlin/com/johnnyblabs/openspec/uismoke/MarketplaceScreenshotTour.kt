@@ -40,13 +40,13 @@ import kotlin.time.Duration.Companion.seconds
  * class and the `screenshotTour` task runs only it.
  *
  * The shot list mirrors scripts/capture-screenshots.sh (the single source of truth for
- * shot names). v1 deviations from the full manual set:
+ * shot names); docs/marketplace-page.md gives the upload order. Where the tour differs from a hand capture:
  *  - 03: captures the inspection highlighting + Console results WITHOUT the Alt+Enter
  *    intention popup (driving the popup remotely is deferred).
- *  - 05 (Settings/Schemas): NOT automated — the Settings dialog is modal and its tree
- *    navigation is not remotely drivable yet; use the manual script for that shot.
  *  - 06: captures the sticky cleanup notification over the IDE, not the opened review
  *    dialog (notification-action invocation is deferred).
+ *  - 12, 13: the plugin's own dialogs are built and filled remotely and shown non-modally,
+ *    and their capture is drawn over the frame where the dialog sits.
  *
  * Requirements: a GUI session (AWT Robot screen capture — grant Screen Recording to the
  * launching terminal on macOS if captures come out black) and an OpenSpec CLI 1.6+ on
@@ -64,6 +64,16 @@ class MarketplaceScreenshotTour {
     interface RichToolWindowRef {
         fun getContentManager(): ContentManagerRef
         fun hide()
+    }
+
+    @Remote("com.intellij.openapi.wm.ex.ToolWindowEx")
+    interface ToolWindowExRef {
+        fun stretchWidth(value: Int)
+    }
+
+    @Remote("com.intellij.openapi.ui.Splitter")
+    interface SplitterRef {
+        fun setProportion(proportion: Float)
     }
 
     @Remote("com.intellij.openapi.wm.ex.ToolWindowManagerEx")
@@ -96,6 +106,57 @@ class MarketplaceScreenshotTour {
     interface NotificationRef {
         fun getContent(): String
         fun expire()
+    }
+
+    @Remote("java.awt.Window")
+    interface WindowRef {
+        fun getX(): Int
+        fun getY(): Int
+        fun getWidth(): Int
+        fun getHeight(): Int
+    }
+
+    // Clicks don't land reliably in this environment, so shots 12 and 13 reach the plugin's dialogs through events and
+    // listeners instead: a popup-trigger mouse event on a chip, and the menu item's own listener fired from a Swing timer
+    // (a modal dialog opened inside a driver call would block that call until it closed).
+    @Remote("java.awt.Component")
+    interface ComponentRef {
+        fun getParent(): ComponentRef
+        fun dispatchEvent(event: MouseEventRef)
+    }
+
+    @Remote("java.awt.event.MouseEvent")
+    interface MouseEventRef
+
+    @Remote("javax.swing.AbstractButton")
+    interface AbstractButtonRef {
+        fun getActionListeners(): Array<ActionListenerRef>
+        fun doClick()
+    }
+
+    @Remote("java.awt.event.ActionListener")
+    interface ActionListenerRef
+
+    @Remote("javax.swing.Timer")
+    interface TimerRef {
+        fun setRepeats(repeats: Boolean)
+        fun start()
+    }
+
+    @Remote("javax.swing.MenuSelectionManager")
+    interface MenuSelectionManagerRef {
+        fun defaultManager(): MenuSelectionManagerRef
+        fun clearSelectedPath()
+    }
+
+    @Remote("javax.swing.text.JTextComponent")
+    interface TextComponentRef {
+        fun setText(text: String)
+    }
+
+    @Remote("com.johnnyblabs.openspec.actions.ExploreContextAction", plugin = "com.johnnyblabs.openspec")
+    interface ExploreContextActionRef {
+        fun runExplore(project: Project, prefillTopic: String)
     }
 
     private val outputDir: Path = Path.of(System.getProperty("screenshot.output.dir"))
@@ -184,15 +245,14 @@ class MarketplaceScreenshotTour {
             - **WHEN** the user ends the session
             - **THEN** a farewell message is shown
             """.trimIndent() + "\n")
-        // Deliberate issues so shot 10 (grouped validation console) shows both severities with
-        // clickable file:line links: a main spec whose requirement lacks SHALL/MUST (built-in
-        // ERROR) and a REMOVED delta missing its Reason/Migration fields (built-in WARNING).
+        // A deliberate failure so shot 10 (grouped validation console) shows a FAILED run with both
+        // severities: a main spec whose requirement has no scenario (a CLI ERROR) and lacks SHALL/MUST
+        // (a CLI WARNING since OpenSpec 1.8, so on its own it no longer fails the project).
         Files.createDirectories(projectPath.resolve("openspec/specs/formatting-demo"))
         Files.writeString(
             projectPath.resolve("openspec/specs/formatting-demo/spec.md"),
             "# Formatting Demo\n\n## Purpose\nExercises the grouped, colored validation console report end to end.\n\n" +
-                "## Requirements\n\n### Requirement: Records are kept\nRecords are kept somewhere safe.\n\n" +
-                "#### Scenario: Persist\n- **WHEN** a record is created\n- **THEN** it can be read back later\n",
+                "## Requirements\n\n### Requirement: Records are kept\nRecords are kept somewhere safe.\n",
         )
         val removedDelta = projectPath.resolve("openspec/changes/demo-add-farewell/specs/legacy-widget/spec.md")
         Files.createDirectories(removedDelta.parent)
@@ -203,6 +263,15 @@ class MarketplaceScreenshotTour {
             ### Requirement: Legacy widget
             The legacy widget is retired.
             """.trimIndent() + "\n")
+        // Claude Code's explore and update workflows, so Explore (shot 11) and Revise Change (shot 13) hand off a real
+        // /opsx: command. The demo project's own AI-tool files are kept as they are for shot 06's legacy cleanup.
+        val repoRoot = outputDir.parent.parent
+        for (file in listOf("commands/opsx/explore.md", "commands/opsx/update.md",
+                "skills/openspec-explore/SKILL.md", "skills/openspec-update-change/SKILL.md")) {
+            val dest = projectPath.resolve(".claude/$file")
+            Files.createDirectories(dest.parent)
+            Files.copy(repoRoot.resolve(".claude/$file"), dest, StandardCopyOption.REPLACE_EXISTING)
+        }
         git(projectPath, "init", "-q")
         git(projectPath, "-c", "user.email=demo@example.com", "-c", "user.name=Demo", "add", "-A")
         git(projectPath, "-c", "user.email=demo@example.com", "-c", "user.name=Demo",
@@ -212,9 +281,6 @@ class MarketplaceScreenshotTour {
         hostCli(xdg, projectPath, "store", "register", projectPath.toString(), "--yes")
         hostCli(xdg, base, "workset", "create", "demo-workset",
             "--member", projectPath.toString(), "--member", platformStore.toString())
-        // Project schema fork so Settings' Schemas section shows a [project] provenance tag
-        // (rendered in the manual shot 05; harmless state for the automated shots).
-        hostCli(xdg, projectPath, "schema", "fork", "spec-driven", "custom-flow")
 
         Files.createDirectories(outputDir)
 
@@ -240,7 +306,9 @@ class MarketplaceScreenshotTour {
             // log/screenshots dir and writes frame0.png — the IDE frame alone, at
             // native (retina) resolution. Collect it and downscale to exactly 1280x800.
             val screenshotsRoot = outputDir.parent.parent.resolve("out/perf-startup/tests")
-            fun snap(name: String) {
+            // The command writes each open dialog to its own dialogN.png beside frame0.png. With `dialog` (its window
+            // bounds on screen), the capture of that dialog is drawn over the frame where the dialog sits.
+            fun snap(name: String, dialog: java.awt.Rectangle? = null) {
                 Thread.sleep(3_000) // let paint/animations settle
                 execute(CommandChain().takeScreenshot("tour/$name"))
                 lateinit var raw: Path
@@ -251,6 +319,25 @@ class MarketplaceScreenshotTour {
                     }?.also { raw = it } != null
                 }
                 val frame = ImageIO.read(raw.toFile())
+                if (dialog != null) {
+                    val scale = frame.width / 1280.0
+                    // The capture closest in width to the dialog; a stray, invisible window can be captured too.
+                    val image = Files.list(raw.parent).use { s ->
+                        s.filter { it.fileName.toString().matches(Regex("""dialog\d+\.png""")) }.toList()
+                    }.map { ImageIO.read(it.toFile()) }
+                        .minByOrNull { kotlin.math.abs(it.width - dialog.width * scale) }
+                        ?: throw AssertionError("no dialog capture for $name")
+                    // The capture may leave out the native title bar; it is the window's content, at its bottom.
+                    val x = ((dialog.x - 50) * scale).toInt()
+                    val y = ((dialog.y - 50 + dialog.height) * scale).toInt() - image.height
+                    frame.createGraphics().apply {
+                        // A soft shadow so the dialog reads as floating over the IDE.
+                        color = java.awt.Color(0, 0, 0, 60)
+                        fillRoundRect(x + 4, y + 8, image.width, image.height, 16, 16)
+                        drawImage(image, x, y, null)
+                        dispose()
+                    }
+                }
                 val out = java.awt.image.BufferedImage(1280, 800, java.awt.image.BufferedImage.TYPE_INT_RGB)
                 out.createGraphics().apply {
                     setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION,
@@ -344,6 +431,20 @@ class MarketplaceScreenshotTour {
             // Restore the normal docked layout so the remaining shots frame the editor + tool window.
             setOpenSpecMaximized(false)
 
+            // Docked, the default split (68% tree) squeezes the Change Deltas pane into a column a few
+            // words wide. Widen the tool window a little and give the pane more of the split.
+            ideFrame {
+                runCatching {
+                    val splitter = x("//div[@accessiblename='OpenSpec preview change deltas badged']" +
+                        "/ancestor::div[@class='OnePixelSplitter'][1]")
+                    withContext(OnDispatcher.EDT) {
+                        cast(splitter.component, SplitterRef::class).setProportion(0.5f)
+                        utility(ToolWindowManagerRef::class).getInstance(project).getToolWindow("OpenSpec")
+                            ?.let { cast(it, ToolWindowExRef::class).stretchWidth(230) }
+                    }
+                }.onFailure { println("01: couldn't widen the Change Deltas pane: $it") }
+            }
+
             // 01 — hero: tree + workflow chips + a spec in the editor.
             openFile("openspec/specs/greeting/spec.md", project)
             waitUntil("editor settles") { !isCodeAnalysisRunning(project) }
@@ -360,6 +461,55 @@ class MarketplaceScreenshotTour {
                     utility(ActionCenterRef::class).getNotifications(project).forEach { it.expire() }
                 }
             }
+
+            // Fills the note of the dialog titled `title`, captures it over the IDE, then cancels it.
+            fun snapNoteDialog(name: String, title: String, note: String) {
+                val dialog = ui.x { byTitle(title) }
+                waitUntil("'$title' shows") { dialog.present() }
+                withContext(OnDispatcher.EDT) {
+                    cast(dialog.x { byClass("JBTextArea") }.component, TextComponentRef::class).setText(note)
+                }
+                val window = cast(dialog.component, WindowRef::class)
+                snap(name, java.awt.Rectangle(window.getX(), window.getY(), window.getWidth(), window.getHeight()))
+                withContext(OnDispatcher.EDT) {
+                    cast(dialog.x { byAccessibleName("Cancel") }.component, AbstractButtonRef::class).doClick()
+                }
+                waitUntil("'$title' closes") { dialog.notPresent() }
+            }
+
+            // 12 — Regenerate with a note: a done chip's right-click → Regenerate, over the proposal.
+            withContext(OnDispatcher.EDT) {
+                val chip = cast(ui.x { and(byClass("JBLabel"), byVisibleText("proposal")) }.component,
+                    ComponentRef::class).getParent()
+                chip.dispatchEvent(new(MouseEventRef::class, chip, java.awt.event.MouseEvent.MOUSE_PRESSED,
+                    System.currentTimeMillis(), 0, 10, 10, 1, true, java.awt.event.MouseEvent.BUTTON3))
+            }
+            val regenerateItem = ui.x { and(byClass("JMenuItem"), byVisibleText("Regenerate")) }
+            waitUntil("the chip's menu shows Regenerate") { regenerateItem.present() }
+            withContext(OnDispatcher.EDT) {
+                val listener = cast(regenerateItem.component, AbstractButtonRef::class).getActionListeners().first()
+                utility(MenuSelectionManagerRef::class).defaultManager().clearSelectedPath()
+                new(TimerRef::class, 0, listener).apply { setRepeats(false); start() }
+            }
+            snapNoteDialog("12-regenerate-note", "Regenerate proposal",
+                "Say the farewell is shown once per session, and only after the user has signed in.")
+
+            // 13 — Revise Change: the note the agent's own update workflow gets with the change.
+            invokeAction("OpenSpec.ReviseChange", now = false)
+            snapNoteDialog("13-revise-change", "Revise Change: demo-add-farewell",
+                "The farewell should be configurable: add a setting to turn it off.")
+
+            // 11 — Explore: a topic in, and the /opsx:explore handoff copied for the agent, before any change exists.
+            expireNotifications()
+            withContext(OnDispatcher.EDT) {
+                utility(ExploreContextActionRef::class)
+                    .runExplore(project, "how should a farewell differ for signed-in and guest users?")
+            }
+            waitUntil("Explore copied notice", timeout = 2.minutes) {
+                utility(ActionCenterRef::class).getNotifications(project).any { it.getContent().contains("explore") }
+            }
+            snap("11-explore-first-step")
+            expireNotifications()
 
             // 04 — coordination: stores + workset from the isolated registry.
             selectToolWindowContent("Coordination")
@@ -395,7 +545,7 @@ class MarketplaceScreenshotTour {
             // 10 — grouped validation console: the Validate run above already filled the OpenSpec
             // Console with the structured report — select that tab and capture it showing the
             // FAILED verdict, the error/warning/info count line, per-file group headers, per-severity
-            // coloring, and the clickable file:line links (the seeded ERROR + WARNING both resolve).
+            // coloring (the seeded ERROR and WARNING).
             selectToolWindowContent("Console")
             ideFrame {
                 waitUntil("validation console renders the grouped report", timeout = 2.minutes) {
@@ -405,7 +555,7 @@ class MarketplaceScreenshotTour {
             snap("10-validation-console")
 
             // 06 — update cleanup: sticky notification over the IDE (captured LAST; the
-            // flow stops re-raising once resolved). Shot 05 (Settings) is manual-only.
+            // flow stops re-raising once resolved).
             selectToolWindowContent("Browse")
             expireNotifications()
             invokeAction("OpenSpec.Update", now = false)
@@ -428,8 +578,9 @@ class MarketplaceScreenshotTour {
         // Screen Recording permission, AWT Robot returns the bare desktop wallpaper —
         // large enough to pass a size check but byte-identical across all shots.
         val emitted = listOf("01-spec-browser", "02-change-workflow", "03-validation-quickfix",
-            "04-coordination-stores", "06-update-legacy-cleanup", "07-spec-preview", "08-change-deltas",
-            "09-tree-badges", "10-validation-console")
+            "04-coordination-stores", "06-update-legacy-cleanup", "08-change-deltas",
+            "09-tree-badges", "10-validation-console", "11-explore-first-step", "12-regenerate-note",
+            "13-revise-change")
         val small = emitted.filter { Files.size(outputDir.resolve("$it.png")) < 50_000 }
         check(small.isEmpty()) { "suspiciously small captures (blank?): $small" }
         val distinctSizes = emitted.map { Files.size(outputDir.resolve("$it.png")) }.distinct()
