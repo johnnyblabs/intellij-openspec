@@ -149,6 +149,19 @@ def main() -> None:
         cap.case("instructions-unknown-artifact", proj, "instructions", "bogusart", "--change", "good", "--json")
         cap.case("archive-unknown", proj, "archive", "nosuch", "--yes", "--json")
 
+        # A broken openspec/config.yaml: 1.16 answers validate with an item-less status envelope.
+        broken = base / "broken-config"
+        seed_project(broken)
+        config = broken / "openspec/config.yaml"
+        write(config, "schema: spec-driven\ncontext: [unclosed\n")
+        cap.case("validate-unparseable-config", broken, "validate", "--all", "--json")
+        write(config, "schema: spec-driven\n")
+        config.chmod(0)
+        try:
+            cap.case("validate-unreadable-config", broken, "validate", "--all", "--json")
+        finally:
+            config.chmod(0o644)
+
         # The same legacy-cleanup project, captured plain and coloured. Each gets its own fresh global state,
         # because the first `update` also migrates the global config and prints that, which a second run would not.
         for variant, env in (("plain", None), ("ansi", COLOUR_ENV)):

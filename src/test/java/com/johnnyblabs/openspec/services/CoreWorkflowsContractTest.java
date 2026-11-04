@@ -2,6 +2,7 @@ package com.johnnyblabs.openspec.services;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.johnnyblabs.openspec.util.CliFixtures;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -19,9 +20,12 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class CoreWorkflowsContractTest {
 
+    /** The plugin's target CLI; its {@code workflows.json} is the one the plugin must match. */
+    private static final String TARGET = CliFixtures.targetVersion();
+
     private static JsonObject fixture() throws IOException {
-        try (InputStream in = CoreWorkflowsContractTest.class.getResourceAsStream("/fixtures/cli/1.15.0/workflows.json")) {
-            assertNotNull(in, "missing fixture 1.15.0/workflows.json");
+        try (InputStream in = CoreWorkflowsContractTest.class.getResourceAsStream("/fixtures/cli/" + TARGET + "/workflows.json")) {
+            assertNotNull(in, "missing fixture " + TARGET + "/workflows.json");
             return JsonParser.parseString(new String(in.readAllBytes(), StandardCharsets.UTF_8)).getAsJsonObject();
         }
     }
@@ -35,5 +39,11 @@ class CoreWorkflowsContractTest {
         List<String> pluginCore = List.copyOf(WorkflowProfileService.coreWorkflows(fixture.get("cliVersion").getAsString()));
 
         assertEquals(upstreamCore, pluginCore);
+    }
+
+    @Test
+    void theFixtureWasCapturedFromTheTargetCli() throws IOException {
+        assertEquals(TARGET, fixture().get("cliVersion").getAsString(),
+                "workflows.json under " + TARGET + "/ must be a capture from that CLI; re-run scripts/capture-workflow-ids.py");
     }
 }

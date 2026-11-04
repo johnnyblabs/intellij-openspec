@@ -6,6 +6,7 @@ import com.google.gson.JsonParser;
 import com.intellij.openapi.actionSystem.ActionManager;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.testFramework.fixtures.BasePlatformTestCase;
+import com.johnnyblabs.openspec.util.CliFixtures;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -34,7 +35,8 @@ import java.util.regex.Pattern;
  */
 public class WorkflowParityContractTest extends BasePlatformTestCase {
 
-    private static final String FIXTURE = "/fixtures/cli/1.15.0/workflows.json";
+    /** The upstream set for the plugin's target CLI, so the fixture moves with every CLI bump. */
+    private static final String FIXTURE = "/fixtures/cli/" + CliFixtures.targetVersion() + "/workflows.json";
 
     /** Upstream workflows the plugin deliberately has no action gated on, each with why and where it's tracked. */
     static final Map<String, String> NOT_SURFACED = Map.of(

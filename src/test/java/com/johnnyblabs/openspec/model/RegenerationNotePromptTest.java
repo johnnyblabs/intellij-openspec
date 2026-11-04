@@ -29,7 +29,8 @@ class RegenerationNotePromptTest {
             "1.6.0/instructions-proposal.json", "1.6.0/instructions-specs.json", "1.6.0/instructions-tasks.json",
             "1.7.0/instructions-proposal.json", "1.7.0/instructions-specs.json", "1.7.0/instructions-tasks.json",
             "1.11.0/instructions-tasks-specs-done.json", "1.14.3/additive-shapes/instructions-proposal.json",
-            "1.15.0/instructions/instructions-design.json", "1.15.0/instructions/instructions-specs.json");
+            "1.15.0/instructions/instructions-design.json", "1.15.0/instructions/instructions-specs.json",
+            "1.16.0/instructions/instructions-design.json", "1.16.0/instructions/instructions-specs.json");
 
     private static ArtifactInstruction captured(String name) {
         String path = "/fixtures/cli/" + name;
@@ -82,6 +83,21 @@ class RegenerationNotePromptTest {
                     + "\ndrop the caching section\n", prompt, name);
             assertEquals(1, count(prompt, ArtifactInstruction.NOTE_HEADING), name);
         }
+    }
+
+    @Test
+    void theInstructionLinesANewCliAddsReachThePrompt() {
+        ArtifactInstruction older = captured("1.15.0/instructions/instructions-specs.json");
+        ArtifactInstruction newer = captured("1.16.0/instructions/instructions-specs.json");
+        assertNotEquals(older.instruction(), newer.instruction(), "the 1.16 capture must not be a copy of 1.15's");
+
+        List<String> olderLines = older.instruction().lines().toList();
+        List<String> added = newer.instruction().lines()
+                .filter(line -> !line.isBlank() && !olderLines.contains(line)).toList();
+        assertFalse(added.isEmpty(), "1.16 adds instruction lines over 1.15");
+
+        String prompt = newer.buildPrompt();
+        for (String line : added) assertTrue(prompt.contains(line), "prompt is missing: " + line);
     }
 
     @Test

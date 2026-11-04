@@ -4,6 +4,8 @@ import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.project.Project;
 import com.johnnyblabs.openspec.util.CliVersion;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -443,7 +445,7 @@ class CliDetectionServiceTest {
         assertFalse(svc.isAvailable());
     }
 
-    // ---------- 1.15 standalone binary: its captured --version output parses like the npm install ----------
+    // ---------- Standalone binary (1.15+): its captured --version output parses like the npm install ----------
 
     private static String loadCliFixture(String name) {
         String path = "/fixtures/cli/" + name;
@@ -464,21 +466,24 @@ class CliDetectionServiceTest {
         return svc;
     }
 
-    @Test
-    void standaloneBinary_versionOutput_detectsAs115() {
-        // Real `openspec --version` stdout of the 1.15.0 standalone darwin-arm64 binary (see fixtures/cli/README.md).
-        String captured = loadCliFixture("1.15.0/standalone/version.txt");
+    @ParameterizedTest
+    @ValueSource(strings = {"1.15.0", "1.16.0"})
+    void standaloneBinary_versionOutput_detectsAsItsGeneration(String generation) {
+        // Real `openspec --version` stdout of the standalone darwin-arm64 binary (see fixtures/cli/README.md).
+        String captured = loadCliFixture(generation + "/standalone/version.txt");
+        String expected = loadCliFixture(generation + "/version.txt").trim();
         CliDetectionService svc = detectWithVersionOutput(captured);
 
         assertTrue(svc.isAvailable(), "the standalone binary's --version output counts as a detected CLI");
-        assertEquals("1.15.0", svc.getDetectedVersion(), "detected version is the bare version, without the trailing newline");
-        assertTrue(CliVersion.atLeast(svc.getDetectedVersion(), "1.15.0"), "recognized as the 1.15 generation");
+        assertEquals(expected, svc.getDetectedVersion(), "detected version is the bare version, without the trailing newline");
+        assertTrue(CliVersion.atLeast(svc.getDetectedVersion(), generation), "recognized as the " + generation + " generation");
     }
 
-    @Test
-    void standaloneBinary_detectsTheSameVersionAsTheNpmInstall() {
-        String standalone = detectWithVersionOutput(loadCliFixture("1.15.0/standalone/version.txt")).getDetectedVersion();
-        String npm = detectWithVersionOutput(loadCliFixture("1.15.0/version.txt")).getDetectedVersion();
+    @ParameterizedTest
+    @ValueSource(strings = {"1.15.0", "1.16.0"})
+    void standaloneBinary_detectsTheSameVersionAsTheNpmInstall(String generation) {
+        String standalone = detectWithVersionOutput(loadCliFixture(generation + "/standalone/version.txt")).getDetectedVersion();
+        String npm = detectWithVersionOutput(loadCliFixture(generation + "/version.txt")).getDetectedVersion();
         assertEquals(npm, standalone, "the standalone binary and the npm install are the same generation to the plugin");
     }
 

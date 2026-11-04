@@ -721,9 +721,9 @@ Two upstream quirks show here, recorded internally and never filed upstream:
 
 Consumed by `WorkflowProfileServiceTest`.
 
-## `1.15.0/workflows.json`: upstream's workflow set
+## `<target>/workflows.json`: upstream's workflow set (`1.15.0/`, `1.16.0/`)
 
-Upstream's exported `CORE_WORKFLOWS` and `ALL_WORKFLOWS`, in upstream's order, as `{cliVersion, core, all}`. Captured by `scripts/capture-workflow-ids.py`. The CLI has no command that prints them (`config set workflows` accepts any value without validating, and `config profile` is interactive), so the script loads the installed package's own `dist/core/profiles.js` with `node`. It fails rather than writing a guess if the exports move, and the standalone binary can't be used, since it has no JS to load. `WorkflowParityContractTest` checks the plugin's workflow-gated actions against `all`, and `CoreWorkflowsContractTest` checks the plugin's core set against `core`. Re-capture on every CLI bump.
+Upstream's exported `CORE_WORKFLOWS` and `ALL_WORKFLOWS`, in upstream's order, as `{cliVersion, core, all}`. Captured by `scripts/capture-workflow-ids.py`. The CLI has no command that prints them (`config set workflows` accepts any value without validating, and `config profile` is interactive), so the script loads the installed package's own `dist/core/profiles.js` with `node`. It fails rather than writing a guess if the exports move, and the standalone binary can't be used, since it has no JS to load. Both tests read the copy for `openspecTargetVersion` in `gradle.properties`. `WorkflowParityContractTest` checks the plugin's workflow-gated actions against `all`, and `CoreWorkflowsContractTest` checks the plugin's core set against `core` and that the fixture's `cliVersion` is the target. Re-capture on every CLI bump.
 
 ## `1.15.0/instructions/`: artifact instructions for the regeneration note
 
@@ -733,3 +733,19 @@ These are real CLI 1.15.0 runs in a fresh isolated `HOME` and `XDG_*` environmen
 - `instructions-specs.json`: `openspec instructions specs --change demo --json`, the glob artifact (`specs/**/*.md`).
 
 The project root is sanitized to `/fixture/demo-project`. `RegenerationNotePromptTest` reads these, along with every older `instructions-*.json`, to prove that a blank note leaves the prompt byte-identical. It also checks that a noted single-file Direct API prompt carries the current file. To re-capture, repeat the steps above with the new CLI version.
+
+## `1.16.0/` — the target: parity corpus, registry, workflows, instructions, standalone version, and 1.16's two new validate behaviours
+
+Real CLI **1.16.0** captures (npm `@fission-ai/openspec@1.16.0`, released 2026-10-30), each under a fresh isolated `HOME`/`XDG_*` with `OPENSPEC_TELEMETRY=0`, with machine paths sanitized to `/fixture`.
+
+- `validate-parity-corpus.json` / `validate-parity-corpus-strict.json`: the "Durable next-generation capture" recipe above. Default 12/13 valid, strict 8/13. Apart from `durationMs`, both are identical to the `1.15.0/` twins, including the pinned `nameless-change` strict divergence.
+- `version.txt`: bare `1.16.0` from the npm install. `TargetVersionSingleSourceTest` requires it, with the twins, for the target.
+- `ai-tools.json` and `init-help.txt`: `CAPTURE_VERSIONS=1.16.0 scripts/capture-ai-tools-fixtures.py`. Identical to 1.15.0's apart from the version (50 tools, same aliases). The `detect/` cases equal `1.14.3/detect/`, so they aren't duplicated.
+- `workflows.json`: `scripts/capture-workflow-ids.py`. The `core` (6) and `all` (12) sets equal 1.15.0's.
+- `instructions/instructions-design.json` and `instructions-specs.json`: the `1.15.0/instructions/` recipe. Design is identical to 1.15.0's. Specs adds exactly one bullet, "Every scenario MUST have a WHEN/GIVEN step (its trigger) and a THEN step (its outcome)…". `RegenerationNotePromptTest` checks that the added lines reach the prompt.
+- `standalone/version.txt` and `standalone/version-cmd.txt`: from 1.16.0 the release ships archives rather than a bare binary. Source: `openspec-darwin-arm64.tar.gz` from the v1.16.0 GitHub release, checked against the release's `SHA256SUMS` (`51e9298489a86718e32433ddffbb6d4a29ee9da992bf3bcfaa29a664ec7b4cc2`). The `openspec` binary inside was run with a PATH that has no Node. `--version` prints a bare `1.16.0` (read by `CliDetectionServiceTest`'s standalone cases); `version` prints `OpenSpec 1.16.0 (standalone)` and is kept for provenance only.
+- `validate-change/step-warning-change.{json,exit}` and `step-warning-change-strict.{json,exit}`: `openspec validate step-warning-change --type change --json`, without and with `--strict`. The input project is committed beside them as `validate-change/step-warning-project/`, so a built-in validator mirror can be fed the same input. The change adds one requirement whose scenario has a WHEN step and an AND step but no THEN step. Default: `valid: true` with one WARNING ("… is missing a THEN step …"), exit 0. Strict: `valid: false` with the same WARNING, exit 1. `Validate116ContractTest` reads both.
+- `explore/`, `update/` and `workflow-invocations.json`: `scripts/capture-explore-fixtures.py` and `scripts/capture-workflow-invocations.py`. They are target-scoped: `ExploreInstructionsTest`, `ExplorePathsContractTest` and `WorkflowInvocationContractTest` read the copies for `openspecTargetVersion`. Apart from the `generatedBy: "1.16.0"` stamp in the generated skills, every file equals 1.15.0's.
+- `errors/validate-unparseable-config.*` and `errors/validate-unreadable-config.*`: `scripts/capture-error-fixtures.py` (cases added for 1.16). `validate --all --json` in a project whose `openspec/config.yaml` is invalid YAML, or mode 000. Both exit 1 with an item-less `status` envelope (`unparseable_config` / `unreadable_config`) carrying a `fix`. `Validate116ContractTest` checks they read as an error response and never as a pass. The script's other cases were identical to the latest earlier capture (`1.15.0/errors/` or `1.14.3/errors/`) apart from version strings, including the no-root store-suggestion envelope, so only these two are committed.
+
+To re-capture, regenerate in the same isolated way. Never hand-edit a capture; if the CLI's output changes, re-capture and fix the tests.

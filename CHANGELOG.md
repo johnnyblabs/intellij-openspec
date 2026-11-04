@@ -4,6 +4,10 @@
 
 ## Unreleased
 
+### Added
+
+- **OpenSpec CLI 1.16.x is supported.** The plugin now targets 1.16.0. Its new warning for a scenario without a WHEN/GIVEN or THEN step comes through in the CLI's validation verdict, failing only under strict.
+
 ### Fixed
 
 - **The Validate notification counts in the singular when there's one.** It said "1 errors" or "1 warnings"; it now reads, for example, "whole project failed (1 error, 2 warnings)".
