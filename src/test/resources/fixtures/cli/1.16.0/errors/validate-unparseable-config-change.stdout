@@ -1,0 +1,10 @@
+{
+  "status": [
+    {
+      "severity": "error",
+      "code": "unparseable_config",
+      "message": "Could not parse /fixture/broken-config/openspec/config.yaml (Flow sequence in block collection must be sufficiently indented and end with a ] at line 3, column 1:).",
+      "fix": "Fix the YAML syntax in /fixture/broken-config/openspec/config.yaml."
+    }
+  ]
+}

@@ -388,7 +388,9 @@ public final class BuiltInValidator {
         ConfigService configService = project.getService(ConfigService.class);
         // Force a fresh reload to pick up any VFS changes
         configService.reload();
-        OpenSpecConfig config = configService.getConfig();
+        // One snapshot, so the config and its load problem come from the same load.
+        ConfigService.LoadResult loaded = configService.current();
+        OpenSpecConfig config = loaded != null ? loaded.config() : null;
 
         VirtualFile configFile = OpenSpecFileUtil.getConfigFile(project);
         // Also try direct lookup if VFS missed it
@@ -398,7 +400,8 @@ public final class BuiltInValidator {
             if (configFile != null && config == null) {
                 // Retry loading
                 configService.reload();
-                config = configService.getConfig();
+                loaded = configService.current();
+                config = loaded != null ? loaded.config() : null;
             }
         }
         String path = configFile != null ? configFile.getPath() : "config.yaml";
@@ -412,8 +415,22 @@ public final class BuiltInValidator {
             return new ValidationResult(true, issues, "built-in");
         }
 
+        ConfigService.LoadProblem problem = loaded.problem();
+        if (problem != null) {
+            // CLI 1.16+ fails `validate` on a config.yaml it can't read or parse, but 1.3-1.15 validate it clean, so
+            // the fallback reports it as a non-failing WARNING (never in the strict flip set) rather than an ERROR.
+            // The field checks are skipped: they would run against defaults and report a missing schema.
+            boolean unreadable = problem.kind() == ConfigService.ProblemKind.UNREADABLE;
+            issues.add(new ValidationIssue(ValidationIssue.Severity.WARNING, path, 1,
+                    (unreadable ? "config.yaml could not be read (" : "config.yaml is not valid YAML (")
+                            + problem.detail() + "). OpenSpec 1.16 and later fail validate until "
+                            + (unreadable ? "the file is readable or removed." : "the YAML syntax is fixed."),
+                    unreadable ? "config-unreadable" : "config-unparseable"));
+            return new ValidationResult(true, issues, "built-in");
+        }
+
         if (config.getSchema() == null || config.getSchema().isEmpty()) {
-            // INFO, not WARNING/ERROR. `openspec validate` never reads config.yaml and is clean for a
+            // INFO, not WARNING/ERROR. `openspec validate` reports no config.yaml content issues and is clean for a
             // missing schema — upstream tolerates its absence and defaults to `spec-driven`. A WARNING
             // squiggle on a file the CLI accepts would be stricter than the client the plugin wraps, so
             // this is an advisory-only hygiene nudge — `schema` is the one field upstream documents as

@@ -154,11 +154,18 @@ def main() -> None:
         seed_project(broken)
         config = broken / "openspec/config.yaml"
         write(config, "schema: spec-driven\ncontext: [unclosed\n")
-        cap.case("validate-unparseable-config", broken, "validate", "--all", "--json")
+        # The check runs before validate splits into its bulk, single-item and --strict paths, so the change and
+        # strict runs must answer exactly like --all (Validate116ContractTest compares them).
+        variants = (("", ("--all", "--json")),
+                    ("-change", ("good", "--type", "change", "--json")),
+                    ("-strict", ("good", "--type", "change", "--strict", "--json")))
+        for suffix, args in variants:
+            cap.case(f"validate-unparseable-config{suffix}", broken, "validate", *args)
         write(config, "schema: spec-driven\n")
         config.chmod(0)
         try:
-            cap.case("validate-unreadable-config", broken, "validate", "--all", "--json")
+            for suffix, args in variants:
+                cap.case(f"validate-unreadable-config{suffix}", broken, "validate", *args)
         finally:
             config.chmod(0o644)
 

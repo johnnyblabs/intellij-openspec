@@ -126,4 +126,54 @@ public class OpenSpecValidateCliErrorFallbackTest extends OpenSpecIntegrationTes
         assertEquals(plain.issues().size(), prefixed.issues().size());
         assertEquals(plain.passed(), prefixed.passed());
     }
+
+    // ---- CLI 1.16 configuration error response: a failure, never a fallback ----
+
+    private void breakConfig() throws IOException {
+        com.intellij.openapi.vfs.VirtualFile config = getConfigFile();
+        com.intellij.openapi.application.WriteAction.run(() -> config.setBinaryContent(
+                "schema: spec-driven\ncontext: [unclosed\n".getBytes(StandardCharsets.UTF_8)));
+        refreshVfs();
+    }
+
+    private void assertConfigErrorResult(String fixture, ValidateTarget target) {
+        CliRunner.CliResult run = CliFixtures.error("1.16.0", fixture);
+        com.google.gson.JsonObject status = com.google.gson.JsonParser.parseString(run.stdout()).getAsJsonObject()
+                .getAsJsonArray("status").get(0).getAsJsonObject();
+
+        ValidationResult r = route(target, run.stdout(), run.exitCode());
+
+        String where = fixture + " " + target;
+        assertFalse(where + ": a broken config fails Validate", r.passed());
+        assertEquals(where + ": the CLI's verdict, not the built-in fallback", "cli", r.source());
+        // Exactly one issue: merging the built-in result would add its config-unparseable warning.
+        assertEquals(where + ": " + r.issues(), 1, r.issues().size());
+        com.johnnyblabs.openspec.validation.ValidationIssue issue = r.issues().get(0);
+        assertEquals(com.johnnyblabs.openspec.validation.ValidationIssue.Severity.ERROR, issue.severity());
+        assertTrue(where, issue.message().contains(status.get("message").getAsString()));
+        assertTrue(where, issue.message().contains(status.get("fix").getAsString()));
+        assertTrue(where + ": " + issue.filePath(), issue.filePath().endsWith("openspec/config.yaml"));
+        assertEquals(1, issue.line());
+        assertEquals("cli", issue.rule());
+    }
+
+    public void testConfigErrorResponseFailsEveryTargetWithTheCliFix() throws IOException {
+        breakConfig();
+        for (String fixture : new String[]{"validate-unparseable-config", "validate-unreadable-config"}) {
+            assertConfigErrorResult(fixture, ValidateTarget.wholeProject());
+            assertConfigErrorResult(fixture, ValidateTarget.wholeProject().withStrict());
+            assertConfigErrorResult(fixture + "-change", ValidateTarget.change("test-change"));
+            assertConfigErrorResult(fixture + "-strict", ValidateTarget.change("test-change").withStrict());
+        }
+    }
+
+    public void testWithABrokenConfigOtherErrorResponsesStillFallBack() throws IOException {
+        // Same broken config, but the CLI answered with a non-config error response: the built-in verdict is used,
+        // and it carries the built-in warning for the config.
+        breakConfig();
+        CliRunner.CliResult noRoot = CliFixtures.error("validate-noroot");
+        ValidationResult r = route(ValidateTarget.wholeProject(), noRoot.stdout(), noRoot.exitCode());
+        assertFalse("cli".equals(r.source()));
+        assertTrue(r.issues().toString(), r.issues().stream().anyMatch(i -> "config-unparseable".equals(i.rule())));
+    }
 }

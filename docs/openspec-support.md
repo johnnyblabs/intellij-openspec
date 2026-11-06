@@ -54,7 +54,7 @@ This section is the **single source of truth** for the plugin's per-CLI-version 
 
 - **`1.16.x` line:** no command, flag, workflow, AI-tool entry or JSON shape the plugin reads changed. Over the parity corpus, `1.16.0`'s `validate --all --json` default and `--strict` output is identical to `1.15.0`'s (only timings differ), so the anchors and the pinned 1.14.2 strict divergence are unchanged. Two validate behaviours are new:
   - **Scenario steps.** A scenario with no WHEN/GIVEN step or no THEN step now gets a warning. It passes in default validation and fails under `--strict`; the plugin takes that verdict from the CLI. The built-in fallback doesn't check scenario steps yet, which keeps it laxer than the client, never stricter.
-  - **Broken `config.yaml`.** If `openspec/config.yaml` can't be parsed or read, `validate` answers with an error response (`unparseable_config` or `unreadable_config`) instead of a verdict. The plugin reads it as an error, never as a passing report.
+  - **Broken `config.yaml`.** If `openspec/config.yaml` can't be parsed or read, `validate` answers with an error response (`unparseable_config` or `unreadable_config`) instead of a verdict. Validate reports that as a failure, with the CLI's message and fix on a `config.yaml` link, and the Change Deltas pane counts the same error. Without the CLI, the built-in check shows a non-failing warning for the same file, since CLI versions before 1.16 accept it.
   - **Standalone binary.** 1.16's release assets are archives (`.tar.gz`, `.zip`) rather than a bare binary. The binary inside reports its version the same way as the npm install's.
 
   Verified against captured real 1.16.0 CLI output under `../src/test/resources/fixtures/cli/1.16.0/`.

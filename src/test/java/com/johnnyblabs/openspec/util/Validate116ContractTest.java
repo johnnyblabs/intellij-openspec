@@ -1,5 +1,6 @@
 package com.johnnyblabs.openspec.util;
 
+import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.johnnyblabs.openspec.validation.ValidationIssue;
 import com.johnnyblabs.openspec.validation.ValidationResult;
@@ -69,6 +70,39 @@ class Validate116ContractTest {
         assertNotNull(failed.fix(), "the CLI says how to fix it");
         assertTrue(result.stdout().contains(failed.fix()), "fix comes from the capture");
 
-        assertThrows(CliOutputParser.CliErrorResponseException.class, () -> CliOutputParser.parseJsonOutput(result));
+        // The configuration codes are thrown as their own subtype, with each field read from the response.
+        JsonObject status = JsonParser.parseString(result.stdout()).getAsJsonObject().getAsJsonArray("status").get(0)
+                .getAsJsonObject();
+        CliOutputParser.CliConfigErrorException thrown = assertThrows(CliOutputParser.CliConfigErrorException.class,
+                () -> CliOutputParser.parseJsonOutput(result));
+        assertEquals(code, thrown.code());
+        assertEquals(status.get("message").getAsString(), thrown.cliMessage());
+        assertEquals(status.get("fix").getAsString(), thrown.fix());
+        assertEquals(thrown.cliMessage() + " " + thrown.fix(), thrown.getMessage());
+    }
+
+    /** 1.16 checks config.yaml before validate splits into its paths, so a change run and a strict run answer alike. */
+    @ParameterizedTest(name = "{0}{1}")
+    @CsvSource({
+            "validate-unparseable-config, -change",
+            "validate-unparseable-config, -strict",
+            "validate-unreadable-config, -change",
+            "validate-unreadable-config, -strict",
+    })
+    void everyTargetAndModeGetsTheSameConfigErrorResponse(String fixture, String variant) {
+        CliRunner.CliResult all = CliFixtures.error("1.16.0", fixture);
+        CliRunner.CliResult other = CliFixtures.error("1.16.0", fixture + variant);
+        assertEquals(all.stdout(), other.stdout());
+        assertEquals(all.exitCode(), other.exitCode());
+    }
+
+    @Test
+    void otherErrorResponsesAreNotConfigErrors() {
+        CliRunner.CliResult invalidItem = new CliRunner.CliResult(1, CliFixtures.text("1.13.2/validate-invalid-item.json"), "");
+        for (CliRunner.CliResult run : new CliRunner.CliResult[]{invalidItem, CliFixtures.error("validate-noroot")}) {
+            CliOutputParser.CliErrorResponseException thrown = assertThrows(
+                    CliOutputParser.CliErrorResponseException.class, () -> CliOutputParser.parseJsonOutput(run));
+            assertFalse(thrown instanceof CliOutputParser.CliConfigErrorException, run.stdout());
+        }
     }
 }

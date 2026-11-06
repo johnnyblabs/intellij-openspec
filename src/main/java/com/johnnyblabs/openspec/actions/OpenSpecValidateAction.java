@@ -98,6 +98,8 @@ public class OpenSpecValidateAction extends OpenSpecBaseAction {
      * Runs the CLI validation and merges it with the built-in result, or falls back to the full built-in
      * validator (with the per-run strict flip) when the CLI run throws, or answers with anything but a verdict (an
      * error response, unreadable JSON, a response without items) ({@link CliOutputParser.CliErrorResponseException}) — never a blind pass.
+     * The exception is a 1.16+ configuration error response ({@link CliOutputParser.CliConfigErrorException}): the
+     * CLI failed the run on a broken {@code config.yaml}, so that failure is the result ({@link #configErrorResult}).
      * Package-private so tests can drive the routing with a captured CLI result.
      */
     static ValidationResult cliOrFallback(Project project, BuiltInValidator validator, ValidateTarget target,
@@ -109,11 +111,27 @@ public class OpenSpecValidateAction extends OpenSpecBaseAction {
             // The CLI verdict is already strict-aware (cliArgs passed --strict when the
             // run is strict); config stays non-failing, so no fallback flip is needed here.
             return combineWithCli(validator, target, cliValidation);
+        } catch (CliOutputParser.CliConfigErrorException configError) {
+            // The CLI checked config.yaml before anything else and stopped, for every target and in strict mode
+            // alike. It validated nothing else, so no built-in result is merged in.
+            return configErrorResult(project, configError);
         } catch (Exception ex) {
             // CLI failed to run or rejected the run — fall back to the full built-in validator, never a
             // blind pass. Apply the per-run strict verdict flip to the fallback.
             return applyStrictFallbackVerdict(builtInValidate(project, validator, target), target.strict());
         }
+    }
+
+    /**
+     * The failed result for a CLI configuration error response: one ERROR at the project's {@code config.yaml}
+     * carrying the CLI's message and fix. The Change Deltas pane counts the same result
+     * ({@link CliOutputParser.CliConfigErrorException#toResult}), so the pane and Validate agree.
+     */
+    public static ValidationResult configErrorResult(Project project, CliOutputParser.CliConfigErrorException error) {
+        // Built from the base path rather than a VFS lookup: this runs in a background task, and the path only
+        // feeds the issue (and its console link), which the console resolves on its own.
+        String base = project.getBasePath();
+        return error.toResult((base != null ? base + "/" : "") + "openspec/config.yaml");
     }
 
     /**
@@ -175,8 +193,9 @@ public class OpenSpecValidateAction extends OpenSpecBaseAction {
      *
      * <p>The CLI is authoritative for the artifacts it validates (specs, change deltas) — the built-in
      * validator must not red a clean CLI. For a whole-project run the built-in validator still owns
-     * {@code config.yaml} (the CLI's {@code validate} never reads it), so the verdict combines the CLI
-     * result with the built-in config-only result. For a single spec/change target there is no config
+     * {@code config.yaml} content (the CLI's {@code validate} only checks, from 1.16, that the file can be read and
+     * parsed, and reports no content issues), so the verdict combines the CLI result with the built-in config-only
+     * result. For a single spec/change target there is no config
      * component, so the CLI verdict stands alone.
      *
      * <p>Exposed (static, no side effects beyond reading config) so a test can inject a

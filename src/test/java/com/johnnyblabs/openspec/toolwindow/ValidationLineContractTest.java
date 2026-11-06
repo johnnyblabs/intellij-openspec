@@ -92,6 +92,15 @@ class ValidationLineContractTest {
         }
 
         @Test
+        void aConfigErrorResponseShowsTheFailureValidateReports() {
+            for (String fixture : new String[]{"validate-unparseable-config-change", "validate-unreadable-config-change"}) {
+                CliRunner.CliResult run = com.johnnyblabs.openspec.util.CliFixtures.error("1.16.0", fixture);
+                assertEquals("Validate: 1 error, 0 warnings · Show issues",
+                        text(SpecPreviewRenderer.cliValidationLine("add-auth", run)), fixture);
+            }
+        }
+
+        @Test
         void unreadableOutputIsNoVerdict() {
             assertNull(SpecPreviewRenderer.cliValidationLine("add-auth", new CliRunner.CliResult(1, "", "boom")));
             assertNull(SpecPreviewRenderer.cliValidationLine("add-auth", new CliRunner.CliResult(0, "{\"items\":", "")));

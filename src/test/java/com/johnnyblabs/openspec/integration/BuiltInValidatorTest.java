@@ -245,6 +245,41 @@ public class BuiltInValidatorTest extends OpenSpecIntegrationTestBase {
                 result.issues().stream().noneMatch(i -> "config-field-required".equals(i.rule())));
     }
 
+    public void testMalformedConfigIsASingleNonFailingWarning() throws Exception {
+        // CLI 1.16+ fails validate on this file, CLI 1.3-1.15 validate it clean: the fallback warns, never fails.
+        overwriteFile("openspec/config.yaml", "schema: spec-driven\ncontext: [unclosed\n");
+
+        ValidationResult result = validator.validateConfig();
+
+        assertTrue("a broken config must not fail the built-in verdict", result.passed());
+        assertEquals("exactly one issue, and no field checks against defaults: " + result.issues(),
+                1, result.issues().size());
+        ValidationIssue issue = result.issues().get(0);
+        assertEquals("config-unparseable", issue.rule());
+        assertEquals(ValidationIssue.Severity.WARNING, issue.severity());
+        assertTrue(issue.filePath(), issue.filePath().endsWith("openspec/config.yaml"));
+        assertTrue(issue.message(), issue.message().contains("not valid YAML ("));
+        assertTrue("the warning never flips a strict fallback verdict",
+                com.johnnyblabs.openspec.actions.OpenSpecValidateAction.applyStrictFallbackVerdict(result, true).passed());
+    }
+
+    public void testAFixedConfigClearsTheWarning() throws Exception {
+        overwriteFile("openspec/config.yaml", "schema: spec-driven\ncontext: [unclosed\n");
+        assertFalse(validator.validateConfig().issues().isEmpty());
+
+        overwriteFile("openspec/config.yaml", "schema: spec-driven\n");
+
+        assertTrue(validator.validateConfig().issues().stream()
+                .noneMatch(i -> "config-unparseable".equals(i.rule())));
+    }
+
+    public void testNonMappingConfigIsNotReportedAsUnparseable() throws Exception {
+        overwriteFile("openspec/config.yaml", "- a\n- b\n");
+
+        assertTrue(validator.validateConfig().issues().stream()
+                .noneMatch(i -> "config-unparseable".equals(i.rule()) || "config-unreadable".equals(i.rule())));
+    }
+
     public void testUnknownSchemaWithCliUnavailableIsClean() throws Exception {
         // Guard: with the CLI unavailable (the default test env), the known-set collapses to the
         // built-in floor, so the plugin can't see project-local forks. A non-built-in schema must NOT

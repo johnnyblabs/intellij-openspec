@@ -10,6 +10,7 @@
 
 ### Fixed
 
+- **Validate fails on a broken `config.yaml`.** With OpenSpec CLI 1.16, a `config.yaml` that can't be read or isn't valid YAML made Validate report a pass. It now reports a failure with the CLI's message and fix, and the Change Deltas pane shows the same error. Without the CLI, the built-in check shows a warning.
 - **The Validate notification counts in the singular when there's one.** It said "1 errors" or "1 warnings"; it now reads, for example, "whole project failed (1 error, 2 warnings)".
 
 ## v0.15.0

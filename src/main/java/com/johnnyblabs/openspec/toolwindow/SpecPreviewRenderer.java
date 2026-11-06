@@ -432,11 +432,14 @@ public final class SpecPreviewRenderer {
     /**
      * The "Validate" line for one run of {@code openspec validate <change> --type change --json}, read exactly as the
      * Validate action reads it ({@link CliOutputParser#parseJsonOutput}), or null when the run gave no verdict (an
-     * error response, unreadable output, no items).
+     * error response, unreadable output, no items). A configuration error response is the CLI failing the run, so it
+     * shows the failure Validate reports for it.
      */
     public static String cliValidationLine(String changeName, CliRunner.CliResult result) {
         try {
             return validationLine(CLI_VALIDATION_LABEL, CliOutputParser.parseJsonOutput(result), changeName);
+        } catch (CliOutputParser.CliConfigErrorException configError) {
+            return validationLine(CLI_VALIDATION_LABEL, configError.toResult("openspec/config.yaml"), changeName);
         } catch (RuntimeException ex) {
             // Anything but a verdict: Validate falls back on the same failures, so the pane shows no line.
             return null;

@@ -1,6 +1,7 @@
 package com.johnnyblabs.openspec;
 
 import com.johnnyblabs.openspec.model.OpenSpecConfig;
+import com.johnnyblabs.openspec.services.ConfigService;
 import org.junit.jupiter.api.Test;
 import org.yaml.snakeyaml.Yaml;
 
@@ -104,6 +105,72 @@ class ConfigServiceTest {
             assertTrue(config.getRules().isEmpty(),
                     "1.7 list-shaped rules (artifactId → string[]) are skipped by the String-valued "
                             + "reader without crashing; got: " + config.getRules());
+        }
+    }
+
+    // ---- ConfigService.load: the production loader, and what it records when it falls back ----
+
+    private static ConfigService.LoadResult loadText(String yaml) {
+        return ConfigService.load(() -> new java.io.ByteArrayInputStream(yaml.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+    }
+
+    @Test
+    void aValidConfigLoadsWithNoProblem() {
+        ConfigService.LoadResult r = loadText("schema: spec-driven\ncontext: hello\n");
+        assertNull(r.problem());
+        assertEquals("spec-driven", r.config().getSchema());
+    }
+
+    @Test
+    void malformedYamlIsUnparseableWithTheParsersReason() {
+        ConfigService.LoadResult r = loadText("schema: spec-driven\ncontext: [unclosed\n");
+        assertNotNull(r.problem());
+        assertEquals(ConfigService.ProblemKind.UNPARSEABLE, r.problem().kind());
+        assertFalse(r.problem().detail().isBlank());
+        assertFalse(r.problem().detail().contains("\n"), "only the first line of the parser's message");
+        assertNull(r.config().getSchema(), "defaults are used");
+    }
+
+    @Test
+    void yamlThatIsNotAMappingIsNotAParseFailure() {
+        // Upstream parses these without error, so it reports nothing; neither does the plugin.
+        for (String yaml : new String[]{"just a string\n", "- a\n- b\n", "42\n"}) {
+            ConfigService.LoadResult r = loadText(yaml);
+            assertNull(r.problem(), yaml);
+            assertNotNull(r.config(), yaml);
+        }
+    }
+
+    /**
+     * The unreadable branch through the loader seam: the IntelliJ test fixture's in-memory filesystem can't be made
+     * unreadable, so the source throws the {@link java.io.IOException} a real read would.
+     */
+    @Test
+    void aSourceThatCannotBeReadIsUnreadable() {
+        ConfigService.LoadResult r = ConfigService.load(() -> {
+            throw new java.io.IOException("EACCES: permission denied");
+        });
+        assertNotNull(r.problem());
+        assertEquals(ConfigService.ProblemKind.UNREADABLE, r.problem().kind());
+        assertEquals("EACCES: permission denied", r.problem().detail());
+    }
+
+    /** The same branch with a real unreadable file on disk. */
+    @Test
+    @org.junit.jupiter.api.condition.DisabledOnOs(org.junit.jupiter.api.condition.OS.WINDOWS)
+    void aRealUnreadableFileIsUnreadable(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) throws Exception {
+        java.nio.file.Path file = dir.resolve("config.yaml");
+        java.nio.file.Files.writeString(file, "schema: spec-driven\n");
+        java.nio.file.Files.setPosixFilePermissions(file, java.util.Set.of());
+        try {
+            org.junit.jupiter.api.Assumptions.assumeFalse(java.nio.file.Files.isReadable(file),
+                    "running as a user who can read a mode-000 file (root)");
+            ConfigService.LoadResult r = ConfigService.load(() -> java.nio.file.Files.newInputStream(file));
+            assertNotNull(r.problem());
+            assertEquals(ConfigService.ProblemKind.UNREADABLE, r.problem().kind());
+        } finally {
+            java.nio.file.Files.setPosixFilePermissions(file,
+                    java.nio.file.attribute.PosixFilePermissions.fromString("rw-------"));
         }
     }
 }
