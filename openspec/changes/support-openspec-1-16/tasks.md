@@ -55,5 +55,5 @@
 
 - [x] 6.1 `./gradlew build` is green, including the coverage floor.
 - [x] 6.2 `openspec validate support-openspec-1-16 --strict` is clean with the 1.16.0 CLI.
-- [ ] 6.3 `caffeinate -dimsu ./gradlew uiSmoke` is green with the 1.16.0 CLI. Check that no seed scenario picks up the new step warning and that every version-gated skip reason still holds.
-- [ ] 6.4 Re-run the screenshot tour under `caffeinate`. The Validate-notification wording and shot 09's failing seed count CLI issues, so a new warning there would change the count.
+- [x] 6.3 `caffeinate -dimsu ./gradlew uiSmoke` is green with the 1.16.0 CLI. Check that no seed scenario picks up the new step warning and that every version-gated skip reason still holds.
+- [x] 6.4 Re-run the screenshot tour under `caffeinate`. The Validate-notification wording and shot 09's failing seed count CLI issues, so a new warning there would change the count.
