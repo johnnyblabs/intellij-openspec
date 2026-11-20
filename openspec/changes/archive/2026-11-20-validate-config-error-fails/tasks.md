@@ -55,7 +55,7 @@
 
 - [x] 4.1 `./gradlew build` passes, including the coverage floor.
 - [x] 4.2 `openspec validate validate-config-error-fails --strict` passes with CLI 1.16.0.
-- [ ] 4.3 Manual check in `runIde` with CLI 1.16.0 on the seeded demo. Break `openspec/config.yaml`, run Validate, and confirm:
+- [x] 4.3 Manual check in `runIde` with CLI 1.16.0 on the seeded demo. Break `openspec/config.yaml`, run Validate, and confirm:
   - the notification says the project failed with 1 error;
   - the console lists the CLI's message and fix under a `config.yaml` link that opens the file;
   - the Change Deltas pane line for a selected change shows 1 error.
