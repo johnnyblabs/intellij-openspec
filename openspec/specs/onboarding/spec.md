@@ -75,12 +75,12 @@ Every install hint the plugin shows SHALL come from one source. It SHALL lead wi
 
 #### Scenario: Hint on macOS or Linux
 - **WHEN** the plugin shows an install hint on macOS or Linux
-- **THEN** it SHALL name the standalone installer command `curl -fsSL https://raw.githubusercontent.com/Fission-AI/OpenSpec/main/scripts/binary/install.sh | sh` first
+- **THEN** it SHALL name the standalone installer command `curl -fsSL https://openspec.dev/cli/install.sh | sh` first
 - **AND** it SHALL name `npm install -g @fission-ai/openspec@latest` and `brew install openspec` as alternatives
 
 #### Scenario: Hint on Windows
 - **WHEN** the plugin shows an install hint on Windows
-- **THEN** it SHALL name the standalone installer command `irm https://raw.githubusercontent.com/Fission-AI/OpenSpec/main/scripts/binary/install.ps1 | iex` first
+- **THEN** it SHALL name the standalone installer command `irm https://openspec.dev/cli/install.ps1 | iex` first
 - **AND** it SHALL name `npm install -g @fission-ai/openspec@latest` as the alternative, and SHALL NOT suggest Homebrew or the `curl … | sh` command
 
 #### Scenario: Notifications link to the install instructions
