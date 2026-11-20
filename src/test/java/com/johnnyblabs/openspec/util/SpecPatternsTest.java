@@ -43,6 +43,32 @@ class SpecPatternsTest {
     }
 
     @Test
+    void noSpaceAfterHashes_isNotAMainSpecRequirement() {
+        // CLI 1.16 reports the unspaced header in a main spec as a broken requirement (its scenarios don't
+        // attach), so the main-spec pattern keeps the canonical space and must not match it.
+        assertNull(matchName("###Requirement: User login"));
+        assertNull(matchName("###requirement:User login"));
+    }
+
+    @Test
+    void noSpaceAfterHashes_isADeltaRequirement() {
+        // The CLI's change-delta reader accepts it: `validate --type change` passes a delta with this header
+        // and reports its missing scenario, so the header was recognized.
+        assertEquals("User login", deltaName("###Requirement: User login"));
+        assertEquals("User login", deltaName("###requirement:User login"));
+    }
+
+    @Test
+    void wrongHeadingLevelAndTokenPrefix_doNotMatchInEitherForm() {
+        assertNull(matchName("####Requirement: Wrong level"));
+        assertNull(deltaName("####Requirement: Wrong level"));
+        assertNull(matchName("##Requirement: Wrong level"));
+        assertNull(deltaName("##Requirement: Wrong level"));
+        assertNull(deltaName("###Requirements: Plural is not the token"));
+        assertNull(deltaName("### Requirementz: Not the token"));
+    }
+
+    @Test
     void midLineToken_doesNotMatch() {
         assertNull(matchName("Prose mentioning ### Requirement: inline"));
     }
@@ -107,6 +133,11 @@ class SpecPatternsTest {
 
     private static String matchName(String line) {
         Matcher m = SpecPatterns.REQUIREMENT_HEADER.matcher(line);
+        return m.find() ? m.group(1).trim() : null;
+    }
+
+    private static String deltaName(String line) {
+        Matcher m = SpecPatterns.DELTA_REQUIREMENT_HEADER.matcher(line);
         return m.find() ? m.group(1).trim() : null;
     }
 }

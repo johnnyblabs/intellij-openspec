@@ -929,6 +929,65 @@ class BuiltInValidatorRulesTest {
         return issues;
     }
 
+    // --- A header without a space after the hashes: a delta block, not a main-spec requirement (CLI 1.16) ---
+
+    @Test
+    void unspacedDeltaHeader_isARequirementBlockThatNeedsAScenario() {
+        // The CLI's validate --type change reports "must include at least one scenario" for this shape,
+        // so the header was recognized as a requirement block.
+        List<ValidationIssue> issues = validateDeltaStructure("""
+                ## ADDED Requirements
+
+                ###Requirement: Unspaced No Scenario
+
+                The system SHALL do this.
+                """);
+        assertTrue(issues.stream().anyMatch(i -> i.severity() == ValidationIssue.Severity.ERROR
+                        && i.rule().equals("delta-requirement-scenario")),
+                "an unspaced delta header is a requirement block, so its missing scenario is an ERROR");
+    }
+
+    @Test
+    void unspacedDeltaHeader_withAScenario_isValid() {
+        // The CLI verdict for this delta is valid.
+        List<ValidationIssue> issues = validateDeltaStructure("""
+                ## ADDED Requirements
+
+                ###Requirement: Unspaced Delta
+
+                The system SHALL accept an unspaced delta header.
+
+                #### Scenario: Delta scenario
+
+                - **WHEN** validated
+                - **THEN** it passes
+                """);
+        assertTrue(issues.stream().noneMatch(i -> i.severity() == ValidationIssue.Severity.ERROR),
+                "the CLI accepts this delta, so the built-in check must not ERROR");
+    }
+
+    @Test
+    void unspacedHeader_isNotARequirementInAMainSpec() {
+        // CLI 1.16 reports the unspaced header in a main spec as a broken requirement, and the built-in check keeps
+        // the canonical space, so it must not count it.
+        List<ValidationIssue> issues = validateSpec("""
+                # Test Spec
+
+                ## Requirements
+
+                ###Requirement: Unspaced In Main Spec
+
+                The system SHALL do this.
+
+                #### Scenario: Ignored
+                - **WHEN** x
+                - **THEN** y
+                """);
+        assertTrue(issues.stream().anyMatch(i -> i.severity() == ValidationIssue.Severity.ERROR
+                        && i.message().contains("'### Requirement:'")),
+                "a main spec with only an unspaced header has no requirement");
+    }
+
     // --- maskFences (the real production utility, not a mirror) ---
 
     @Test

@@ -21,7 +21,11 @@ public class DeltaSpecInspection extends LocalInspectionTool {
             "^## (ADDED|MODIFIED|REMOVED|RENAMED) Requirements", Pattern.MULTILINE);
     private static final Pattern FULL_SPEC_PATTERN = Pattern.compile(
             "^## (Requirements|Purpose)", Pattern.MULTILINE);
+    /** Delta blocks: the change's ADDED/MODIFIED/REMOVED/RENAMED sections also take {@code ###Requirement:}. */
     private static final Pattern REQUIREMENT_PATTERN =
+            com.johnnyblabs.openspec.util.SpecPatterns.DELTA_REQUIREMENT_HEADER;
+    /** The main spec a MODIFIED block is copied from: the canonical space is required there. */
+    private static final Pattern MAIN_SPEC_REQUIREMENT_PATTERN =
             com.johnnyblabs.openspec.util.SpecPatterns.REQUIREMENT_HEADER;
     private static final Pattern SCENARIO_PATTERN = Pattern.compile(
             "^#{4} Scenario:.+", Pattern.MULTILINE);
@@ -179,11 +183,11 @@ public class DeltaSpecInspection extends LocalInspectionTool {
 
         try {
             String content = new String(specFile.contentsToByteArray(), StandardCharsets.UTF_8);
-            Matcher reqMatcher = REQUIREMENT_PATTERN.matcher(content);
+            Matcher reqMatcher = MAIN_SPEC_REQUIREMENT_PATTERN.matcher(content);
             while (reqMatcher.find()) {
                 String name = reqMatcher.group(1).trim();
                 if (reqName.equals(name)) {
-                    int blockEnd = findNextStatic(REQUIREMENT_PATTERN, content, reqMatcher.end());
+                    int blockEnd = findNextStatic(MAIN_SPEC_REQUIREMENT_PATTERN, content, reqMatcher.end());
                     // Also stop at next ## heading
                     Matcher h2 = Pattern.compile("^## ", Pattern.MULTILINE).matcher(content);
                     if (h2.find(reqMatcher.end())) {

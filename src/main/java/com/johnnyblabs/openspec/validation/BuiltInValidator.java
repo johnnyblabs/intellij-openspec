@@ -32,6 +32,8 @@ public final class BuiltInValidator {
 
     private static final Pattern TITLE_PATTERN = Pattern.compile("^# .+", Pattern.MULTILINE);
     private static final Pattern REQUIREMENT_PATTERN = com.johnnyblabs.openspec.util.SpecPatterns.REQUIREMENT_HEADER;
+    /** Delta sections only: a change's ADDED/MODIFIED/REMOVED/RENAMED blocks also take {@code ###Requirement:}. */
+    private static final Pattern DELTA_REQUIREMENT_PATTERN = com.johnnyblabs.openspec.util.SpecPatterns.DELTA_REQUIREMENT_HEADER;
     // CLI parity (all generations): only SHALL/MUST satisfy the requirement-keyword rule.
     // SHOULD/MAY never satisfied `openspec validate`; accepting them made the plugin laxer
     // than the client it wraps. "SHALL NOT" still satisfies via the SHALL word match.
@@ -693,7 +695,7 @@ public final class BuiltInValidator {
             }
 
             // Find each requirement block in this section
-            Matcher reqMatcher = REQUIREMENT_PATTERN.matcher(sectionContent);
+            Matcher reqMatcher = DELTA_REQUIREMENT_PATTERN.matcher(sectionContent);
             while (reqMatcher.find()) {
                 int reqLine = lineNumberAt(content, sectionStart + reqMatcher.start());
                 String reqHeader = reqMatcher.group(1).trim();

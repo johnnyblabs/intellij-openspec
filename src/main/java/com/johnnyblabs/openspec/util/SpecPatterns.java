@@ -17,9 +17,20 @@ public final class SpecPatterns {
 
     /**
      * Header-token prefix for composing into larger patterns (e.g. followed by a quoted
-     * requirement name). Case-insensitive token; requires the {@code ###} at line start.
+     * requirement name). Case-insensitive token; requires the {@code ###} at line start and a space
+     * after the hashes. This is the main-spec form. CLI 1.16 recognizes the unspaced header in a main spec too, but its
+     * scenarios don't attach to it, so the plugin keeps the canonical space here.
      */
     public static final String REQUIREMENT_HEADER_PREFIX_REGEX = "^###\\s+(?i:requirement):\\s*";
+
+    /**
+     * The delta-spec form: the space after the hashes is optional. The CLI's change-delta reader
+     * ({@code ^###\s*Requirement:}, the ADDED/MODIFIED/REMOVED/RENAMED sections of a change) accepts
+     * {@code ###Requirement: Name}, and {@code validate} and archive honour that. Use only for
+     * delta content, never for a main spec.
+     */
+    public static final Pattern DELTA_REQUIREMENT_HEADER =
+            Pattern.compile("^###\\s*(?i:requirement):\\s*(.+)$", Pattern.MULTILINE);
 
     /** Canonical casing used whenever the plugin writes or rewrites a requirement header. */
     public static final String CANONICAL_HEADER_PREFIX = "### Requirement: ";

@@ -54,11 +54,11 @@ Install the CLI with any of OpenSpec's [install routes](https://openspec.dev/doc
 
 ```bash
 # Standalone installer (no Node.js needed), macOS and Linux:
-curl -fsSL https://openspec.dev/cli/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/Fission-AI/OpenSpec/main/scripts/binary/install.sh | sh
 # Windows (PowerShell):
-irm https://openspec.dev/cli/install.ps1 | iex
+irm https://raw.githubusercontent.com/Fission-AI/OpenSpec/main/scripts/binary/install.ps1 | iex
 # Or with a package manager:
-npm install -g @fission-ai/openspec@latest   # needs Node.js 22.12+
+npm install -g @fission-ai/openspec@latest   # needs Node.js 20.19+
 brew install openspec                        # macOS and Linux
 ```
 

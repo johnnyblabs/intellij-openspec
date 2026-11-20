@@ -1,21 +1,23 @@
-<!-- Captured from Fission-AI/OpenSpec README.md at tag v1.16.0, ## Quick Start section only.
+<!-- Captured from Fission-AI/OpenSpec README.md at tag v1.15.0 (commit 8e0288df12d4), ## Quick Start section only.
      Re-capture on every CLI bump:
      gh api 'repos/Fission-AI/OpenSpec/contents/README.md?ref=<tag>' --jq .content | base64 -d | awk '/^## Quick Start/{f=1;print;next} /^## /{f=0} f' -->
 ## Quick Start
 
-Install OpenSpec. On macOS or Linux, in your terminal:
+Install OpenSpec. It is a single file and needs no Node.js (on Alpine Linux, first run `apk add libstdc++ libgcc`).
+
+macOS and Linux:
 
 ```bash
-curl -fsSL https://openspec.dev/cli/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/Fission-AI/OpenSpec/main/scripts/binary/install.sh | sh
 ```
 
-On Windows, in PowerShell:
+Windows (PowerShell):
 
 ```powershell
-irm https://openspec.dev/cli/install.ps1 | iex
+irm https://raw.githubusercontent.com/Fission-AI/OpenSpec/main/scripts/binary/install.ps1 | iex
 ```
 
-Prefer a package manager? `npm install -g @fission-ai/openspec@latest` (needs Node.js 22.12.0 or higher) or the official [Homebrew formula](https://formulae.brew.sh/formula/openspec), `brew install openspec`.
+Prefer a package manager? `npm install -g @fission-ai/openspec@latest` (needs Node.js 20.19.0 or higher) or the official [Homebrew formula](https://formulae.brew.sh/formula/openspec), `brew install openspec`.
 
 Then navigate to your project directory and initialize:
 

@@ -16,8 +16,10 @@ public final class CliInstallHints {
     /** The label of every link or action that opens {@link #INSTALL_DOCS_URL}. */
     public static final String INSTALL_DOCS_LABEL = "Install instructions";
 
-    static final String UNIX_STANDALONE = "curl -fsSL https://openspec.dev/cli/install.sh | sh";
-    static final String WINDOWS_STANDALONE = "irm https://openspec.dev/cli/install.ps1 | iex";
+    static final String UNIX_STANDALONE =
+            "curl -fsSL https://raw.githubusercontent.com/Fission-AI/OpenSpec/main/scripts/binary/install.sh | sh";
+    static final String WINDOWS_STANDALONE =
+            "irm https://raw.githubusercontent.com/Fission-AI/OpenSpec/main/scripts/binary/install.ps1 | iex";
     static final String NPM = "npm install -g @fission-ai/openspec@latest";
     static final String BREW = "brew install openspec";
 
@@ -48,7 +50,7 @@ public final class CliInstallHints {
     public static String html(boolean isWindows) {
         StringBuilder sb = new StringBuilder()
                 .append("Install with: <code>").append(escape(standaloneCommand(isWindows))).append("</code> (no Node.js needed)")
-                .append(", or <code>").append(NPM).append("</code> (needs Node.js 22.12 or later)");
+                .append(", or <code>").append(NPM).append("</code> (needs Node.js 20.19 or later)");
         if (!isWindows) {
             sb.append(", or <code>").append(BREW).append("</code>");
         }

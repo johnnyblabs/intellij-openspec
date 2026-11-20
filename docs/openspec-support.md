@@ -56,10 +56,8 @@ This section is the **single source of truth** for the plugin's per-CLI-version 
   - **Scenario steps.** A scenario with no WHEN/GIVEN step or no THEN step now gets a warning. It passes in default validation and fails under `--strict`; the plugin takes that verdict from the CLI. The built-in fallback doesn't check scenario steps yet, which keeps it laxer than the client, never stricter.
   - **Broken `config.yaml`.** If `openspec/config.yaml` can't be parsed or read, `validate` answers with an error response (`unparseable_config` or `unreadable_config`) instead of a verdict. Validate reports that as a failure, with the CLI's message and fix on a `config.yaml` link, and the Change Deltas pane counts the same error. Without the CLI, the built-in check shows a non-failing warning for the same file, since CLI versions before 1.16 accept it.
   - **Standalone binary.** 1.16's release assets are archives (`.tar.gz`, `.zip`) rather than a bare binary. The binary inside reports its version the same way as the npm install's.
-  - **Install routes.** The installer moved to `openspec.dev/cli/`, and the npm install needs Node.js 22.12 or newer. The plugin's install hints follow both.
-  - **Inline backtick code and unspaced delta headers.** A line of inline backtick code is no longer a fence, and a `###Requirement:` header with no space is recognized in change deltas. Main-spec duplicate and misplaced reporting for the unspaced header is not mirrored yet.
 
-  Verified against captured real 1.16.0 CLI output under `../src/test/resources/fixtures/cli/1.16.0/`. The per-feature assessment, with the gaps, is in [`cli-versions/1.16.md`](cli-versions/1.16.md).
+  Verified against captured real 1.16.0 CLI output under `../src/test/resources/fixtures/cli/1.16.0/`.
 
 [^agents]: The one local footprint is that `openspec update` now also regenerates a `.claude/commands/opsx/` command surface alongside the `.claude/skills/openspec-*/` skills — a CLI-managed developer-tooling detail, not a plugin feature.
 - The plugin is **runtime-version-aware**: recognized schema names are the union of its built-in set and the live `openspec schemas` list, and version-sensitive behavior is gated on the detected CLI version.
