@@ -1,0 +1,41 @@
+name: OpenSpec validate
+
+# Runs on changes to OpenSpec content, which the build workflow ignores. Validates every change and spec with the CLI
+# version the project targets. Strict mode is enabled once the long-requirement batches have landed (see CLAUDE.md).
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'openspec/**'
+      - 'CLAUDE.md'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: java-21
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read the target CLI version
+        run: |
+          v=$(grep '^openspecTargetVersion=' gradle.properties | cut -d= -f2)
+          test -n "$v" || { echo "openspecTargetVersion is not set in gradle.properties"; exit 1; }
+          echo "TARGET=$v" >> "$GITHUB_ENV"
+
+      - name: Check Node.js
+        run: |
+          command -v node >/dev/null && command -v npm >/dev/null || { echo "Node.js and npm are required on this runner"; exit 1; }
+          node --version && npm --version
+
+      - name: Install the target OpenSpec CLI
+        run: npm install -g "@fission-ai/openspec@${TARGET}"
+
+      - name: Verify the installed CLI matches the target
+        run: test "$(openspec --version)" = "$TARGET"
+
+      - name: Validate every change and spec
+        run: openspec validate --all
