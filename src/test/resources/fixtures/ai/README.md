@@ -48,6 +48,8 @@ Not kept as files, but run the same day:
 - an unknown top-level field (`notAField`) got 400 `Unknown name "notAField"`. That shows Google validates top-level names, so the 200 means `store` is recognised, not ignored.
 
 Auth keys (`AQ.…`) were not probed.
+
+**Ruling: `Api-Revision` is not required.** The Gemini REST example in the docs sends `Api-Revision: 2026-05-20`, and the plugin does not. On 2026-11-20, `gemini-3.8-flash` (the default) answered a minimal `generateContent` request with and without the header. Without it, the request got HTTP 200 on the third attempt. The other failures were 503 ("high demand") and one timeout, and the same failures occurred with the header. The plugin therefore does not send the header. This sample is small, so re-check it if a Gemini request starts failing with a revision-related error.
 ## Gemini generateContent — live captures
 
 Re-captured 2026-10-27 with `scripts/capture-gemini-generatecontent.py`, after the plugin started sending `"store": false`. The first capture was 2026-10-25. The script:
