@@ -1,0 +1,10 @@
+{
+  "status": [
+    {
+      "severity": "error",
+      "code": "unreadable_config",
+      "message": "Could not read /fixture/broken-config/openspec/config.yaml (EACCES: permission denied, open '/fixture/broken-config/openspec/config.yaml').",
+      "fix": "Make /fixture/broken-config/openspec/config.yaml a readable file, or remove it."
+    }
+  ]
+}

@@ -49,7 +49,9 @@ public final class CliOutputParser {
      * invalid), so the run is read with {@link CliJson#readReport}. Anything that is not a verdict is thrown as
      * {@link CliErrorResponseException}, so the caller falls back to the built-in validator rather than reporting a
      * pass: an error envelope (CLI 1.13.1+ {@code invalid_item}/{@code unknown_item}, 1.9+ {@code no_openspec_root}),
-     * malformed or truncated JSON, and a JSON response without an {@code items} array.
+     * malformed or truncated JSON, and a JSON response without an {@code items} array. A 1.16+ configuration error
+     * response is thrown as its subtype {@link CliConfigErrorException}: it is the CLI's verdict on the run, so callers
+     * that know the subtype report it as a failure instead of falling back.
      */
     public static ValidationResult parseJsonOutput(CliRunner.CliResult result) {
         List<ValidationIssue> issues = new ArrayList<>();
@@ -57,6 +59,9 @@ public final class CliOutputParser {
         JsonObject root = switch (CliJson.readReport(result)) {
             // A report's items stay authoritative even beside an error status entry.
             case CliJson.Failed failed when hasItems(failed.payload()) -> failed.payload();
+            case CliJson.Failed failed when failed.kind() == CliJson.Kind.ENVELOPE
+                    && CliConfigErrorException.CODES.contains(failed.code()) ->
+                    throw new CliConfigErrorException(failed.code(), failed.message(), failed.fix());
             case CliJson.Failed failed -> throw new CliErrorResponseException(failed.describe());
             case CliJson.Ok ok -> ok.object();
         };
@@ -105,9 +110,52 @@ public final class CliOutputParser {
      * The CLI answered {@code validate --json} with an error response instead of a verdict. Callers fall back to
      * the built-in validator, exactly as for a run that failed to execute.
      */
-    public static final class CliErrorResponseException extends RuntimeException {
+    public static class CliErrorResponseException extends RuntimeException {
         public CliErrorResponseException(String message) {
             super(message);
+        }
+    }
+
+    /**
+     * CLI 1.16+ checks that {@code openspec/config.yaml} can be read and parsed before validating anything, and
+     * answers a broken file with an item-less error response instead of a verdict. Unlike the other error responses
+     * this is the CLI failing the run, not the CLI being unable to answer.
+     */
+    public static final class CliConfigErrorException extends CliErrorResponseException {
+        static final java.util.Set<String> CODES = java.util.Set.of("unparseable_config", "unreadable_config");
+
+        private final String code;
+        private final String cliMessage;
+        private final String fix;
+
+        CliConfigErrorException(String code, String message, String fix) {
+            super(fix == null || fix.isBlank() ? message : message + " " + fix);
+            this.code = code;
+            this.cliMessage = message;
+            this.fix = fix;
+        }
+
+        public String code() {
+            return code;
+        }
+
+        /** The CLI's reason, without the fix. */
+        public String cliMessage() {
+            return cliMessage;
+        }
+
+        public String fix() {
+            return fix;
+        }
+
+        /**
+         * The failed result Validate reports for this response: one ERROR at {@code configPath} carrying the CLI's
+         * message and fix, at line 1 (the CLI names the parse position in prose, which is not parsed out here).
+         */
+        public ValidationResult toResult(String configPath) {
+            return new ValidationResult(false,
+                    List.of(new ValidationIssue(ValidationIssue.Severity.ERROR, configPath, 1, getMessage(), "cli")),
+                    "cli");
         }
     }
 
