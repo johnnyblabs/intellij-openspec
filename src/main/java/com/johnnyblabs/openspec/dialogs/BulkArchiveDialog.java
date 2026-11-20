@@ -31,6 +31,8 @@ import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.*;
 import java.util.*;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 public class BulkArchiveDialog extends DialogWrapper {
@@ -39,6 +41,8 @@ public class BulkArchiveDialog extends DialogWrapper {
     private final List<ChangeRow> rows = new ArrayList<>();
     private final ChangeTableModel tableModel = new ChangeTableModel();
     private final JBLabel conflictLabel = new JBLabel();
+    /** Numbers each conflict check, so only the latest selection's result is shown when checks overlap. */
+    private final AtomicInteger conflictRequest = new AtomicInteger();
     private final JPanel progressPanel = new JPanel();
     private JTable table;
     private boolean archiveStarted = false;
@@ -177,18 +181,28 @@ public class BulkArchiveDialog extends DialogWrapper {
         });
     }
 
+    /**
+     * Shows which capabilities the selected changes share. The spec files are read on a pooled thread (see
+     * {@link #loadConflicts}); the result is applied on the EDT only if it is still the latest request.
+     */
     private void updateConflicts() {
         List<String> selectedNames = getSelectedChangeNames();
+        int request = conflictRequest.incrementAndGet();
         if (selectedNames.size() < 2) {
-            conflictLabel.setVisible(false);
-            for (ChangeRow row : rows) row.hasConflict = false;
-            tableModel.fireTableDataChanged();
+            showConflicts(Map.of());
             return;
         }
 
         SpecSyncService syncService = project.getService(SpecSyncService.class);
-        Map<String, List<String>> conflicts = syncService.detectConflicts(selectedNames);
+        loadConflicts(selectedNames, syncService::detectConflicts, dialogModality, ignored -> isDisposed(),
+                conflicts -> {
+                    if (request == conflictRequest.get()) {
+                        showConflicts(conflicts);
+                    }
+                });
+    }
 
+    private void showConflicts(Map<String, List<String>> conflicts) {
         Set<String> conflictingChanges = new HashSet<>();
         for (List<String> names : conflicts.values()) {
             conflictingChanges.addAll(names);
@@ -208,6 +222,21 @@ public class BulkArchiveDialog extends DialogWrapper {
         }
 
         tableModel.fireTableDataChanged();
+    }
+
+    /**
+     * Runs {@code detect} on a pooled thread, then posts {@code onLoaded} with {@code modality} (dropped if
+     * {@code expired} holds by then). Keeps the spec-file reads off the EDT, as {@link #loadStatuses} does for statuses.
+     */
+    @VisibleForTesting
+    static void loadConflicts(List<String> changeNames,
+                              Function<List<String>, Map<String, List<String>>> detect,
+                              ModalityState modality, com.intellij.openapi.util.Condition<?> expired,
+                              Consumer<Map<String, List<String>>> onLoaded) {
+        ApplicationManager.getApplication().executeOnPooledThread(() -> {
+            Map<String, List<String>> conflicts = detect.apply(changeNames);
+            ApplicationManager.getApplication().invokeLater(() -> onLoaded.accept(conflicts), modality, expired);
+        });
     }
 
     public List<String> getSelectedChangeNames() {
