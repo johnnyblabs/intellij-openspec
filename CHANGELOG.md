@@ -10,6 +10,7 @@
 
 ### Changed
 
+- **Apply hands its prompt to your AI tool on Direct API, and its action is named as upstream names it.** Apply on Direct API used to show a warning and deliver nothing; it now copies the apply handoff for you to paste, as Revise and Explore do. The editor tab opens an unsaved file, not one in the temp directory.
 - **Archive from the menu and Verify asks about syncing delta specs, as the workflow panel does.** The question offers "Sync and Archive" or "Archive Without Syncing" and says what each does. The panel's "Sync First" button is now "Sync and Archive", so one archive merges the specs and archives the change.
 - **The install hints use OpenSpec's new installer, and the npm install needs Node.js 22.12.** The standalone commands now point at `openspec.dev/cli/`, and the README and getting-started docs match.
 

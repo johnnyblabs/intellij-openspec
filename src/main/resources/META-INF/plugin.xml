@@ -156,7 +156,7 @@
             <action id="OpenSpec.Apply"
                     class="com.johnnyblabs.openspec.actions.OpenSpecApplyAction"
                     text="Apply"
-                    description="Apply the current change"/>
+                    description="Implement tasks from an OpenSpec change"/>
             <action id="OpenSpec.SyncSpecs"
                     class="com.johnnyblabs.openspec.actions.OpenSpecSyncAction"
                     text="Sync Specs"

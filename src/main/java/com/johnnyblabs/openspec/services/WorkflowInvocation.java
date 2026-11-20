@@ -27,6 +27,8 @@ public final class WorkflowInvocation {
     /** Update, which the plugin calls Revise Change: the workflow id and its skill. */
     public static final String UPDATE = "update";
     public static final String UPDATE_SKILL = "openspec-update-change";
+    public static final String APPLY = "apply";
+    public static final String APPLY_SKILL = "openspec-apply-change";
     public static final String CONTINUE = "continue";
     public static final String CONTINUE_SKILL = "openspec-continue-change";
 

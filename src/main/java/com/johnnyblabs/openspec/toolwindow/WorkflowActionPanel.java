@@ -37,6 +37,8 @@ import com.johnnyblabs.openspec.model.ArtifactInstruction;
 import com.johnnyblabs.openspec.model.ArtifactStatus;
 import com.johnnyblabs.openspec.model.Change;
 import com.johnnyblabs.openspec.model.ChangeArtifactDag;
+import com.johnnyblabs.openspec.actions.WorkflowHandoffDelivery;
+import com.johnnyblabs.openspec.services.WorkflowInvocation;
 import com.johnnyblabs.openspec.services.AiToolDetectionService;
 import com.johnnyblabs.openspec.services.ArtifactLocalHistory;
 import com.johnnyblabs.openspec.services.ArtifactOrchestrationService;
@@ -1592,38 +1594,39 @@ public class WorkflowActionPanel extends JPanel {
                     });
                 }
                 case EDITOR_TAB -> ApplicationManager.getApplication().invokeLater(() -> {
-                    try {
-                        VirtualFile scratch = com.intellij.openapi.application.WriteAction.compute(() -> {
-                            VirtualFile tmp = LocalFileSystem.getInstance()
-                                    .findFileByPath(System.getProperty("java.io.tmpdir"));
-                            if (tmp == null) return null;
-                            String name = "openspec-apply-" + changeName + "-prompt.md";
-                            VirtualFile file = tmp.findChild(name);
-                            if (file != null) file.delete(this);
-                            file = tmp.createChildData(this, name);
-                            file.setBinaryContent(prompt.getBytes(StandardCharsets.UTF_8));
-                            return file;
-                        });
-                        if (scratch != null) {
-                            new OpenFileDescriptor(project, scratch).navigate(true);
-                        }
-                        showGuidancePopover(archiveIconButton,
-                                "\u2713 Opened in editor tab",
-                                "Copy the prompt to your AI tool, then save tasks.md when done.",
-                                null);
-                        startTaskWatcher(changeName, changeDir);
-                    } catch (IOException ex) {
-                        OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_SYSTEM, "Apply",
-                                "Failed to open prompt: " + ex.getMessage(), com.intellij.notification.NotificationType.ERROR);
-                    }
+                    // An unsaved tab, like Explore and Revise: the prompt is never written to disk.
+                    com.intellij.testFramework.LightVirtualFile scratch = new com.intellij.testFramework.LightVirtualFile(
+                            "openspec-apply-" + changeName + "-prompt.md", prompt);
+                    lastEditorTabPrompt = scratch;
+                    new OpenFileDescriptor(project, scratch).navigate(true);
+                    showGuidancePopover(archiveIconButton,
+                            "\u2713 Opened in editor tab",
+                            "Copy the prompt to your AI tool, then save tasks.md when done.",
+                            null);
+                    startTaskWatcher(changeName, changeDir);
                 });
                 case DIRECT_API -> {
-                    OpenSpecNotifier.warn(project, "Apply",
-                            "Apply delivers a prompt for your AI tool to implement. Use Clipboard or Editor Tab to copy the prompt, then paste it into your AI tool.");
+                    // Like Revise and Explore: the agent does the work, so the handoff is copied for the user to paste.
+                    String base = project.getBasePath();
+                    WorkflowInvocation.Found found = base == null ? null : WorkflowInvocation.find(Path.of(base),
+                            WorkflowInvocation.candidateTools(project), WorkflowInvocation.APPLY, WorkflowInvocation.APPLY_SKILL);
+                    if (found == null) {
+                        OpenSpecNotifier.warn(project, "Apply",
+                                "Apply needs your AI tool's apply workflow, which this project doesn't have. Run Update OpenSpec\u2026, then retry.");
+                        return;
+                    }
+                    String handoff = WorkflowInvocation.handoff(found.invocation(), WorkflowInvocation.APPLY_SKILL, changeName);
+                    ApplicationManager.getApplication().invokeLater(() ->
+                            WorkflowHandoffDelivery.deliver(project, "Apply", "openspec-apply-change.md", APPLY_DIRECT_API_NOTE,
+                                    found, handoff, DeliveryMode.DIRECT_API));
                 }
             }
         });
     }
+
+    /** Apply's Direct API note: the agent does the work, so the handoff was copied for the user to paste. */
+    private static final String APPLY_DIRECT_API_NOTE =
+            "Apply runs in your AI agent, which asks before writing, so it was copied for you to paste.";
 
     private void startTaskWatcher(String changeName, String changeDir) {
         disposeWatcher();

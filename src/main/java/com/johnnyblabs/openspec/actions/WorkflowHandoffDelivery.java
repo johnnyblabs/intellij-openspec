@@ -17,12 +17,12 @@ import java.awt.datatransfer.StringSelection;
  * Hands a workflow's invocation to the user's AI tool: opens it in an editor tab, or copies it to the clipboard for the
  * user to paste into the tool's chat. Direct API never reaches here; the action generates in the IDE instead.
  */
-final class WorkflowHandoffDelivery {
+public final class WorkflowHandoffDelivery {
 
     private WorkflowHandoffDelivery() {
     }
 
-    static void deliver(@NotNull Project project, @NotNull String title, @NotNull String editorTabFileName,
+    public static void deliver(@NotNull Project project, @NotNull String title, @NotNull String editorTabFileName,
                         @NotNull String directApiNote, WorkflowInvocation.Found found, String handoff,
                         @NotNull DeliveryMode mode) {
         String tool = found.tool().name();
