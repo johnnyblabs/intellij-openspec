@@ -8,6 +8,10 @@
 
 - **OpenSpec CLI 1.16.x is supported.** The plugin now targets 1.16.0. Its new warning for a scenario without a WHEN/GIVEN or THEN step comes through in the CLI's validation verdict, failing only under strict.
 
+### Changed
+
+- **The install hints use OpenSpec's new installer, and the npm install needs Node.js 22.12.** The standalone commands now point at `openspec.dev/cli/`, and the README and getting-started docs match.
+
 ### Fixed
 
 - **Validate fails on a broken `config.yaml`.** With OpenSpec CLI 1.16, a `config.yaml` that can't be read or isn't valid YAML made Validate report a pass. It now reports a failure with the CLI's message and fix, and the Change Deltas pane shows the same error. Without the CLI, the built-in check shows a warning.
