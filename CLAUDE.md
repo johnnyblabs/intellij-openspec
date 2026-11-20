@@ -42,6 +42,13 @@ git checkout HEAD -- .claude/skills/ .claude/commands/
 
 Since the 1.5.0 skills-only migration, `.claude/skills/openspec-*/` was the only *tracked* surface the CLI regenerated; **since adopting 1.8.0, `.claude/commands/opsx/` is a second tracked, CLI-regenerated surface** (the `opsx:*` experimental commands) — hence the checkout restores both. The other AI-tool mirrors (`.augment/`, `.codex/`, `.gemini/`, `.github/skills/`, `.github/prompts/`, `.junie/`, and their `commands` variants) are gitignored regenerated copies — clobbering there is harmless, and git can't (and needn't) restore them. The custom-named skills are gitignored too, so the checkout won't touch them.
 
+## OpenSpec validation and CLI updates
+
+- **The project must pass strict validation.** Before a PR that touches `openspec/`, and before a release, run `openspec validate --all --strict`. Strict treats every warning as a failure, so a clean default run is not enough.
+- **Keep requirement text under 500 characters.** The CLI warns beyond that, and strict fails. Move examples and edge cases into scenarios, or split the requirement. A MODIFIED delta must carry every scenario of its requirement.
+- **Change main specs only through a change.** Write the delta, validate it, then archive. Do not edit `openspec/specs/` directly.
+- **Match the CLI to the target.** The installed CLI should equal `openspecTargetVersion` in `gradle.properties`. Check it with `openspec --version` after a bump, then run `openspec update` and restore customizations as described above. Don't use a pinned `npx` version for repo work, because its cache can leak into captured fixtures.
+
 ## Plugin-internal config fields — audit before "aligning" to upstream
 
 When you're tempted to remove a field from `openspec/config.yaml`, `plugin.xml`, `.openspec.yaml`, or any other config file because "upstream's schema doesn't accept it / strips it / doesn't mention it", **stop and grep this codebase for reads of that field first**. We are a *wrapper around upstream OpenSpec*; both the upstream contract and the plugin's own internal contract are load-bearing.
