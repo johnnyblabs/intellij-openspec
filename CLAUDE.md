@@ -49,6 +49,12 @@ Since the 1.5.0 skills-only migration, `.claude/skills/openspec-*/` was the only
 - **Change main specs only through a change.** Write the delta, validate it, then archive. Do not edit `openspec/specs/` directly.
 - **Match the CLI to the target.** The installed CLI should equal `openspecTargetVersion` in `gradle.properties`. Check it with `openspec --version` after a bump, then run `openspec update` and restore customizations as described above. Don't use a pinned `npx` version for repo work, because its cache can leak into captured fixtures.
 
+## Branches, merges and CI
+
+- **Bring a branch up to date by merging or rebasing `main`. Don't rebuild a branch from a diff.** A net diff against a stale base silently reverts anything merged since that base.
+- **Merge `main` into a branch before merging it when an earlier PR touched the same file** (usually `CHANGELOG.md`). Otherwise the conflict appears at merge time.
+- **CI only runs for changes outside the build's ignored paths** (`openspec/**`, `.claude/**` and others). An OpenSpec-only PR gets no check, so it needs an admin override or a change to a watched file. An empty commit doesn't start CI either.
+
 ## Plugin-internal config fields — audit before "aligning" to upstream
 
 When you're tempted to remove a field from `openspec/config.yaml`, `plugin.xml`, `.openspec.yaml`, or any other config file because "upstream's schema doesn't accept it / strips it / doesn't mention it", **stop and grep this codebase for reads of that field first**. We are a *wrapper around upstream OpenSpec*; both the upstream contract and the plugin's own internal contract are load-bearing.
