@@ -43,11 +43,13 @@ class ArchiveOffEdtHygieneTest {
     }
 
     @Test
-    void archiveAndVerifyActionsApplySpecUpdatesLikeOpenspecArchive() throws IOException {
+    void archiveAndVerifyActionsAskTheSyncQuestionBeforeArchiving() throws IOException {
         for (String file : List.of("actions/OpenSpecArchiveAction.java", "actions/OpenSpecVerifyAction.java")) {
             String code = Files.readString(ModalityCallScanner.mainSource(file));
-            assertTrue(ModalityCallScanner.codeContains(code, "ArchiveDispatch.start(project, target, true,"),
-                    file + " must archive with syncSpecs=true, as `openspec archive` applies the delta specs");
+            assertTrue(ModalityCallScanner.codeContains(code, "ArchiveSyncPrompt.choose("),
+                    file + " must ask the shared sync question before archiving");
+            assertTrue(ModalityCallScanner.codeContains(code, "ArchiveDispatch.start(project, target, sync,"),
+                    file + " must archive with the answer to that question");
         }
     }
 

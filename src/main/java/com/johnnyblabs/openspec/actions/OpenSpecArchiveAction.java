@@ -10,7 +10,9 @@ import com.intellij.openapi.ui.popup.JBPopupFactory;
 import com.johnnyblabs.openspec.dialogs.VerifyDialog;
 import com.johnnyblabs.openspec.model.Change;
 import com.johnnyblabs.openspec.model.ArchiveReadinessResult;
+import com.johnnyblabs.openspec.dialogs.ArchiveSyncPrompt;
 import com.johnnyblabs.openspec.services.ArchiveDispatch;
+import com.johnnyblabs.openspec.services.SpecSyncService;
 import com.johnnyblabs.openspec.services.ChangeService;
 import com.johnnyblabs.openspec.services.ArchiveReadinessService;
 import com.johnnyblabs.openspec.util.OpenSpecNotifier;
@@ -69,21 +71,26 @@ public class OpenSpecArchiveAction extends OpenSpecBaseAction {
             public void run(@NotNull ProgressIndicator indicator) {
                 ArchiveReadinessService readinessService = project.getService(ArchiveReadinessService.class);
                 ArchiveReadinessResult result = readinessService.verify(target.getName());
+                boolean hasDeltaSpecs = project.getService(SpecSyncService.class).hasDeltaSpecs(target.getName());
 
                 ApplicationManager.getApplication().invokeLater(() -> {
                     VerifyDialog dialog = new VerifyDialog(project, result);
                     if (dialog.showAndGet()) {
-                        archiveChange(project, changeService, target);
+                        archiveChange(project, changeService, target, hasDeltaSpecs);
                     }
                 });
             }
         });
     }
 
-    private void archiveChange(Project project, ChangeService changeService, Change target) {
+    private void archiveChange(Project project, ChangeService changeService, Change target, boolean hasDeltaSpecs) {
         String changeName = target.getName();
-        // In the background (it may run the OpenSpec CLI); merges the change's delta specs as `openspec archive` does.
-        ArchiveDispatch.start(project, target, true,
+        Boolean sync = ArchiveSyncPrompt.choose(project, changeName, hasDeltaSpecs);
+        if (sync == null) {
+            return;
+        }
+        // In the background (it may run the OpenSpec CLI); merges the change's delta specs when the user asked to sync.
+        ArchiveDispatch.start(project, target, sync,
                 outcome -> {
                     OpenSpecNotifier.info(project, "Archive", ArchiveDispatch.summary(changeName, outcome));
                     refreshToolWindow(project);

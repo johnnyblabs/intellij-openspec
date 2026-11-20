@@ -12,6 +12,7 @@ import org.jetbrains.annotations.NotNull;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.ui.popup.JBPopup;
 import com.intellij.openapi.ui.popup.JBPopupFactory;
+import com.johnnyblabs.openspec.dialogs.ArchiveSyncPrompt;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.Nullable;
@@ -2076,28 +2077,11 @@ public class WorkflowActionPanel extends JPanel {
         if (activeChangeName == null) return;
         String changeName = activeChangeName;
 
-        boolean syncSpecs = true;
-        if (hasDeltaSpecs) {
-            int choice = Messages.showYesNoCancelDialog(
-                    project,
-                    "\"" + changeName + "\" has delta specs that haven't been synced to main specs.\n" +
-                            "Syncing ensures your spec changes are preserved before archiving.",
-                    "Unsynced Delta Specs",
-                    "Sync First",
-                    "Archive Without Syncing",
-                    "Cancel",
-                    Messages.getWarningIcon()
-            );
-            if (choice == Messages.YES) {
-                onSyncSpecs();
-                return;
-            }
-            Boolean sync = archiveSyncSpecs(choice);
-            if (sync == null) {
-                return;
-            }
-            syncSpecs = sync;
+        Boolean sync = ArchiveSyncPrompt.choose(project, changeName, hasDeltaSpecs);
+        if (sync == null) {
+            return;
         }
+        boolean syncSpecs = sync;
 
         archiveIconButton.setEnabled(false);
 
@@ -2129,15 +2113,6 @@ public class WorkflowActionPanel extends JPanel {
                     OpenSpecNotifier.error(project, "Archive",
                             "Archive failed: " + com.johnnyblabs.openspec.services.ArchiveDispatch.reason(error));
                 });
-    }
-
-    /**
-     * What the unsynced-delta-specs prompt's answer means for the archive: "Archive Without Syncing" ({@code NO})
-     * archives without updating main specs ({@code --skip-specs} when the CLI archives); "Cancel" (or closing the
-     * prompt) archives nothing ({@code null}). "Sync First" is handled before this: it syncs and does not archive.
-     */
-    static Boolean archiveSyncSpecs(int choice) {
-        return choice == Messages.NO ? Boolean.FALSE : null;
     }
 
     // --- Change-level validation ---
