@@ -1,0 +1,69 @@
+{
+  "items": [
+    {
+      "id": "clean",
+      "type": "change",
+      "valid": true,
+      "issues": [],
+      "durationMs": 15
+    },
+    {
+      "id": "closed",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 4
+    },
+    {
+      "id": "depr",
+      "type": "change",
+      "valid": false,
+      "issues": [
+        {
+          "level": "ERROR",
+          "path": "feat/spec.md",
+          "line": 13,
+          "message": "Requirement \"Deprecated Thing\" is under \"## DEPRECATED Requirements\", which is not a delta section, so it is ignored. Move it under \"## ADDED Requirements\", \"## MODIFIED Requirements\", \"## REMOVED Requirements\", or \"## RENAMED Requirements\"."
+        },
+        {
+          "level": "WARNING",
+          "path": "feat/spec.md",
+          "line": 11,
+          "message": "Section \"## DEPRECATED Requirements\" is not carried into the main spec by archive. Move it into a requirement, or into proposal.md or design.md."
+        }
+      ],
+      "durationMs": 13
+    },
+    {
+      "id": "plain",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 1
+    }
+  ],
+  "summary": {
+    "totals": {
+      "items": 4,
+      "passed": 3,
+      "failed": 1
+    },
+    "byType": {
+      "change": {
+        "items": 2,
+        "passed": 1,
+        "failed": 1
+      },
+      "spec": {
+        "items": 2,
+        "passed": 2,
+        "failed": 0
+      }
+    }
+  },
+  "version": "1.0",
+  "root": {
+    "path": "/fixture/behaviours-project",
+    "source": "nearest"
+  }
+}

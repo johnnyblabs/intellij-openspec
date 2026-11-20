@@ -83,7 +83,7 @@ class CliVersionAtLeastTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"1.3.0", "1.3.1", "1.4.0", "1.4.1", "1.5.0", "1.6.0", "1.7.0", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.13.2", "1.14.0", "1.14.3", "1.15.0", "1.16.0", "2.0.0"})
+    @ValueSource(strings = {"1.3.0", "1.3.1", "1.4.0", "1.4.1", "1.5.0", "1.6.0", "1.7.0", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.13.2", "1.14.0", "1.14.3", "1.15.0", "1.16.0", "1.16.1", "2.0.0"})
     void allSupportedVersions_meetFloor(String version) {
         // Every declared supported line (1.3.x–1.16.x) clears the 1.3.0 floor; 2.0.0 asserts the
         // no-upper-cap property so a future line flows through without an allowlist edit. This is the

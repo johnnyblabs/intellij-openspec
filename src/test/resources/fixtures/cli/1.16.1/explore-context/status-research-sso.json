@@ -1,0 +1,117 @@
+{
+  "changeName": "research-sso",
+  "schemaName": "research-first",
+  "planningHome": {
+    "kind": "repo",
+    "root": "/fixture/project",
+    "changesDir": "/fixture/project/openspec/changes",
+    "defaultSchema": "spec-driven"
+  },
+  "changeRoot": "/fixture/project/openspec/changes/research-sso",
+  "artifactPaths": {
+    "research": {
+      "outputPath": "research/**/*.md",
+      "resolvedOutputPath": "/fixture/project/openspec/changes/research-sso/research/**/*.md",
+      "existingOutputPaths": [
+        "/fixture/project/openspec/changes/research-sso/research/summary.md",
+        "/fixture/project/openspec/changes/research-sso/research/vendors/okta.md"
+      ]
+    },
+    "proposal": {
+      "outputPath": "proposal.md",
+      "resolvedOutputPath": "/fixture/project/openspec/changes/research-sso/proposal.md",
+      "existingOutputPaths": [
+        "/fixture/project/openspec/changes/research-sso/proposal.md"
+      ]
+    },
+    "specs": {
+      "outputPath": "specs/**/*.md",
+      "resolvedOutputPath": "/fixture/project/openspec/changes/research-sso/specs/**/*.md",
+      "existingOutputPaths": []
+    },
+    "design": {
+      "outputPath": "design.md",
+      "resolvedOutputPath": "/fixture/project/openspec/changes/research-sso/design.md",
+      "existingOutputPaths": []
+    },
+    "tasks": {
+      "outputPath": "tasks.md",
+      "resolvedOutputPath": "/fixture/project/openspec/changes/research-sso/tasks.md",
+      "existingOutputPaths": []
+    }
+  },
+  "isPlanningComplete": false,
+  "isComplete": false,
+  "applyRequires": [
+    "tasks"
+  ],
+  "nextSteps": [
+    "Run openspec instructions specs --change \"research-sso\" --json before writing that artifact."
+  ],
+  "actionContext": {
+    "mode": "repo-local",
+    "sourceOfTruth": "repo",
+    "planningArtifacts": [
+      "research",
+      "proposal",
+      "specs",
+      "design",
+      "tasks"
+    ],
+    "linkedContext": [],
+    "allowedEditRoots": [
+      "/fixture/project"
+    ],
+    "requiresAffectedAreaSelection": false,
+    "constraints": [
+      "Repo-local change artifacts and implementation edits are scoped to this project."
+    ]
+  },
+  "artifacts": [
+    {
+      "id": "research",
+      "outputPath": "research/**/*.md",
+      "status": "done",
+      "requires": []
+    },
+    {
+      "id": "proposal",
+      "outputPath": "proposal.md",
+      "status": "done",
+      "requires": []
+    },
+    {
+      "id": "specs",
+      "outputPath": "specs/**/*.md",
+      "status": "ready",
+      "requires": [
+        "proposal"
+      ]
+    },
+    {
+      "id": "design",
+      "outputPath": "design.md",
+      "status": "ready",
+      "requires": [
+        "proposal"
+      ]
+    },
+    {
+      "id": "tasks",
+      "outputPath": "tasks.md",
+      "status": "blocked",
+      "requires": [
+        "specs",
+        "design"
+      ],
+      "missingDeps": [
+        "specs",
+        "design"
+      ]
+    }
+  ],
+  "root": {
+    "path": "/fixture/project",
+    "source": "nearest"
+  }
+}

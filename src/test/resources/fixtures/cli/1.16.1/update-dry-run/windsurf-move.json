@@ -1,0 +1,131 @@
+{
+  "changes": [
+    {
+      "path": ".devin/skills/openspec-apply-change/SKILL.md",
+      "action": "add",
+      "tool": "devin"
+    },
+    {
+      "path": ".devin/skills/openspec-archive-change/SKILL.md",
+      "action": "add",
+      "tool": "devin"
+    },
+    {
+      "path": ".devin/skills/openspec-explore/SKILL.md",
+      "action": "add",
+      "tool": "devin"
+    },
+    {
+      "path": ".devin/skills/openspec-propose/SKILL.md",
+      "action": "add",
+      "tool": "devin"
+    },
+    {
+      "path": ".devin/skills/openspec-sync-specs/SKILL.md",
+      "action": "add",
+      "tool": "devin"
+    },
+    {
+      "path": ".devin/skills/openspec-update-change/SKILL.md",
+      "action": "add",
+      "tool": "devin"
+    },
+    {
+      "path": ".devin/workflows/opsx-apply.md",
+      "action": "add",
+      "tool": "devin"
+    },
+    {
+      "path": ".devin/workflows/opsx-archive.md",
+      "action": "add",
+      "tool": "devin"
+    },
+    {
+      "path": ".devin/workflows/opsx-explore.md",
+      "action": "add",
+      "tool": "devin"
+    },
+    {
+      "path": ".devin/workflows/opsx-propose.md",
+      "action": "add",
+      "tool": "devin"
+    },
+    {
+      "path": ".devin/workflows/opsx-sync.md",
+      "action": "add",
+      "tool": "devin"
+    },
+    {
+      "path": ".devin/workflows/opsx-update.md",
+      "action": "add",
+      "tool": "devin"
+    },
+    {
+      "path": ".windsurf/skills/openspec-apply-change/SKILL.md",
+      "action": "delete",
+      "tool": "devin"
+    },
+    {
+      "path": ".windsurf/skills/openspec-archive-change/SKILL.md",
+      "action": "delete",
+      "tool": "devin"
+    },
+    {
+      "path": ".windsurf/skills/openspec-explore/SKILL.md",
+      "action": "delete",
+      "tool": "devin"
+    },
+    {
+      "path": ".windsurf/skills/openspec-propose/SKILL.md",
+      "action": "delete",
+      "tool": "devin"
+    },
+    {
+      "path": ".windsurf/skills/openspec-sync-specs/SKILL.md",
+      "action": "delete",
+      "tool": "devin"
+    },
+    {
+      "path": ".windsurf/skills/openspec-update-change/SKILL.md",
+      "action": "delete",
+      "tool": "devin"
+    },
+    {
+      "path": ".windsurf/workflows/opsx-apply.md",
+      "action": "delete",
+      "tool": "devin"
+    },
+    {
+      "path": ".windsurf/workflows/opsx-archive.md",
+      "action": "delete",
+      "tool": "devin"
+    },
+    {
+      "path": ".windsurf/workflows/opsx-explore.md",
+      "action": "delete",
+      "tool": "devin"
+    },
+    {
+      "path": ".windsurf/workflows/opsx-propose.md",
+      "action": "delete",
+      "tool": "devin"
+    },
+    {
+      "path": ".windsurf/workflows/opsx-sync.md",
+      "action": "delete",
+      "tool": "devin"
+    },
+    {
+      "path": ".windsurf/workflows/opsx-update.md",
+      "action": "delete",
+      "tool": "devin"
+    }
+  ],
+  "notes": [
+    {
+      "code": "legacy-tool-directories",
+      "message": "Moves out of a renamed tool directory are listed as a non-interactive update makes them. At a terminal, update asks first, and declining leaves those files where they are."
+    }
+  ],
+  "failures": []
+}

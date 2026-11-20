@@ -1,0 +1,17 @@
+{
+  "project": {
+    ".github/prompts/opsx-apply.prompt.md": "",
+    ".github/prompts/opsx-archive.prompt.md": "",
+    ".github/prompts/opsx-explore.prompt.md": "",
+    ".github/prompts/opsx-propose.prompt.md": "",
+    ".github/prompts/opsx-sync.prompt.md": "",
+    ".github/prompts/opsx-update.prompt.md": "",
+    ".github/skills/openspec-apply-change/SKILL.md": "",
+    ".github/skills/openspec-archive-change/SKILL.md": "",
+    ".github/skills/openspec-explore/SKILL.md": "",
+    ".github/skills/openspec-propose/SKILL.md": "",
+    ".github/skills/openspec-sync-specs/SKILL.md": "",
+    ".github/skills/openspec-update-change/SKILL.md": ""
+  },
+  "home": {}
+}
