@@ -118,14 +118,17 @@ public final class ConfigService {
             return new LoadResult(new OpenSpecConfig(), new LoadProblem(ProblemKind.UNREADABLE, firstLine(e)));
         } catch (ClassCastException e) {
             // Valid YAML whose top level is not a mapping.
+            LOG.debug("config.yaml is not a mapping; using defaults", e);
             return new LoadResult(new OpenSpecConfig(), null);
         } catch (RuntimeException e) {
             // Anything else keeps the old lenient behaviour: defaults, nothing reported.
+            LOG.debug("Failed to read config.yaml; using defaults", e);
             return new LoadResult(new OpenSpecConfig(), null);
         }
         try {
             return new LoadResult(OpenSpecConfig.fromMap(raw), null);
         } catch (RuntimeException e) {
+            LOG.debug("Failed to map config.yaml; using defaults", e);
             return new LoadResult(new OpenSpecConfig(), null);
         }
     }
