@@ -15,6 +15,7 @@
 
 ### Fixed
 
+- **Continue hands off to your AI tool when you copy or open its prompt, and Continue and Verify ask which change to use.** Continue used to generate through Direct API whatever the delivery mode. With several active changes it used the first one without asking. Both now ask, as Apply does.
 - **Bulk Archive reads spec files for its conflict check off the UI thread.** Selecting changes no longer freezes the dialog while their delta specs are read.
 - **A disabled action's tooltip says the right thing for the active profile.** On the custom profile, a workflow that isn't in the custom list is no longer described as needing a custom profile; the tooltip points to Customize workflows instead.
 - **Validate fails on a broken `config.yaml`.** With OpenSpec CLI 1.16, a `config.yaml` that can't be read or isn't valid YAML made Validate report a pass. It now reports a failure with the CLI's message and fix, and the Change Deltas pane shows the same error. Without the CLI, the built-in check shows a warning.

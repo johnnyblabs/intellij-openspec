@@ -27,6 +27,8 @@ public final class WorkflowInvocation {
     /** Update, which the plugin calls Revise Change: the workflow id and its skill. */
     public static final String UPDATE = "update";
     public static final String UPDATE_SKILL = "openspec-update-change";
+    public static final String CONTINUE = "continue";
+    public static final String CONTINUE_SKILL = "openspec-continue-change";
 
     /** Tools upstream gives no slash invocation for skills; their skills are named in plain words. */
     private static final Set<String> PLAIN_WORDS_SKILL_TOOLS = Set.of("gsd", "rovodev", "codeassistant");

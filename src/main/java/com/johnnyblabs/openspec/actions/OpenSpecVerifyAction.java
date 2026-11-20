@@ -43,7 +43,12 @@ public class OpenSpecVerifyAction extends OpenSpecBaseAction {
             return;
         }
 
-        Change target = activeChanges.getFirst();
+        ChangePicker.pick(activeChanges.stream().map(Change::getName).toList(), e.getDataContext(), "Verify",
+                name -> verify(project, changeService, activeChanges.stream()
+                        .filter(c -> c.getName().equals(name)).findFirst().orElseThrow()));
+    }
+
+    private void verify(Project project, ChangeService changeService, Change target) {
         String changeName = target.getName();
 
         ProgressManager.getInstance().run(new Task.Backgroundable(project, "Verifying: " + changeName, true) {

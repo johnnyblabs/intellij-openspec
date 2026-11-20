@@ -3,14 +3,9 @@ package com.johnnyblabs.openspec.actions;
 import com.intellij.notification.NotificationType;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.DataContext;
-import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.application.ModalityState;
-import com.intellij.openapi.fileEditor.OpenFileDescriptor;
-import com.intellij.openapi.ide.CopyPasteManager;
 import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.popup.JBPopupFactory;
-import com.intellij.testFramework.LightVirtualFile;
 import com.johnnyblabs.openspec.ai.DeliveryMode;
 import com.johnnyblabs.openspec.dialogs.ReviseChangeDialog;
 import com.johnnyblabs.openspec.model.Change;
@@ -22,7 +17,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.TestOnly;
 
-import java.awt.datatransfer.StringSelection;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.function.BiFunction;
@@ -125,18 +119,6 @@ public class ReviseChangeAction extends OpenSpecBaseAction implements DumbAware 
     private static void deliver(@NotNull Project project, WorkflowInvocation.Found found, String handoff) {
         DeliveryMethodResolver resolver = project.getService(DeliveryMethodResolver.class);
         DeliveryMode mode = resolver != null ? resolver.resolve().mode() : DeliveryMode.CLIPBOARD;
-        String tool = found.tool().name();
-        switch (mode) {
-            case EDITOR_TAB -> {
-                LightVirtualFile file = new LightVirtualFile(EDITOR_TAB_FILE_NAME, handoff);
-                ApplicationManager.getApplication().invokeLater(() -> new OpenFileDescriptor(project, file).navigate(true),
-                        ModalityState.nonModal(), project.getDisposed());
-            }
-            case CLIPBOARD, DIRECT_API -> {
-                CopyPasteManager.getInstance().setContents(new StringSelection(handoff));
-                String copied = "Copied " + handoff + " for " + tool + ". Paste it into " + tool + "'s chat.";
-                OpenSpecNotifier.info(project, TITLE, mode == DeliveryMode.DIRECT_API ? copied + " " + DIRECT_API_NOTE : copied);
-            }
-        }
+        WorkflowHandoffDelivery.deliver(project, TITLE, EDITOR_TAB_FILE_NAME, DIRECT_API_NOTE, found, handoff, mode);
     }
 }
