@@ -10,13 +10,13 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * The install hint against upstream's own words: every command must appear verbatim in the captured README Quick Start
- * ({@code fixtures/upstream/readme-quick-start-1.15.0.md}), so an upstream change shows up as a failing fixture
+ * ({@code fixtures/upstream/readme-quick-start-1.16.0.md}), so an upstream change shows up as a failing fixture
  * re-capture rather than a stale hint.
  */
 class CliInstallHintsTest {
 
     private static String quickStart() {
-        String path = "/fixtures/upstream/readme-quick-start-1.15.0.md";
+        String path = "/fixtures/upstream/readme-quick-start-1.16.0.md";
         try (InputStream is = CliInstallHintsTest.class.getResourceAsStream(path)) {
             if (is == null) throw new IllegalStateException("Fixture not found: " + path);
             return new String(is.readAllBytes(), StandardCharsets.UTF_8);
@@ -38,7 +38,7 @@ class CliInstallHintsTest {
     @Test
     void unixHintLeadsWithTheStandaloneInstallerThenNpmThenBrew() {
         String html = CliInstallHints.html(false);
-        int curl = html.indexOf("curl -fsSL https://raw.githubusercontent.com/Fission-AI/OpenSpec/main/scripts/binary/install.sh | sh");
+        int curl = html.indexOf("curl -fsSL https://openspec.dev/cli/install.sh | sh");
         int npm = html.indexOf(CliInstallHints.NPM);
         int brew = html.indexOf(CliInstallHints.BREW);
         assertTrue(curl >= 0, html);
@@ -49,7 +49,7 @@ class CliInstallHintsTest {
     @Test
     void windowsHintUsesPowerShellAndOffersNoHomebrewOrCurl() {
         String html = CliInstallHints.html(true);
-        int irm = html.indexOf("irm https://raw.githubusercontent.com/Fission-AI/OpenSpec/main/scripts/binary/install.ps1 | iex");
+        int irm = html.indexOf("irm https://openspec.dev/cli/install.ps1 | iex");
         int npm = html.indexOf(CliInstallHints.NPM);
         assertTrue(irm >= 0 && irm < npm, "standalone, then npm: " + html);
         assertFalse(html.contains("brew"), html);
