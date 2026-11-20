@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+## v0.16.0
+
 ### Added
 
 - **OpenSpec CLI 1.16.x is supported.** The plugin now targets 1.16.0. Its new warning for a scenario without a WHEN/GIVEN or THEN step comes through in the CLI's validation verdict, failing only under strict.

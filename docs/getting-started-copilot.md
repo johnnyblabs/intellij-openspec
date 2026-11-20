@@ -4,7 +4,7 @@
 
 > **Maintenance: Reference** — stable; updated only when the described setup flow changes (see the [documentation index](README.md)).
 
-*Last verified: 2026-10-28 against plugin v0.15.0 source*
+*Last verified: 2026-10-28 against the v0.15.0 release source; the v0.16.0 changes don't touch this setup flow.*
 
 This guide walks you through setting up the OpenSpec IntelliJ plugin and completing your first spec-driven change using an IDE-based AI tool. The examples use GitHub Copilot, but the clipboard workflow works identically with Cursor, Devin Desktop, and Cline. By the end, you'll have proposed, generated, implemented, and archived a change — the full OpenSpec lifecycle.
 
