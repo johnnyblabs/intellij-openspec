@@ -10,6 +10,7 @@
 
 ### Changed
 
+- **Archive from the menu and Verify asks about syncing delta specs, as the workflow panel does.** The question offers "Sync and Archive" or "Archive Without Syncing" and says what each does. The panel's "Sync First" button is now "Sync and Archive", so one archive merges the specs and archives the change.
 - **The install hints use OpenSpec's new installer, and the npm install needs Node.js 22.12.** The standalone commands now point at `openspec.dev/cli/`, and the README and getting-started docs match.
 
 ### Fixed
