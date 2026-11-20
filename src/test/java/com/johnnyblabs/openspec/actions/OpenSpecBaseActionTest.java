@@ -68,4 +68,27 @@ class OpenSpecBaseActionTest {
                     OpenSpecBaseAction.stripCustomProfileSuffix("Action (custom-foo)"));
         }
     }
+
+    @Nested
+    class DisabledDescription {
+
+        @Test
+        void onTheCoreProfileACustomProfileIsWhatWouldEnableIt() {
+            assertEquals("Requires custom profile. Change in Settings \u2192 Tools \u2192 OpenSpec.",
+                    OpenSpecBaseAction.disabledDescription(false));
+        }
+
+        @Test
+        void onTheCustomProfileTheWorkflowIsNotInTheListAndPointsToCustomizeWorkflows() {
+            String text = OpenSpecBaseAction.disabledDescription(true);
+            assertFalse(text.contains("Requires custom profile"), text);
+            assertTrue(text.startsWith("Not in your custom profile."), text);
+            assertTrue(text.contains("Customize workflows"), text);
+        }
+
+        @Test
+        void onTheCustomProfileTheSuffixIsNotAppended() {
+            assertEquals("Revise", OpenSpecBaseAction.applyCustomProfileSuffix("Revise", false));
+        }
+    }
 }

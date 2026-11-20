@@ -81,16 +81,28 @@ public abstract class OpenSpecBaseAction extends AnAction {
         if (workflowId != null) {
             WorkflowProfileService profileService = project.getService(WorkflowProfileService.class);
             if (profileService != null && !profileService.isWorkflowEnabled(workflowId)) {
+                boolean onCustomProfile = "custom".equals(profileService.getActiveProfileName());
                 e.getPresentation().setEnabled(false);
-                e.getPresentation().setText(applyCustomProfileSuffix(e.getPresentation().getText(), true));
-                e.getPresentation().setDescription(
-                        "Requires custom profile. Change in Settings \u2192 Tools \u2192 OpenSpec.");
+                // On the custom profile the workflow is simply not in the list, so the "(custom)" suffix would wrongly
+                // say a custom profile is what's missing.
+                e.getPresentation().setText(applyCustomProfileSuffix(e.getPresentation().getText(), !onCustomProfile));
+                e.getPresentation().setDescription(disabledDescription(onCustomProfile));
                 return;
             }
         }
 
         e.getPresentation().setText(applyCustomProfileSuffix(e.getPresentation().getText(), false));
         e.getPresentation().setEnabled(true);
+    }
+
+    /**
+     * The tooltip for a gated action that is disabled. Its reason depends on the active profile: on the core profile a
+     * custom profile would enable it, while on the custom profile the workflow just isn't in the custom list.
+     */
+    static String disabledDescription(boolean onCustomProfile) {
+        return onCustomProfile
+                ? "Not in your custom profile. Add it under Settings \u2192 Tools \u2192 OpenSpec \u2192 Customize workflows\u2026"
+                : "Requires custom profile. Change in Settings \u2192 Tools \u2192 OpenSpec.";
     }
 
     /**
