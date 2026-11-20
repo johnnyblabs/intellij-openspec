@@ -60,6 +60,17 @@ class RequirementLineFinderTest {
     }
 
     @Test
+    void singleLineBacktickCodeDoesNotHideLaterRequirements() {
+        // CLI 1.16 parity: ```npm test``` is inline code, so Epsilon below is a real header, not fenced text.
+        String doc = String.join("\n",
+                "# Doc",                          // 0
+                "```npm test```",                 // 1  inline code, not a fence
+                "### Requirement: Epsilon",       // 2  the real one
+                "");
+        assertEquals(2, RequirementLineFinder.findRequirementLine(doc, "Epsilon"));
+    }
+
+    @Test
     void unknownRequirementReturnsTopOfFile() {
         assertEquals(0, RequirementLineFinder.findRequirementLine(SPEC, "Missing"));
     }

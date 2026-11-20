@@ -10,6 +10,7 @@
 
 ### Fixed
 
+- **A single-line backtick span no longer hides the requirements after it.** A line such as ` ```npm test``` ` is inline code, as in CLI 1.16, not the start of a code block. The plugin used to treat it as one, so every later requirement vanished from the tree, the counts, validation, merges and navigation.
 - **The Validate notification counts in the singular when there's one.** It said "1 errors" or "1 warnings"; it now reads, for example, "whole project failed (1 error, 2 warnings)".
 
 ## v0.15.0

@@ -8,11 +8,12 @@ import java.util.regex.Pattern;
  * Fenced-code-block detection matching OpenSpec's archive ({@code parsers/code-fence.js}): a fence opens with three or
  * more backticks or tildes at any indentation, and closes on a line holding only the same character, at least as many.
  * An unclosed fence runs to the end of the text. Spec structure inside a fence (headers, requirement and scenario lines)
- * is example text, never structure.
+ * is example text, never structure. Per CommonMark, a backtick opener whose info string contains a backtick is inline
+ * code (```` ```npm test``` ````), not a fence, so it opens nothing.
  */
 public final class CodeFences {
 
-    private static final Pattern OPENER = Pattern.compile("^\\s*(`{3,}|~{3,})");
+    private static final Pattern OPENER = Pattern.compile("^\\s*(`{3,}|~{3,})(.*)");
     private static final Pattern CLOSER = Pattern.compile("^\\s*(`{3,}|~{3,})\\s*$");
 
     private CodeFences() {
@@ -27,7 +28,7 @@ public final class CodeFences {
             String line = lines.get(i);
             if (marker == 0) {
                 Matcher open = OPENER.matcher(line);
-                if (open.find()) {
+                if (open.find() && !isInlineCode(open)) {
                     marker = open.group(1).charAt(0);
                     length = open.group(1).length();
                     mask[i] = true;
@@ -41,5 +42,10 @@ public final class CodeFences {
             }
         }
         return mask;
+    }
+
+    /** A backtick run followed by a backtick in its info string is an inline code span, not an opener. */
+    private static boolean isInlineCode(Matcher open) {
+        return open.group(1).charAt(0) == '`' && open.group(2).indexOf('`') >= 0;
     }
 }

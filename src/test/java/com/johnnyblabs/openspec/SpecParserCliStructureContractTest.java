@@ -39,9 +39,12 @@ class SpecParserCliStructureContractTest {
     // generation; only the captured CLI STRUCTURE output is version-specific.
     private static final String CORPUS_DIR = "/fixtures/cli/1.6.0/parity-corpus/openspec/specs";
 
+    // CLI 1.16 parity corpus: specs whose structure a later generation changed (single-line backtick code).
+    private static final String CORPUS_116_DIR = "/fixtures/cli/1.16.0/parity-corpus/openspec/specs";
+
     /** Every corpus spec id, discovered from the committed corpus directory on the test classpath. */
-    private static List<String> corpusSpecIds() throws Exception {
-        Path specsDir = Path.of(SpecParserCliStructureContractTest.class.getResource(CORPUS_DIR).toURI());
+    private static List<String> corpusSpecIds(String corpusDir) throws Exception {
+        Path specsDir = Path.of(SpecParserCliStructureContractTest.class.getResource(corpusDir).toURI());
         try (Stream<Path> entries = Files.list(specsDir)) {
             return entries.filter(Files::isDirectory)
                     .map(p -> p.getFileName().toString())
@@ -66,12 +69,17 @@ class SpecParserCliStructureContractTest {
 
     @Test
     void everyCorpusSpecStructureMatchesCaptured16Cli() throws Exception {
-        assertStructureParity("/fixtures/cli/1.6.0/spec-structure");
+        assertStructureParity(CORPUS_DIR, "/fixtures/cli/1.6.0/spec-structure");
     }
 
     @Test
     void everyCorpusSpecStructureMatchesCaptured17Cli() throws Exception {
-        assertStructureParity("/fixtures/cli/1.7.0/spec-structure");
+        assertStructureParity(CORPUS_DIR, "/fixtures/cli/1.7.0/spec-structure");
+    }
+
+    @Test
+    void inlineBacktickCorpusMatchesCaptured116Cli() throws Exception {
+        assertStructureParity(CORPUS_116_DIR, "/fixtures/cli/1.16.0/spec-structure");
     }
 
     /**
@@ -80,8 +88,8 @@ class SpecParserCliStructureContractTest {
      * corpus markdown (the parser INPUT) is shared; only {@code structureDirResource} varies, so a
      * generation whose {@code show --json} reshaped structure counts fails independently of the other.
      */
-    private void assertStructureParity(String structureDirResource) throws Exception {
-        List<String> ids = corpusSpecIds();
+    private void assertStructureParity(String corpusDir, String structureDirResource) throws Exception {
+        List<String> ids = corpusSpecIds(corpusDir);
         assertFalse(ids.isEmpty(), "corpus must not be empty");
 
         // Corpus-drift guard: exactly one captured .show.json per corpus spec dir, and vice versa.
@@ -103,7 +111,7 @@ class SpecParserCliStructureContractTest {
         List<String> failures = new ArrayList<>();
 
         for (String id : ids) {
-            String specMd = resource(CORPUS_DIR + "/" + id + "/spec.md");
+            String specMd = resource(corpusDir + "/" + id + "/spec.md");
             JsonObject show = JsonParser.parseString(resource(structureDirResource + "/" + id + ".show.json"))
                     .getAsJsonObject();
 

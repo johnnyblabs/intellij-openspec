@@ -7,6 +7,7 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.johnnyblabs.openspec.model.Requirement;
 import com.johnnyblabs.openspec.model.Scenario;
 import com.johnnyblabs.openspec.model.SpecFile;
+import com.johnnyblabs.openspec.util.CodeFences;
 import com.johnnyblabs.openspec.util.OpenSpecFileUtil;
 import com.johnnyblabs.openspec.util.SpecPatterns;
 
@@ -16,6 +17,7 @@ import com.intellij.openapi.util.ThrowableComputable;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -194,30 +196,11 @@ public final class SpecParsingService {
     }
 
     /**
-     * Per-line code-fence mask, mirroring {@code BuiltInValidator.maskFences}: a fence opens on a
-     * line whose leading-whitespace-stripped text starts with {@code ```} or {@code ~~~}, and
-     * closes on a later line starting with the same marker. Fence delimiter lines are masked too.
-     * Only leading whitespace is stripped, so a {@code > ```} inside a blockquote is not a fence —
-     * matching the CLI's flat line scan.
+     * Per-line code-fence mask, the same rules as {@link CodeFences} (CLI 1.16 parity): a fence opens and closes as
+     * CommonMark says, and a single-line {@code ```npm test```} is inline code, not a fence. Fence delimiter lines
+     * are masked too. A {@code > ```} inside a blockquote is not a fence, since only leading whitespace is stripped.
      */
     private static boolean[] computeFenceMask(String[] lines) {
-        boolean[] fenced = new boolean[lines.length];
-        String openMarker = null;
-        for (int i = 0; i < lines.length; i++) {
-            String trimmed = lines[i].stripLeading();
-            boolean fenceLine = trimmed.startsWith("```") || trimmed.startsWith("~~~");
-            if (openMarker == null) {
-                if (fenceLine) {
-                    openMarker = trimmed.startsWith("```") ? "```" : "~~~";
-                    fenced[i] = true;
-                }
-            } else {
-                fenced[i] = true;
-                if (fenceLine && trimmed.startsWith(openMarker)) {
-                    openMarker = null;
-                }
-            }
-        }
-        return fenced;
+        return CodeFences.mask(Arrays.asList(lines));
     }
 }

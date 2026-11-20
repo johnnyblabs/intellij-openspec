@@ -1,6 +1,9 @@
 package com.johnnyblabs.openspec.search;
 
+import com.johnnyblabs.openspec.util.CodeFences;
 import com.johnnyblabs.openspec.util.SpecPatterns;
+
+import java.util.Arrays;
 
 /**
  * Pure, fence-aware locator for a requirement's {@code ### Requirement: <name>} header line.
@@ -26,22 +29,9 @@ public final class RequirementLineFinder {
         }
         String target = requirementName.trim();
         String[] lines = content.split("\n", -1);
-        boolean inFence = false;
-        String fenceMarker = null;
+        boolean[] fenced = CodeFences.mask(Arrays.asList(lines));
         for (int i = 0; i < lines.length; i++) {
-            String stripped = lines[i].stripLeading();
-            if (stripped.startsWith("```") || stripped.startsWith("~~~")) {
-                String marker = stripped.startsWith("```") ? "```" : "~~~";
-                if (!inFence) {
-                    inFence = true;
-                    fenceMarker = marker;
-                } else if (marker.equals(fenceMarker)) {
-                    inFence = false;
-                    fenceMarker = null;
-                }
-                continue;
-            }
-            if (inFence) {
+            if (fenced[i]) {
                 continue;
             }
             String name = SpecPatterns.requirementName(lines[i]);

@@ -1,0 +1,36 @@
+{
+  "id": "inline-backtick-req",
+  "title": "inline-backtick-req",
+  "overview": "A single-line triple-backtick span is inline code, not a code fence (CLI 1.16 parity).",
+  "requirementCount": 2,
+  "requirements": [
+    {
+      "name": "Inline Code Does Not Open A Fence",
+      "text": "Run the suite with the following inline code span:\n```npm test```",
+      "scenarios": [
+        {
+          "name": "Inline span is text",
+          "rawText": "- **WHEN** the spec is parsed\n- **THEN** the inline span does not hide the requirement after it"
+        }
+      ]
+    },
+    {
+      "name": "Later Requirement Stays Visible",
+      "text": "The system SHALL keep recognizing requirements after an inline code span.",
+      "scenarios": [
+        {
+          "name": "Later requirement is counted",
+          "rawText": "- **WHEN** the spec is parsed\n- **THEN** this requirement is counted"
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "version": "1.0.0",
+    "format": "openspec"
+  },
+  "root": {
+    "path": "/fixture",
+    "source": "nearest"
+  }
+}

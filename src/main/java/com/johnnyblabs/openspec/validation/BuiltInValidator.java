@@ -12,12 +12,14 @@ import com.johnnyblabs.openspec.services.CliDetectionService;
 import com.johnnyblabs.openspec.services.ConfigService;
 import com.johnnyblabs.openspec.services.SchemaService;
 import com.johnnyblabs.openspec.settings.OpenSpecSettings;
+import com.johnnyblabs.openspec.util.CodeFences;
 import com.johnnyblabs.openspec.util.OpenSpecFileUtil;
 import com.johnnyblabs.openspec.version.VersionSupport;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -529,34 +531,12 @@ public final class BuiltInValidator {
      * in the masked string equal those in the original.
      */
     static String maskFences(String content) {
+        String[] lines = content.split("\n", -1);
+        boolean[] fenced = CodeFences.mask(Arrays.asList(lines));
         StringBuilder out = new StringBuilder(content.length());
-        String openMarker = null;
-        int lineStart = 0;
-        while (lineStart <= content.length()) {
-            int lineEnd = content.indexOf('\n', lineStart);
-            boolean hasNewline = lineEnd >= 0;
-            if (!hasNewline) lineEnd = content.length();
-            String line = content.substring(lineStart, lineEnd);
-            String trimmed = line.stripLeading();
-            boolean fenceLine = trimmed.startsWith("```") || trimmed.startsWith("~~~");
-            boolean masked;
-            if (openMarker == null) {
-                if (fenceLine) {
-                    openMarker = trimmed.startsWith("```") ? "```" : "~~~";
-                    masked = true;
-                } else {
-                    masked = false;
-                }
-            } else {
-                masked = true;
-                if (fenceLine && trimmed.startsWith(openMarker)) {
-                    openMarker = null;
-                }
-            }
-            out.append(masked ? " ".repeat(line.length()) : line);
-            if (hasNewline) out.append('\n');
-            lineStart = lineEnd + 1;
-            if (!hasNewline) break;
+        for (int i = 0; i < lines.length; i++) {
+            if (i > 0) out.append('\n');
+            out.append(fenced[i] ? " ".repeat(lines[i].length()) : lines[i]);
         }
         return out.toString();
     }

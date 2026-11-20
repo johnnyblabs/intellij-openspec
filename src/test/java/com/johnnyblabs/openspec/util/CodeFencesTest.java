@@ -45,4 +45,15 @@ class CodeFencesTest {
     void unclosedFenceRunsToTheEnd() {
         assertEquals(".FFF", masked("a\n```text\n## Trailing\n### Requirement: Fake"));
     }
+
+    @Test
+    void singleLineBacktickCodeOpensNoFence() {
+        assertEquals("....", masked("a\n```npm test```\n## X\nb"), "an info string with a backtick is inline code");
+        assertEquals("...", masked("a\n```x`y```\n## X"), "a backtick anywhere in the info string makes it inline code");
+    }
+
+    @Test
+    void tildeInfoStringMayHoldBackticks() {
+        assertEquals(".FFF.", masked("a\n~~~npm `x`\n## X\n~~~\nb"), "only backtick fences are restricted");
+    }
 }
