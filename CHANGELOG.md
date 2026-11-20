@@ -15,6 +15,7 @@
 
 ### Fixed
 
+- **Settings shows the CLI status and the API key placeholder while Settings is open.** Both updates waited until the Settings dialog closed, so the CLI status could stay on "Detecting...".
 - **Continue hands off to your AI tool when you copy or open its prompt, and Continue and Verify ask which change to use.** Continue used to generate through Direct API whatever the delivery mode. With several active changes it used the first one without asking. Both now ask, as Apply does.
 - **Bulk Archive reads spec files for its conflict check off the UI thread.** Selecting changes no longer freezes the dialog while their delta specs are read.
 - **A disabled action's tooltip says the right thing for the active profile.** On the custom profile, a workflow that isn't in the custom list is no longer described as needing a custom profile; the tooltip points to Customize workflows instead.

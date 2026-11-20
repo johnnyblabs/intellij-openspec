@@ -833,8 +833,10 @@ public class OpenSpecSettingsPanel {
 
         cliStatusLabel.setText("Detecting...");
         cliStatusLabel.setForeground(UIManager.getColor("Label.foreground"));
+        // Any, not stateForComponent(mainPanel): before the panel is shown that is NON_MODAL, and a NON_MODAL update
+        // waits for the modal Settings dialog to close. These updates set a label or a placeholder, which is safe while it's open.
         com.intellij.openapi.application.ModalityState modality =
-                com.intellij.openapi.application.ModalityState.stateForComponent(mainPanel);
+                com.intellij.openapi.application.ModalityState.any();
         com.intellij.openapi.application.ApplicationManager.getApplication().executeOnPooledThread(() -> {
             try {
                 detection.detect(freshShellPath);
@@ -906,8 +908,10 @@ public class OpenSpecSettingsPanel {
         // PasswordSafe.get is blocking (@RequiresBackgroundThread) — read off the EDT, then set the
         // masked placeholder back on the EDT (mirrors detectCli). Guard against a rapid provider
         // switch so a late result doesn't mask the wrong provider.
+        // Any, not stateForComponent(mainPanel): before the panel is shown that is NON_MODAL, and a NON_MODAL update
+        // waits for the modal Settings dialog to close. These updates set a label or a placeholder, which is safe while it's open.
         com.intellij.openapi.application.ModalityState modality =
-                com.intellij.openapi.application.ModalityState.stateForComponent(mainPanel);
+                com.intellij.openapi.application.ModalityState.any();
         com.intellij.openapi.application.ApplicationManager.getApplication().executeOnPooledThread(() -> {
             boolean hasKey = AiCredentialStore.hasApiKey(provider);
             com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater(() -> {

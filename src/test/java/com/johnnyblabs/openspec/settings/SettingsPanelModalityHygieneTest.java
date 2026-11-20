@@ -29,4 +29,15 @@ class SettingsPanelModalityHygieneTest {
         assertTrue(missing.isEmpty(),
                 "invokeLater without the dialog's modality (capture uiModality() on the EDT and pass it): " + missing);
     }
+
+    @Test
+    void theStatusAndKeyHandOffsDoNotUseTheComponentsModality() throws IOException {
+        // stateForComponent(mainPanel) is NON_MODAL until the panel is shown, so the CLI status and the key placeholder,
+        // which the constructor also sets, would wait for the modal Settings dialog to close.
+        String code = java.nio.file.Files.readString(ModalityCallScanner.mainSource("settings/OpenSpecSettingsPanel.java"));
+        assertFalse(ModalityCallScanner.codeContains(code, "stateForComponent("),
+                "use ModalityState.any() for the CLI status and key placeholder hand-offs");
+        assertTrue(ModalityCallScanner.codeContains(code, "ModalityState.any()"),
+                "the CLI status and key placeholder hand-offs must post with ModalityState.any()");
+    }
 }
