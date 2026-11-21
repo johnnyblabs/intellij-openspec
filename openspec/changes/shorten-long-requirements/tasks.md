@@ -5,10 +5,11 @@
 
 ## 2. Batches
 
-- [ ] 2.1 Specs with one long requirement: `bulk-archive`, `changelog-automation`, `documentation`, `schema-management`, `tracker-integration`, `workflow-schema-context`.
-- [ ] 2.2 Specs with two long requirements: `cross-platform-verification`, `spec-sync`, `tree-view`, `ui-smoke-journeys`, `verify-workflow`.
+- [x] 2.1 Specs with one long requirement: `bulk-archive`, `changelog-automation`, `documentation`, `schema-management`, `tracker-integration`, `workflow-schema-context`.
+- [x] 2.2 Specs with two long requirements: `cross-platform-verification`, `spec-sync`, `tree-view`, `ui-smoke-journeys`, `verify-workflow`.
 - [x] 2.3 Specs with three long requirements: `cli-update`, `config-profile`, `edt-compliance`, `profile-visibility`, `spec-parsing`, `store-workset-actions`, `store-workset-surface`.
-- [ ] 2.4 Specs with four or more long requirements: `ai-integration`, `plugin-documentation`, `ci`, `coordination-surfaces`, `spec-viewer`, `plugin-core`, `workflow`, `validation`.
+- [x] 2.4 Specs with four or more long requirements, first group: `ai-integration`, `plugin-documentation`, `ci`, `coordination-surfaces`.
+- [ ] 2.5 Specs with four or more long requirements, second group: `spec-viewer`, `plugin-core`, `workflow`, `validation`.
 
 ## 3. Verify
 
