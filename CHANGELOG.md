@@ -4,6 +4,10 @@
 
 ## Unreleased
 
+### Changed
+
+- **The plugin targets OpenSpec CLI 1.16.1.** This patch release of the CLI is the version the plugin is tested against, and the Settings About line reports it. Nothing else changes for users.
+
 ### Added
 
 - **Settings → Tools → OpenSpec shows the plugin version, the OpenSpec CLI it targets, and the CLI detected on this machine.** Include that line when you report a problem.
