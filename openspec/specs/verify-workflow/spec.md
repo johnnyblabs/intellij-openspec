@@ -34,7 +34,7 @@ The plugin SHALL provide a Verify action driven by the resolved workflow schema 
 
 #### Scenario: Partial tasks count as not-done
 - **WHEN** `tasks.md` contains in-progress checkboxes written as `- [~]`
-- **THEN** Verify SHALL count each `- [~]` toward the total task count and treat it as not-done (blocking archive, with the same gating effect as `- [ ]`), and SHALL NOT exclude it from either the completed or the total count
+- **THEN** Verify SHALL count each `- [~]` toward the total task count and treat it as not-done (reported as not done, but not blocking archive: an in-progress change is archived through Verify's "Archive anyway" action), and SHALL NOT exclude it from either the completed or the total count
 - **AND** the completeness finding SHALL account for in-progress tasks distinctly (e.g. reporting an in-progress count) rather than dropping them silently
 
 #### Scenario: Correctness and coherence — semantic and language-agnostic
