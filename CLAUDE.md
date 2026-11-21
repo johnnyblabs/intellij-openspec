@@ -53,7 +53,7 @@ Since the 1.5.0 skills-only migration, `.claude/skills/openspec-*/` was the only
 
 - **Bring a branch up to date by merging or rebasing `main`. Don't rebuild a branch from a diff.** A net diff against a stale base silently reverts anything merged since that base.
 - **Merge `main` into a branch before merging it when an earlier PR touched the same file** (usually `CHANGELOG.md`). Otherwise the conflict appears at merge time.
-- **CI only runs for changes outside the build's ignored paths** (`openspec/**`, `.claude/**` and others). An OpenSpec-only PR gets no check, so it needs an admin override or a change to a watched file. An empty commit doesn't start CI either.
+- **"Build & Verify" always reports on a PR, but its heavy steps are skipped for bypass-only PRs.** The bypass paths are `openspec/**`, `CLAUDE.md`, `.claude/**`, `.githooks/**`, `.gitignore`, `LICENSE` and `ui-smoke.yaml`. Docs (`docs/**`, README, CHANGELOG) are not bypassed, because `DocumentationHygieneTest` validates them. A bypass-only PR reports green in seconds, so it merges without an admin override. An empty commit doesn't start CI.
 
 ## Plugin-internal config fields — audit before "aligning" to upstream
 
