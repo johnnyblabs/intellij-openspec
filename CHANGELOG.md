@@ -7,6 +7,7 @@
 ### Fixed
 
 - **A requirement under an unrecognized Requirements section fails Validate and blocks Archive.** A delta that puts a requirement under a heading such as `## DEPRECATED Requirements` used to pass Validate, and Archive dropped the requirement without a word. Both now report it as an error, as OpenSpec CLI 1.16.1 does, and Archive refuses the change. A requirement under a prose heading such as `## Notes` is a warning and blocks nothing.
+- **Headings with a closing `#` run are recognized.** A spec or delta written as `## Purpose ##`, `## Requirements ##` or `## ADDED Requirements ##` was read as having no such section, so a delta could be dropped on archive. These headings are now read the same as their plain forms, as OpenSpec CLI 1.16.1 reads them.
 
 ## v0.16.0
 

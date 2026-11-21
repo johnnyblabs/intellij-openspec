@@ -126,7 +126,7 @@ public final class BuiltInValidator {
         // runs on the fence-masked content, so a `### Requirement:` inside a code fence does not count.
         int reqSectionStart = -1;
         int reqSectionEnd = content.length();
-        Matcher reqSection = Pattern.compile("(?im)^##\\s+Requirements\\s*$").matcher(content);
+        Matcher reqSection = Pattern.compile("(?im)^##\\s+Requirements(?:\\s+#+)?\\s*$").matcher(content);
         if (reqSection.find()) {
             reqSectionStart = reqSection.end();
             Matcher nextTopHeader = Pattern.compile("(?m)^##(?!#)").matcher(content);
@@ -664,7 +664,7 @@ public final class BuiltInValidator {
     private static int firstSectionLine(String raw) {
         String[] lines = raw.replace("\r\n", "\n").split("\n", -1);
         for (int i = 0; i < lines.length; i++) {
-            if (lines[i].matches("^##\\s+(?i:(ADDED|MODIFIED|REMOVED|RENAMED) Requirements)\\s*$")) return i + 1;
+            if (lines[i].matches("^##\\s+(?i:(ADDED|MODIFIED|REMOVED|RENAMED) Requirements)(?:\\s+#+)?\\s*$")) return i + 1;
         }
         return 1;
     }

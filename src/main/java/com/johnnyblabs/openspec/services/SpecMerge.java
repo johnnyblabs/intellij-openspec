@@ -26,8 +26,15 @@ public final class SpecMerge {
             Pattern.compile("^###\\s*Requirement:\\s*(.+)\\s*$", Pattern.CASE_INSENSITIVE);
     private static final Pattern TOP_LEVEL_HEADER = Pattern.compile("^##\\s+");
     private static final Pattern SECTION = Pattern.compile("^(##)\\s+(.+)$");
-    private static final Pattern REQUIREMENTS_HEADER = Pattern.compile("^##\\s+Requirements\\s*$", Pattern.CASE_INSENSITIVE);
-    private static final Pattern PURPOSE_HEADER = Pattern.compile("^##\\s+Purpose\\s*$", Pattern.CASE_INSENSITIVE);
+    /** A CommonMark closing {@code #} run after a heading's title, which OpenSpec ignores. */
+    private static final Pattern CLOSING_RUN = Pattern.compile("\\s+#+\\s*$");
+    private static final Pattern REQUIREMENTS_HEADER = Pattern.compile("^##\\s+Requirements(?:\\s+#+)?\\s*$", Pattern.CASE_INSENSITIVE);
+    private static final Pattern PURPOSE_HEADER = Pattern.compile("^##\\s+Purpose(?:\\s+#+)?\\s*$", Pattern.CASE_INSENSITIVE);
+
+    /** A level-2 heading's title with any closing {@code #} run removed, so {@code ## Purpose ##} reads as Purpose. */
+    static String headingTitle(String title) {
+        return CLOSING_RUN.matcher(title).replaceFirst("").strip();
+    }
     private static final Pattern REMOVED_BULLET = Pattern.compile("^\\s*[-*+]\\s*`?###\\s*Requirement:\\s*(.+?)`?\\s*$");
     private static final Pattern RENAMED_FROM = Pattern.compile("^\\s*[-*+]?\\s*FROM:\\s*`?###\\s*Requirement:\\s*(.+?)`?\\s*$");
     private static final Pattern RENAMED_TO = Pattern.compile("^\\s*[-*+]?\\s*TO:\\s*`?###\\s*Requirement:\\s*(.+?)`?\\s*$");
@@ -113,7 +120,7 @@ public final class SpecMerge {
         for (int i = 0; i < lines.size(); i++) {
             if (mask[i]) continue;
             Matcher m = SECTION.matcher(lines.get(i));
-            if (m.find()) titles.add(m.group(2).strip().toLowerCase(Locale.ROOT));
+            if (m.find()) titles.add(headingTitle(m.group(2)).toLowerCase(Locale.ROOT));
         }
         for (String t : SECTION_TITLES) {
             if (titles.contains(t.toLowerCase(Locale.ROOT) + " requirements")) present.add("## " + t + " Requirements");
@@ -145,7 +152,7 @@ public final class SpecMerge {
             String line = lines.get(i);
             Matcher heading = SECTION.matcher(line);
             if (heading.find()) {
-                section = heading.group(2).strip();
+                section = headingTitle(heading.group(2));
                 continue;
             }
             Matcher requirement = SpecPatterns.DELTA_REQUIREMENT_HEADER.matcher(line);
@@ -202,7 +209,7 @@ public final class SpecMerge {
             Matcher m = SECTION.matcher(lines.get(i));
             if (m.find()) {
                 headers.add(new int[]{i});
-                titles.add(m.group(2).strip());
+                titles.add(headingTitle(m.group(2)));
             }
         }
         for (int h = 0; h < headers.size(); h++) {
