@@ -40,6 +40,8 @@ import com.johnnyblabs.openspec.model.ChangeArtifactDag;
 import com.johnnyblabs.openspec.actions.WorkflowHandoffDelivery;
 import com.johnnyblabs.openspec.services.WorkflowInvocation;
 import com.johnnyblabs.openspec.services.AiToolDetectionService;
+import com.johnnyblabs.openspec.services.AiToolRegistry;
+import com.johnnyblabs.openspec.services.AiToolRegistry.AiTool;
 import com.johnnyblabs.openspec.services.ArtifactLocalHistory;
 import com.johnnyblabs.openspec.services.ArtifactOrchestrationService;
 import com.johnnyblabs.openspec.services.WorkflowSchemaContextService;
@@ -181,6 +183,8 @@ public class WorkflowActionPanel extends JPanel {
     private JBPopup activeGuidancePopup;
     private volatile boolean hasDeltaSpecs;
     private boolean allArtifactsComplete;
+    /** Apply is ready when the artifacts the CLI requires for it are done, which can precede a complete change. */
+    private boolean applyReady;
     private boolean hasTasksRemaining;
 
     public WorkflowActionPanel(Project project) {
@@ -921,6 +925,7 @@ public class WorkflowActionPanel extends JPanel {
                 // moving to the first change; with no status at all there is no selection to keep.
                 activeChangeName = statusError != null ? changeName : null;
                 allArtifactsComplete = false;
+                applyReady = false;
                 hasTasksRemaining = false;
                 hasDeltaSpecs = false;
                 updateIconBarState();
@@ -955,6 +960,7 @@ public class WorkflowActionPanel extends JPanel {
             nextArtifactId = ready.isEmpty() ? null : ready.getFirst().id();
 
             allArtifactsComplete = dag.isComplete();
+            applyReady = dag.isApplyReady();
 
             if (allArtifactsComplete) {
                 showApplyState(dag);
@@ -980,7 +986,7 @@ public class WorkflowActionPanel extends JPanel {
     private void updateIconBarState() {
         // Revise works on any active change: with no request, the agent reviews whatever artifacts exist.
         reviseIconButton.setEnabled(activeChangeName != null);
-        applyIconButton.setEnabled(allArtifactsComplete);
+        applyIconButton.setEnabled(applyReady);
         verifyIconButton.setEnabled(allArtifactsComplete);
         syncSpecsIconButton.setEnabled(hasDeltaSpecs);
         archiveIconButton.setEnabled(allArtifactsComplete && !hasTasksRemaining);
@@ -990,9 +996,9 @@ public class WorkflowActionPanel extends JPanel {
 
         // Contextual tooltips with change name and disabled reasons
         if (activeChangeName != null) {
-            applyIconButton.setToolTipText(allArtifactsComplete
+            applyIconButton.setToolTipText(applyReady
                     ? "Apply: " + activeChangeName
-                    : "Apply (complete all artifacts first)");
+                    : "Apply (finish the artifacts it needs first)");
             verifyIconButton.setToolTipText(allArtifactsComplete
                     ? "Verify: " + activeChangeName
                     : "Verify (complete all artifacts first)");
@@ -1563,14 +1569,18 @@ public class WorkflowActionPanel extends JPanel {
         String toolName = getSelectedToolName();
 
         ApplicationManager.getApplication().executeOnPooledThread(() -> {
-            String prompt = ApplyPromptBuilder.build(changeName, changeDir);
+            // Clipboard and editor tab send the short handoff when the selected tool has the apply command or skill,
+            // as Explore does; otherwise the full prompt.
+            String shortHandoff = mode == DeliveryMode.DIRECT_API ? null
+                    : applyHandoff(project.getBasePath(), toolName, changeName);
+            String prompt = shortHandoff != null ? shortHandoff : ApplyPromptBuilder.build(changeName, changeDir);
 
             lastPrompt = prompt;
 
             switch (mode) {
                 case CLIPBOARD -> {
                     String clipboardPrompt = prompt;
-                    if (!toolName.isBlank() && AiToolDetectionService.isCliTool(toolName)) {
+                    if (shortHandoff == null && !toolName.isBlank() && AiToolDetectionService.isCliTool(toolName)) {
                         clipboardPrompt = ApplyPromptBuilder.appendSavePathHint(prompt, changeDir);
                     }
                     lastPrompt = clipboardPrompt;
@@ -1622,6 +1632,19 @@ public class WorkflowActionPanel extends JPanel {
                 }
             }
         });
+    }
+
+    /**
+     * The short apply handoff for the selected tool when the project has its apply command or skill, else {@code null}.
+     * Only that tool is checked, so the handoff names the tool the user pastes into.
+     */
+    @Nullable
+    static String applyHandoff(@Nullable String basePath, @Nullable String toolName, String changeName) {
+        AiTool tool = AiToolRegistry.byName(toolName);
+        if (tool == null || basePath == null) return null;
+        WorkflowInvocation.Found found = WorkflowInvocation.find(Path.of(basePath), List.of(tool),
+                WorkflowInvocation.APPLY, WorkflowInvocation.APPLY_SKILL);
+        return found == null ? null : WorkflowInvocation.handoff(found.invocation(), WorkflowInvocation.APPLY_SKILL, changeName);
     }
 
     /** Apply's Direct API note: the agent does the work, so the handoff was copied for the user to paste. */
