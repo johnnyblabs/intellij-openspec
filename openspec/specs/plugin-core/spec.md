@@ -429,6 +429,11 @@ Because the client's own surface differs across versions, the plugin's delivered
 - **AND** 1.16's configuration error response (an item-less `validate --json` result whose `status` entry carries `unparseable_config` or `unreadable_config`) SHALL be read by the plugin's validate-output reader as an error response with no verdict, never as a passing report
 - **AND** the plugin's version comparison SHALL order `1.16.0` above `1.15.0` and `1.9.0`; per-generation contract coverage against captured 1.16.0 CLI output SHALL exist (the parity-corpus twins, the scenario-step warning in default and `--strict` mode, and both configuration error responses), and a version-floor/at-least assertion SHALL include `1.16.0`
 
+#### Scenario: The 1.16.1 patch is supported
+- **WHEN** the detected CLI is `1.16.1`
+- **THEN** the plugin SHALL deliver the capability set it delivers for `1.16.0` (no re-gating), and per-generation contract coverage against captured 1.16.1 CLI output SHALL exist for the closing-`#`-run heading behaviour and the unrecognized delta-section error
+- **AND** a version-floor/at-least assertion SHALL include `1.16.1`
+
 ### Requirement: CLI status reflects the latest completed detection
 
 The plugin's CLI status SHALL always reflect the most recent completed CLI detection, whichever path triggered it (project open, tool-window activation, focus regain, Settings, or a manual refresh). A detection in progress SHALL NOT be observable as "CLI unavailable": readers SHALL see either the previous result or the new one. Before the first detection completes, the status SHALL show that detection is in progress rather than that the CLI is missing.
