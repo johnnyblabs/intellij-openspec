@@ -74,7 +74,8 @@ public class OpenSpecApplyAction extends OpenSpecBaseAction {
             // Check artifact completion
             ArtifactOrchestrationService orchestration = project.getService(ArtifactOrchestrationService.class);
             ChangeArtifactDag dag = orchestration.getArtifactStatus(changeName);
-            if (dag != null && !dag.isComplete()) {
+            // The CLI's apply gate: the artifacts applyRequires names, not the whole change (as the panel's Apply does).
+            if (dag != null && !dag.isApplyReady()) {
                 OpenSpecNotifier.warn(project, "Apply",
                         "Not all artifacts are complete for \"" + changeName + "\". Generate artifacts first.");
                 return;

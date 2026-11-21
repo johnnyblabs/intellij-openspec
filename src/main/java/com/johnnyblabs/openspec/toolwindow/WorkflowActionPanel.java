@@ -2111,10 +2111,11 @@ public class WorkflowActionPanel extends JPanel {
 
     private void onArchive() {
         if (activeChangeName == null) return;
-        if (hasTasksRemaining) {
-            // The pre-archive check is Verify's: it reports the open tasks and offers "Archive anyway".
-            AnAction verify = ActionManager.getInstance().getAction("OpenSpec.Verify");
-            if (verify != null) launcher.accept(verify, archiveIconButton);
+        // Open tasks don't block archive, as the CLI does; warn and let the user choose. This is the panel's own check,
+        // not the Verify action, which is gated on a workflow the core profile doesn't include.
+        if (hasTasksRemaining && Messages.showOkCancelDialog(project,
+                "\"" + activeChangeName + "\" still has open tasks. Archive it anyway?",
+                "Archive", "Archive anyway", "Cancel", Messages.getWarningIcon()) != Messages.OK) {
             return;
         }
         String changeName = activeChangeName;
