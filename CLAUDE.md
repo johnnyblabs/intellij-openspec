@@ -20,6 +20,8 @@ Without the middle step the card jumps Todo→Done and never appears in the "In 
 
 **Do not put tracker plumbing back into the `openspec-*` skills.** If you find yourself tempted, you're at the wrong layer.
 
+**A change must not archive without a tracker entry, unless the change says why it has none.** Mirror the change when its proposal lands. Before archiving, check for the `.tracking.yaml` sidecar. If it's missing, either mirror the change now or record the reason in the change's `tasks.md`, using vendor-neutral wording (for example, "Not tracked: created before the tracker convention"). Silently skipping the tracker step is not allowed.
+
 **Do not commit these skills back into tracked state.** If you need a tracked skill that does similar work, write a vendor-neutral one that takes config from environment / a separate file rather than hardcoding the homelab references.
 
 ## Tracker IDs go in a gitignored `.tracking.yaml` sidecar
@@ -48,6 +50,8 @@ Since the 1.5.0 skills-only migration, `.claude/skills/openspec-*/` was the only
 - **Keep requirement text under 500 characters.** The CLI warns beyond that, and strict fails. Move examples and edge cases into scenarios, or split the requirement. A MODIFIED delta must carry every scenario of its requirement.
 - **Change main specs only through a change.** Write the delta, validate it, then archive. Do not edit `openspec/specs/` directly.
 - **Match the CLI to the target.** The installed CLI should equal `openspecTargetVersion` in `gradle.properties`. Check it with `openspec --version` after a bump, then run `openspec update` and restore customizations as described above. Don't use a pinned `npx` version for repo work, because its cache can leak into captured fixtures.
+- **Validate the real tree, not a scratch copy.** Run `openspec validate --all --strict` on the branch you're about to merge, and again after archiving. A scratch copy with deltas applied is not proof, because deltas reach the main specs only on archive, so a copy can pass while `main` still fails.
+- **Tick a change's task list in the PR that completes the work.** Don't tick it in a separate batch PR. Batch PRs that each touch `tasks.md` conflict with one another, and every later PR then needs a conflict fix.
 
 ## Branches, merges and CI
 
