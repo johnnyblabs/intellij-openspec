@@ -7,7 +7,7 @@ Automated rendered-UI smoke coverage: scope, journeys, execution policy, and fla
 
 ### Requirement: Rendered-UI smoke journeys exist
 
-The project SHALL maintain a small suite (currently eleven) of automated UI smoke journeys that drive a real sandbox IDE with the plugin installed, asserting presence and wiring of rendered surfaces. Journeys SHALL assert component presence and wiring, not textual prose or pixels, and SHALL NOT mutate durable user state (dialog journeys exit via cancel; no archive is performed). A journey that must exercise state-writing actions SHALL isolate that state to journey-scoped temporary locations — e.g. an isolated OpenSpec data directory injected via the IDE process environment — so nothing outlives the journey or touches the user's real data.
+The project SHALL maintain a small suite of automated UI smoke journeys that drive a real sandbox IDE with the plugin installed, asserting presence and wiring of rendered surfaces, not prose or pixels. Journeys SHALL NOT mutate durable user state. A journey that exercises state-writing actions SHALL isolate that state to journey-scoped temporary locations.
 
 #### Scenario: Open-and-render journey
 - **WHEN** the smoke suite opens a seeded demo project
@@ -53,9 +53,14 @@ The project SHALL maintain a small suite (currently eleven) of automated UI smok
 - **WHEN** the smoke suite opens the tool window and invokes the `OpenSpec.ValidateStrict` action
 - **THEN** it SHALL assert the strict run discloses itself in surfaces a default Validate never produces — the summary balloon title `Validate (strict)` and the Console echo of the `--strict` command flag — targeting the strict-specific wiring rather than the verdict
 
+#### Scenario: Journey state isolation
+- **WHEN** a journey exercises state-writing actions
+- **THEN** it SHALL isolate that state, for example to an isolated OpenSpec data directory injected through the IDE process environment
+- **AND** dialog journeys SHALL exit via cancel, performing no archive
+
 ### Requirement: Smoke journeys never gate ordinary PRs
 
-The UI smoke workflow SHALL run on **manual dispatch only** and SHALL NOT be a required check on ordinary pull requests, and SHALL NOT run automatically on a release tag push. Because the self-hosted CI runner cannot boot a headful IDE, the release gate is the maintainer's **local `caffeinate -dimsu ./gradlew uiSmoke` run** performed during release preparation: a release SHALL require those journeys green (real, rendered-frame passes — not environmental black-frame failures) before the release tag is pushed. The CI ui-smoke workflow SHALL NOT be relied upon as the release gate.
+The UI smoke workflow SHALL run on manual dispatch only. It SHALL NOT be a required check on ordinary pull requests, and SHALL NOT run on a release tag push. The release gate SHALL be the maintainer's local `caffeinate -dimsu ./gradlew uiSmoke` run with real rendered-frame passes, before the release tag is pushed. The CI ui-smoke workflow SHALL NOT be relied on as the release gate.
 
 #### Scenario: PR unaffected
 - **WHEN** an ordinary pull request runs CI
@@ -68,6 +73,11 @@ The UI smoke workflow SHALL run on **manual dispatch only** and SHALL NOT be a r
 #### Scenario: No CI ui-smoke on a tag push
 - **WHEN** a release tag is pushed
 - **THEN** no CI ui-smoke job SHALL run automatically — the workflow is manual-dispatch-only, since the self-hosted runner cannot boot a headful IDE and would otherwise report a permanent false-red
+
+#### Scenario: Why the release gate is local
+- **WHEN** the self-hosted CI runner cannot boot a headful IDE
+- **THEN** the release gate is the local run during release preparation
+- **AND** an environmental black-frame failure SHALL NOT count as a product failure
 
 ### Requirement: Failure diagnosability
 

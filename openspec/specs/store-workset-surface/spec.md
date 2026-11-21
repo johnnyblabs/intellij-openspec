@@ -8,7 +8,7 @@ Resolve and present OpenSpec's 1.5.0+ store/workset model in the IDE — locatin
 
 ### Requirement: Store and workset path resolution
 
-The plugin SHALL resolve the OpenSpec 1.5.0 on-disk store and workset locations under the same global data dir it already resolves for the 1.4 collections: `stores/` with a `registry.yaml`, and `worksets/` with a `worksets.yaml`. The store registry SHALL be parsed with the same backend-local-path logic used for the existing context-store registry, because the two files are byte-identical in shape (`version: 1` / `stores: {<id>: {backend: {type, local_path}}}`) and differ only in directory name. The global data dir SHALL continue to resolve as `$XDG_DATA_HOME/openspec` when set, otherwise `~/.local/share/openspec` on Unix/macOS and `%LOCALAPPDATA%\openspec` on Windows.
+The plugin SHALL resolve the CLI 1.5.0 store and workset locations under the same global data dir as the 1.4 collections: `stores/` with a `registry.yaml`, and `worksets/` with a `worksets.yaml`. The store registry SHALL be parsed with the context-store registry's backend-local-path logic. The data dir SHALL resolve as `$XDG_DATA_HOME/openspec` when set, otherwise `~/.local/share/openspec` on Unix and macOS, and `%LOCALAPPDATA%\openspec` on Windows.
 
 #### Scenario: Resolve the store registry path
 - **WHEN** the plugin resolves the store on-disk location
@@ -40,7 +40,7 @@ The plugin SHALL resolve stores and worksets, preferring the CLI's JSON output w
 
 ### Requirement: Store listing with health
 
-The plugin SHALL display locally registered stores. Each store entry SHALL show its `id` and `root` from `openspec store list --json` (`{"stores":[{"id","root"}],"status":[]}`), and SHALL surface registration health — metadata present/valid, whether the store root is a git repository, and whether its openspec-root is healthy — when that detail is available from `openspec store doctor --json`. Openspec-root health SHALL be determined solely by the doctor report's `healthy` flag: a store whose openspec-root is healthy but whose planning directories (`openspec/specs`, `openspec/changes`, `openspec/changes/archive`) are not yet present — reported by CLI 1.6+ as per-directory `present: false` detail alongside `healthy: true` — SHALL be presented as healthy, and the plugin SHALL NOT infer, compute, or display unhealthiness from the absence of those directories. The plugin SHALL NOT depend on the retired 1.5-generation diagnostic codes `openspec_specs_missing`, `openspec_changes_missing`, or `openspec_archive_missing` in any parsing or presentation path. Health lookups SHALL be lazy and run off the EDT. Git subfields that are null for non-git stores SHALL be handled without error.
+The plugin SHALL list locally registered stores with their `id` and `root` from `openspec store list --json`, and SHALL show registration health from `openspec store doctor --json` when available. Openspec-root health SHALL be the doctor report's `healthy` flag alone. Health lookups SHALL be lazy and run off the EDT, and null git fields for non-git stores SHALL be handled without error.
 
 #### Scenario: Display registered stores
 - **WHEN** the store list is populated from `openspec store list --json`
@@ -61,6 +61,16 @@ The plugin SHALL display locally registered stores. Each store entry SHALL show 
 #### Scenario: Empty store list
 - **WHEN** `openspec store list --json` returns an empty `stores` array
 - **THEN** the store section SHALL show an empty state rather than an error
+
+#### Scenario: Planning directories are not unhealthiness
+- **WHEN** the doctor reports `healthy: true` while the planning directories (`openspec/specs`, `openspec/changes`, `openspec/changes/archive`) are not present
+- **THEN** the store SHALL be presented as healthy, and the plugin SHALL NOT infer unhealthiness from their absence
+- **AND** it SHALL NOT depend on the retired codes `openspec_specs_missing`, `openspec_changes_missing` or `openspec_archive_missing`
+
+#### Scenario: Registration health details
+- **WHEN** the doctor report is available
+- **THEN** the plugin SHALL show whether the store's metadata is present and valid, and whether the store root is a git repository
+- **AND** null git fields for a non-git store SHALL NOT be an error
 
 ### Requirement: Workset listing with members
 
@@ -100,7 +110,7 @@ The plugin SHALL canonicalize both the current project root and each registered 
 
 ### Requirement: Coexistence and legacy demotion without migration
 
-When both legacy coordination state (`workspaces`, `context-stores`) and new state (`stores`, `worksets`) exist on disk, the plugin SHALL key its lead model off the resolved CLI version: at CLI ≥ `1.5.0`, stores and worksets SHALL be the canonical lead model and legacy state SHALL be demoted to a muted, read-only "Legacy (pre-1.5)" group. The legacy group SHALL be shown only when legacy state actually exists on disk. The plugin SHALL perform no migration — it only reflects state that the CLI owns.
+At CLI 1.5.0 or later, when legacy coordination state and new state both exist, stores and worksets SHALL be the canonical lead model, and legacy state SHALL be a muted, read-only "Legacy (pre-1.5)" group. That group SHALL appear only when legacy state exists on disk. The plugin SHALL NOT migrate state; it reflects only what the CLI owns.
 
 #### Scenario: Stores are canonical at the 1.5.0 floor with legacy demoted
 - **WHEN** both legacy and new coordination state exist on disk and the CLI is at or above `1.5.0`

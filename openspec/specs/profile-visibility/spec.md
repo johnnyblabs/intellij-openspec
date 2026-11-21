@@ -7,7 +7,7 @@ Profile-aware action enablement — disabling actions whose workflow is not in t
 
 ### Requirement: Workflow profile resolution
 
-The plugin SHALL resolve the active workflows the way the OpenSpec CLI does (`getProfileWorkflows`), from `openspec config list --json` and the detected CLI version, and cache the result as a `Set<String>`. For the `custom` profile the active workflows SHALL be the stored `workflows` list, with `sync` added from CLI 1.10 when archiving needs it. For any other profile, or none, they SHALL be that CLI version's core set, and a stored list SHALL be ignored. Without the CLI the plugin SHALL use the current core set.
+The plugin SHALL resolve active workflows as the CLI does, from `openspec config list --json` and the detected CLI version, and cache them as a `Set<String>`. For the `custom` profile they SHALL be the stored `workflows` list, with `sync` added from CLI 1.10 when archiving needs it. For any other profile, or none, they SHALL be that CLI version's core set, ignoring any stored list. Without the CLI they SHALL be the current core set.
 
 #### Scenario: CLI available
 - **WHEN** the plugin resolves the active workflows and the CLI is available
@@ -56,7 +56,7 @@ Each workflow-bound action SHALL declare its workflow ID via a `getWorkflowId()`
 
 ### Requirement: Profile-aware action enablement
 
-The plugin SHALL check each action's workflow ID against the active workflows during action update. Actions whose workflow is not in the active profile SHALL be visible but disabled with a descriptive tooltip. Workflow gating SHALL apply only to actions whose CLI command is preset-conditional; view/diff utility actions (those that return `null` from `getWorkflowId()`) are out of scope for workflow-profile gating regardless of whether their conceptual workflow ID happens to match a CLI workflow string.
+Each action's workflow ID SHALL be checked against the active workflows at update time. An action whose workflow is not active SHALL be visible but disabled, with a descriptive tooltip. Gating SHALL apply only to preset-conditional actions. View and diff utility actions that return `null` from `getWorkflowId()` are out of scope.
 
 #### Scenario: Workflow enabled in profile
 - **WHEN** an action's workflow ID is present in the active workflows set
@@ -148,8 +148,12 @@ When `OpenSpecBaseAction.update()` disables an action because its workflow is no
 
 ### Requirement: User documentation for workflow profiles
 
-The plugin SHALL ship user-facing documentation covering: the project-profile-vs-workflow-profile semantic split in OpenSpec config; when to use core vs custom (with the AI-context-preservation rationale); what custom workflows enable; the two-step profile change process (`openspec config profile` then `openspec update`); and how the plugin's profile-aware UI surfaces (status bar widget, action text suffix, tooltip) work together. Copy SHALL frame core and custom as scope-different rather than upgrade-worthy.
+The plugin SHALL ship user documentation of the project-profile versus workflow-profile split, when to use core or custom, what custom enables, the two-step profile change (`openspec config profile`, then `openspec update`), and how the profile-aware UI works. It SHALL frame core and custom as different in scope, not as an upgrade.
 
 #### Scenario: Documentation page exists and is reachable from UI
 - **WHEN** the documentation is published
 - **THEN** there SHALL be a docs page on workflow profiles, AND the status bar widget popup AND the Settings panel context help SHALL link to it
+
+#### Scenario: Rationale for core
+- **WHEN** a reader chooses between core and custom
+- **THEN** the documentation SHALL state the AI-context-preservation rationale for core

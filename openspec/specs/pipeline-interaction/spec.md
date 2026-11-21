@@ -2,7 +2,9 @@
 
 ## Purpose
 Interactive pipeline chip behavior: click actions, visual affordances, context menus, icon action bar, status strip, and layout.
+
 ## Requirements
+
 ### Requirement: Chip click triggers generation
 The plugin SHALL trigger artifact generation when the user clicks a pipeline chip in READY state. The generation SHALL use the currently selected delivery method. Chips in DONE, BLOCKED, or GENERATING states SHALL NOT trigger generation on click.
 
@@ -58,7 +60,7 @@ The plugin SHALL display a context menu when the user right-clicks a pipeline ch
 
 ### Requirement: Compact icon action bar
 
-The plugin SHALL display a compact row of small icon buttons below the pipeline chips for change-specific workflow actions only. The icon bar SHALL show icons for Apply, Compliance, Verify, Sync Specs, Archive, and an overflow menu (⋯). The icon bar SHALL NOT include Fast-Forward or Start New Change (which are creation actions, not change actions). The icon bar SHALL display a muted label at its left edge showing the active change name, anchoring all icons to that change.
+The plugin SHALL display a compact row of icon buttons below the pipeline chips for change-specific workflow actions only: Apply, Compliance, Verify, Sync Specs, Archive, and an overflow menu (⋯). The icon bar SHALL NOT include creation actions (Fast-Forward, Start New Change). A muted label at its left edge SHALL show the active change name, anchoring the icons to that change.
 
 #### Scenario: Icon bar contents
 - **WHEN** the pipeline card is displayed for an active change

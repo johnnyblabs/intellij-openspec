@@ -9,9 +9,9 @@
 - [x] 2.2 Specs with two long requirements: `cross-platform-verification`, `spec-sync`, `tree-view`, `ui-smoke-journeys`, `verify-workflow`.
 - [x] 2.3 Specs with three long requirements: `cli-update`, `config-profile`, `edt-compliance`, `profile-visibility`, `spec-parsing`, `store-workset-actions`, `store-workset-surface`.
 - [x] 2.4 Specs with four or more long requirements, first group: `ai-integration`, `plugin-documentation`, `ci`, `coordination-surfaces`.
-- [ ] 2.5 Specs with four or more long requirements, second group: `spec-viewer`, `plugin-core`, `workflow`, `validation`.
+- [x] 2.5 Specs with four or more long requirements, second group: `spec-viewer`, `plugin-core`, `workflow`, `validation`.
 
 ## 3. Verify
 
-- [ ] 3.1 Each batch validates with `openspec validate shorten-long-requirements --strict`.
-- [ ] 3.2 After the last batch, `openspec validate --all --strict` passes.
+- [x] 3.1 Each batch validates with `openspec validate shorten-long-requirements --strict`.
+- [x] 3.2 After the last batch, `openspec validate --all --strict` passes.

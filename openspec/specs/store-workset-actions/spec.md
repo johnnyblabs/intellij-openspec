@@ -8,7 +8,7 @@ Define the IDE write actions for OpenSpec's 1.5.0+ store/workset model — creat
 
 ### Requirement: Gating of store and workset write actions
 
-The plugin SHALL enable store and workset write actions only when the coordination surface is at the Full tier AND the detected OpenSpec CLI is at or above version 1.5.0. Below either condition the write actions SHALL be disabled (or hidden) with guidance, and no write command SHALL be shelled out. Every action's `update()` SHALL read cached tier and tree-selection state only and SHALL NOT perform any CLI invocation or disk IO on the EDT.
+Store and workset write actions SHALL be enabled only at the Full coordination tier and with CLI 1.5.0 or later. Otherwise they SHALL be disabled or hidden with guidance, and no write command SHALL run. Each action's `update()` SHALL read only cached state, with no CLI call or disk I/O on the EDT.
 
 #### Scenario: Write actions enabled at Full tier on CLI 1.5.0+
 - **WHEN** the coordination surface is at the Full tier and the detected CLI is at or above 1.5.0
@@ -40,9 +40,7 @@ The plugin SHALL create a store through a dialog that collects a store id and a 
 
 ### Requirement: Store registration outcome semantics across CLI generations
 
-The plugin SHALL treat `openspec store register --json` outcomes according to the CLI's own parsed report rather than plugin-side assumptions about root health. A registration the CLI reports as successful SHALL be treated as success even when the root lacks the planning directories (`openspec/specs`, `openspec/changes`, `openspec/changes/archive`) — the CLI 1.6+ fresh/config-only-root case. A registration refusal SHALL be surfaced from the parsed uniform `status[]` envelope with the entry's `fix` remediation verbatim; this includes the 1.6 refusal codes `invalid_store_pointer` and `store_root_pointer_declared` (registering a root whose `openspec/config.yaml` declares `store:`) and the 1.5-generation refusal code `store_register_root_unhealthy`. The plugin SHALL NOT special-case any refusal code in a way that breaks when a code is absent on another supported CLI generation.
-
-The initial `store register` invocation SHALL NOT pass `--yes` (a probe), so a root that needs no confirmation behaves as before and the plugin never silently writes store-identity metadata. When the CLI reports `store_register_identity_confirmation_required` — a healthy OpenSpec root that is not yet a store — the plugin SHALL present an actionable confirmation (Yes/Cancel) carrying the CLI's own `message` and `fix` text verbatim, and SHALL NOT surface it as a dead-end failure. On confirmation the plugin SHALL re-invoke `store register <path> --yes --json`, creating the store-identity metadata (`.openspec-store/store.yaml`) non-interactively, and SHALL refresh the surface on success. On cancellation the plugin SHALL leave the root unregistered and SHALL NOT show an error dialog. This mirrors the confirm-plus-`--yes` idiom the plugin already applies to the destructive removals, adapted to a non-destructive metadata creation.
+The plugin SHALL treat `openspec store register --json` outcomes by the CLI's parsed report, not by assumptions about root health. A registration the CLI reports as successful SHALL succeed even when the planning directories are absent. A refusal SHALL be shown from the parsed `status[]` envelope with its `fix` verbatim. The plugin SHALL NOT special-case a refusal code in a way that breaks when that code is absent on another supported CLI generation.
 
 #### Scenario: Fresh root registers successfully on CLI 1.6+
 - **WHEN** `store register` succeeds for a root that lacks the planning directories
@@ -63,6 +61,20 @@ The initial `store register` invocation SHALL NOT pass `--yes` (a probe), so a r
 #### Scenario: 1.5-generation unhealthy-root refusal still parsed
 - **WHEN** a 1.5-generation CLI fails `store register` with `store_register_root_unhealthy`
 - **THEN** the plugin SHALL surface the parsed failure message and its `fix` remediation exactly as before
+
+#### Scenario: Probe without --yes
+- **WHEN** the initial `store register` runs
+- **THEN** it SHALL NOT pass `--yes`, so the plugin never silently writes store-identity metadata
+
+#### Scenario: Identity confirmation
+- **WHEN** the CLI reports `store_register_identity_confirmation_required` (a healthy root that is not yet a store)
+- **THEN** the plugin SHALL present a Yes/Cancel confirmation carrying the CLI's `message` and `fix` text verbatim, not a dead-end failure
+- **AND** on Yes it SHALL re-invoke `store register <path> --yes --json`, creating the store-identity metadata (`.openspec-store/store.yaml`), and refresh the surface
+- **AND** on Cancel it SHALL leave the root unregistered and show no error dialog
+
+#### Scenario: Refusal codes
+- **WHEN** the CLI refuses a registration with `invalid_store_pointer`, with `store_root_pointer_declared` (the root's `openspec/config.yaml` declares `store:`), or with the 1.5-generation code `store_register_root_unhealthy`
+- **THEN** the plugin SHALL show the entry's `fix` verbatim
 
 ### Requirement: New Workset dialog with member list
 
@@ -106,7 +118,7 @@ The plugin SHALL guard destructive removals with an explicit confirmation before
 
 ### Requirement: Workset open reveals member folders
 
-The plugin SHALL open a workset by revealing its member folders in the OS file manager, after an explicit confirmation stating how many folders will open. The plugin SHALL NOT rely on the `--code-workspace` flag and SHALL NOT auto-open a workset when the surface loads. Folder resolution and VFS refresh SHALL run off the EDT. (Deeper in-IDE multi-folder / attached-project integration is deferred: the platform's attach-to-project API is not resolvable across the plugin's minimum supported IDE build, so a portable reveal is used for this release.)
+The plugin SHALL open a workset by revealing its member folders in the OS file manager, after an explicit confirmation stating how many folders will open. It SHALL NOT use `--code-workspace` and SHALL NOT auto-open a workset on load. Folder resolution and VFS refresh SHALL run off the EDT.
 
 #### Scenario: Confirm before opening multiple folders
 - **WHEN** the user invokes Open on a workset with N member folders
@@ -119,6 +131,10 @@ The plugin SHALL open a workset by revealing its member folders in the OS file m
 #### Scenario: No auto-open on load
 - **WHEN** the coordination surface loads or refreshes
 - **THEN** the plugin SHALL NOT open any workset's folders automatically
+
+#### Scenario: Deferred in-IDE integration
+- **WHEN** a multi-folder or attached-project integration is considered
+- **THEN** it is deferred, because the platform's attach-to-project API is not resolvable across the minimum supported IDE build, so a portable reveal is used for this release
 
 ### Requirement: Doctor-driven health strip
 

@@ -7,7 +7,7 @@ Pre-archive verification checking completeness, correctness, and coherence of a 
 
 ### Requirement: Pre-archive verification
 
-The plugin SHALL provide a Verify action that drives off the resolved workflow schema context (`openspec status` `actionContext.mode`). For a non-default mode such as `workspace-planning`, Verify SHALL explain that repo-local verification does not apply and stop without producing spec-driven-shaped findings. For the `spec-driven`, repo-local case, Verify SHALL check a change across two dimensions: **completeness** (deterministic) and **correctness/coherence** (semantic, language-agnostic, delegated to the AI bridge). The completeness dimension SHALL source its artifact-level check from the CLI status DAG (`openspec status --change <name> --json`, schema-aware) when available, and its task-checkbox check from parsing `tasks.md` locally. Verify SHALL NOT gate correctness on source file extension or language.
+The plugin SHALL provide a Verify action driven by the resolved workflow schema context (`openspec status` `actionContext.mode`). For a non-default mode such as `workspace-planning`, Verify SHALL explain that repo-local verification does not apply and stop. For the `spec-driven`, repo-local case, Verify SHALL check completeness (deterministic) and correctness and coherence (semantic, delegated to the AI bridge). It SHALL NOT gate correctness on source file extension or language.
 
 #### Scenario: Mode gate — non-default mode
 - **WHEN** the resolved schema context reports a non-default mode (e.g. `workspace-planning`)
@@ -49,6 +49,11 @@ The plugin SHALL provide a Verify action that drives off the resolved workflow s
 - **WHEN** correctness/coherence is requested but no AI provider is configured
 - **THEN** Verify SHALL still run the completeness check and SHALL report correctness/coherence as "not assessed (AI provider not configured)" rather than a false pass or fail
 
+#### Scenario: Completeness sources
+- **WHEN** Verify checks completeness
+- **THEN** the artifact-level check SHALL come from the CLI status DAG (`openspec status --change <name> --json`, schema-aware) when available
+- **AND** the task-checkbox check SHALL come from parsing `tasks.md` locally
+
 ### Requirement: Verification report
 
 The plugin SHALL display verification results in the three-state Verify dialog with per-category
@@ -73,13 +78,7 @@ archiving; an **IN PROGRESS** change (incomplete tasks, structurally valid) is a
 
 ### Requirement: Single Verify surface with three archive-readiness states
 
-The plugin SHALL expose ONE pre-archive **Verify** surface — a single tool-window button, the
-`OpenSpec.Verify` menu action, and the Archive pre-flight all running the identical check — and SHALL
-NOT present a separate "Compliance" surface. The check SHALL fold three dimensions (completeness,
-validation, spec-sync) into one result and classify it into one of three states that mirror upstream
-`openspec archive`: **READY**, **IN&nbsp;PROGRESS**, and **BLOCKED**. The two gate conditions carry
-the same JSON severity upstream; the plugin SHALL distinguish them by an intrinsic hard/soft property,
-not by error count.
+The plugin SHALL expose one pre-archive Verify surface: a single tool-window button, the `OpenSpec.Verify` menu action and the Archive pre-flight SHALL run the identical check, with no separate Compliance surface. The check SHALL fold completeness, validation and spec-sync into one result, classified as READY, IN PROGRESS or BLOCKED to mirror upstream `openspec archive`. The two gate conditions SHALL be distinguished by an intrinsic hard or soft property, not by error count.
 
 #### Scenario: Ready to archive
 - **WHEN** the check finds no errors and no incomplete work

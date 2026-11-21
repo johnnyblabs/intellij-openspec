@@ -4,9 +4,10 @@
 Defines how the plugin recognizes OpenSpec spec structure — headers, requirements, scenarios, and normative keywords — from spec markdown, in parity with the OpenSpec CLI parser (including code-fence exclusion). The plugin parses spec structure as a line-oriented scan mirroring the CLI rather than a general markdown AST, so the tree, list, and spec-intelligence features read a model that agrees with `openspec validate` / `openspec show`.
 
 ## Requirements
+
 ### Requirement: Code-fence exclusion
 
-The spec parser SHALL exclude the contents of fenced code blocks from all structural recognition. A line SHALL be treated as fenced when it falls between a fence-opening line matching a run of three-or-more backticks or tildes (optionally indented, with an optional info string) and the matching fence-closing line whose marker character matches and whose run length is greater than or equal to the opening run; the fence delimiter lines themselves SHALL be excluded. Requirement headers, scenario headers, and normative keywords appearing on fenced lines SHALL NOT be recognized.
+The spec parser SHALL exclude fenced code blocks from all structural recognition. Lines from a fence-opening run of three or more backticks or tildes (optionally indented, with an optional info string) through the matching closing fence are fenced, including the delimiter lines. Requirement headers, scenario headers and normative keywords on fenced lines SHALL NOT be recognized.
 
 #### Scenario: Requirement header inside a fence is ignored
 - **WHEN** a line that would otherwise match a requirement header appears inside a fenced code block
@@ -20,9 +21,13 @@ The spec parser SHALL exclude the contents of fenced code blocks from all struct
 - **WHEN** the token `SHALL` or `MUST` appears only inside a fenced code block within a requirement
 - **THEN** the parser SHALL NOT treat that requirement as containing a normative keyword
 
+#### Scenario: Closing fence
+- **WHEN** a fence closes
+- **THEN** the closing line's marker character SHALL match the opener, and its run length SHALL be at least the opener's
+
 ### Requirement: Requirement recognition matches the CLI
 
-The parser SHALL recognize a requirement from a non-fenced ATX level-3 header whose text begins with `Requirement:` (case-insensitive on the `Requirement:` token), located under the spec's requirements section. Header recognition SHALL require the ATX form with the hash run at the start of the line followed by whitespace; setext-underlined headers, indented headers, and trailing-hash closing forms SHALL NOT be recognized. The requirement name SHALL be the header text following the `Requirement:` token.
+The parser SHALL recognize a requirement from a non-fenced ATX level-3 header whose text begins with `Requirement:`, case-insensitive on the token, under the requirements section. The name SHALL be the header text after the token. Setext, indented and trailing-hash closing forms SHALL NOT be recognized.
 
 #### Scenario: Case-insensitive requirement header
 - **WHEN** a spec contains a non-fenced level-3 header reading `requirement:` in lowercase followed by a name
@@ -50,7 +55,7 @@ The parser SHALL count any non-fenced ATX level-4 header within a requirement as
 
 ### Requirement: Normative-keyword recognition matches the CLI
 
-The parser SHALL classify a requirement as containing a normative keyword when, and only when, the whole-word token `SHALL` or `MUST` appears in the requirement body. Keyword matching SHALL be case-sensitive (uppercase only), and SHALL be evaluated against the requirement body — the non-fenced, non-blank lines between the requirement header and its first scenario or the next requirement — and not against scenario content or the header line. The tokens `SHOULD` and `MAY` SHALL NOT be treated as normative.
+A requirement SHALL be classified as normative only when the whole-word, uppercase token `SHALL` or `MUST` appears in its body. The body is the non-fenced, non-blank lines between the header and its first scenario or the next requirement. Header and scenario content are excluded, and `SHOULD` and `MAY` SHALL NOT count.
 
 #### Scenario: MUST in the body is normative
 - **WHEN** a requirement body contains the uppercase whole word `MUST`
@@ -83,4 +88,3 @@ The parser SHALL produce the same recovered structure regardless of whether the 
 #### Scenario: CRLF parses identically to LF
 - **WHEN** the same spec content is parsed once with LF line endings and once with CRLF line endings
 - **THEN** the parser SHALL recover identical structure (title, requirements, and scenarios) in both cases
-

@@ -7,7 +7,7 @@ Core infrastructure: project detection, configuration, file operations, API comp
 
 ### Requirement: Project detection and initialization
 
-The plugin SHALL detect OpenSpec projects by checking for `openspec/` and provide initialization via CLI delegation with built-in fallback. The built-in fallback SHALL honor the user's configured Default schema preference when writing `openspec/config.yaml`, falling back to `spec-driven` only when no preference is set. The built-in fallback SHALL write **only the fields upstream `openspec init` writes** — a `schema:` line and nothing else — and SHALL NOT write plugin-invented fields (`version:`, `profile:`) or empty upstream fields (`context: ""`, `rules: {}`) that upstream's Zod schema ignores. The plugin MAY still read `version:`/`profile:` from an existing (legacy) `config.yaml` for display, but SHALL NOT emit them into a config it generates.
+The plugin SHALL detect OpenSpec projects by checking for `openspec/`, and initialize them through CLI delegation with a built-in fallback. The fallback SHALL honor the Default schema preference, falling back to `spec-driven`, and SHALL write only the fields upstream `openspec init` writes: a `schema:` line. It SHALL NOT write plugin-invented or empty upstream fields.
 
 #### Scenario: Project detection
 - **WHEN** a project is opened in the IDE
@@ -37,9 +37,13 @@ The plugin SHALL detect OpenSpec projects by checking for `openspec/` and provid
 - **WHEN** an existing `openspec/config.yaml` (from a prior plugin version) contains `version:` and/or `profile:`
 - **THEN** the plugin SHALL still parse it and still surface those values in the tree view — only newly-scaffolded configs omit them
 
+#### Scenario: Legacy fields
+- **WHEN** an existing legacy `config.yaml` carries `version:` or `profile:`
+- **THEN** the plugin MAY read them for display, but SHALL NOT emit them into a config it generates
+
 ### Requirement: Configuration parsing
 
-The plugin SHALL parse `openspec/config.yaml` and each change's `.openspec.yaml`, **ignoring unrecognized or newer keys rather than treating them as errors** (matching upstream OpenSpec's strip contract). For a change's `.openspec.yaml`, genuinely malformed YAML SHALL surface a clear warning notification with the change name and parse error. The plugin SHALL support reading the active profile's workflow configuration when the CLI is available. The plugin SHALL persist a default schema preference in `OpenSpecSettings.State` and expose it via getter/setter methods.
+The plugin SHALL parse `openspec/config.yaml` and each change's `.openspec.yaml`, ignoring unrecognized or newer keys rather than treating them as errors, matching upstream's strip contract. Genuinely malformed YAML in a change's `.openspec.yaml` SHALL raise a warning notification with the change name and parse error. The plugin SHALL persist a default schema preference in `OpenSpecSettings.State`, exposed through getter and setter methods.
 
 #### Scenario: Valid config
 - **WHEN** a valid `config.yaml` exists
@@ -68,9 +72,13 @@ The plugin SHALL parse `openspec/config.yaml` and each change's `.openspec.yaml`
 - **THEN** the plugin SHALL parse it to non-null metadata (retaining `schema`, `status`, and `created`) with no warning notification
 - **AND** the unmodeled keys SHALL be ignored, so no validation gate treats them as errors
 
+#### Scenario: Profile workflows
+- **WHEN** the CLI is available
+- **THEN** the plugin SHALL read the active profile's workflow configuration
+
 ### Requirement: AI tool detection
 
-The plugin SHALL detect every AI tool in the OpenSpec CLI's tool registry (`AI_TOOLS` in `@fission-ai/openspec/dist/core/config.js`; 50 tools at 1.14.3) from one record per tool carrying its id, display name, skills directory, detection paths, older directories, type (CLI vs IDE_PANEL), and the first CLI version that accepts the id. Detection SHALL follow upstream's rule: the tool's detection paths when it has them, otherwise its skills directory, with older directories also counting, a skills root that several tools share attributed the way upstream attributes it (its `skills/.openspec-target` marker, then the invocation syntax in its generated skills), and a tool with a global skills directory detected from the user's home directory. The plugin SHALL offer or pass a tool id to the CLI only when the detected CLI version accepts it.
+The plugin SHALL detect every AI tool in the CLI's tool registry, from one record per tool: id, display name, skills directory, detection paths, older directories, type and the first CLI version that accepts the id. It SHALL offer or pass a tool id to the CLI only when the detected CLI version accepts it.
 
 #### Scenario: Tool detection
 - **WHEN** `AiToolDetectionService.detect()` scans the project root
@@ -116,6 +124,12 @@ The plugin SHALL detect every AI tool in the OpenSpec CLI's tool registry (`AI_T
 - **WHEN** the detected CLI is older than the first version that accepts a tool's id (for example 1.3.0 and a tool added in 1.14.0)
 - **THEN** the plugin SHALL NOT offer that tool for `init` or `update`, nor pass its id in `--tools`
 
+#### Scenario: Upstream detection rule
+- **WHEN** a tool is detected
+- **THEN** upstream's rule SHALL apply: its detection paths when it has them, otherwise its skills directory, with older directories also counting
+- **AND** a shared skills root SHALL be attributed as upstream does, by its `skills/.openspec-target` marker and then by the invocation syntax in its generated skills
+- **AND** a tool with a global skills directory SHALL be detected from the user's home directory
+
 ### Requirement: VFS-consistent file operations
 
 All file writes that create or update content SHALL use plain filesystem I/O (`java.nio.file`) on background threads. VFS refresh operations (`LocalFileSystem.refreshAndFindFileByPath`, `VirtualFile.refresh`) SHALL be performed within `WriteAction` on the EDT. CLI-created files SHALL be followed by synchronous VFS refresh. Tool window refresh SHALL use `syncRefresh()`.
@@ -158,7 +172,7 @@ The plugin SHALL deliver categorized notifications with titles, actions, and bul
 
 ### Requirement: CLI re-detection on tool window activation
 
-The plugin SHALL re-run CLI detection when the OpenSpec tool window is activated (shown), and when the IDE window of a project with the OpenSpec tool window regains focus — so a CLI upgraded during a long-running session is noticed without reopening the project or re-showing the tool window. Focus-regain re-detection SHALL apply only to the project whose window regained focus. Detection SHALL be throttled to skip if the last detection was within the last 30 seconds. After re-detection, the status bar SHALL update to reflect the current CLI availability.
+The plugin SHALL re-run CLI detection when the tool window is shown and when its project's IDE window regains focus, so a CLI upgraded during a session is noticed. Focus-regain detection SHALL apply only to that project. Detection SHALL be skipped when the last one ran less than 30 seconds ago, and the status bar SHALL update afterwards.
 
 #### Scenario: Tool window activated with stale detection
 - **WHEN** the OpenSpec tool window is shown and the last detection was more than 30 seconds ago
@@ -258,7 +272,7 @@ CLI commands executed via `CliRunner` and `CliDetectionService` SHALL use `Proce
 
 ### Requirement: Cross-platform CLI detection
 
-`CliDetectionService` SHALL detect the OpenSpec CLI on Windows under the same scenarios that succeed on macOS and Linux. On Windows the service SHALL extend bare candidate paths through `.cmd`, `.bat`, and `.exe` suffixes when direct invocation fails, SHALL resolve the executable via `where.exe` instead of a POSIX login shell, and SHALL probe Windows-specific install locations derived from `%APPDATA%` and `%LOCALAPPDATA%`. On every OS, after the existing fixed install locations, the service SHALL probe Homebrew's Linux prefix (`/home/linuxbrew/.linuxbrew/bin/openspec`), then the location the upstream standalone-binary installer writes to: the installer's `OPENSPEC_INSTALL_DIR` and `OPENSPEC_INSTALL_NAME` overrides when the IDE's environment carries them, then the installer's default location. A fixed install-location candidate SHALL be probed only when a regular, executable file exists at it (on Windows, a regular file). The settings path, the bare name and the shell-resolved path SHALL be probed as before, without that check. The plugin SHALL NOT run an installer, edit PATH, or remove another install. On macOS and Linux, after the Settings path, the service SHALL look the CLI up on the IDE's own PATH (the environment the IDE loaded from the user's shell), and its shell lookup SHALL read the PATH an interactive login shell sets, so an entry kept only in an interactive rc file such as `~/.zshrc` is found. Every CLI process SHALL keep the IDE's PATH, adding only the shell PATH entries it lacks. A process detection starts SHALL NOT be able to hold detection past the per-command timeout through its output. The shell PATH SHALL be reused for 10 minutes once resolved, except that detection the user starts from Settings SHALL resolve it afresh.
+CliDetectionService SHALL detect the CLI on Windows under the same scenarios that succeed on macOS and Linux. It SHALL NOT run an installer, edit PATH, or remove another install. On every OS, after the fixed install locations, it SHALL probe the Homebrew Linux prefix and the standalone installer's location; a fixed candidate SHALL be probed only when a regular, executable file exists there.
 
 #### Scenario: Windows bare-name resolution falls back through executable suffixes
 - **WHEN** the host OS is Windows and `tryPath("openspec")` is called and bare invocation fails
@@ -346,6 +360,24 @@ CLI commands executed via `CliRunner` and `CliDetectionService` SHALL use `Proce
 - **WHEN** the user starts detection from Settings
 - **THEN** detection SHALL start the shell and use the PATH it prints now, whatever was resolved before
 
+#### Scenario: Windows lookup
+- **WHEN** detection runs on Windows
+- **THEN** it SHALL try `.cmd`, `.bat` and `.exe` suffixes when direct invocation fails, resolve the executable with `where.exe`, and probe install locations under `%APPDATA%` and `%LOCALAPPDATA%`
+
+#### Scenario: Standalone installer location
+- **WHEN** the IDE environment carries the installer's `OPENSPEC_INSTALL_DIR` and `OPENSPEC_INSTALL_NAME` overrides
+- **THEN** they SHALL be probed before the installer's default location
+
+#### Scenario: Shell PATH
+- **WHEN** detection runs on macOS or Linux
+- **THEN** after the Settings path it SHALL look the CLI up on the IDE's PATH, and its shell lookup SHALL read the PATH an interactive login shell sets
+- **AND** every CLI process SHALL keep the IDE's PATH, adding only the shell PATH entries it lacks
+- **AND** the shell PATH SHALL be reused for 10 minutes once resolved, except that detection the user starts from Settings SHALL resolve it afresh
+
+#### Scenario: Bounded probes
+- **WHEN** a detection process writes output
+- **THEN** that output SHALL NOT hold detection past the per-command timeout
+
 ### Requirement: Cross-thread field visibility
 
 Fields in UI components that are written on background threads and read on the EDT (or vice versa) SHALL be declared `volatile` to ensure cross-thread visibility under the Java Memory Model.
@@ -360,10 +392,7 @@ Fields in UI components that are written on background threads and read on the E
 
 ### Requirement: Supported CLI versions and capability preservation
 
-The plugin SHALL declare the set of OpenSpec CLI versions it supports — currently the `1.3.x`, `1.4.x`, `1.5.x`, `1.6.x`, `1.7.x`, `1.8.x`, `1.9.x`, `1.10.x`, `1.11.x`, `1.12.x`, `1.13.x`, `1.14.x`, `1.15.x`, and `1.16.x` lines, with floor `1.3.0` — and SHALL treat the user-facing behavior it delivers **for each supported version** as a preserved contract. Preservation is **per version and bounded by what the client provides**: where the installed client of a supported version provides the underlying command, a capability the plugin offers for that version SHALL NOT be removed, disabled, or re-gated for that version without (a) a delta on the affected capability's spec, (b) an entry in the changelog, and (c) a test asserting the changed behavior. A change that alters a supported version's delivered capability set with `Modified Capabilities: None` for the affected capability SHALL be treated as a defect.
-
-Because the client's own surface differs across versions, the plugin's delivered capability set MAY legitimately differ between supported versions. Offering a capability for one supported version and not another is **faithful mirroring, not a regression, when it tracks the client** — for example, the `workspace` / `context-store` / `initiative` commands exist in `[1.4.0, 1.5.0)` and were removed by the client in `1.5.0`, so the plugin offers the 1.4 coordination write actions for `1.4.x` and correctly retires them for `1.5.x`. A supported version whose client **relaxes** a validation verdict SHALL likewise be mirrored: where a supported version reports an item `valid` that an earlier supported version rejected, the plugin's CLI-absent fallback SHALL NOT be more restrictive than that version, even though this makes the fallback verdict deliberately laxer than it was for the earlier version. Such version-scoped, self-retiring or relaxing differences are permitted, but adding, removing, or re-gating any version's capability is still governed by the delta + changelog + test rule above and SHALL NOT happen silently.
-
+The plugin SHALL declare its supported OpenSpec CLI versions, with floor `1.3.0`, and SHALL treat its per-version behavior as a preserved contract. Where the installed client provides the underlying command, a capability for that version SHALL NOT be removed, disabled or re-gated without a spec delta, a changelog entry and a test. Changing that set with `Modified Capabilities: None` SHALL be treated as a defect.
 #### Scenario: A supported version's client-backed capability is not silently dropped
 - **WHEN** a change would remove, disable, or re-gate a user-facing capability that the plugin currently delivers for a supported CLI version whose client still provides the underlying command
 - **THEN** the change SHALL include a delta on that capability's spec, a changelog entry, and a test asserting the new behavior, and absent any of these it SHALL be treated as a defect
@@ -434,9 +463,19 @@ Because the client's own surface differs across versions, the plugin's delivered
 - **THEN** the plugin SHALL deliver the capability set it delivers for `1.16.0` (no re-gating), and per-generation contract coverage against captured 1.16.1 CLI output SHALL exist for the closing-`#`-run heading behaviour and the unrecognized delta-section error
 - **AND** a version-floor/at-least assertion SHALL include `1.16.1`
 
+#### Scenario: Supported version set
+- **WHEN** the plugin declares its supported CLI versions
+- **THEN** the set SHALL be the `1.3.x` through `1.16.x` lines, with the `1.16.1` patch named explicitly, and the version comparison SHALL order numerically (so `1.10.0` sorts above `1.9.0`)
+
+#### Scenario: Faithful mirroring of the client
+- **WHEN** the client differs between supported versions
+- **THEN** the plugin's delivered capability set MAY differ to track it. For example, the `workspace`, `context-store` and `initiative` commands exist in `[1.4.0, 1.5.0)`, so the 1.4 coordination write actions are offered for `1.4.x` and retired for `1.5.x`
+- **AND** a supported version whose client relaxes a validation verdict SHALL be mirrored: the CLI-absent fallback SHALL NOT be more restrictive than that version, even where this makes the fallback laxer than for an earlier version
+- **AND** such version-scoped differences SHALL still follow the delta, changelog and test rule above, and SHALL NOT be made silently
+
 ### Requirement: CLI status reflects the latest completed detection
 
-The plugin's CLI status SHALL always reflect the most recent completed CLI detection, whichever path triggered it (project open, tool-window activation, focus regain, Settings, or a manual refresh). A detection in progress SHALL NOT be observable as "CLI unavailable": readers SHALL see either the previous result or the new one. Before the first detection completes, the status SHALL show that detection is in progress rather than that the CLI is missing.
+The CLI status SHALL reflect the most recent completed detection, whichever path triggered it. A detection in progress SHALL NOT be observable as "CLI unavailable": readers SHALL see either the previous result or the new one. Before the first detection completes, the status SHALL show that detection is in progress.
 
 #### Scenario: Tool window built while startup detection is running
 - **WHEN** the OpenSpec tool window is created while the project-open CLI detection is still running and the CLI is installed

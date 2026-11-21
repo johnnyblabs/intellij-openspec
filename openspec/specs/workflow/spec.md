@@ -7,7 +7,7 @@ Artifact generation pipeline: propose, generate, apply, archive actions with del
 
 ### Requirement: Propose action
 
-When it creates a change itself (without the CLI), the plugin SHALL create what `openspec new change` creates (`.openspec.yaml`) plus the proposal from the Propose dialog (`proposal.md`) and an empty `specs/` folder. It SHALL NOT write template `design.md` or `tasks.md` files, which upstream never creates and which the CLI would report as done. The `createChange` call and subsequent UI updates SHALL execute via `invokeLater` from a pooled thread to avoid blocking the EDT. When multiple schemas are available, the propose dialog SHALL include a schema selector and pass the selected schema to the CLI.
+When the plugin creates a change itself (without the CLI), it SHALL create what `openspec new change` creates (`.openspec.yaml`), plus `proposal.md` from the Propose dialog and an empty `specs/` folder. It SHALL NOT write `design.md` or `tasks.md`. The create call SHALL run off the EDT, with UI updates dispatched back to it. With several schemas, the dialog SHALL offer a schema selector and pass the choice to the CLI.
 
 #### Scenario: Change creation
 - **WHEN** the user proposes a change
@@ -17,9 +17,13 @@ When it creates a change itself (without the CLI), the plugin SHALL create what 
 - **WHEN** multiple schemas are available and the user proposes a change
 - **THEN** the ProposeChangeDialog SHALL display a schema combo box and pass `--schema "<schema>"` to the `openspec new change` command
 
+#### Scenario: No template design or tasks files
+- **WHEN** a change is created without the CLI
+- **THEN** no template `design.md` or `tasks.md` SHALL be written, because upstream never creates them and the CLI would report them as done
+
 ### Requirement: Workflow action panel
 
-The plugin SHALL display the selected change's pipeline status with interactive artifact chips that serve as the primary action surface. Pipeline chips SHALL be clickable (READY → generate, DONE → open file) with right-click context menus. A compact icon action bar SHALL provide secondary actions (Fast-Forward, Verify, Archive, overflow menu). A single-line status strip SHALL show compliance, task progress, and delivery mode. The panel SHALL NOT use a horizontal button row for workflow actions. The content area SHALL use CardLayout to manage NO_CHANGES, FF_INPUT, and PIPELINE views. The Fast-Forward link in the "no changes" card SHALL only be visible when Direct API is configured; when Direct API is not configured, the card SHALL show only the Propose link. The Explore tab context SHALL reflect the current change selection.
+The panel SHALL show the selected change's pipeline as interactive artifact chips, the primary action surface. READY chips SHALL generate and DONE chips SHALL open the file, each with a right-click menu. A compact icon bar SHALL give secondary actions, and a one-line status strip SHALL show compliance, task progress and delivery mode. The panel SHALL NOT use a horizontal button row for workflow actions.
 
 #### Scenario: Pipeline visualization
 - **WHEN** a change is selected
@@ -57,6 +61,18 @@ The plugin SHALL display the selected change's pipeline status with interactive 
 - **WHEN** a change is selected in the workflow panel
 - **THEN** the Explore tab SHALL include that change's details in the assembled context
 
+#### Scenario: Content views
+- **WHEN** the panel shows content
+- **THEN** a CardLayout SHALL switch between the NO_CHANGES, FF_INPUT and PIPELINE views
+
+#### Scenario: Fast-Forward visibility
+- **WHEN** Direct API is not configured
+- **THEN** the "no changes" card SHALL show only the Propose link, and the Fast-Forward link SHALL appear only when Direct API is configured
+
+#### Scenario: Explore context
+- **WHEN** the change selection changes
+- **THEN** the Explore tab context SHALL follow it
+
 ### Requirement: FF action requires Direct API
 
 The FF menu action SHALL be disabled when Direct API is not configured. When disabled, the action SHALL display a tooltip indicating that an AI provider must be configured in Settings → Tools → OpenSpec. The action SHALL re-evaluate its enabled state on each menu presentation update.
@@ -91,7 +107,7 @@ The plugin SHALL assemble a full-context implementation prompt (proposal, specs,
 
 ### Requirement: Archive action
 
-The plugin SHALL archive completed changes, through the OpenSpec CLI when it is available (see "Archive delegates to the OpenSpec CLI") and otherwise itself, with post-archive commit, push, and tracker updates. A Bulk Archive option SHALL be available when multiple active changes exist. When the change contains unsynced delta specs, the plugin SHALL prompt the user before proceeding with a three-option dialog. The archive SHALL run in a background task, never on the UI thread, and the post-archive UI updates (popover, refresh, notifications) SHALL be dispatched to the UI thread with `invokeLater`.
+The plugin SHALL archive completed changes through the OpenSpec CLI when it is available, otherwise itself, with post-archive commit, push and tracker updates. A Bulk Archive option SHALL appear when several active changes exist. When a change has unsynced delta specs, the plugin SHALL show a three-option prompt first. Archiving SHALL run in a background task, with post-archive UI updates dispatched to the UI thread.
 
 #### Scenario: Archive flow
 - **WHEN** the user archives a change
@@ -187,7 +203,7 @@ The plugin SHALL register a Bulk Archive action in the OpenSpec menu for archivi
 
 ### Requirement: Schema/mode-aware workflow surfaces
 
-Workflow surfaces (propose, action panel, pipeline, status strip) SHALL consult the resolved workflow schema context and adapt to `actionContext.mode` rather than assuming a `spec-driven`, repo-local layout. For the default spec-driven repo-local case, surfaces SHALL behave exactly as they do today. For a non-default mode (e.g. `workspace-planning`), surfaces SHALL reflect that mode rather than presenting spec-driven-only affordances as if they applied.
+Workflow surfaces (propose, action panel, pipeline, status strip) SHALL consult the resolved workflow schema context and adapt to `actionContext.mode`, not assume a repo-local `spec-driven` layout. The default spec-driven repo-local case SHALL behave as it does today. A non-default mode SHALL be reflected, not presented with spec-driven-only affordances.
 
 #### Scenario: Default spec-driven repo-local is unchanged
 - **WHEN** the resolved schema context reports `spec-driven` / repo-local
@@ -201,9 +217,13 @@ Workflow surfaces (propose, action panel, pipeline, status strip) SHALL consult 
 - **WHEN** a workflow surface needs to know the active mode or source of truth
 - **THEN** it SHALL obtain it from the resolved workflow schema context rather than inferring it from the on-disk directory layout
 
+#### Scenario: Non-default mode
+- **WHEN** the mode is non-default (such as `workspace-planning`)
+- **THEN** the surfaces SHALL show that mode and SHALL NOT present spec-driven-only affordances as if they applied
+
 ### Requirement: Generation prompt tolerates glob-valued dependency paths
 
-When assembling the prompt to generate an artifact, the plugin inlines the content of each completed dependency. A dependency's declared path MAY be a glob pattern rather than a single file — the OpenSpec CLI declares the `specs` dependency's path as `specs/**/*.md`. The plugin SHALL NOT resolve a glob-valued path (one containing `*`, `?`, or `[`) to a single filesystem path, on any operating system. It SHALL instead inline every existing file in the change that matches the glob, each labeled with its path, and SHALL fall back to a path-only reference when none match. Artifact generation SHALL NOT fail because a dependency path cannot be resolved to a filesystem path.
+When assembling an artifact prompt, the plugin SHALL inline each completed dependency. A glob-valued dependency path (containing `*`, `?` or `[`) SHALL NOT be resolved to a single file, on any OS. The plugin SHALL inline every existing matching file, labelled with its path, and fall back to a path-only reference when none match. Generation SHALL NOT fail because a path cannot be resolved.
 
 #### Scenario: Completed dependency has a glob-valued path
 - **WHEN** an artifact is generated whose completed dependency declares a glob-valued path (e.g. `specs/**/*.md`)
@@ -215,9 +235,13 @@ When assembling the prompt to generate an artifact, the plugin inlines the conte
 - **WHEN** an artifact is generated whose completed dependency declares a concrete (non-glob) file path that exists on disk
 - **THEN** the plugin SHALL inline that file's content into the generation prompt
 
+#### Scenario: Specs dependency
+- **WHEN** the `specs` dependency declares `specs/**/*.md`
+- **THEN** every existing matching file SHALL be inlined, each labelled with its path
+
 ### Requirement: Delta spec scaffolding uses the client's canonical delta grammar
 
-When the plugin scaffolds a delta spec for a change (the Create Delta Spec action), the generated file SHALL use the section headings the OpenSpec client parses — `## ADDED Requirements`, `## MODIFIED Requirements`, `## REMOVED Requirements`, and `## RENAMED Requirements` — and its placeholder guidance SHALL describe only forms the client accepts: `### Requirement: <name>` blocks with at least one `#### Scenario:` for ADDED and MODIFIED, a `### Requirement: <name>` block with **Reason** and **Migration** for REMOVED, and `FROM:`/`TO:` pairs carrying the requirement header (``- FROM: `### Requirement: <old>` `` then ``- TO: `### Requirement: <new>` ``) for RENAMED. Placeholder guidance SHALL be written as HTML comments so that an unfilled scaffold carries no requirement content and is flagged by the scaffolding hint.
+Create Delta Spec SHALL generate a file with the section headings the client parses: `## ADDED Requirements`, `## MODIFIED Requirements`, `## REMOVED Requirements` and `## RENAMED Requirements`. Its placeholder guidance SHALL describe only forms the client accepts, and SHALL be written as HTML comments, so an unfilled scaffold carries no requirement content and is flagged by the scaffolding hint.
 
 #### Scenario: A filled-in scaffold is accepted by the client
 - **WHEN** a user scaffolds a delta spec and adds one valid `### Requirement:` block with a `#### Scenario:` under the ADDED section, leaving the other sections as scaffolded
@@ -231,11 +255,17 @@ When the plugin scaffolds a delta spec for a change (the Create Delta Spec actio
 - **WHEN** a delta spec has just been scaffolded and not edited
 - **THEN** the plugin's scaffolding detection SHALL classify it as scaffolding, because it contains only headings and HTML-comment guidance, and SHALL show that as a hint without changing the status `openspec status` reports
 
+#### Scenario: Accepted forms per section
+- **WHEN** guidance is written for ADDED or MODIFIED
+- **THEN** it SHALL show `### Requirement: <name>` blocks, each with at least one `#### Scenario:`
+- **WHEN** guidance is written for REMOVED
+- **THEN** it SHALL show a `### Requirement: <name>` block with **Reason** and **Migration**
+- **WHEN** guidance is written for RENAMED
+- **THEN** it SHALL show `FROM:`/`TO:` pairs carrying the requirement header
+
 ### Requirement: In-panel links and buttons launch actions through the platform action pipeline
 
-When a link or button inside the plugin's tool window, Getting Started panel, workflow panel, or Setup Wizard launches a plugin action (for example Propose, Explore, or the delta-spec diff from the deltas preview), the plugin SHALL run that action through the IDE's standard action-execution pipeline, with a data context derived from the UI component the user interacted with (or, when that component has been disposed, from the project's frame). The action's own availability check SHALL run first, so an action that is disabled in the current context does not run. The plugin SHALL NOT use platform API that is deprecated on any IDE in its supported range for this purpose when a non-deprecated equivalent exists at the compatibility floor.
-
-The Propose action, the Explore action and the delta-spec diff action SHALL be available while the IDE is indexing, because they do not depend on the IDE's indexes.
+A link or button in the tool window, Getting Started panel, workflow panel or Setup Wizard that launches an action SHALL run it through the IDE's standard action pipeline, with a data context from the component the user used (or the project frame, once that component is disposed). The action's availability check SHALL run first. The plugin SHALL NOT use API deprecated on a supported IDE when a non-deprecated equivalent exists at the floor.
 
 #### Scenario: Propose from an in-panel link opens the Propose flow
 - **WHEN** the user clicks an in-panel Propose affordance (the Getting Started button, the workflow panel link, or the "No active changes" tree hint) in an OpenSpec project
@@ -257,9 +287,13 @@ The Propose action, the Explore action and the delta-spec diff action SHALL be a
 - **WHEN** the Plugin Verifier checks the plugin against every IDE in the supported range
 - **THEN** it SHALL report no usage of the deprecated `ActionUtil.invokeAction` overloads
 
+#### Scenario: Available while indexing
+- **WHEN** the IDE is indexing
+- **THEN** the Propose, Explore and delta-spec diff actions SHALL remain available, because they do not depend on the indexes
+
 ### Requirement: Archive target directory
 
-When the plugin archives a change itself (no OpenSpec CLI, or a CLI older than 1.5), it SHALL move the change to `openspec/changes/archive/YYYY-MM-DD-<name>/`, using the local date and keeping a name that already starts with a date unchanged. It SHALL refuse, before writing any spec, when that target already exists. It SHALL create `openspec/changes/archive/` when missing and SHALL NOT create `openspec/archive/`, though it SHALL still read archived changes from an existing legacy `openspec/archive/`.
+When the plugin archives a change itself (no CLI, or a CLI older than 1.5), it SHALL move the change to `openspec/changes/archive/YYYY-MM-DD-<name>/`, using the local date and keeping a name that already starts with a date. It SHALL refuse, before writing any spec, when that target exists. It SHALL create `openspec/changes/archive/` and SHALL NOT create `openspec/archive/`.
 
 #### Scenario: Dated archive name
 - **WHEN** the user archives change `add-login` on 2026-10-17
@@ -272,6 +306,10 @@ When the plugin archives a change itself (no OpenSpec CLI, or a CLI older than 1
 #### Scenario: No archive directory yet
 - **WHEN** `openspec/changes/archive/` does not exist
 - **THEN** the plugin SHALL create it and archive into it, and SHALL NOT create `openspec/archive/`
+
+#### Scenario: Legacy archive still read
+- **WHEN** an existing legacy `openspec/archive/` is present
+- **THEN** the plugin SHALL still read archived changes from it
 
 ### Requirement: Archive delegates to the OpenSpec CLI
 

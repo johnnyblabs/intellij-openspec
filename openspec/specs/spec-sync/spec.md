@@ -7,7 +7,7 @@ Parsing, applying, and previewing delta spec merges into main specs.
 
 ### Requirement: Delta spec parsing
 
-The plugin SHALL parse every delta spec file named `spec.md` at any depth under a change's `specs/` folder, identifying each by its capability path (the folder's path relative to `specs/`, with `/` separators, such as `user-auth` or `identity/user-auth`), extracting sections headed by `## ADDED Requirements`, `## MODIFIED Requirements`, `## REMOVED Requirements`, and `## RENAMED Requirements` (titles matched case-insensitively, repeated sections all read) into structured operation objects, recognizing entries exactly as OpenSpec's archive does.
+The plugin SHALL parse every delta `spec.md` at any depth under a change's `specs/` folder, identified by its capability path (relative to `specs/`, `/`-separated, such as `identity/user-auth`). It SHALL extract the ADDED, MODIFIED, REMOVED and RENAMED sections into structured operations, matching titles case-insensitively, reading repeated sections, and recognizing entries exactly as OpenSpec's archive does.
 
 #### Scenario: Parse ADDED section
 - **WHEN** a delta spec contains `## ADDED Requirements` with one or more `### Requirement:` blocks
@@ -52,7 +52,7 @@ The plugin SHALL parse every delta spec file named `spec.md` at any depth under 
 
 ### Requirement: Spec sync application
 
-The plugin SHALL apply delta spec operations to main spec files under `openspec/specs/<capability>/spec.md` following OpenSpec's archive rules: in the order RENAMED, REMOVED, MODIFIED, then ADDED, matching requirement names exactly after normalization (a trailing closing-`#` run stripped, then trimmed; no case folding), and treating the `### Requirement:` header token case-insensitively. A change SHALL be applied all-or-nothing. File content SHALL be written with plain filesystem I/O on the calling thread, and the VFS refresh SHALL be handed to the EDT with `invokeAndWait` inside `WriteAction`, carrying the caller's modality. After writing, the plugin SHALL validate each affected main spec and report errors as warnings.
+The plugin SHALL apply delta operations to `openspec/specs/<capability>/spec.md` following OpenSpec's archive rules: in the order RENAMED, REMOVED, MODIFIED, then ADDED, with requirement names matched exactly after normalization (closing-`#` run stripped, then trimmed, no case folding) and the `### Requirement:` header token matched case-insensitively. A change SHALL be applied all-or-nothing, and each affected main spec SHALL be validated after writing, with its errors reported as warnings.
 
 #### Scenario: Apply ADDED operation
 - **WHEN** an ADDED operation targets a capability and no requirement with that name exists
@@ -93,6 +93,11 @@ The plugin SHALL apply delta spec operations to main spec files under `openspec/
 #### Scenario: Apply order matches upstream
 - **WHEN** a delta contains a mix of RENAMED, REMOVED, MODIFIED, and ADDED operations targeting the same capability
 - **THEN** the service SHALL apply them in the order RENAMED → REMOVED → MODIFIED → ADDED (mirroring `@fission-ai/openspec`'s `specs-apply.js` precedence), so that a RENAMED FROM-name collision with a REMOVED block is resolved by the rename happening first
+
+#### Scenario: Writes off the EDT
+- **WHEN** a change is applied
+- **THEN** file content SHALL be written with plain filesystem I/O on the calling thread
+- **AND** the VFS refresh SHALL be handed to the EDT with `invokeAndWait` inside `WriteAction`, carrying the caller's modality
 
 ### Requirement: Sync preview
 

@@ -7,11 +7,7 @@ Built-in validation of OpenSpec project structure, spec format, config integrity
 
 ### Requirement: CLI verdict is authoritative when the CLI is available
 
-When the OpenSpec CLI is available and a `validate` run completes successfully with parseable output, the plugin SHALL treat the CLI's result as authoritative for the artifacts the CLI validates — specs and change deltas — rather than overriding it with the built-in validator's own opinion. The plugin SHALL derive each CLI-validated item's pass/fail from that item's `valid` field in the CLI output (mirroring the client's own rule `valid = strictMode ? errors===0 && warnings===0 : errors===0`), not by re-deriving pass/fail from the severities of the issues the plugin extracted. The built-in validator SHALL NOT contribute spec or change issues that fail the merged verdict when the CLI has produced a verdict for those artifacts.
-
-The CLI's `validate` reports no `config.yaml` content issues (from 1.16 it only checks that the file can be read and parsed; see `Configuration error response is a failed run`), so the built-in validator SHALL remain the sole owner of `config.yaml` content validation in all paths. For a whole-project validation with the CLI available, the merged verdict SHALL be `cli.passed() && builtInConfig.passed()`, where `builtInConfig` is the built-in validator scoped to `config.yaml`, and the displayed issues SHALL be the union of the CLI's spec/change issues and the built-in's config issues. For a single-spec or single-change target with the CLI available, the verdict SHALL be the CLI's alone (no config component). When the CLI is unavailable, or its run fails or emits unparseable output, the plugin SHALL fall back to the full built-in validator as the verdict — never to a blind pass. The one exception is a configuration error response, which is the CLI's verdict on the run and SHALL be reported as a failure rather than replaced by the built-in verdict.
-
-The never-more-restrictive-than-the-CLI guarantee SHALL be evidenced against captured real CLI output, and SHALL be durable across CLI generations. Because CLI generations may legitimately **relax** a default verdict (1.8.0 demoted the missing-`SHALL`/`MUST` rule to a non-failing warning, so more corpus items validate in default than under 1.6.0/1.7.0), the default-mode invariant SHALL be a **subset-of-the-laxest-anchor** relation rather than map-equality: the plugin's default verdict is proven to match the **laxest captured generation** (the default anchor — currently `1.8.0`), and every captured generation's default valid-set SHALL be a subset of that anchor's valid-set, so the plugin is by transitivity never more restrictive than any captured generation, and any future generation that relaxes a default verdict further than the anchor SHALL surface as a parity failure prompting the anchor to be advanced. Under `--strict` the invariant SHALL likewise be a **subset-of-the-strict-anchor** relation: every captured generation's `--strict` valid-set SHALL be a subset of the strict anchor's valid-set (the `1.6.0` default map, which `--strict` reproduced exactly on every generation through 1.13), so the plugin — proven to match the anchor — is never more restrictive than any captured generation under `--strict` either, including a generation whose new warnings reject more items (1.14.2 rejects exactly the corpus item whose pre-requirement text archiving would drop). This invariant is defined only over generations captured against the current corpus dialect; a generation whose own validation rules predate that dialect legitimately verdicts the corpus differently and is not part of the set.
+When the CLI is available and `validate` completes with parseable output, its result SHALL be authoritative for the specs and change deltas it validates: each item's pass/fail SHALL come from its `valid` field. The built-in validator SHALL NOT fail that verdict, and SHALL own `config.yaml` content. When the CLI is unavailable or its run fails, the built-in verdict SHALL apply, never a blind pass.
 
 #### Scenario: Clean CLI is not overridden by the built-in validator
 - **WHEN** the CLI is available and reports the project's specs/changes `valid`, but the built-in validator's own spec/change rules would have flagged an ERROR for one of them (any residual stricter-than-CLI rule)
@@ -42,9 +38,27 @@ The never-more-restrictive-than-the-CLI guarantee SHALL be evidenced against cap
 - **THEN** in default mode every captured generation's per-item valid-set SHALL be a subset of the laxest anchor generation's valid-set (currently `1.8.0`), so the plugin — proven to match the anchor — is by transitivity never more restrictive than any captured generation, and any future generation that relaxes a default verdict further than the anchor SHALL fail the guard until the anchor is advanced; under `--strict` every captured generation's valid-set SHALL be a subset of the strict anchor's valid-set (the `1.6.0` map)
 - **AND** the guard SHALL surface a vacuous pass as a failure: it SHALL require at least two captured generations including the anchor, SHALL require every captured corpus to carry the identical item-id key set, and SHALL pin the known cross-generation divergence — the `1.8.0` default valid-set SHALL equal the `1.6.0` default valid-set plus exactly the requirements the missing-`SHALL` demotion newly validates — and SHALL likewise pin the known strict divergence — every generation from `1.14.2` on SHALL have a `--strict` valid-set equal to the strict anchor's minus exactly the item whose pre-requirement text archiving would drop, while every earlier captured generation reproduces the strict anchor exactly — so an empty discovery, a classpath regression, a dropped fixture, or a silent collapse or widening of either divergence fails loudly rather than passing on nothing
 
+#### Scenario: Whole-project merge
+- **WHEN** a whole-project validation runs with the CLI available
+- **THEN** the verdict SHALL be `cli.passed() && builtInConfig.passed()`, and the displayed issues SHALL be the union of the CLI's spec and change issues and the built-in's config issues
+
+#### Scenario: Single target
+- **WHEN** a single spec or change is validated with the CLI available
+- **THEN** the verdict SHALL be the CLI's alone, with no config component
+
+#### Scenario: Configuration error response
+- **WHEN** the CLI answers with a configuration error response
+- **THEN** that response SHALL be reported as a failure, not replaced by the built-in verdict (see "Configuration error response is a failed run")
+
+#### Scenario: Durable parity across CLI generations
+- **WHEN** the plugin's default verdict is compared with the captured CLI generations
+- **THEN** it SHALL match the laxest captured generation (the default anchor, currently 1.8.0), and every generation's default valid-set SHALL be a subset of the anchor's
+- **AND** under `--strict`, every generation's valid-set SHALL be a subset of the strict anchor's (the 1.6.0 default map, which `--strict` reproduced on every generation through 1.13)
+- **AND** a generation that relaxes a verdict beyond the anchor SHALL surface as a parity failure that prompts advancing the anchor
+
 ### Requirement: Config validation
 
-The plugin SHALL validate `openspec/config.yaml` for structural correctness when the file exists, applying only the rules that mirror upstream OpenSpec's own contract. The built-in validator SHALL own `config.yaml` content validation in all paths — including when the CLI is present, since the CLI's `validate` reports no `config.yaml` content issues. That ownership is **display-only and non-failing**: config validation SHALL NOT emit any ERROR-severity issue and SHALL NEVER fail a validation verdict, because `openspec validate` never fails on any `config.yaml` that it can read and parse (verified against the real CLI — a missing, empty, or unrecognized `schema` and any `version` value all validate clean, since upstream tolerates a missing schema and defaults to `spec-driven`). A file that cannot be read, or is not valid YAML, validates clean on CLI 1.3–1.15 and fails on CLI 1.16+; the plugin mirrors the 1.16 failure only through the CLI's own configuration error response (see `Configuration error response is a failed run`). Without that response the built-in check SHALL report such a file as a single non-failing **WARNING** — rule `config-unreadable` when the file cannot be read, rule `config-unparseable` when it is not valid YAML, each carrying the reason — that SHALL NOT fail the verdict in default or `--strict` mode, so the fallback is never more restrictive than an older supported client. YAML that parses to something other than a mapping (a scalar or a list) SHALL NOT be reported as a parse failure, because upstream parses it without error. The file itself SHALL be optional — matching upstream's `readProjectConfig() → null // No config is OK` semantics — so a project initialized with `openspec init` and never customized SHALL produce zero config-related validation issues. When the file does exist, validation SHALL enforce only the fields upstream defines in its Zod `ProjectConfigSchema` (`schema`, `context`, `rules`); fields the plugin reads as internal-only extensions (`version`, `profile`) SHALL NOT fire issues. A missing or empty `schema` field SHALL raise a single **INFO advisory** (rule `config-schema-required`) — a hygiene nudge that OpenSpec defaults to `spec-driven` — never a WARNING or ERROR, because a warning on a file the CLI validates clean would be stricter than the client the plugin wraps. Schema-name recognition SHALL be CLI-runtime-driven AND gated on an **authoritative** known-set: a `schema` value SHALL be checked for recognition only when the CLI is available and supports schema management (so the known-set reflects real project-local forks via `openspec schemas --json`); when the known-set is non-authoritative (CLI absent or below floor), the check SHALL be skipped rather than warn on a fork the plugin cannot see. A plugin-internal `version` value SHALL NOT raise any issue — it is stripped by upstream's Zod and never read by the CLI. Config parsing SHALL be lenient — unrecognized fields and type mismatches SHALL be silently ignored rather than raising parse errors. The config validation inspection SHALL guard against zero-length PSI elements before creating problem descriptors.
+The plugin SHALL validate `openspec/config.yaml` for structural correctness, applying only rules that mirror upstream's contract. Config validation SHALL be display-only and non-failing: it SHALL NOT emit ERROR-severity issues or fail any verdict. The file SHALL be optional, and it SHALL check only the `schema`, `context` and `rules` fields upstream defines.
 
 #### Scenario: Config absent is accepted
 - **WHEN** `openspec/config.yaml` does not exist
@@ -134,9 +148,34 @@ The plugin SHALL validate `openspec/config.yaml` for structural correctness when
 - **WHEN** `openspec/config.yaml` is valid YAML whose top level is a scalar or a list
 - **THEN** the validator SHALL NOT report `config-unparseable` or `config-unreadable`
 
+#### Scenario: Unreadable or unparseable file
+- **WHEN** the file cannot be read or is not valid YAML and the CLI response does not report it
+- **THEN** the built-in check SHALL report a single WARNING (`config-unreadable` or `config-unparseable`) carrying the reason, which SHALL NOT fail the verdict
+- **AND** the 1.16 failure SHALL be mirrored only through the CLI's configuration error response
+
+#### Scenario: Non-mapping YAML
+- **WHEN** the YAML parses to a scalar or a list
+- **THEN** it SHALL NOT be reported as a parse failure, because upstream parses it without error
+
+#### Scenario: Missing schema advisory
+- **WHEN** the `schema` field is missing or empty
+- **THEN** a single INFO advisory (`config-schema-required`) SHALL be raised, never a WARNING or ERROR
+
+#### Scenario: Schema recognition is authoritative
+- **WHEN** a `schema` value is checked
+- **THEN** it SHALL be checked only when the CLI is available and supports schema management, so the known set reflects project forks; otherwise the check SHALL be skipped
+
+#### Scenario: Internal and lenient fields
+- **WHEN** `version` or `profile` appears, or an unrecognized field or type mismatch appears
+- **THEN** no issue SHALL be raised, and parsing SHALL be lenient
+
+#### Scenario: Project initialized and never customized
+- **WHEN** a project was initialized with `openspec init` and never customized
+- **THEN** validation SHALL produce zero config-related issues
+
 ### Requirement: Spec format validation
 
-The plugin SHALL validate spec files for structural completeness: title heading, requirement blocks, RFC 2119 keywords, and scenario format. When the built-in validator is the verdict (the CLI is absent — see "CLI verdict is authoritative when the CLI is available"), its default-mode verdict for a main spec SHALL NOT exceed the verdict `openspec validate` produces for the same file in its default mode — the plugin MUST NOT be more restrictive than the client it wraps. Accordingly, on the main-spec path (`openspec/specs/**`), the conditions the real CLI reports `valid` in default SHALL be demoted below ERROR: a missing `# Title` heading SHALL be a WARNING (rule `spec-title-required`), because the CLI requires no H1 and derives the spec name from the directory; and a scenario missing a `WHEN` or `THEN` clause SHALL be an INFO (rule `spec-scenario-clauses`), because the CLI performs no clause-structure check. A requirement with no `#### Scenario:` block SHALL remain an ERROR (rule `spec-scenario-required`): the real CLI reports such a requirement `valid:false` — it enforces `.min(1)` scenarios as a schema-level error in addition to its WARNING guide — so demoting it would make the plugin laxer than the CLI. A missing requirement block (`spec-requirement-required`) SHALL remain ERROR, because the CLI errors on it. The **RFC-keyword rules SHALL be severity-conditional on the requirement having a body, matching OpenSpec CLI 1.8's demotion**: a requirement whose body has prose but no `SHALL`/`MUST` whole word (rule `spec-rfc-keywords`, or `spec-rfc-keyword-in-header` when the only keyword sits in the requirement header) SHALL be a **WARNING** in default mode — the 1.8 CLI reports such a requirement `valid` in default — re-promoted to a failing verdict under a strict run via the CLI-mirroring strict-warning set (see "Per-run strict validation"); a requirement with **no body prose at all** (header plus scenarios only) SHALL remain an **ERROR** (`spec-rfc-keywords`), because the 1.8 CLI still errors on a body-less requirement. On the main-spec path a `### Requirement:` header whose name **exactly (case-sensitively) matches an earlier requirement's name in the same file** SHALL be an **ERROR** (rule `spec-duplicate-requirement`) that fails the file's verdict, matching OpenSpec CLI 1.8, which forbids duplicate requirement names so that a spec update cannot silently discard one block while editing another; when a name repeats N times the later N−1 occurrences SHALL each be flagged, each referencing the line of the first declaration, and the diagnostic SHALL be anchored on the duplicate occurrence's line. This duplicate-name rule SHALL NOT apply to change delta specs (`openspec/changes/**/specs/**`), whose requirement names legitimately recur across `## ADDED`/`## MODIFIED` sections and are governed by the CLI's separate delta-consistency checks — the built-in fallback does not reimplement those, and matching them is outside this rule. Requirement headers (`### Requirement:`) SHALL be recognized case-insensitively on the header token, matching OpenSpec CLI 1.4+ parsing. Requirement-keyword presence SHALL be satisfied only by `SHALL` or `MUST` as whole words (matching the CLI's rule on every supported generation — `SHOULD`/`MAY` do not satisfy it), SHALL be evaluated against the requirement body with fenced code blocks masked (matching CLI 1.6 semantics — a keyword appearing only inside a code fence does not satisfy the check), and the header-only-keyword case SHALL still produce a targeted diagnostic directing the author to move the keyword onto a body line, with a quick-fix offered, at the body-conditional severity above. Scenario presence (`#### Scenario:`) SHALL likewise be evaluated with fenced code blocks masked. The inspection SHALL guard against zero-length PSI elements and invalid offsets before creating problem descriptors.
+The plugin SHALL validate main specs for structural completeness: requirement blocks, RFC 2119 keywords and scenario format. Its default verdict SHALL NOT exceed the CLI's for the same file. A requirement with no `#### Scenario:` block and a missing requirement block SHALL remain ERROR. A requirement name that exactly repeats an earlier one in the same file SHALL be an ERROR. Requirement headers SHALL match case-insensitively on the header token.
 
 #### Scenario: Missing title heading warns, does not fail
 - **WHEN** a spec file has no `# Title` heading and the built-in validator is the verdict
@@ -198,13 +237,34 @@ The plugin SHALL validate spec files for structural completeness: title heading,
 - **WHEN** a change delta spec repeats a `### Requirement:` name across its `## ADDED`/`## MODIFIED` sections (or within one section)
 - **THEN** the built-in validator SHALL NOT emit a `spec-duplicate-requirement` error for the delta spec, because that main-spec rule is scoped to `openspec/specs/**`; the CLI's separate delta-consistency checks are not reimplemented in the fallback, keeping the fallback no more restrictive than the CLI on delta specs
 
+#### Scenario: Title and clause severities
+- **WHEN** a main spec has no `# Title` heading
+- **THEN** that SHALL be a WARNING (`spec-title-required`)
+- **WHEN** a scenario lacks a `WHEN` or `THEN` clause
+- **THEN** that SHALL be an INFO (`spec-scenario-clauses`)
+
+#### Scenario: RFC keyword severity follows the body
+- **WHEN** a requirement body has prose but no whole-word `SHALL` or `MUST`
+- **THEN** the issue SHALL be a WARNING (`spec-rfc-keywords`, or `spec-rfc-keyword-in-header` when the keyword sits only in the header), re-promoted under a strict run
+- **WHEN** a requirement has no body prose at all
+- **THEN** it SHALL remain an ERROR (`spec-rfc-keywords`)
+
+#### Scenario: Fenced code is masked
+- **WHEN** keyword or scenario presence is evaluated
+- **THEN** fenced code blocks SHALL be masked, so a keyword appearing only in a fence does not satisfy the check
+
+#### Scenario: Header-only keyword quick-fix
+- **WHEN** the only keyword sits in the requirement header
+- **THEN** a targeted diagnostic SHALL direct the author to move it onto a body line, with a quick-fix offered
+
+#### Scenario: Duplicate requirement names
+- **WHEN** a name repeats N times in one file
+- **THEN** the later N-1 occurrences SHALL each be flagged, referencing the line of the first declaration and anchored on the occurrence's line
+- **AND** this rule SHALL NOT apply to change delta specs, whose names legitimately recur across sections
+
 ### Requirement: Per-run strict validation
 
-The plugin SHALL offer strict validation as a **per-invocation choice**, not a persistent setting, mirroring the upstream OpenSpec CLI's `validate --strict` flag (which has no durable state). There SHALL be no persisted strict preference — no settings toggle, no `config.yaml` key, no stored state. Strict SHALL be selected per run via a dedicated `OpenSpec.ValidateStrict` action (distinct from the default `OpenSpec.Validate`), exposed as a compact toolbar dropdown alongside the default Validate, as an adjacent menu leaf, and discoverable via Find Action. The default Validate SHALL remain non-strict.
-
-A strict run SHALL be threaded as a per-invocation boolean, never stored on any shared service. When the CLI is available, the plugin SHALL pass `--strict` to `openspec validate` and derive the verdict from the CLI's own `valid` field (which under `--strict` is `errors===0 && warnings===0`). When the CLI is absent, the built-in fallback verdict SHALL fail under strict on any ERROR, and additionally on a WARNING **only when that warning is in the CLI-mirroring strict-warning set** — a warning the real CLI itself emits and fails on under `--strict`. That set SHALL contain the **missing-`SHALL`/`MUST` warning** (`spec-rfc-keywords`, and `spec-rfc-keyword-in-header` for the header-only variant): the 1.8 CLI reports a body-carrying requirement lacking the keyword `valid` in default but `valid:false` under `--strict`, so a strict fallback SHALL likewise flip on it. Every other built-in non-config WARNING SHALL remain outside the set — each is either a plugin-invented lint the CLI never emits (`spec-title-required`, `change-artifact-missing`, `change-schema-incompatible`, `delta-removed-fields`) or a condition the CLI reports as an ERROR rather than a warning (`delta-spec-sections`) — so a fallback whose only issues are those other WARNINGs SHALL PASS under strict; the plugin MUST NOT be more restrictive than the client it wraps. Any flip is a verdict change only, without re-labeling any issue's severity. `config.yaml` guidance stays non-failing in both modes (the CLI never fails on config).
-
-A strict run SHALL never be silent: the summary notification SHALL identify strict (title `Validate (strict)`), a warnings-only strict failure SHALL append an explanation (`— strict: warnings count as failures`) after the pass/fail summary, and the console SHALL echo the `--strict` command (`openspec validate --all --strict`). The literal `passed (` / `failed (` summary tokens SHALL be preserved.
+Strict validation SHALL be a per-invocation choice, mirroring `validate --strict`, with no persisted strict preference. A separate `OpenSpec.ValidateStrict` action SHALL select it, and the default Validate SHALL stay non-strict. A strict run SHALL be threaded as a per-invocation boolean, never stored on a shared service. A strict run SHALL never be silent.
 
 #### Scenario: Strict is a per-run action, not a persistent setting
 - **WHEN** the user wants strict validation
@@ -239,9 +299,19 @@ A strict run SHALL never be silent: the summary notification SHALL identify stri
 - **WHEN** the plugin upgrades and detects that the removed persistent `strictValidation` setting had been enabled
 - **THEN** it SHALL show a single one-time notification directing the user to the per-run `Validate (Strict)` action, then never show it again; a user on the default (off) SHALL see no notice
 
+#### Scenario: Built-in fallback under strict
+- **WHEN** the CLI is absent and a strict run is requested
+- **THEN** the fallback SHALL fail on any ERROR, and on a WARNING only when it is in the CLI-mirroring strict set: the missing-`SHALL`/`MUST` warnings (`spec-rfc-keywords`, `spec-rfc-keyword-in-header`)
+- **AND** every other built-in non-config WARNING SHALL NOT fail the strict verdict, and config guidance SHALL stay non-failing
+
+#### Scenario: Strict run output
+- **WHEN** a strict run completes
+- **THEN** the summary notification SHALL be titled `Validate (strict)`, a warnings-only failure SHALL append `— strict: warnings count as failures`, and the console SHALL echo the `--strict` command
+- **AND** the literal `passed (` and `failed (` summary tokens SHALL be preserved
+
 ### Requirement: Change validation
 
-The plugin SHALL validate each active change's `.openspec.yaml` for schema compatibility with the project's declared version. Schema-name recognition SHALL be CLI-runtime-driven on the same principle as `Config validation`: a change schema is "recognized" when it appears in the union of the built-in fallback set (`VersionSupport.V1_2.getValidSchemas()`) and the CLI-runtime set from `SchemaService.listSchemas()`. The validator SHALL use `VersionSupport.getValidSchemas()` only as the built-in fallback portion of that union, not as the canonical valid-set. Two plugin-invented lints that the CLI never emits SHALL always be non-failing WARNINGs, so the plugin is never more restrictive than the client it wraps: `change-artifact-missing` (a missing required artifact — the CLI never checks artifact-file presence) and `change-proposal-required` (a missing `proposal.md` — the CLI resolves changes by directory existence, not by requiring a proposal; upstream #1182). Neither SHALL be escalated to ERROR by any persistent setting, and neither SHALL fail the verdict under a per-run strict validation (see `Per-run strict validation`) — because the CLI never emits them, they are not in the CLI-mirroring strict-warning set, so the plugin's strict fallback does not flip on them.
+The plugin SHALL validate each active change's `.openspec.yaml` for schema compatibility. A schema is recognized when it appears in the union of the built-in set and the CLI-runtime set from `SchemaService.listSchemas()`. Two plugin-invented lints SHALL always be non-failing WARNINGs: `change-artifact-missing` and `change-proposal-required`. Neither SHALL be escalated to ERROR, nor fail a strict run.
 
 #### Scenario: Proposal required
 - **WHEN** a change has no `proposal.md`
@@ -258,6 +328,10 @@ The plugin SHALL validate each active change's `.openspec.yaml` for schema compa
 #### Scenario: Custom-forked schema accepted for change when CLI lists it
 - **WHEN** the user has forked a custom schema via `openspec schema fork` AND a change's `.openspec.yaml` declares that custom schema
 - **THEN** the validator SHALL NOT report `change-schema-incompatible`
+
+#### Scenario: Why the lints are non-failing
+- **WHEN** the lints are considered
+- **THEN** they SHALL stay non-failing, because the CLI never emits them: it does not check artifact-file presence, and it resolves changes by directory, not by a required `proposal.md` (upstream #1182)
 
 ### Requirement: workspace-planning schema acceptance
 
@@ -281,9 +355,7 @@ The plugin SHALL accept `workspace-planning` as a valid workflow schema for proj
 
 ### Requirement: Delta spec validation
 
-The plugin SHALL validate delta spec files for structural correctness, including section headings (ADDED, MODIFIED, REMOVED, RENAMED), removal metadata, scenario coverage, and rename FROM/TO structure. Keyword and scenario evaluation SHALL apply the same fence masking as spec-format validation. Non-canonical level-3 headers inside ADDED or MODIFIED sections — headers the upstream parser skips — SHALL produce an INFO-severity issue anchored to the header's line, mirroring CLI 1.6's advisory: a nameless requirement header (`### Requirement:` with no name) SHALL be hinted to add a name, and any other level-3 header SHALL be hinted that it is ignored by validation unless written as `### Requirement: <name>`. INFO-severity issues SHALL never affect the file's validation verdict. Delta entries SHALL be recognised exactly as OpenSpec's reader does, through the shared merge parser: `### Requirement:` blocks, REMOVED bullets carrying the header, and `FROM:`/`TO:` lines carrying the header. A bare `FROM: Old` line is not an entry.
-
-The plugin SHALL discover a change's delta spec files by recursively locating `spec.md` files under the change's `specs/` directory, matching the CLI's discovery rules: a `spec.md` at any depth of at least one directory below `specs/` (e.g. `specs/<capability-path>/spec.md`, including multi-segment capability paths) is a delta and SHALL be structurally validated. A **regular file named exactly `spec.md` directly at the `specs/` root** SHALL be reported as a misplaced-delta ERROR (rule `delta-spec-misplaced`) — mirroring the CLI, which ignores such a file on apply/archive so its requirements are silently dropped. This detection SHALL be path-based and independent of the file's content, and SHALL flag only a `spec.md` at the root (never a `spec.md` at depth ≥ 1), so the fallback is never more restrictive than the CLI. When a change whose schema requires specs (its schema declares a `specs` artifact) has **no delta `spec.md` anywhere** under `specs/`, the validator SHALL report a no-deltas ERROR (rule `delta-none-found`); this ERROR SHALL be suppressed when the change declares `skip_specs: true`, matching the CLI, which treats a `skip_specs` change with no deltas as valid. A misplaced root `spec.md` counts as a delta found for this purpose, so a change whose only delta is misplaced yields the misplaced-delta ERROR alone, never also a no-deltas ERROR. Both ERRORs mirror CLI errors and SHALL fail the file's verdict in default and strict modes.
+The plugin SHALL validate delta spec files: section headings, removal metadata, scenario coverage and rename FROM/TO structure. It SHALL discover delta specs recursively under `specs/`, matching the CLI, and report a regular `spec.md` directly at the `specs/` root as a misplaced-delta ERROR. A change whose schema requires specs and has no delta SHALL get a no-deltas ERROR, suppressed for `skip_specs: true`. INFO issues SHALL never affect the verdict.
 
 #### Scenario: Missing delta sections
 - **WHEN** a delta spec file under a change's `specs/` directory has no ADDED, MODIFIED, REMOVED, or RENAMED sections
@@ -354,6 +426,20 @@ The plugin SHALL discover a change's delta spec files by recursively locating `s
 - **WHEN** a delta `spec.md` holds a parsed entry (such as an ADDED requirement) and a RENAMED section with only bare `FROM: Old` / `TO: New` lines
 - **THEN** the validator and the delta IDE inspection SHALL report no error for the bare lines, matching every supported CLI, which ignores them and reports the change valid
 
+#### Scenario: Entries recognized as the reader does
+- **WHEN** delta entries are read
+- **THEN** they SHALL be recognized through the shared merge parser: `### Requirement:` blocks, REMOVED bullets and `FROM:`/`TO:` lines carrying the header
+- **AND** a bare `FROM: Old` line SHALL NOT be an entry
+
+#### Scenario: Non-canonical level-3 headers
+- **WHEN** an ADDED or MODIFIED section has a level-3 header the parser skips
+- **THEN** an INFO issue anchored to its line SHALL hint that a nameless requirement header needs a name, or that other level-3 headers are ignored unless written as `### Requirement: <name>`
+
+#### Scenario: Misplaced root spec file
+- **WHEN** a `spec.md` sits directly at the `specs/` root
+- **THEN** a misplaced-delta ERROR (`delta-spec-misplaced`) SHALL be raised, and it counts as a delta found, so a change whose only delta is misplaced yields that ERROR alone
+- **AND** a `spec.md` at any depth of one directory or more SHALL be validated as a delta
+
 ### Requirement: Delta spec IDE inspection
 
 The plugin SHALL provide a real-time IDE inspection for delta spec files, highlighting structural problems as the user edits. For MODIFIED requirements missing scenarios, the inspection SHALL offer a quick-fix that copies the full requirement block from the corresponding main spec. The inspection SHALL guard against zero-length PSI elements by walking up the PSI tree before creating problem descriptors.
@@ -402,7 +488,7 @@ The plugin SHALL auto-detect artifact file changes via VFS listeners and refresh
 
 ### Requirement: Validate from the Project View context menu
 
-The plugin SHALL offer a Validate action in the IDE's Project View context menu, visible only when the current selection is under an `openspec/` directory. Invoking it SHALL validate the change or spec that owns the clicked file, resolved by mapping the file's path up to its owning directory: a selection under `openspec/specs/<capability>/` SHALL validate that spec; a selection under `openspec/changes/<name>/` for an active (non-archived) change SHALL validate that change; a selection under `openspec/changes/archive/`, at the `openspec/` root, or on a non-item file such as `config.yaml` SHALL fall back to validating the whole project. The action SHALL reuse the shared validation pipeline — the CLI verdict authoritative for specs/changes when the CLI is available, the built-in validator as the fallback when it is not, and the built-in validator as the sole owner of `config.yaml` checks — scoped to the resolved target. It SHALL NOT fabricate a per-file valid/invalid verdict, and its visibility check SHALL be inexpensive (a path check, no blocking I/O or CLI call).
+The plugin SHALL offer Validate in the Project View context menu, visible only under an `openspec/` directory. It SHALL validate the spec or active change that owns the selection, and the whole project otherwise. It SHALL reuse the shared pipeline scoped to that target, SHALL NOT fabricate a per-file verdict, and SHALL check visibility by path only, with no blocking I/O or CLI call.
 
 #### Scenario: Menu item hidden outside openspec
 - **WHEN** the user right-clicks a file that is not under an `openspec/` directory
@@ -420,11 +506,17 @@ The plugin SHALL offer a Validate action in the IDE's Project View context menu,
 - **WHEN** the user invokes Validate on a selection under `openspec/changes/archive/`, at the `openspec/` root, or on `config.yaml`
 - **THEN** the plugin SHALL validate the whole project rather than fabricating a single-item verdict for a non-validatable target
 
+#### Scenario: Target mapping
+- **WHEN** the selection is under `openspec/specs/<capability>/`
+- **THEN** that spec SHALL be validated
+- **WHEN** it is under `openspec/changes/<name>/` for an active change
+- **THEN** that change SHALL be validated
+- **WHEN** it is under `openspec/changes/archive/`, at the `openspec/` root, or on a file such as `config.yaml`
+- **THEN** the whole project SHALL be validated
+
 ### Requirement: Validation result presentation
 
-The plugin SHALL present validation results in the OpenSpec console as a structured, navigable report rather than a single uniform-color text block. Results SHALL be grouped by file: each distinct issue file path SHALL be a group header, with that file's issues listed beneath it. Files containing at least one ERROR SHALL be ordered before warning-only files, then info-only files; within a group, issues SHALL be ordered by line ascending. Each issue's reported location (`line`, or the file path in the group header) SHALL render as a clickable hyperlink that opens the file at the reported line in the editor when the path resolves to a file on disk. The presentation SHALL reflect only the existing issue model — severity is exactly ERROR, WARNING, or INFO, and each issue carries a file path, line, message, and rule — and SHALL NOT introduce a per-file pass/fail verdict (file headers are grouping keys only) or any new severity. Each severity SHALL render in a distinct, theme-driven console content type. Rendering SHALL run on the UI thread, consistent with the existing result-display path.
-
-This presentation SHALL be produced by the single shared result-rendering path, so every caller — the toolbar Validate, the Project-View scoped Validate, and any future caller — benefits identically. The at-a-glance notification balloon SHALL remain the summary surface and SHALL NOT enumerate individual issues; the console SHALL be the detailed, navigable surface.
+The plugin SHALL present validation results in the OpenSpec console as a structured report grouped by file. Files with an ERROR SHALL sort before warning-only files, then info-only files, and issues within a group SHALL sort by line. Each reported location SHALL be a link that opens the file at that line. The presentation SHALL NOT add a per-file verdict or any new severity, and the balloon SHALL remain a summary that does not list issues.
 
 #### Scenario: Header states verdict, target, and counts
 - **WHEN** a validation run completes for a target (whole project, a change, or a spec)
@@ -458,9 +550,17 @@ This presentation SHALL be produced by the single shared result-rendering path, 
 - **WHEN** results are grouped under file headers
 - **THEN** the file headers SHALL serve only as grouping keys and SHALL NOT display a per-file valid/invalid badge, because the model carries a single result-level verdict and no per-file verdict
 
+#### Scenario: Themed severity rendering
+- **WHEN** issues are rendered
+- **THEN** each severity SHALL use a distinct, theme-driven console content type, and rendering SHALL run on the UI thread
+
+#### Scenario: Single shared path
+- **WHEN** any caller shows validation results (the toolbar Validate, the Project View Validate or a future caller)
+- **THEN** it SHALL use the same result-rendering path
+
 ### Requirement: Item-less CLI error response is a failed run
 
-When a CLI `validate --json` run returns a JSON object that carries **no `items` array** but reports one or more error-severity entries in a top-level `status` array (as CLI 1.13.1 does for a rejected item id, `{"status":[{"severity":"error","code":"invalid_item",...}]}`), the plugin SHALL treat the run as **failed** — not as a pass with zero items — and SHALL fall back to the built-in validator as the verdict, consistent with the rule that a failed or unparseable CLI run never yields a blind pass. A configuration error response (`unparseable_config` or `unreadable_config`) is not a fallback case: it SHALL be reported as a failure (see `Configuration error response is a failed run`). A response that carries an `items` array SHALL continue to take its verdict from each item's `valid` field, unchanged.
+When a `validate --json` run returns no `items` array but reports error-severity entries in a top-level `status` array, the plugin SHALL treat the run as failed and fall back to the built-in verdict, never a pass with zero items. A response with an `items` array SHALL keep taking its verdict from each item's `valid` field.
 
 #### Scenario: invalid_item error response does not report PASS
 - **WHEN** the CLI's `validate --json` output is the captured 1.13.2 `invalid_item` error response (no `items`, a `status` entry with `"severity":"error"`)
@@ -492,7 +592,7 @@ When `validate --json` output cannot be read as a verdict, the plugin SHALL trea
 
 ### Requirement: Configuration error response is a failed run
 
-When the CLI is available and a `validate --json` run answers with a configuration error response (CLI 1.16+: an item-less response whose error `status` code is `unparseable_config` or `unreadable_config`) the plugin SHALL report the run as **failed** with exactly one ERROR at the project's `config.yaml`, whose text is the CLI's `message` followed by its `fix`. It SHALL NOT fall back to, or merge in, the built-in validator's result. Every other item-less error response SHALL keep falling back.
+When the CLI is available and `validate --json` answers with a configuration error (CLI 1.16+: an item-less response whose status code is `unparseable_config` or `unreadable_config`), the plugin SHALL report the run as failed, with one ERROR at `config.yaml` whose text is the CLI's `message` and `fix`. It SHALL NOT merge in the built-in result. Other item-less error responses SHALL keep falling back.
 
 #### Scenario: Unparseable config fails Validate with the CLI's fix
 - **WHEN** the CLI's `validate --all --json` output is the captured 1.16.0 `unparseable_config` response

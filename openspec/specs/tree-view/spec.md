@@ -47,7 +47,7 @@ The tree view SHALL emit change selection events when the user clicks a change n
 
 ### Requirement: Artifact status badge overlays
 
-The tree SHALL render a change artifact's status as a small badge overlaid on the node's icon, rather than as a glyph prefixed to the node's label. Badges SHALL be applied only to nodes that carry client-owned status: change-artifact nodes, missing-artifact nodes, and change nodes. Spec, requirement, delta-spec-file, and config nodes SHALL NOT carry a status badge. The badge status vocabulary SHALL mirror the OpenSpec CLI's artifact model — done, ready, and blocked — plus a not-created state for a missing artifact; a change node additionally MAY carry the archive-ready status defined by the change node status rollup (artifacts complete and all tasks done), which is a combination of client-owned signals, not a new lifecycle state. Badges SHALL be distinguishable without relying on color alone, SHALL be theme- and HiDPI-correct, and each badged node SHALL name its status in its tooltip. Artifact ready-versus-blocked status SHALL be sourced from the OpenSpec CLI; when the CLI is unavailable, the tree MAY degrade to a single not-done badge (done versus not-done) rather than fabricating the ready/blocked distinction.
+The tree SHALL render an artifact's status as a badge overlaid on the node's icon, not a label glyph, on change, change-artifact and missing-artifact nodes only. Spec, requirement, delta-spec-file and config nodes SHALL NOT carry one. The vocabulary SHALL be done, ready, blocked and not-created. Badges SHALL be distinguishable without color alone, theme- and HiDPI-correct, and named in the tooltip. Ready versus blocked SHALL come from the CLI; without it, the tree MAY show done versus not-done.
 
 #### Scenario: Change artifact shows its status badge
 - **WHEN** a change's proposal/design/tasks/specs artifact node is displayed and the CLI reports its status
@@ -71,7 +71,7 @@ The tree SHALL render a change artifact's status as a small badge overlaid on th
 
 ### Requirement: Change node status rollup
 
-A change node SHALL carry a done badge when all of its artifacts are complete (the change is apply-ready), SHALL instead carry a distinct archive-ready badge when, in addition, every one of its tasks is done (a completed count equal to a non-zero total), and SHALL surface the change's task progress as an `X/Y` count in its label when a tasks artifact exists. The change rollup SHALL reflect only client-owned state (artifact completion and task counts as reported by the OpenSpec CLI) and SHALL NOT invent a lifecycle state the client does not define. Archive-ready is the conjunction of those two client-owned signals — the same condition under which the client's archive raises no open-tasks warning — and SHALL be presented as a recommendation, never as a guarantee or a gate: archiving may still be refused for other reasons, such as spec validation.
+A change node SHALL carry a done badge when all its artifacts are complete, and a distinct archive-ready badge when, in addition, every task is done (a non-zero total, all completed). It SHALL show its task progress as `X/Y` in its label when a tasks artifact exists. The rollup SHALL use only client-owned state reported by the CLI and SHALL NOT invent a lifecycle state. Archive-ready SHALL be presented as a recommendation, never as a gate.
 
 #### Scenario: Apply-ready change shows a done badge
 - **WHEN** all of a change's artifacts are complete
@@ -101,6 +101,11 @@ A change node SHALL carry a done badge when all of its artifacts are complete (t
 #### Scenario: No archive-ready state without the CLI's artifact signal
 - **WHEN** the OpenSpec CLI is unavailable, so artifact completion cannot be determined
 - **THEN** the change node SHALL carry neither the done badge nor the archive-ready badge, even when every task is done, and SHALL still show its `X/Y` count
+
+#### Scenario: Archive-ready is a recommendation
+- **WHEN** a change is archive-ready
+- **THEN** the condition is the same as the archive open-tasks warning, a combination of client-owned signals
+- **AND** archiving MAY still be refused for other reasons, such as spec validation
 
 ### Requirement: Changes tree display
 

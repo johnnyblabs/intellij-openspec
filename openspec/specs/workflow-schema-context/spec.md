@@ -19,7 +19,7 @@ The plugin SHALL derive a resolved workflow schema context from `openspec status
 
 ### Requirement: Independent version-axis resolution
 
-The plugin SHALL resolve and expose two independent version axes without conflating them: the **CLI version** (floor 1.3.0, baseline 1.4.x) and the **config-format version** (`openspec/config.yaml` `version:`). Version-dependent behavior SHALL select the axis that actually governs it. The plugin SHALL NOT offer a config-format version override while that axis models a single format, and SHALL ignore an override stored by an earlier version, so no setting can apply invisibly or offer a value that is silently ignored.
+The plugin SHALL resolve two independent version axes without conflating them: the CLI version (floor 1.3.0, baseline 1.4.x) and the config-format version (`openspec/config.yaml` `version:`). Version-dependent behavior SHALL select the axis that governs it. The plugin SHALL NOT offer a config-format version override while that axis models a single format, and SHALL ignore an override stored by an earlier version.
 
 #### Scenario: CLI version gates capability availability
 - **WHEN** behavior depends on whether a command or schema exists in the installed client

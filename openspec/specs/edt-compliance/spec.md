@@ -31,9 +31,7 @@ Code running inside `Task.Backgroundable.run()` or `executeOnPooledThread` SHALL
 
 ### Requirement: VFS refresh threading
 
-VFS index operations (`refreshAndFindFileByPath`, `refreshAndFindFileByNioFile`) SHALL be performed on background threads when possible. Only the final file-open or `WriteAction` VFS mutation SHALL execute on the EDT.
-
-A background task SHALL NOT call a synchronous, global VFS refresh, because that requires write-intent access and fails off the EDT. To refresh after a background step (such as a CLI run that writes files), it SHALL request an **asynchronous** refresh of the affected directory. Any UI update that depends on the refreshed files SHALL run on the EDT **after** that refresh completes. An error in the background step SHALL still restore the UI (re-enable controls, report the error).
+VFS index operations SHALL run on background threads when possible, and only the final file-open or `WriteAction` mutation SHALL run on the EDT. A background task SHALL NOT call a synchronous global VFS refresh. After a background step that writes files, it SHALL request an asynchronous refresh of the affected directory, and any UI update that depends on those files SHALL run on the EDT after that refresh completes. An error in the background step SHALL still restore the UI.
 
 #### Scenario: VFS lookup before EDT hop
 - **WHEN** a background thread writes a file and needs to open it in an editor
@@ -51,6 +49,10 @@ A background task SHALL NOT call a synchronous, global VFS refresh, because that
 - **WHEN** a background task fails with any exception, not only an expected CLI error
 - **THEN** the controls it disabled SHALL be re-enabled on the EDT and the failure SHALL be reported to the user
 
+#### Scenario: Named VFS operations
+- **WHEN** VFS index operations are made
+- **THEN** they are `refreshAndFindFileByPath` and `refreshAndFindFileByNioFile`, run on background threads when possible
+
 ### Requirement: Error handling in invokeLater blocks
 
 Every `invokeLater` lambda that performs operations which can throw (e.g., `WriteAction.run`, `archiveChange`) SHALL wrap the body in a `try/catch` block. Caught exceptions SHALL be reported to the user via `OpenSpecNotifier.error()`.
@@ -65,7 +67,7 @@ Every `invokeLater` lambda that performs operations which can throw (e.g., `Writ
 
 ### Requirement: Credential store I/O off the EDT
 
-`PasswordSafe` read/write operations are blocking (`@RequiresBackgroundThread`) and SHALL NOT be invoked on the EDT. Any UI handler that stores, retrieves, or checks for an API key SHALL perform the `PasswordSafe` access on a background thread (`executeOnPooledThread` or inside an existing background worker), and SHALL post the resulting UI update back to the EDT via `invokeLater(...)` with an explicit `ModalityState` (e.g. `ModalityState.stateForComponent(...)`) so it is not deferred behind a modal dialog. A "does a key exist" check used to gate UI SHALL be an EDT-safe operation (a cached boolean), not a synchronous keystore read.
+`PasswordSafe` access SHALL NOT run on the EDT. A handler that stores, retrieves or checks an API key SHALL access it on a background thread and post the UI update back to the EDT with `invokeLater` and an explicit `ModalityState`. A key-exists check that gates UI SHALL use a cached boolean, not a synchronous keystore read.
 
 #### Scenario: Provider selection and connection test do credential I/O off the EDT
 - **WHEN** the user changes the Direct API provider dropdown or clicks Test in Settings
@@ -75,9 +77,18 @@ Every `invokeLater` lambda that performs operations which can throw (e.g., `Writ
 - **WHEN** a UI path needs to know whether Direct API is configured (e.g. to show the delivery selector entry or gate Fast-Forward)
 - **THEN** it SHALL read a cached has-key flag rather than performing a synchronous `PasswordSafe.get()` on the EDT
 
+#### Scenario: Why access is off the EDT
+- **WHEN** a `PasswordSafe` read or write is made
+- **THEN** it is blocking (`@RequiresBackgroundThread`), so it SHALL run off the EDT
+
+#### Scenario: Background access and modality
+- **WHEN** a handler accesses the key store
+- **THEN** it SHALL use `executeOnPooledThread` or an existing background worker
+- **AND** the UI update SHALL be posted with `invokeLater` and an explicit `ModalityState` (for example `ModalityState.stateForComponent(...)`)
+
 ### Requirement: Disposable lifetime for tool-window content and panels
 
-Every tool-window `Content` whose component owns a `Disposable` (a `ConsoleView`, `Alarm`, or `MessageBusConnection`) SHALL be given a disposer via `Content.setDisposer(...)`, and the owning panel SHALL implement `Disposable` and release those resources in `dispose()`. Subscriptions and alarms SHALL be parented to a `Disposable` that is torn down when the content is removed, so nothing is left registered under the application root disposable. A component instantiated only for a transient check SHALL NOT register itself in the `Disposer` (or SHALL be disposed immediately after use).
+A tool-window `Content` whose component owns a `Disposable`, such as a console, alarm or message bus connection, SHALL have a disposer set with `Content.setDisposer(...)`. Its panel SHALL implement `Disposable` and release those resources in `dispose()`. Subscriptions and alarms SHALL be parented to a `Disposable` torn down with the content, and a transient check SHALL NOT register itself in the `Disposer`.
 
 #### Scenario: Tool-window content is disposed on teardown
 - **WHEN** the OpenSpec tool window's content is rebuilt or the project closes

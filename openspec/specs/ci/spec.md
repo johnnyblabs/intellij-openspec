@@ -35,7 +35,7 @@ The build job SHALL compile the project, run the full test suite, and upload tes
 
 ### Requirement: Plugin Verifier compatibility
 
-The verify job SHALL run the IntelliJ Plugin Verifier against a verified IDE set that spans the declared compatibility range, reporting binary compatibility, deprecated API usage, and experimental API usage. The verified set SHALL contain the minimum declared version (2024.2), the latest release of the last IntelliJ IDEA Community line (2025.2), and the latest release of every IntelliJ IDEA release line after it through the newest stable release. Intermediate release lines between the floor and the last Community line MAY be omitted, because the plugin compiles against the floor and API breakage surfaces first in the newest releases. Early-access (EAP) builds SHALL NOT be part of the verified set.
+The verify job SHALL run the IntelliJ Plugin Verifier against a verified IDE set spanning the declared compatibility range, reporting binary compatibility, deprecated API usage and experimental API usage. The set SHALL contain the minimum declared version (2024.2), the latest release of the last IntelliJ IDEA Community line (2025.2), and the latest release of every IntelliJ IDEA line after it. Early-access builds SHALL NOT be verified.
 
 #### Scenario: All declared versions checked
 - **WHEN** the verify job runs
@@ -56,6 +56,10 @@ The verify job SHALL run the IntelliJ Plugin Verifier against a verified IDE set
 #### Scenario: Incompatible result
 - **WHEN** the Plugin Verifier reports binary incompatibilities for any checked version
 - **THEN** the verify job SHALL fail, blocking the PR from merging
+
+#### Scenario: Intermediate lines
+- **WHEN** the verified set omits release lines between the floor and the last Community line
+- **THEN** that MAY be done, because the plugin compiles against the floor and API breakage surfaces first in the newest releases
 
 ### Requirement: Dependency caching
 
@@ -147,7 +151,7 @@ The CI pipeline SHALL declare a top-level `concurrency:` block in every workflow
 
 ### Requirement: Test coverage regression floor
 
-The build SHALL enforce a JaCoCo coverage regression floor, wired into `check` so it runs in CI. The floor SHALL cover at least the **instruction**, **line**, and **branch** counters, and each minimum SHALL be set just below the recorded coverage baseline so that a change reducing coverage below the floor fails the build. The coverage baseline SHALL be recorded (measured value and date) alongside the floor. The floor SHALL be ratcheted **upward** as coverage improves and SHALL NOT be lowered without a recorded justification.
+The build SHALL enforce a JaCoCo coverage regression floor, wired into `check`, covering the instruction, line and branch counters. Each minimum SHALL be set just below the recorded baseline, and the baseline (measured value and date) SHALL be recorded with the floor. The floor SHALL be ratcheted upward as coverage improves and SHALL NOT be lowered without a recorded justification.
 
 #### Scenario: Regression below the floor fails the build
 - **WHEN** a change reduces measured coverage for a governed counter below its configured minimum
@@ -163,9 +167,7 @@ The build SHALL enforce a JaCoCo coverage regression floor, wired into `check` s
 
 ### Requirement: Testable functionality is unit-tested
 
-Functionality that can be exercised without the running IDE platform — parsers, resolvers, version comparisons, action-gating logic, path/format handling, and similar pure logic — SHALL have unit tests that assert real behavior, such that each test fails if the behavior it covers is broken. A change that adds or materially alters such functionality SHALL add or update the corresponding tests in the same change. Tests that parse output the plugin does not control SHALL be contract-tested against captured real output rather than hand-authored shapes.
-
-Contract fixtures SHALL follow a per-generation lifecycle: new captures SHALL be organized under CLI-version-named directories (`src/test/resources/fixtures/cli/<version>/`), and fixture provenance — the capturing CLI version or best-evidence era, the capture recipe, and whether the fixture is recapturable — SHALL be recorded in a committed manifest. Fixtures covering a still-supported CLI generation SHALL be retained with their assertions intact (not re-pointed at a newer generation's captures or deleted) until that generation's support is dropped by a spec-level change. A fixture whose source command no longer exists in the current CLI SHALL be documented as pinned in the manifest and in its consuming test rather than left to stale silently.
+Functionality that runs without the IDE platform (parsers, resolvers, version comparisons, action gating, path and format handling) SHALL have unit tests that assert real behaviour and fail when that behaviour breaks. A change that adds or alters such functionality SHALL add or update its tests in the same change. Tests of output the plugin does not control SHALL be contract-tested against captured real output, not hand-authored shapes.
 
 #### Scenario: New testable logic ships with tests
 - **WHEN** a change adds functionality that can be unit-tested without the IDE platform
@@ -187,11 +189,15 @@ Contract fixtures SHALL follow a per-generation lifecycle: new captures SHALL be
 - **WHEN** the `.forgejo/workflows/build.yaml` workflow is triggered
 - **THEN** it SHALL declare the same concurrency block as the GitHub `build.yml` workflow (group keyed by workflow + ref, cancel-in-progress true) so Forgejo Actions exhibits identical cancellation behavior
 
+#### Scenario: Fixture lifecycle
+- **WHEN** contract fixtures are added
+- **THEN** they SHALL live under `src/test/resources/fixtures/cli/<version>/`, and their provenance (capturing version or era, capture recipe, recapturability) SHALL be recorded in a committed manifest
+- **AND** fixtures for a still-supported generation SHALL keep their assertions intact until that generation's support is dropped by a spec-level change
+- **AND** a fixture whose source command no longer exists SHALL be documented as pinned, in the manifest and in its consuming test
+
 ### Requirement: Single-sourced top-supported CLI version
 
-The top-supported OpenSpec CLI version SHALL be declared in exactly one place in the repository (the `openspecTargetVersion` property in `gradle.properties`), and every other build or CI consumer of that version SHALL derive it from that single source rather than restating it as an independently-maintained literal. The build SHALL enforce, wired into `check`, that a captured contract-fixture corpus exists for the single-sourced version, so that advancing the target without capturing that generation's fixtures fails the build. The UI-smoke workflow's OpenSpec CLI installation SHALL name the single-sourced version, so the smoke suite cannot drift behind the declared support set.
-
-This does not replace the durable version **floor** (the set of historical generations whose captured corpora must be retained, enforced by the cross-generation parity guard): the floor is a lower bound on retained coverage and is a distinct concept from the single "current target". The two SHALL remain separate.
+The top-supported OpenSpec CLI version SHALL be declared in one place, the `openspecTargetVersion` property in `gradle.properties`. Every other build or CI consumer SHALL derive it from that source rather than restate it. The build SHALL enforce, wired into `check`, that a contract-fixture corpus exists for that version, and the UI-smoke workflow SHALL install the single-sourced version.
 
 #### Scenario: Target version without a fixture corpus fails the build
 
@@ -213,11 +219,13 @@ This does not replace the durable version **floor** (the set of historical gener
 - **WHEN** the single-sourced target version advances to a newer generation
 - **THEN** the durable version floor enforced by the cross-generation parity guard SHALL still require the previously-covered generations' corpora, so advancing the target SHALL NOT drop coverage of an older still-supported generation
 
+#### Scenario: Target and floor stay separate
+- **WHEN** the top target and the durable version floor are considered
+- **THEN** they SHALL remain separate concepts; the floor is a lower bound on retained coverage, enforced by the cross-generation parity guard
+
 ### Requirement: Scheduled-for-removal API usage fails verification
 
-The Plugin Verifier gate SHALL be configured so that usage of IntelliJ Platform API **scheduled for removal** (`@Deprecated(forRemoval = true)`) is a build failure, in addition to the binary-compatibility failures the verifier already fails on by default. This makes a call to a method the platform has announced it will delete unable to merge, since such a call becomes a runtime `NoSuchMethodError`-class incompatibility once the platform actually removes the method — and the plugin's compatibility range is open-ended (no upper bound), so it must remain callable on every future build.
-
-Plain-deprecated API usage (`@Deprecated` without `forRemoval`) SHALL remain permitted (report-only), because a plain deprecation will not be removed without a further for-removal cycle, and a usage whose only non-deprecated replacement is unavailable at the plugin's compatibility floor cannot be fixed without raising the floor. Such usages SHALL be tracked for migration when the floor advances rather than blocked.
+The Plugin Verifier gate SHALL fail the build on IntelliJ Platform API scheduled for removal (`@Deprecated(forRemoval = true)`), in addition to the binary-compatibility failures it already fails on. Such a call becomes a runtime incompatibility once removed, and the compatibility range is open-ended.
 
 #### Scenario: Scheduled-for-removal usage fails the build
 
@@ -233,6 +241,10 @@ Plain-deprecated API usage (`@Deprecated` without `forRemoval`) SHALL remain per
 
 - **WHEN** the scheduled-for-removal gate is added to the verification step
 - **THEN** the severity levels that fail the verifier by default (binary incompatibilities / compatibility problems, internal-API and override-only usage) SHALL still fail, so adding the scheduled-for-removal gate does not weaken existing verification coverage
+
+#### Scenario: Plain deprecation
+- **WHEN** API is `@Deprecated` without `forRemoval`
+- **THEN** its usage SHALL remain report-only and SHALL be tracked for migration when the floor advances, not blocked, because its replacement may be unavailable at the compatibility floor
 
 ### Requirement: Plain-deprecated API usage is migrated when a floor replacement exists
 

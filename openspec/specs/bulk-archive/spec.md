@@ -39,7 +39,7 @@ The plugin SHALL detect when multiple selected changes have delta specs targetin
 
 ### Requirement: Bulk archive runs sequentially with spec sync and always completes
 
-The plugin SHALL archive the selected changes one at a time in the listed order, with the work off the UI thread. With OpenSpec CLI 1.5 or later, each change SHALL be synced and archived in one `openspec archive <name> --yes --json` call; otherwise the plugin SHALL apply spec sync first for each change that has delta specs and then archive it itself. Each row's status SHALL update in the open dialog as it progresses. When the run ends, successfully or not, the plugin SHALL post a summary and re-enable the dialog's OK button so the dialog can be closed.
+The plugin SHALL archive the selected changes one at a time in the listed order, off the UI thread. With OpenSpec CLI 1.5 or later it SHALL sync and archive each change in one `openspec archive <name> --yes --json` call; otherwise it SHALL apply spec sync for each change that has delta specs, then archive it itself. Each row's status SHALL update as the run progresses. When the run ends, successfully or not, the plugin SHALL post a summary and re-enable the OK button so the dialog can close.
 
 #### Scenario: Successful batch archive
 - **WHEN** the user confirms the bulk archive

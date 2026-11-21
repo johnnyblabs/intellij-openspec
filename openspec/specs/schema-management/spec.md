@@ -91,7 +91,7 @@ The plugin SHALL let the user open a schema's artifact templates in the editor, 
 
 ### Requirement: CLI version guard
 
-The plugin SHALL check the CLI version before exposing schema management features, requiring version 1.3.0 or later for schema operations. CLI 1.4.x is the recommended version; 1.3.x remains supported for the duration of this release. The floor SHALL be sourced from `SchemaService.MIN_CLI_VERSION` — this requirement SHALL track that constant rather than encoding a literal version, so a future floor bump only touches the constant and one spec line. The validate, provenance, and open-templates operations SHALL sit behind the same guard; if implementation-time verification finds any of their underlying commands absent on a 1.3.x CLI, that operation SHALL be disabled below 1.4.0 with the existing upgrade recommendation instead of failing at invocation time.
+The plugin SHALL check the CLI version before exposing schema management, requiring 1.3.0 or later for schema operations. The floor SHALL be read from `SchemaService.MIN_CLI_VERSION` and not encoded as a literal. The validate, provenance and open-templates operations SHALL sit behind the same guard, and any whose command is absent on a 1.3.x CLI SHALL be disabled below 1.4.0 with the upgrade recommendation.
 
 #### Scenario: Sufficient CLI version
 - **WHEN** the CLI version is 1.3.0 or later
@@ -108,6 +108,11 @@ The plugin SHALL check the CLI version before exposing schema management feature
 #### Scenario: Insufficient CLI version
 - **WHEN** the CLI version is below 1.3.0 or the CLI is not installed
 - **THEN** the plugin SHALL gracefully disable schema management and not display schema-related UI elements
+
+#### Scenario: Recommended and supported versions
+- **WHEN** the detected CLI is 1.4.x
+- **THEN** it is the recommended version
+- **AND** when the detected CLI is 1.3.x, schema management remains supported for the duration of this release
 
 ### Requirement: Settings results appear while the dialog is open
 

@@ -2,10 +2,12 @@
 
 ## Purpose
 Display and management of OpenSpec workflow profiles (`core`, `custom`) from the Settings panel, with CLI delegation for profile switching and a post-switch prompt to run `openspec update` (the OpenSpec two-step profile change process).
+
 ## Requirements
+
 ### Requirement: Config profile display in Settings
 
-The plugin SHALL display the active OpenSpec config profile in a dedicated "Config Profile" section within the Settings panel, showing the profile name and its active workflow list. The section SHALL source these from `openspec config list --json` (the `profile` and `workflows` fields, resolved through the plugin's shared active-profile resolution — the same source the status-bar profile widget uses), NOT from `openspec config profile --json`, which OpenSpec does not provide (that option never existed and the current CLI rejects it). The section SHALL NOT display a profile description: OpenSpec models no profile-description concept in any command or schema, so there is nothing to source.
+The Settings panel SHALL show the active config profile in a "Config Profile" section, with the profile name and its active workflows, sourced from `openspec config list --json` through the shared active-profile resolution used by the status-bar widget. It SHALL NOT use `openspec config profile --json`, which OpenSpec does not provide, and SHALL NOT show a profile description, which OpenSpec does not model.
 
 #### Scenario: Profile section with CLI available
 - **WHEN** the user opens OpenSpec Settings and the CLI is detected
@@ -77,9 +79,7 @@ When OpenSpecSettings holds a `profile` value not in the CLI-accepted preset lis
 
 ### Requirement: Customize workflows affordance
 
-The Settings panel SHALL provide a "Customize workflows…" control adjacent to the workflow profile combo on the same row. Its placement next to the affordance is what conveys secondary status — explicit link styling is not required so long as the button is not visually competing with the dialog's primary action (Apply). Activating it SHALL launch the OpenSpec CLI's interactive workflow picker (`openspec config profile` with no arguments) in the IntelliJ Terminal tool window. The plugin SHALL NOT mirror the universe of available workflows in plugin-side code — workflow management is delegated wholly to the CLI's interactive picker.
-
-After launching the picker, the Settings panel SHALL display a non-modal completion banner with an "I'm done" action. Activating "I'm done" SHALL trigger `WorkflowProfileService.refresh()` and update the combo and Config Profile section inline. The refresh MAY run off the EDT (a CLI call must not block the UI); "inline" describes the UX (no separate dialog, no full panel reload), not the threading. A confirmation toast SHALL surface the new active profile and workflow count after refresh.
+The Settings panel SHALL provide a "Customize workflows…" control beside the workflow profile combo, which launches the CLI's interactive picker (`openspec config profile`, with no arguments) in the IntelliJ Terminal tool window. The plugin SHALL NOT mirror the workflow list in its own code. After the picker runs, a non-modal banner SHALL offer "I'm done", which refreshes the profile and updates the combo and Config Profile section inline, then confirms the new profile and workflow count.
 
 #### Scenario: Customize button launches CLI picker
 - **WHEN** the user clicks "Customize workflows…" in OpenSpec Settings and the IntelliJ Terminal tool window is available
@@ -101,9 +101,15 @@ After launching the picker, the Settings panel SHALL display a non-modal complet
 - **WHEN** the user clicks "Customize workflows…" but the IntelliJ Terminal tool window is unavailable (plugin disabled or unsupported IDE variant)
 - **THEN** the plugin SHALL show a notification copying `openspec config profile` to the clipboard with explicit guidance: "Open a terminal in your project directory and paste — the command has been copied. See [About profiles] for details," with action buttons linking to the docs
 
+#### Scenario: Threading and placement
+- **WHEN** the profile is refreshed
+- **THEN** the refresh MAY run off the EDT, since a CLI call must not block the UI
+- **AND** "inline" describes the experience (no separate dialog, no full panel reload), not the threading
+- **AND** the control SHALL NOT compete visually with the dialog's primary action, so explicit link styling is not required
+
 ### Requirement: Settings panel surfaces use CLI runtime data
 
-The Settings panel's workflow profile combo entries, active profile readout, and Config Profile section SHALL be sourced from the OpenSpec CLI's runtime output (`openspec config list --json`) rather than from detected CLI version or hardcoded preset assumptions. The plugin SHALL NOT depend on `openspec config profile --json`, which OpenSpec does not provide. Inline copy that describes profile semantics (e.g., the ContextHelpLabel) SHALL NOT enumerate specific workflow names; it SHALL link to the canonical workflow profiles documentation page for current workflow lists.
+The Settings panel's profile combo entries, active profile readout and Config Profile section SHALL be sourced from `openspec config list --json`, not from the detected CLI version or hardcoded presets. The plugin SHALL NOT depend on `openspec config profile --json`. Inline profile help SHALL NOT enumerate workflow names; it SHALL link to the workflow profiles documentation for current lists.
 
 #### Scenario: Active profile readout from CLI
 - **WHEN** the Settings panel renders the "Active profile:" label in the Config Profile section
@@ -116,4 +122,3 @@ The Settings panel's workflow profile combo entries, active profile readout, and
 #### Scenario: Version detection scope
 - **WHEN** the plugin needs to decide whether to expose a profile-related Settings panel surface
 - **THEN** version detection SHALL be used only for gating availability of CLI features (e.g., a CLI subcommand existing in version X+), not for inferring preset names, workflow membership, or default profile behavior
-

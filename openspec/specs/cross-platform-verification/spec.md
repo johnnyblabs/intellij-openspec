@@ -5,9 +5,10 @@
 Verify the plugin builds and passes its test suite on Windows and macOS in addition to Linux, via a vendor-neutral CI matrix on the public mirror, so platform-specific regressions are caught before a release ships.
 
 ## Requirements
+
 ### Requirement: Cross-platform CI matrix on the public mirror
 
-The project SHALL verify the plugin on Windows and macOS in addition to Linux by running the build and test suite in a CI matrix. The matrix SHALL live in the public mirror's CI workflow, not the self-hosted origin CI, because the self-hosted runner has no Windows host and rejects newer action versions. All matrix workflow configuration SHALL be vendor-neutral, containing no internal hostnames, addresses, tracker identifiers, or internal URLs.
+The project SHALL verify the plugin on Windows and macOS as well as Linux, by running the build and test suite in a CI matrix on the public mirror. The matrix SHALL NOT live on the self-hosted origin CI, which has no Windows host and rejects newer action versions. All matrix workflow configuration SHALL be vendor-neutral, with no internal hostnames, addresses, tracker identifiers or internal URLs.
 
 #### Scenario: Matrix runs the suite on Windows and macOS
 
@@ -26,7 +27,7 @@ The project SHALL verify the plugin on Windows and macOS in addition to Linux by
 
 ### Requirement: Cross-platform data-dir resolution
 
-The plugin's global-data-dir resolver SHALL be verified across platforms. On Windows the resolver SHALL produce `%LOCALAPPDATA%\openspec` using native backslash separators; `XDG_DATA_HOME` SHALL take precedence over the Windows branch when set; a null home SHALL fall back to the Unix data-dir shape; and the store and workset directories SHALL resolve under the data dir on every platform. These SHALL be verified host-independently through the parameterized resolver.
+On Windows the global-data-dir resolver SHALL produce `%LOCALAPPDATA%\openspec` with native backslash separators. `XDG_DATA_HOME` SHALL take precedence over the Windows branch when set, and a null home SHALL fall back to the Unix data-dir shape. The store and workset directories SHALL resolve under the data dir on every platform, verified host-independently through the parameterized resolver.
 
 #### Scenario: Windows data dir uses LOCALAPPDATA with backslashes
 

@@ -55,7 +55,7 @@ The Update OpenSpec action SHALL be registered in plugin.xml within the OpenSpec
 
 ### Requirement: Legacy-cleanup outcome detection
 
-The plugin SHALL recognize when `openspec update` leaves legacy-file cleanup pending even though the CLI exits 0. On CLI 1.15.0+, when the applied plan's notes include `legacy-artifacts`, the plugin SHALL take the files to remove from the read-only `openspec update --dry-run --force --json` plan: its `delete` entries whose paths resolve inside the project. On older CLIs it SHALL parse the "Files to remove" block of the text output, keyed on the header and the bulleted entries, accepting and recording whatever guidance line the CLI prints. Both sources SHALL be contract-tested against captured real CLI output. The plugin SHALL NOT run `openspec update --force` itself.
+The plugin SHALL recognize when `openspec update` leaves legacy cleanup pending although the CLI exits 0. On CLI 1.15.0 and later it SHALL take the files to remove from the read-only `openspec update --dry-run --force --json` plan, and on older CLIs from the "Files to remove" block of the text output. Both sources SHALL be contract-tested against captured CLI output. The plugin SHALL NOT run `openspec update --force` itself.
 
 #### Scenario: Legacy files pending
 - **WHEN** `openspec update` output contains the migration block listing files to remove
@@ -82,9 +82,14 @@ The plugin SHALL recognize when `openspec update` leaves legacy-file cleanup pen
 - **WHEN** the forced dry run exits non-zero, reports a `status[]` error, or prints output that isn't valid JSON
 - **THEN** the plugin SHALL report that the cleanup list couldn't be read and SHALL offer no files
 
+#### Scenario: Plan sources
+- **WHEN** the applied plan's notes include `legacy-artifacts` on CLI 1.15.0 or later
+- **THEN** the files to remove SHALL be the plan's `delete` entries whose paths resolve inside the project
+- **AND** on older CLIs the plugin SHALL parse the header and bulleted entries of the text output, accepting and recording the guidance line the CLI prints
+
 ### Requirement: Consented surgical cleanup
 
-The plugin SHALL resolve pending legacy cleanup through explicit user consent, deleting only files that appear in the CLI's own files-to-remove list, are checked by the user, exist on disk, and resolve inside the project root. Deletion SHALL run through the IDE's VFS inside a single undoable write command. The plugin SHALL NOT invoke `openspec update --force` on the user's behalf. After a cleanup, the plugin SHALL re-run `openspec update` and report the resulting state.
+The plugin SHALL resolve pending legacy cleanup only with explicit user consent, deleting only files that appear in the CLI's own files-to-remove list, that the user has checked, that exist on disk, and that resolve inside the project root. The plugin SHALL NOT invoke `openspec update --force` on the user's behalf. After a cleanup it SHALL re-run `openspec update` and report the resulting state.
 
 #### Scenario: Review and remove
 - **WHEN** the user opens the cleanup review from the Update notification
@@ -101,6 +106,10 @@ The plugin SHALL resolve pending legacy cleanup through explicit user consent, d
 #### Scenario: No force on the user's behalf
 - **WHEN** the cleanup flow runs, in any state
 - **THEN** the plugin SHALL NOT invoke `openspec update --force`
+
+#### Scenario: Undoable deletion
+- **WHEN** files are deleted
+- **THEN** deletion SHALL run through the IDE's VFS inside a single undoable write command
 
 ### Requirement: Cleanup escape hatches
 
@@ -120,7 +129,7 @@ The cleanup flow SHALL preserve non-destructive exits: a terminal handoff for th
 
 ### Requirement: Regeneration-loop recognition
 
-Some CLI versions regenerate the very files their migration detector flags (observed on 1.4.1 and 1.5.0 for the junie integration: `init`/`update`/`--force` all re-create the flagged `.junie/commands/opsx-*.md` files), so cleanup cannot resolve the pending state. The plugin SHALL recognize this loop from its post-cleanup verification re-run and terminate the flow truthfully: explain that the CLI itself regenerates these files and nothing on the user's side needs fixing, auto-suppress the notice while the CLI reports the same set, and not offer deletion again for a set observed to regenerate.
+The plugin SHALL recognize a regeneration loop, where the CLI recreates the files its migration detector flags, from its post-cleanup verification re-run. It SHALL explain that the CLI regenerates these files and that nothing on the user's side needs fixing, suppress the notice while the CLI reports the same set, and not offer deletion again for a set observed to regenerate.
 
 #### Scenario: Cleanup verified successful
 - **WHEN** the post-cleanup `openspec update` re-run reports no pending files (or a disjoint set)
@@ -133,6 +142,10 @@ Some CLI versions regenerate the very files their migration detector flags (obse
 #### Scenario: CLI change re-opens the flow
 - **WHEN** a later `openspec update` (e.g. after a CLI upgrade) reports a pending set different from the recorded regenerating set
 - **THEN** the cleanup flow SHALL be available again for the new set
+
+#### Scenario: Known regenerating set
+- **WHEN** CLI 1.4.1 or 1.5.0 is used with the junie integration
+- **THEN** `init`, `update` and `--force` each re-create the flagged `.junie/commands/opsx-*.md` files, so cleanup cannot resolve the pending state
 
 ### Requirement: Cleanup verification reports only what the CLI confirmed
 

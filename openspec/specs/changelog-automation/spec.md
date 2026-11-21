@@ -47,7 +47,7 @@ The `build.gradle.kts` file SHALL NOT contain a manually-maintained inline HTML 
 
 ### Requirement: User-facing capability changes are disclosed
 
-The changelog SHALL disclose changes to user-facing capabilities. When a change adds, removes, or materially alters a user-facing capability — including **retiring a capability for a supported CLI version** — it SHALL record a corresponding entry in the changelog's unreleased section, written for users. A user-facing capability that a released version delivered SHALL NOT be removed or re-gated **silently** (with no changelog entry). Internal-only refactors with no user-visible effect are exempt.
+The changelog SHALL disclose changes to user-facing capabilities. A change that adds, removes or materially alters one, including retiring a capability for a supported CLI version, SHALL record an entry in the unreleased section, written for users. A user-facing capability that a released version delivered SHALL NOT be removed or re-gated silently, without a changelog entry. Internal-only refactors are exempt.
 
 #### Scenario: Removing a shipped capability is disclosed
 - **WHEN** a change removes or re-gates a user-facing capability that a released version delivered

@@ -7,7 +7,7 @@ Defines the read-only rendered-markdown preview surface beside the Browse tree â
 
 ### Requirement: Rendered preview pane
 
-The plugin SHALL present a read-only preview pane beside the Browse tree, in a horizontal splitter whose proportion is persisted and whose preview pane MAY be collapsed. Selecting a change or any node under it SHALL render that change's consolidated deltas view, and selecting a delta spec SHALL render that delta spec, into the pane. The pane SHALL remain read-only, and double-clicking a node SHALL continue to open the underlying file in the editor. Rendering SHALL run off the UI thread and update the pane on the UI thread.
+The plugin SHALL present a read-only preview pane beside the Browse tree, in a horizontal splitter whose proportion is persisted. Selecting a change, or any node under it, SHALL render that change's consolidated deltas view, and selecting a delta spec SHALL render that delta spec. Double-clicking a node SHALL still open its file in the editor. Rendering SHALL run off the UI thread, and the pane SHALL update on the UI thread.
 
 #### Scenario: Selection renders the document
 - **WHEN** the user single-clicks a change, an artifact of a change or a delta spec in the Browse tree
@@ -20,6 +20,10 @@ The plugin SHALL present a read-only preview pane beside the Browse tree, in a h
 #### Scenario: No previewable selection
 - **WHEN** no node is selected, or the selected node is not a change, an artifact of a change or a delta spec
 - **THEN** the preview pane SHALL show the explanatory empty state rather than stale content
+
+#### Scenario: Collapsible pane
+- **WHEN** the preview pane is not needed
+- **THEN** it MAY be collapsed
 
 ### Requirement: Delta operation badges
 
@@ -39,7 +43,7 @@ When a Requirement node is selected, the preview SHALL scroll to that requiremen
 
 ### Requirement: Client-owned state only
 
-The preview SHALL reflect only client-owned state. It SHALL NOT display per-spec coverage, score, completion, or status (specs carry none); SHALL NOT present code-to-spec links; SHALL NOT persist a search index or any derived artifact into the OpenSpec tree; and SHALL NOT synthesize a post-archive "effective" spec and present it as spec truth. Change-owned state that the preview surfaces (a change's delta assembly, validation verdict, task progress, or completion) SHALL be sourced from the OpenSpec CLI rather than recomputed. The one exception is a change's validation when no CLI is available: the preview MAY then show the plugin's built-in check, labelled as the built-in check.
+The preview SHALL reflect only client-owned state. It SHALL NOT display coverage, scores, completion or status for specs, SHALL NOT present code-to-spec links, and SHALL NOT persist a search index or derived artifact into the OpenSpec tree. It SHALL NOT present a synthesized post-archive effective spec as spec truth. Change-owned state (delta assembly, validation verdict, task progress, completion) SHALL come from the OpenSpec CLI, not be recomputed.
 
 #### Scenario: No spec status or coverage shown
 - **WHEN** a main spec is rendered
@@ -53,9 +57,13 @@ The preview SHALL reflect only client-owned state. It SHALL NOT display per-spec
 - **WHEN** no OpenSpec CLI is available and a change is selected
 - **THEN** any validation shown SHALL be the plugin's built-in check, labelled as the built-in check and never as the CLI's verdict
 
+#### Scenario: Built-in validation without the CLI
+- **WHEN** no CLI is available
+- **THEN** the preview MAY show the plugin's built-in validation check for a change, labelled as the built-in check
+
 ### Requirement: Consolidated change-deltas view
 
-When a change node is selected in the Browse tree, the preview SHALL render a consolidated, read-only view of that change's spec-level deltas. The assembled delta set SHALL be sourced from the OpenSpec CLI (`openspec show <change>` as JSON), reading only its standard output, and SHALL NOT be hand-assembled from the change's delta-spec files. The view SHALL group deltas by capability and, within a capability, present them in the CLI's operation order (ADDED, then MODIFIED, then REMOVED, then RENAMED). Capability groups SHALL be ordered by a stable plugin-imposed sort rather than relying on the CLI's cross-capability ordering. Each rendered requirement SHALL show its text and scenarios as reported by the CLI, and each operation SHALL be visually badged consistently with delta-spec rendering.
+When a change node is selected, the preview SHALL render a consolidated, read-only view of its spec-level deltas, sourced from the CLI's `openspec show <change>` JSON, not from delta-spec files. The view SHALL group deltas by capability, in the CLI's operation order (ADDED, MODIFIED, REMOVED, RENAMED), and order the capability groups by a stable plugin sort. Each requirement SHALL show the CLI's text and scenarios, badged as delta-spec rendering is.
 
 #### Scenario: Change selection renders its deltas
 - **WHEN** the user selects a change node that has spec-level deltas
@@ -110,7 +118,7 @@ Each capability section in the consolidated deltas view SHALL offer a link to th
 
 ### Requirement: Every node under a change previews the change's deltas
 
-Selecting a change's artifact node SHALL render that change's consolidated deltas view, whatever the artifact's status, exactly as selecting the change node does. The view SHALL resolve the change name and directory from the enclosing change node. A delta-spec node SHALL render its own markdown as a delta, badged, without requiring the CLI. A main spec SHALL open in the editor, not in the preview pane. The preview SHALL never read an artifact's glob output path as a file.
+Selecting any artifact node under a change SHALL render that change's consolidated deltas view, whatever the artifact's status, resolving the change name and directory from the enclosing change node. A delta-spec node SHALL render its own markdown as a badged delta without the CLI. A main spec SHALL open in the editor, not in the preview pane, and the preview SHALL never read an artifact's glob output path as a file.
 
 #### Scenario: Selecting an artifact shows its change's deltas
 - **WHEN** the user selects a change's proposal, design, tasks or specs artifact
@@ -157,7 +165,7 @@ Every state of the preview pane SHALL start with a "Change Deltas" header, namin
 
 ### Requirement: Change validation line
 
-When a change is selected and the OpenSpec CLI shows its deltas, the Change Deltas pane SHALL show that change's validation verdict from the CLI under the header, with a link that runs the Validate action for that change. The verdict SHALL match what Validate reports for that change, SHALL be refreshed whenever a file under the OpenSpec directory changes, and SHALL NOT be stored. When the CLI rejects the change or returns no verdict, the line SHALL be left out. A configuration error response (`unparseable_config` or `unreadable_config`) is a verdict: Validate reports it as a failure, so the line SHALL show that failure.
+When a change is selected and the CLI shows its deltas, the Change Deltas pane SHALL show the change's validation verdict from the CLI under its header, with a link that runs Validate for that change. The verdict SHALL match what Validate reports, SHALL refresh when a file under the OpenSpec directory changes, and SHALL NOT be stored. When the CLI rejects the change or gives no verdict, the line SHALL be left out.
 
 #### Scenario: A valid change
 - **WHEN** a selected change validates with no errors
@@ -186,6 +194,10 @@ When a change is selected and the OpenSpec CLI shows its deltas, the Change Delt
 #### Scenario: A broken config.yaml
 - **WHEN** a change is selected and the CLI's validate run for it answers with a configuration error response
 - **THEN** the pane SHALL show the failure Validate reports for that run: one error and no warnings
+
+#### Scenario: Configuration errors
+- **WHEN** the CLI returns a configuration error response (`unparseable_config` or `unreadable_config`)
+- **THEN** that response is a verdict, and the line SHALL show the failure Validate reports for it
 
 ### Requirement: Delta operation legend
 

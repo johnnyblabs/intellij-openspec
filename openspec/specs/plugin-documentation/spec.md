@@ -2,7 +2,9 @@
 
 ## Purpose
 User-facing documentation organized around four personas (Spec Browser, IDE-First Developer, CLI Companion, Standalone API User) with per-persona getting-started guides and a canonical feature reference.
+
 ## Requirements
+
 ### Requirement: Documentation defines four user personas
 The project documentation SHALL define exactly four user personas that represent the distinct ways the plugin is used: Spec Browser, IDE-First Developer, CLI Companion, and Standalone API User. Each persona definition SHALL include the persona's primary value proposition, whether AI setup is required, and which plugin features are most relevant.
 
@@ -79,7 +81,7 @@ Each persona getting-started guide SHALL end with a "You might also want to expl
 
 ### Requirement: Workflow profiles documentation page is published
 
-The `Workflow-Profiles.md` documentation SHALL be committed to the project's `main` branch on GitHub at `scripts/docs/wiki/Workflow-Profiles.md` so that the plugin's documentation links resolve to a live page rather than returning 404. The page SHALL avoid enumerating specific workflow names except where explicitly maintained as the canonical source — wiki content is the single point at which workflow lists may be enumerated, since the plugin code intentionally does not.
+The `Workflow-Profiles.md` documentation SHALL be committed to `main` at `scripts/docs/wiki/Workflow-Profiles.md`, so the plugin's documentation links resolve to a live page. Only that wiki content MAY enumerate specific workflow names, since the plugin code intentionally does not.
 
 #### Scenario: Docs URL resolves
 - **WHEN** the user clicks "About profiles…" in the status bar widget popup or "Read the full guide" in the Settings panel ContextHelpLabel
@@ -99,7 +101,7 @@ The `Workflow-Profiles.md` documentation SHALL be committed to the project's `ma
 
 ### Requirement: OpenSpec client coverage matrix is published
 
-The project SHALL publish and maintain a coverage matrix at `docs/openspec-support.md` that maps OpenSpec client capabilities to the plugin's support status, with each capability annotated by the minimum CLI version it requires. The matrix SHALL distinguish supported, partial, divergent, planned, and plugin-original capabilities, and SHALL state the plugin's CLI-version support contract (minimum supported version, baseline, and runtime version-awareness). Support-mechanism classifications (delegated to the CLI, built-in, or surfaced indirectly) SHALL reflect the verified behavior of the code they describe; a claim that a capability is delegated when the implementation is built-in (or vice versa) is a documentation defect.
+The project SHALL publish and maintain a coverage matrix at `docs/openspec-support.md` that maps OpenSpec client capabilities to the plugin's support status, annotated with the minimum CLI version each requires. It SHALL distinguish supported, partial, divergent, planned and plugin-original capabilities. Support mechanisms (delegated, built-in or indirect) SHALL reflect the verified behaviour of the code they describe; a mismatch is a documentation defect.
 
 #### Scenario: Matrix reflects client coverage with version annotations
 - **WHEN** a user reads `docs/openspec-support.md`
@@ -119,9 +121,13 @@ The project SHALL publish and maintain a coverage matrix at `docs/openspec-suppo
 - **THEN** they SHALL reference only public identifiers (OpenSpec change names, CHANGELOG versions)
 - **AND** they SHALL NOT contain internal tracker identifiers or environment-specific references
 
+#### Scenario: Support contract
+- **WHEN** the matrix states the plugin's CLI-version support
+- **THEN** it SHALL give the minimum supported version, the baseline, and the runtime version-awareness
+
 ### Requirement: Every document declares a maintenance class
 
-Every tracked documentation file — each doc under `docs/` and the top-level README, CHANGELOG, and CONTRIBUTING — SHALL declare a maintenance class near the top of the file, one of: **Living** (updated as part of every relevant change), **Snapshot** (reviewed on a stated cadence and may lag between reviews), **Reference** (stable; updated only when the thing it describes changes), or **Retired** (kept for history, explicitly not maintained). The class makes each document's update contract explicit and auditable.
+Every tracked documentation file (each doc under `docs/`, and the top-level README, CHANGELOG and CONTRIBUTING) SHALL declare a maintenance class near the top: Living (updated with every relevant change), Snapshot (reviewed on a stated cadence), Reference (updated only when the described thing changes), or Retired (kept for history, not maintained).
 
 #### Scenario: Each doc carries a recognized maintenance label
 - **WHEN** any tracked documentation file is read
@@ -177,15 +183,7 @@ The release readiness process SHALL check documentation currency before a releas
 
 ### Requirement: Per-CLI-version feature-delta analysis grounds support decisions
 
-Before or as part of adding plugin support for an OpenSpec CLI version, the plugin SHALL produce a **per-version feature-delta & plugin-impact analysis** — a durable document under `docs/cli-versions/` cataloguing the features **introduced, modified, deprecated, and removed** in that CLI version relative to the prior supported version. This analysis is the epistemic base of the capability-preservation contract: the plugin cannot faithfully mirror a client version it has not analysed.
-
-The analysis SHALL:
-- **Cite upstream.** Every claim about the CLI's behavior SHALL be cited to Fission's upstream OpenSpec documentation (changelog, releases, or docs). Claims that cannot be verified upstream SHALL be quarantined in an explicit "open questions / to verify" section and SHALL NOT be asserted as fact.
-- **Assess plugin impact per feature.** For each feature it SHALL record the practical mechanics, an assessment of whether the plugin can and should surface it (including whether a plugin UI component exists or is warranted), and a consumer how-to (through the plugin, or via the CLI where there is no UI surface).
-- **Drive decisions.** Plugin support decisions for that CLI version (what to build, what to leave CLI-only, what to gate) SHALL reference this analysis rather than be made from assumption.
-- **Stay current.** It SHALL be updated when the plugin's understanding of that version changes, and carry a maintenance label per the documentation-maintenance framework.
-
-The analysis is produced via an OpenSpec **explore** (research) pass over the upstream documentation. A `docs/cli-versions/` index SHALL list the per-version analyses.
+Before or as part of adding support for an OpenSpec CLI version, the plugin SHALL produce a per-version feature-delta and plugin-impact analysis under `docs/cli-versions/`, cataloguing the features introduced, modified, deprecated and removed relative to the prior supported version. Support decisions for that version SHALL reference the analysis, and the `docs/cli-versions/` index SHALL list each analysis.
 
 #### Scenario: Analysis precedes support for a CLI version
 - **WHEN** the plugin adds or changes support for an OpenSpec CLI version
@@ -203,3 +201,16 @@ The analysis is produced via an OpenSpec **explore** (research) pass over the up
 - **WHEN** a plugin change decides to build, defer, or gate support for a CLI-version feature
 - **THEN** the decision SHALL be traceable to the per-version analysis rather than to assumption
 
+#### Scenario: Upstream citations
+- **WHEN** a claim about CLI behaviour is recorded
+- **THEN** it SHALL cite Fission's upstream documentation
+- **AND** a claim that cannot be verified upstream SHALL be quarantined in an open-questions section, not asserted as fact
+
+#### Scenario: Per-feature impact
+- **WHEN** a feature is recorded
+- **THEN** the analysis SHALL give its mechanics, whether the plugin can and should surface it (including whether a UI component exists or is warranted), and a consumer how-to through the plugin or the CLI
+
+#### Scenario: Currency and production
+- **WHEN** the plugin's understanding of a version changes
+- **THEN** the analysis SHALL be updated and carry a maintenance label
+- **AND** it SHALL be produced through an OpenSpec explore pass over the upstream documentation

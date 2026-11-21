@@ -8,7 +8,7 @@ The tracker integration capability automatically creates, links, and closes Forg
 
 ### Requirement: Tracker creation on change inception
 
-When a change is created via `/opsx:propose` or `/opsx:new`, the skill SHALL create a Forgejo issue and a Plane work item using the `scripts/.env` credentials. The Forgejo issue SHALL include the change name as the title, a summary from the proposal as the body, appropriate labels, and assignment to the current catch-all milestone. The Plane work item SHALL include the change name, description, labels, priority, and assignment to the current cycle. Both tracker IDs SHALL be written to the change's `.openspec.yaml` under a `tracking` section.
+When a change is created via `/opsx:propose` or `/opsx:new`, the skill SHALL create a Forgejo issue and a Plane work item using the `scripts/.env` credentials. The issue SHALL use the change name as title, the proposal summary as body, appropriate labels and the current catch-all milestone. The work item SHALL include the change name, description, labels, priority and the current cycle. Both tracker IDs SHALL be written to the change's `.openspec.yaml` under `tracking`.
 
 #### Scenario: Propose creates trackers
 - **WHEN** a user runs `/opsx:propose` and the change is created with a proposal
