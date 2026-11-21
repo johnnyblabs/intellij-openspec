@@ -40,6 +40,8 @@ import com.johnnyblabs.openspec.model.ChangeArtifactDag;
 import com.johnnyblabs.openspec.actions.WorkflowHandoffDelivery;
 import com.johnnyblabs.openspec.services.WorkflowInvocation;
 import com.johnnyblabs.openspec.services.AiToolDetectionService;
+import com.johnnyblabs.openspec.services.AiToolRegistry;
+import com.johnnyblabs.openspec.services.AiToolRegistry.AiTool;
 import com.johnnyblabs.openspec.services.ArtifactLocalHistory;
 import com.johnnyblabs.openspec.services.ArtifactOrchestrationService;
 import com.johnnyblabs.openspec.services.WorkflowSchemaContextService;
@@ -1567,14 +1569,18 @@ public class WorkflowActionPanel extends JPanel {
         String toolName = getSelectedToolName();
 
         ApplicationManager.getApplication().executeOnPooledThread(() -> {
-            String prompt = ApplyPromptBuilder.build(changeName, changeDir);
+            // Clipboard and editor tab send the short handoff when the selected tool has the apply command or skill,
+            // as Explore does; otherwise the full prompt.
+            String shortHandoff = mode == DeliveryMode.DIRECT_API ? null
+                    : applyHandoff(project.getBasePath(), toolName, changeName);
+            String prompt = shortHandoff != null ? shortHandoff : ApplyPromptBuilder.build(changeName, changeDir);
 
             lastPrompt = prompt;
 
             switch (mode) {
                 case CLIPBOARD -> {
                     String clipboardPrompt = prompt;
-                    if (!toolName.isBlank() && AiToolDetectionService.isCliTool(toolName)) {
+                    if (shortHandoff == null && !toolName.isBlank() && AiToolDetectionService.isCliTool(toolName)) {
                         clipboardPrompt = ApplyPromptBuilder.appendSavePathHint(prompt, changeDir);
                     }
                     lastPrompt = clipboardPrompt;
@@ -1626,6 +1632,19 @@ public class WorkflowActionPanel extends JPanel {
                 }
             }
         });
+    }
+
+    /**
+     * The short apply handoff for the selected tool when the project has its apply command or skill, else {@code null}.
+     * Only that tool is checked, so the handoff names the tool the user pastes into.
+     */
+    @Nullable
+    static String applyHandoff(@Nullable String basePath, @Nullable String toolName, String changeName) {
+        AiTool tool = AiToolRegistry.byName(toolName);
+        if (tool == null || basePath == null) return null;
+        WorkflowInvocation.Found found = WorkflowInvocation.find(Path.of(basePath), List.of(tool),
+                WorkflowInvocation.APPLY, WorkflowInvocation.APPLY_SKILL);
+        return found == null ? null : WorkflowInvocation.handoff(found.invocation(), WorkflowInvocation.APPLY_SKILL, changeName);
     }
 
     /** Apply's Direct API note: the agent does the work, so the handoff was copied for the user to paste. */
