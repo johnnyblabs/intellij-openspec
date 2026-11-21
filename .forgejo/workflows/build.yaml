@@ -12,15 +12,10 @@ on:
       - '.gitignore'
       - 'LICENSE'
       - '.forgejo/workflows/ui-smoke.yaml'
+  # No paths-ignore on pull_request: the check must always report, because it is a required
+  # merge check. The "gate" step below decides whether the heavy work runs for this PR.
   pull_request:
     branches: [main]
-    paths-ignore:
-      - 'openspec/**'
-      - '.claude/**'
-      - '.githooks/**'
-      - '.gitignore'
-      - 'LICENSE'
-      - '.forgejo/workflows/ui-smoke.yaml'
   # Manual trigger — runs both jobs including the heavy Plugin Verifier on demand (e.g. to verify a
   # PR branch before merge without waiting for the post-merge run).
   workflow_dispatch:
@@ -48,8 +43,38 @@ jobs:
     runs-on: java-21
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history so the gate can diff the PR against its base commit.
+          fetch-depth: 0
+
+      # A PR that touches only the bypass paths below (OpenSpec content, agent config, hooks)
+      # reports success without building. The bypass list mirrors the push trigger's paths-ignore.
+      # Docs (docs/**, README, CHANGELOG) are NOT bypassed: DocumentationHygieneTest validates them.
+      # If the diff cannot be read, the gate fails safe and runs the full build.
+      - name: Decide whether the build is needed
+        id: gate
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "source=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if ! files=$(git diff --name-only "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}"); then
+            echo "Could not read the PR diff; running the full build."
+            echo "source=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          source=false
+          while IFS= read -r f; do
+            case "$f" in
+              openspec/*|CLAUDE.md|.claude/*|.githooks/*|.gitignore|LICENSE|.forgejo/workflows/ui-smoke.yaml) ;;
+              *) source=true; break ;;
+            esac
+          done <<< "$files"
+          echo "Source-relevant change: $source"
+          echo "source=$source" >> "$GITHUB_OUTPUT"
 
       - name: Cache Gradle dependencies
+        if: steps.gate.outputs.source == 'true'
         uses: actions/cache@v4
         with:
           path: |
@@ -59,14 +84,16 @@ jobs:
           restore-keys: gradle-build-
 
       - name: Verify environment
+        if: steps.gate.outputs.source == 'true'
         run: java -version && gradle --version
 
       - name: Build and Test
+        if: steps.gate.outputs.source == 'true'
         run: gradle build
 
       - name: Upload test results
         uses: https://code.forgejo.org/forgejo/upload-artifact@v4
-        if: always()
+        if: always() && steps.gate.outputs.source == 'true'
         with:
           name: test-results
           path: build/test-results/test/
@@ -78,7 +105,7 @@ jobs:
       # main's snapshot with unmerged code. Non-blocking like the Dependency-Track step:
       # `|| echo` keeps server downtime from ever reddening the build.
       - name: SonarQube analysis
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        if: steps.gate.outputs.source == 'true' && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         run: gradle sonar || echo "SonarQube analysis skipped (non-fatal)"
         env:
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
@@ -89,7 +116,7 @@ jobs:
       # plus `|| echo` keep server downtime from ever reddening the build. Host/key come
       # from CI secrets — nothing internal is hardcoded (safe for the public mirror).
       - name: SBOM → Dependency-Track
-        if: always()
+        if: always() && steps.gate.outputs.source == 'true'
         run: |
           gradle cyclonedxDirectBom
           curl -sf -X POST "$DTRACK_URL/api/v1/bom" \
@@ -103,7 +130,7 @@ jobs:
           DT_API_KEY: ${{ secrets.DT_API_KEY }}
 
       - name: Sign plugin
-        if: github.ref == 'refs/heads/main' || github.base_ref == 'main'
+        if: steps.gate.outputs.source == 'true' && (github.ref == 'refs/heads/main' || github.base_ref == 'main')
         run: gradle signPlugin
         env:
           PLUGIN_SIGNING_KEY: ${{ secrets.PLUGIN_SIGNING_KEY }}
@@ -111,7 +138,7 @@ jobs:
           PLUGIN_SIGNING_KEY_PASSWORD: ${{ secrets.PLUGIN_SIGNING_KEY_PASSWORD }}
 
       - name: Upload plugin artifact
-        if: github.ref == 'refs/heads/main' || github.base_ref == 'main'
+        if: steps.gate.outputs.source == 'true' && (github.ref == 'refs/heads/main' || github.base_ref == 'main')
         uses: https://code.forgejo.org/forgejo/upload-artifact@v4
         with:
           name: intellij-openspec
