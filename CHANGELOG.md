@@ -18,6 +18,7 @@
 - **Headings with a closing `#` run are recognized.** A spec or delta written as `## Purpose ##`, `## Requirements ##` or `## ADDED Requirements ##` was read as having no such section, so a delta could be dropped on archive. These headings are now read the same as their plain forms, as OpenSpec CLI 1.16.1 reads them.
 - **Apply is enabled once the artifacts it needs are done, as the CLI decides.** Apply waited for the whole change to be complete. It now follows the schema's apply gate, so a change whose tasks are done can be applied while its other artifacts are still open.
 - **Apply copies the short handoff to your AI tool when it has the apply skill or command.** Copy-to-clipboard and the editor tab used to send the full apply prompt. When the selected tool has OpenSpec's apply command or skill installed, they now send the short invocation that tool runs natively, as Explore does. Otherwise the full prompt is still sent.
+- **The workflow panel's Archive button is enabled once the artifacts are complete, as the CLI allows.** It used to stay disabled while tasks were open. Now, with tasks still open, Archive opens Verify, which reports them and offers "Archive anyway".
 
 ## v0.16.0
 

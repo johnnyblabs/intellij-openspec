@@ -308,39 +308,20 @@ class WorkflowActionPanelTest {
     // --- 7.3: Icon bar enabled/disabled states ---
 
     @Test
-    void iconBar_allComplete_noTasks_verifyAndArchiveEnabled() {
-        boolean allComplete = true;
-        boolean tasksRemaining = false;
+    void iconBar_allArtifactsComplete_archiveEnabled() {
+        assertTrue(WorkflowActionPanel.archiveEnabled(true));
+    }
 
-        boolean verifyEnabled = allComplete;
-        boolean archiveEnabled = allComplete && !tasksRemaining;
-
-        assertTrue(verifyEnabled);
-        assertTrue(archiveEnabled);
+    /** Open tasks never disable Archive: the CLI only warns about them, so the plugin must not be stricter. */
+    @Test
+    void iconBar_allComplete_withOpenTasks_archiveStillEnabled() {
+        assertTrue(WorkflowActionPanel.archiveEnabled(true),
+                "Archive is enabled when artifacts are complete, even with tasks open");
     }
 
     @Test
-    void iconBar_allComplete_withTasks_verifyEnabledArchiveDisabled() {
-        boolean allComplete = true;
-        boolean tasksRemaining = true;
-
-        boolean verifyEnabled = allComplete;
-        boolean archiveEnabled = allComplete && !tasksRemaining;
-
-        assertTrue(verifyEnabled);
-        assertFalse(archiveEnabled);
-    }
-
-    @Test
-    void iconBar_incomplete_bothDisabled() {
-        boolean allComplete = false;
-        boolean tasksRemaining = false;
-
-        boolean verifyEnabled = allComplete;
-        boolean archiveEnabled = allComplete && !tasksRemaining;
-
-        assertFalse(verifyEnabled);
-        assertFalse(archiveEnabled);
+    void iconBar_incomplete_archiveDisabled() {
+        assertFalse(WorkflowActionPanel.archiveEnabled(false));
     }
 
     // --- 7.4: Status strip content in different states ---

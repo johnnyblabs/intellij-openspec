@@ -989,7 +989,7 @@ public class WorkflowActionPanel extends JPanel {
         applyIconButton.setEnabled(applyReady);
         verifyIconButton.setEnabled(allArtifactsComplete);
         syncSpecsIconButton.setEnabled(hasDeltaSpecs);
-        archiveIconButton.setEnabled(allArtifactsComplete && !hasTasksRemaining);
+        archiveIconButton.setEnabled(archiveEnabled(allArtifactsComplete));
 
         // Update change-name badge
         iconBarChangeLabel.setText(activeChangeName != null ? activeChangeName : "");
@@ -1005,9 +1005,11 @@ public class WorkflowActionPanel extends JPanel {
             syncSpecsIconButton.setToolTipText(hasDeltaSpecs
                     ? "Sync Specs: " + activeChangeName
                     : "Sync Specs (no delta specs)");
-            archiveIconButton.setToolTipText(allArtifactsComplete && !hasTasksRemaining
-                    ? "Archive: " + activeChangeName
-                    : "Archive (complete all artifacts and tasks first)");
+            archiveIconButton.setToolTipText(!allArtifactsComplete
+                    ? "Archive (complete all artifacts first)"
+                    : hasTasksRemaining
+                            ? "Archive: " + activeChangeName + " (tasks remain; Verify comes first)"
+                            : "Archive: " + activeChangeName);
         }
     }
 
@@ -2099,8 +2101,22 @@ public class WorkflowActionPanel extends JPanel {
 
     // --- Archive ---
 
+    /**
+     * Whether the Archive button is enabled: every artifact complete. Open tasks don't disable it, because the CLI only
+     * warns about them, so the plugin must not be stricter. With tasks open, Archive goes through Verify instead.
+     */
+    static boolean archiveEnabled(boolean allArtifactsComplete) {
+        return allArtifactsComplete;
+    }
+
     private void onArchive() {
         if (activeChangeName == null) return;
+        if (hasTasksRemaining) {
+            // The pre-archive check is Verify's: it reports the open tasks and offers "Archive anyway".
+            AnAction verify = ActionManager.getInstance().getAction("OpenSpec.Verify");
+            if (verify != null) launcher.accept(verify, archiveIconButton);
+            return;
+        }
         String changeName = activeChangeName;
 
         Boolean sync = ArchiveSyncPrompt.choose(project, changeName, hasDeltaSpecs);
