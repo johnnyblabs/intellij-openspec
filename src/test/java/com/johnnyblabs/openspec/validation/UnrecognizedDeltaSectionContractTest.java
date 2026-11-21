@@ -156,6 +156,40 @@ class UnrecognizedDeltaSectionContractTest {
     }
 
     @Test
+    void aCommentedOutDraftIsNotReportedOrRefused() {
+        // Captured against the 1.16.1 CLI: a DEPRECATED section inside an HTML comment validates clean.
+        String delta = """
+                ## ADDED Requirements
+
+                ### Requirement: Feature
+
+                The system SHALL do the feature.
+
+                #### Scenario: Feature works
+                - **WHEN** a user acts
+                - **THEN** it works
+
+                <!--
+                ## DEPRECATED Requirements
+
+                ### Requirement: Drafted thing
+
+                The system SHALL keep the draft.
+
+                #### Scenario: Draft
+                - **WHEN** called
+                - **THEN** it works
+                -->
+                """;
+
+        assertTrue(SpecMerge.orphans(delta).isEmpty(), "the CLI ignores a commented-out draft");
+        List<ValidationIssue> issues = new java.util.ArrayList<>();
+        BuiltInValidator.validateDeltaContent(delta, "feat/spec.md", issues);
+        assertTrue(issues.isEmpty(), issues.toString());
+        assertFalse(SpecMerge.merge("feat", "change", delta, null).refused());
+    }
+
+    @Test
     void aCleanDeltaHasNoOrphans() {
         String delta = """
                 ## ADDED Requirements

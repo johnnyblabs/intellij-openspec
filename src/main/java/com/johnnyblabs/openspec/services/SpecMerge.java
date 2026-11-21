@@ -135,7 +135,8 @@ public final class SpecMerge {
 
     /** The requirements a delta holds outside its four delta sections, in document order. Fence-masked. */
     public static List<Orphan> orphans(String deltaContent) {
-        List<String> lines = lines(deltaContent);
+        // The CLI ignores requirements inside HTML comments, so a commented-out draft is not an orphan.
+        List<String> lines = lines(maskHtmlComments(deltaContent));
         boolean[] mask = CodeFences.mask(lines);
         List<Orphan> found = new ArrayList<>();
         String section = null;
