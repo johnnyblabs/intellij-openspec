@@ -7,3 +7,5 @@
 ## 2. Archive
 
 - [x] 2.1 Archive this change with spec updates skipped, since the capability is removed by deleting its spec file.
+
+Not tracked: spec-maintenance housekeeping with no user-facing behaviour change, so it has no tracker entry.

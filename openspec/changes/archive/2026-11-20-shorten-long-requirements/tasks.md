@@ -15,3 +15,5 @@
 
 - [x] 3.1 Each batch validates with `openspec validate shorten-long-requirements --strict`.
 - [x] 3.2 After the last batch, `openspec validate --all --strict` passes.
+
+Not tracked: spec-maintenance housekeeping with no user-facing behaviour change, so it has no tracker entry.

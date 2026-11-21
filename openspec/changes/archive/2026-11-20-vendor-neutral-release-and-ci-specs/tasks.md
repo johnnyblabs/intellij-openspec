@@ -7,3 +7,5 @@
 
 - [x] 2.1 Run `openspec validate --all --strict` and confirm it passes.
 - [x] 2.2 Confirm the release-prep and ci requirements no longer name a vendor, apart from the Purpose text.
+
+Not tracked: spec-maintenance housekeeping with no user-facing behaviour change, so it has no tracker entry.
