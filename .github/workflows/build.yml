@@ -108,13 +108,19 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # The OpenSpec CLI declares node >= 22.12; older Node installs it with only a warning.
+          node-version: 22
 
       - name: Provision the OpenSpec CLI (Windows leg)
-        # The Windows-only `.cmd` shim integration test needs a real CLI at the 1.5.0
-        # floor on PATH. macOS/Linux legs don't run that gated test, so skip the install.
+        # The Windows-only `.cmd` shim integration test needs a real CLI on PATH. macOS/Linux legs don't run
+        # that gated test, so skip the install. The version is the single-sourced target from gradle.properties,
+        # not `latest`, and the step fails if the installed CLI reports a different version.
         if: runner.os == 'Windows'
-        run: npm install -g @fission-ai/openspec@latest
+        run: |
+          v=$(grep '^openspecTargetVersion=' gradle.properties | cut -d= -f2)
+          test -n "$v" || { echo "openspecTargetVersion is not set in gradle.properties"; exit 1; }
+          npm install -g "@fission-ai/openspec@${v}"
+          test "$(openspec --version)" = "$v" || { echo "installed CLI is not $v"; exit 1; }
 
       - name: Build and Test
         run: ./gradlew --console=plain test
