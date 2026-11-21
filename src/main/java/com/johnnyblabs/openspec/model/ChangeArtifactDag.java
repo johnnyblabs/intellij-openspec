@@ -127,6 +127,17 @@ public class ChangeArtifactDag {
         return applyRequires != null ? applyRequires : List.of();
     }
 
+    /**
+     * Upstream's apply gate: every artifact in {@code applyRequires} is done. With no declared gate, the whole change
+     * must be complete, as before.
+     */
+    public boolean isApplyReady() {
+        List<String> required = getApplyRequires();
+        if (required.isEmpty()) return isComplete;
+        return required.stream().allMatch(id -> getArtifacts().stream()
+                .anyMatch(artifact -> artifact.id().equals(id) && artifact.status() == ArtifactStatus.DONE));
+    }
+
     public void setApplyRequires(List<String> applyRequires) {
         this.applyRequires = applyRequires;
     }

@@ -181,6 +181,8 @@ public class WorkflowActionPanel extends JPanel {
     private JBPopup activeGuidancePopup;
     private volatile boolean hasDeltaSpecs;
     private boolean allArtifactsComplete;
+    /** Apply is ready when the artifacts the CLI requires for it are done, which can precede a complete change. */
+    private boolean applyReady;
     private boolean hasTasksRemaining;
 
     public WorkflowActionPanel(Project project) {
@@ -921,6 +923,7 @@ public class WorkflowActionPanel extends JPanel {
                 // moving to the first change; with no status at all there is no selection to keep.
                 activeChangeName = statusError != null ? changeName : null;
                 allArtifactsComplete = false;
+                applyReady = false;
                 hasTasksRemaining = false;
                 hasDeltaSpecs = false;
                 updateIconBarState();
@@ -955,6 +958,7 @@ public class WorkflowActionPanel extends JPanel {
             nextArtifactId = ready.isEmpty() ? null : ready.getFirst().id();
 
             allArtifactsComplete = dag.isComplete();
+            applyReady = dag.isApplyReady();
 
             if (allArtifactsComplete) {
                 showApplyState(dag);
@@ -980,7 +984,7 @@ public class WorkflowActionPanel extends JPanel {
     private void updateIconBarState() {
         // Revise works on any active change: with no request, the agent reviews whatever artifacts exist.
         reviseIconButton.setEnabled(activeChangeName != null);
-        applyIconButton.setEnabled(allArtifactsComplete);
+        applyIconButton.setEnabled(applyReady);
         verifyIconButton.setEnabled(allArtifactsComplete);
         syncSpecsIconButton.setEnabled(hasDeltaSpecs);
         archiveIconButton.setEnabled(allArtifactsComplete && !hasTasksRemaining);
@@ -990,9 +994,9 @@ public class WorkflowActionPanel extends JPanel {
 
         // Contextual tooltips with change name and disabled reasons
         if (activeChangeName != null) {
-            applyIconButton.setToolTipText(allArtifactsComplete
+            applyIconButton.setToolTipText(applyReady
                     ? "Apply: " + activeChangeName
-                    : "Apply (complete all artifacts first)");
+                    : "Apply (finish the artifacts it needs first)");
             verifyIconButton.setToolTipText(allArtifactsComplete
                     ? "Verify: " + activeChangeName
                     : "Verify (complete all artifacts first)");

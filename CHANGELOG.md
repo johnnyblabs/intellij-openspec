@@ -7,6 +7,7 @@
 ### Fixed
 
 - **A requirement under an unrecognized Requirements section fails Validate and blocks Archive.** A delta that puts a requirement under a heading such as `## DEPRECATED Requirements` used to pass Validate, and Archive dropped the requirement without a word. Both now report it as an error, as OpenSpec CLI 1.16.1 does, and Archive refuses the change. A requirement under a prose heading such as `## Notes` is a warning and blocks nothing.
+- **Apply is enabled once the artifacts it needs are done, as the CLI decides.** Apply waited for the whole change to be complete. It now follows the schema's apply gate, so a change whose tasks are done can be applied while its other artifacts are still open.
 
 ## v0.16.0
 
