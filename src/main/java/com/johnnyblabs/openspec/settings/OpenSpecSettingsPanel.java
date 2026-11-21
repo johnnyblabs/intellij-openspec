@@ -34,6 +34,8 @@ import com.johnnyblabs.openspec.services.WorkflowProfileSwitchService;
 import com.johnnyblabs.openspec.util.CliRunner;
 import com.johnnyblabs.openspec.util.OpenSpecNotifier;
 import com.johnnyblabs.openspec.util.OpenSpecTerminalLauncher;
+import com.johnnyblabs.openspec.util.PluginVersions;
+import org.jetbrains.annotations.Nullable;
 import com.intellij.notification.NotificationAction;
 import com.intellij.notification.NotificationType;
 import com.intellij.openapi.application.ApplicationManager;
@@ -59,6 +61,8 @@ public class OpenSpecSettingsPanel {
     // CLI section
     private final TextFieldWithBrowseButton cliPathField;
     private final JBLabel cliStatusLabel;
+    /** The About line: this plugin's version, the CLI it targets, and the CLI detected on this machine. */
+    private final JBLabel aboutLabel;
 
     // General section
     /**
@@ -155,10 +159,13 @@ public class OpenSpecSettingsPanel {
         cliPathRow.add(detectButton);
 
         cliStatusLabel = new JBLabel("Checking...");
+        aboutLabel = new JBLabel(aboutText(null));
+        aboutLabel.setForeground(UIManager.getColor("Label.disabledForeground"));
 
         JPanel cliSection = FormBuilder.createFormBuilder()
                 .addLabeledComponent(new JBLabel("CLI path:"), cliPathRow)
                 .addComponent(cliStatusLabel)
+                .addComponent(aboutLabel)
                 .getPanel();
         cliSection.setBorder(IdeBorderFactory.createTitledBorder("OpenSpec CLI"));
 
@@ -846,6 +853,7 @@ public class OpenSpecSettingsPanel {
                         cliPathField.repaint();
                     }
                     updateCliStatus();
+                    aboutLabel.setText(aboutText(detection.isAvailable() ? detection.getDetectedVersion() : null));
                     cliStatusLabel.repaint();
                 }, modality);
             } catch (Exception e) {
@@ -857,6 +865,13 @@ public class OpenSpecSettingsPanel {
                 }, modality);
             }
         });
+    }
+
+    /** The About line's text: this plugin's version, the CLI it targets, and the CLI detected here, if any. */
+    static String aboutText(@Nullable String detectedCli) {
+        String detected = detectedCli == null || detectedCli.isBlank() ? "not detected" : detectedCli;
+        return "Plugin " + PluginVersions.pluginVersion() + "; targets OpenSpec CLI " + PluginVersions.targetCliVersion()
+                + "; detected CLI " + detected;
     }
 
     private void updateCliStatus() {

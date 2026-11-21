@@ -4,6 +4,10 @@
 
 ## Unreleased
 
+### Added
+
+- **Settings → Tools → OpenSpec shows the plugin version, the OpenSpec CLI it targets, and the CLI detected on this machine.** Include that line when you report a problem.
+
 ### Fixed
 
 - **A requirement under an unrecognized Requirements section fails Validate and blocks Archive.** A delta that puts a requirement under a heading such as `## DEPRECATED Requirements` used to pass Validate, and Archive dropped the requirement without a word. Both now report it as an error, as OpenSpec CLI 1.16.1 does, and Archive refuses the change. A requirement under a prose heading such as `## Notes` is a warning and blocks nothing.

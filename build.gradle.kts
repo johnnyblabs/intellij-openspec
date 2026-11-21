@@ -22,6 +22,26 @@ plugins {
 group = "com.johnnyblabs.openspec"
 version = "0.16.0"
 
+// This plugin's version and the top-supported OpenSpec CLI (single-sourced from gradle.properties), shipped as a
+// classpath resource so the plugin can show both in Settings → Tools → OpenSpec.
+val generateBuildInfo by tasks.registering {
+    val target = providers.gradleProperty("openspecTargetVersion")
+    val pluginVersion = project.version.toString()
+    val outDir = layout.buildDirectory.dir("generated/openspec-target")
+    inputs.property("openspecTargetVersion", target)
+    inputs.property("pluginVersion", pluginVersion)
+    outputs.dir(outDir)
+    doLast {
+        val file = outDir.get().file("openspec-target.properties").asFile
+        file.parentFile.mkdirs()
+        file.writeText("openspecTargetVersion=${target.get()}\npluginVersion=$pluginVersion\n")
+    }
+}
+
+sourceSets.main {
+    resources.srcDir(generateBuildInfo)
+}
+
 java {
     sourceCompatibility = JavaVersion.VERSION_21
     targetCompatibility = JavaVersion.VERSION_21
