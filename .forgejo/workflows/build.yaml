@@ -41,6 +41,10 @@ env:
 jobs:
   build:
     runs-on: java-21
+    # The runner exports DISPLAY=:99 and no X server is listening there. The tests were written to run
+    # headless, so force AWT headless rather than letting it try to reach that display.
+    env:
+      JAVA_TOOL_OPTIONS: -Djava.awt.headless=true
     steps:
       - uses: actions/checkout@v4
         with:
