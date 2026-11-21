@@ -3,6 +3,7 @@ package com.johnnyblabs.openspec.services;
 import com.johnnyblabs.openspec.model.DeltaSpecOperation;
 import com.johnnyblabs.openspec.model.DeltaSpecOperation.OperationType;
 import com.johnnyblabs.openspec.util.CodeFences;
+import com.johnnyblabs.openspec.util.SpecPatterns;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
@@ -119,6 +120,47 @@ public final class SpecMerge {
         }
         int entries = plan.added().size() + plan.modified().size() + plan.removed().size() + plan.renamed().size();
         return new DeltaSummary(List.copyOf(present), entries, plan.unpaired());
+    }
+
+    /**
+     * A requirement under a level-2 section that OpenSpec does not read as a delta section, so it is ignored. It
+     * {@code fails} when the section title ends in "Requirements" (OpenSpec refuses the change); a requirement under
+     * prose such as {@code ## Notes} is only a warning, as upstream reports it.
+     */
+    public record Orphan(String name, String section, int line, boolean fails) {
+    }
+
+    private static final Set<String> DELTA_HEADINGS = Set.of("added requirements", "modified requirements",
+            "removed requirements", "renamed requirements");
+
+    /** The requirements a delta holds outside its four delta sections, in document order. Fence-masked. */
+    public static List<Orphan> orphans(String deltaContent) {
+        List<String> lines = lines(deltaContent);
+        boolean[] mask = CodeFences.mask(lines);
+        List<Orphan> found = new ArrayList<>();
+        String section = null;
+        for (int i = 0; i < lines.size(); i++) {
+            if (mask[i]) continue;
+            String line = lines.get(i);
+            Matcher heading = SECTION.matcher(line);
+            if (heading.find()) {
+                section = heading.group(2).strip();
+                continue;
+            }
+            Matcher requirement = SpecPatterns.DELTA_REQUIREMENT_HEADER.matcher(line);
+            if (section == null || !requirement.find()) continue;
+            String title = section.toLowerCase(Locale.ROOT);
+            if (DELTA_HEADINGS.contains(title)) continue;
+            found.add(new Orphan(normalizeName(requirement.group(1)), section, i + 1, title.endsWith("requirements")));
+        }
+        return List.copyOf(found);
+    }
+
+    /** The message for an orphan, in OpenSpec's wording, so the plugin and the CLI report the same text. */
+    public static String orphanMessage(Orphan orphan) {
+        return "Requirement \"" + orphan.name() + "\" is under \"## " + orphan.section() + "\", which is not a delta "
+                + "section, so it is ignored. Move it under \"## ADDED Requirements\", \"## MODIFIED Requirements\", "
+                + "\"## REMOVED Requirements\", or \"## RENAMED Requirements\".";
     }
 
     // --- delta parsing ---
@@ -274,6 +316,12 @@ public final class SpecMerge {
         Plan plan = parseDelta(delta);
         List<DeltaSpecOperation> ops = operations(capability, plan);
         List<String> warnings = new ArrayList<>();
+        for (Orphan orphan : orphans(delta)) {
+            if (orphan.fails()) {
+                return new Result(capability, null, ops, List.copyOf(warnings),
+                        capability + " validation failed - " + orphanMessage(orphan));
+            }
+        }
         try {
             String projected = apply(capability, changeName, delta, main, mainSpecPath, plan, warnings);
             return new Result(capability, projected, ops, List.copyOf(warnings), null);

@@ -637,6 +637,12 @@ public final class BuiltInValidator {
                             + "Write each rename as a FROM: line followed immediately by its TO: line.",
                     "delta-renamed-fields"));
         }
+        for (com.johnnyblabs.openspec.services.SpecMerge.Orphan orphan : com.johnnyblabs.openspec.services.SpecMerge.orphans(raw)) {
+            issues.add(new ValidationIssue(
+                    orphan.fails() ? ValidationIssue.Severity.ERROR : ValidationIssue.Severity.WARNING,
+                    path, orphan.line(), com.johnnyblabs.openspec.services.SpecMerge.orphanMessage(orphan),
+                    orphan.fails() ? "delta-requirement-unrecognized-section" : "delta-requirement-orphan"));
+        }
         // All structural matching runs on the fence-masked form (offsets preserved).
         String content = maskFences(raw);
         // Skip full specs (## Requirements / ## Purpose) — only delta specs need
