@@ -49,6 +49,8 @@ Since the 1.5.0 skills-only migration, `.claude/skills/openspec-*/` was the only
 - **The project must pass strict validation.** Before a PR that touches `openspec/`, and before a release, run `openspec validate --all --strict`. Strict treats every warning as a failure, so a clean default run is not enough.
 - **Keep requirement text under 500 characters.** The CLI warns beyond that, and strict fails. Move examples and edge cases into scenarios, or split the requirement. A MODIFIED delta must carry every scenario of its requirement.
 - **Change main specs only through a change.** Write the delta, validate it, then archive. Do not edit `openspec/specs/` directly.
+- **Public specs stay vendor-neutral, including scenario titles.** Requirements, Purpose text and scenario titles in `openspec/specs/` must not name hosting or tracking services. A scenario title can't be renamed without renaming its requirement, so write neutral titles from the start.
+- **Removing a capability.** Archive can't delete a capability. In the same PR, `git rm` the spec, then archive with `--skip-specs`. The `git rm` is part of the change's PR, so the main specs still change only through a change. A change with no spec deltas needs `skip_specs: true` in its `.openspec.yaml`.
 - **Match the CLI to the target.** The installed CLI should equal `openspecTargetVersion` in `gradle.properties`. Check it with `openspec --version` after a bump, then run `openspec update` and restore customizations as described above. Don't use a pinned `npx` version for repo work, because its cache can leak into captured fixtures.
 - **Validate the real tree, not a scratch copy.** Run `openspec validate --all --strict` on the branch you're about to merge, and again after archiving. A scratch copy with deltas applied is not proof, because deltas reach the main specs only on archive, so a copy can pass while `main` still fails.
 - **Tick a change's task list in the PR that completes the work.** Don't tick it in a separate batch PR. Batch PRs that each touch `tasks.md` conflict with one another, and every later PR then needs a conflict fix.
@@ -57,6 +59,8 @@ Since the 1.5.0 skills-only migration, `.claude/skills/openspec-*/` was the only
 
 - **Bring a branch up to date by merging or rebasing `main`. Don't rebuild a branch from a diff.** A net diff against a stale base silently reverts anything merged since that base.
 - **Merge `main` into a branch before merging it when an earlier PR touched the same file** (usually `CHANGELOG.md`). Otherwise the conflict appears at merge time.
+- **Merge PRs with rebase.** Use the rebase method on `origin`, not a merge commit or squash, so internal PR numbers stay out of the public log.
+- **A PR whose head predates a workflow change can't merge.** Its required check never ran on the new workflow, so the merge is refused. Merge `main` into the branch and push it to start a new run. An empty commit doesn't start CI, so use a real merge.
 - **"Build & Verify" always reports on a PR, but its heavy steps are skipped for bypass-only PRs.** The bypass paths are `openspec/**`, `CLAUDE.md`, `.claude/**`, `.githooks/**`, `.gitignore`, `LICENSE` and `ui-smoke.yaml`. Docs (`docs/**`, README, CHANGELOG) are not bypassed, because `DocumentationHygieneTest` validates them. A bypass-only PR reports green in seconds, so it merges without an admin override. An empty commit doesn't start CI.
 
 ## Plugin-internal config fields — audit before "aligning" to upstream
