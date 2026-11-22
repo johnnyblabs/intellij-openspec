@@ -1105,4 +1105,68 @@ class CliDetectionServiceTest {
         assertEquals(2, shells.size(), "the failed resolution counts as a try");
         assertEquals("/usr/bin:/shell1/bin", svc.getLoginShellPath(), "the previous PATH is kept");
     }
+
+    // ---------- The IDE-PATH lookup: the plugin's own, replacing the forRemoval PathEnvironmentVariableUtil.findInPath ----------
+    // Real files in a temp dir, because the executable bit is what the lookup reads. POSIX only: on Windows the IDE-PATH
+    // lookup never runs (see detect_windows_neverAsksTheIdePathOrStartsAShell) and the execute bit means nothing.
+
+    private static java.nio.file.Path cli(java.nio.file.Path dir, boolean executable) throws java.io.IOException {
+        java.nio.file.Files.createDirectories(dir);
+        java.nio.file.Path file = java.nio.file.Files.writeString(dir.resolve("openspec"), "#!/bin/sh\n");
+        java.nio.file.Files.setPosixFilePermissions(file, java.nio.file.attribute.PosixFilePermissions.fromString(
+                executable ? "rwxr-xr-x" : "rw-r--r--"));
+        return file;
+    }
+
+    @Test
+    @org.junit.jupiter.api.condition.DisabledOnOs(org.junit.jupiter.api.condition.OS.WINDOWS)
+    void findOnPath_skipsANonExecutableFileAndFindsTheNextExecutableOne(@org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp)
+            throws Exception {
+        java.nio.file.Path notExecutable = cli(tmp.resolve("a"), false);
+        java.nio.file.Path executable = cli(tmp.resolve("b"), true);
+        String path = notExecutable.getParent() + ":" + executable.getParent();
+
+        assertEquals(executable.toString(), CliDetectionService.findOnPath(path, CliDetectionService::isExecutableFile));
+        assertNull(CliDetectionService.findOnPath(notExecutable.getParent().toString(),
+                CliDetectionService::isExecutableFile), "a file without the execute bit is not a CLI");
+    }
+
+    @Test
+    @org.junit.jupiter.api.condition.DisabledOnOs(org.junit.jupiter.api.condition.OS.WINDOWS)
+    void findOnPath_skipsRelativeEntriesLikeThePlatformLookup(@org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp)
+            throws Exception {
+        cli(tmp.resolve("rel"), true);
+        java.nio.file.Path absolute = cli(tmp.resolve("abs"), true);
+        // A check that accepts anything shows the relative entry is skipped by the lookup itself, not by the check
+        // failing to resolve it against the JVM's working directory.
+        List<String> checked = new ArrayList<>();
+        java.util.function.Predicate<String> any = p -> {
+            checked.add(p);
+            return true;
+        };
+        assertEquals(absolute.toString(), CliDetectionService.findOnPath("rel:./bin:" + absolute.getParent(), any));
+        assertEquals(List.of(absolute.toString()), checked, "relative entries are never tried");
+        assertNull(CliDetectionService.findOnPath("rel:bin", any));
+    }
+
+    @Test
+    @org.junit.jupiter.api.condition.DisabledOnOs(org.junit.jupiter.api.condition.OS.WINDOWS)
+    void detect_unix_theDefaultIdePathLookupSearchesTheIdesPath(@org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp)
+            throws Exception {
+        java.nio.file.Path executable = cli(tmp.resolve("bin"), true);
+        CliDetectionService svc = new CliDetectionService((Project) null);
+        svc.setIsWindowsForTest(false);
+        svc.setIdePathEnvForTest(() -> tmp.resolve("missing") + ":" + executable.getParent());
+        List<String> probed = new ArrayList<>();
+        svc.setProcessRunnerForTest(cmd -> {
+            if (!cmd.getParametersList().getList().contains("--version")) return null;
+            probed.add(cmd.getExePath());
+            return cmd.getExePath().equals(executable.toString()) ? "1.17.0" : null;
+        });
+
+        svc.detect();
+
+        assertEquals(executable.toString(), svc.getDetectedPath());
+        assertEquals(List.of(executable.toString()), probed, "the IDE PATH hit is probed first, by its absolute path");
+    }
 }

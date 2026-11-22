@@ -6,7 +6,6 @@ import com.intellij.openapi.components.Service;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.SystemInfo;
-import com.intellij.execution.configurations.PathEnvironmentVariableUtil;
 import com.intellij.util.EnvironmentUtil;
 import com.intellij.util.messages.Topic;
 import com.johnnyblabs.openspec.settings.OpenSpecSettings;
@@ -94,7 +93,15 @@ public final class CliDetectionService {
     private volatile Supplier<String> userHome = () -> System.getProperty("user.home");
     private volatile @Nullable Predicate<String> executableCheckOverride;
     /** Finds a command on the IDE's own PATH (the environment it loaded from the user's shell); a seam for tests. */
-    private volatile Function<String, File> idePathLookup = PathEnvironmentVariableUtil::findInPath;
+    /**
+     * Finds the CLI on the IDE's own PATH (Unix only; Windows uses where.exe and the suffix fallback). The plugin's own
+     * {@link #findOnPath} rather than the platform's {@code PathEnvironmentVariableUtil.findInPath}, which is
+     * scheduled for removal from 2026.3: a removed method here would stop this service from being constructed.
+     */
+    private volatile Function<String, File> idePathLookup = name -> {
+        String found = findOnPath(this.idePath.get(), executableCheck());
+        return found == null ? null : new File(found);
+    };
     /** The PATH a child process inherits from the IDE when its command line sets none; a seam for tests. */
     private volatile Supplier<String> idePath = () -> EnvironmentUtil.getValue("PATH");
 
@@ -131,6 +138,12 @@ public final class CliDetectionService {
     @TestOnly
     public void setExecutableCheckForTest(@Nullable Predicate<String> check) {
         this.executableCheckOverride = check;
+    }
+
+    /** Replaces only the IDE's PATH, keeping the real lookup over it. */
+    @TestOnly
+    public void setIdePathEnvForTest(Supplier<String> path) {
+        this.idePath = path;
     }
 
     @TestOnly
@@ -392,11 +405,13 @@ public final class CliDetectionService {
         return path.isEmpty() ? null : path;
     }
 
-    /** The first {@code dir/openspec} on {@code path} that the check accepts, or null. */
+    /** The first {@code dir/openspec} on {@code path}, for an absolute {@code dir}, that the check accepts, or null. */
     static @Nullable String findOnPath(@Nullable String path, Predicate<String> check) {
         if (path == null) return null;
         for (String dir : path.split(":")) {
-            if (dir.isEmpty()) continue;
+            // Relative entries are skipped, as the platform's PATH lookup does: they would resolve against the IDE's
+            // working directory, not the user's.
+            if (dir.isEmpty() || !dir.startsWith("/")) continue;
             String candidate = (dir.endsWith("/") ? dir : dir + "/") + "openspec";
             if (check.test(candidate)) return candidate;
         }

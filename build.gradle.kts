@@ -434,7 +434,8 @@ intellijPlatform {
         // select{} resolves the latest patch of each matching release line; EAP builds are excluded (the
         // Marketplace verifies them on every upload). 2024.3 and 2025.1 are skipped: the plugin compiles
         // against 2024.2, and API breakage surfaces first in the newest lines.
-        // When a new stable IntelliJ IDEA line ships (2026.3 = build 263), raise untilBuild to include it.
+        // The last select{} is open-ended (253 and every later stable line, e.g. 2026.3 = build 263), so a new
+        // IntelliJ IDEA release line is verified as soon as it ships; EAP stays out via the RELEASE channel.
         ides {
             select {
                 types = listOf(IntelliJPlatformType.IntellijIdeaCommunity)
@@ -452,7 +453,6 @@ intellijPlatform {
                 types = listOf(IntelliJPlatformType.IntellijIdea)
                 channels = listOf(ProductRelease.Channel.RELEASE)
                 sinceBuild = "253"
-                untilBuild = "262.*"
             }
         }
         // Verifier severity gate — pinned replica of the IPGP 2.18.1 DEFAULT failure set (do NOT
@@ -468,12 +468,17 @@ intellijPlatform {
         //     abstract on 2024.2 only (a null-returning default from 2024.3), so it must be overridden at the 242
         //     floor. Its replacement, getDataProviders(), is stable from 2026.2; at a 243+ floor just delete the
         //     override, since the default matches it.
-        //   Kept deliberately (decision 2026-10-25). Revisit when any of these happens:
-        //     (1) either method gains forRemoval, which the canary below fails on;
+        //   - The legacy Search Everywhere API (SpecSearchEverywhereContributor and its factory; deprecated 2026.3+):
+        //     SearchEverywhereContributor, SearchEverywhereContributorFactory, WeightedSearchEverywhereContributor and
+        //     FoundItemDescriptor. Their replacement, SE 2.0's SeItemsProvider, is @ApiStatus.Experimental, suspend-only
+        //     and ships in a content module, and the platform still wraps legacy contributors into SE 2.0, so there is
+        //     no stable target on any floor yet.
+        //   Kept deliberately (decision 2026-10-25; the Search Everywhere entry added 2026-11-22 on the first 2026.3
+        //   verifier run). Revisit when any of these happens:
+        //     (1) any of these gains forRemoval, which the canary below fails on;
         //     (2) TerminalToolWindowTabsManager drops @Experimental, then migrate behind a 253+ floor;
         //     (3) the floor is raised to 243+ for any reason, then delete the getDataForItem override in that change;
-        //     (4) the first 2026.3 verifier run, where master already deprecates the whole
-        //         SearchEverywhereContributor interface in favour of the experimental SeItemsProvider.
+        //     (4) SeItemsProvider drops @Experimental, then plan the Search Everywhere migration.
         // (Migrated already, so not exceptions: ActionUtil.invokeAction → ActionLauncher, ReadAction.compute →
         // Application.runReadAction(ThrowableComputable), FileEditorManager.openFile(file, boolean) →
         // OpenFileDescriptor.navigate(true); DeprecatedPlatformApiHygieneTest and ActionInvocationHygieneTest

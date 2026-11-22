@@ -15,11 +15,11 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Guards the migration off platform APIs deprecated in newer IDEs whose replacements exist at the 2024.2 floor:
- * {@code ReadAction.compute} (use {@code Application.runReadAction(ThrowableComputable)}) and the two-argument
- * {@code FileEditorManager.openFile(file, boolean)} (use {@code new OpenFileDescriptor(project, file).navigate(true)}).
- * {@code build}/{@code test} compile against 2024.2, where neither is deprecated, so only this scan (and
- * {@code verifyPlugin} against the newer IDEs) can catch a regression. For {@code openFile} this scan is the only CI
- * check until 2026.3 joins the verified set: no stable IDE in it deprecates that method yet.
+ * {@code ReadAction.compute} (use {@code Application.runReadAction(ThrowableComputable)}), the two-argument
+ * {@code FileEditorManager.openFile(file, boolean)} (use {@code new OpenFileDescriptor(project, file).navigate(true)})
+ * and the forRemoval {@code PathEnvironmentVariableUtil.findInPath} (use {@code CliDetectionService.findOnPath}).
+ * {@code build}/{@code test} compile against 2024.2, where none is deprecated, so only this scan (and
+ * {@code verifyPlugin} against the newer IDEs, 2026.3 included) can catch a regression.
  */
 class DeprecatedPlatformApiHygieneTest {
 
@@ -30,6 +30,12 @@ class DeprecatedPlatformApiHygieneTest {
      * its receiver so a {@code FileEditorManager} held in a local is caught too. The plugin's own one-argument
      * {@code openFile(String)} helper does not match.
      */
+    /**
+     * {@code PathEnvironmentVariableUtil.findInPath}, called or method-referenced: forRemoval from 2026.3 (263). Its
+     * removal would break CLI detection's service construction, so the plugin uses its own PATH lookup instead.
+     */
+    static final Pattern FIND_IN_PATH =
+            Pattern.compile("PathEnvironmentVariableUtil\\s*(?:::\\s*findInPath\\b|\\.\\s*findInPath\\s*\\()");
     static final Pattern OPEN_FILE_WITH_FOCUS_FLAG =
             Pattern.compile("\\.\\s*openFile\\s*\\(\\s*\\w+\\s*,\\s*(?:true|false)\\s*\\)");
 
@@ -100,5 +106,28 @@ class DeprecatedPlatformApiHygieneTest {
                 "the plugin's own one-argument helper must not match");
         assertFalse(OPEN_FILE_WITH_FOCUS_FLAG.matcher("private void openFile(String relativePath) {").find());
         assertFalse(OPEN_FILE_WITH_FOCUS_FLAG.matcher("new OpenFileDescriptor(project, vf).navigate(true);").find());
+    }
+
+    @org.junit.jupiter.api.Test
+    void noMainSourceUsesTheForRemovalFindInPath() throws java.io.IOException {
+        List<Path> javaFiles = mainJavaSources();
+        assertTrue(javaFiles.size() > 50, "expected to scan the plugin's sources, found " + javaFiles.size());
+        assertTrue(javaFiles.stream().anyMatch(p -> p.endsWith("services/CliDetectionService.java")),
+                "the migrated lookup site was not scanned");
+        List<String> offenders = offenders(javaFiles, FIND_IN_PATH);
+        assertTrue(offenders.isEmpty(), "use CliDetectionService.findOnPath instead of the forRemoval "
+                + "PathEnvironmentVariableUtil.findInPath: " + offenders);
+    }
+
+    @org.junit.jupiter.api.Test
+    void theFindInPathPatternMatchesACallOrReferenceButNotAMention() {
+        assertTrue(FIND_IN_PATH.matcher("Function<String, File> f = PathEnvironmentVariableUtil::findInPath;").find());
+        assertTrue(FIND_IN_PATH.matcher("File f = PathEnvironmentVariableUtil.findInPath(\"openspec\");").find());
+        assertTrue(FIND_IN_PATH.matcher("PathEnvironmentVariableUtil\n        .findInPath(name)").find());
+        assertFalse(FIND_IN_PATH.matcher("replacing the forRemoval {@code findInPath}").find(), "a bare mention");
+        assertFalse(FIND_IN_PATH.matcher("rather than the platform's {@code PathEnvironmentVariableUtil.findInPath}, which")
+                .find(), "a qualified mention in javadoc");
+        assertFalse(FIND_IN_PATH.matcher("PathEnvironmentVariableUtil.findAllExeFilesInPath(name)").find(),
+                "a different method");
     }
 }
