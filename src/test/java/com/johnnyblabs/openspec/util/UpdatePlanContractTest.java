@@ -178,4 +178,47 @@ class UpdatePlanContractTest {
             assertFalse(new Change(inside, "add", "t").outsideProject(), inside);
         }
     }
+
+    // --- CLI 1.17.0: unedited legacy files are removed without --force (fixtures/cli/1.17.0/update-dry-run/) ---
+
+    static Plan plan117(String name) {
+        Result r = UpdatePlanParser.parse(captured("1.17.0/update-dry-run", name));
+        return assertInstanceOf(Plan.class, r, name + " must parse as a plan");
+    }
+
+    private static List<String> deletes(Plan p, String tool) {
+        return p.changes().stream().filter(c -> c.action().equals("delete") && c.tool().equals(tool))
+                .map(Change::path).sorted().toList();
+    }
+
+    @Test
+    void unedited117LegacyFilesAreOrdinaryDeletesWithNoNote() {
+        Plan p = plan117("legacy-unedited");
+        assertFalse(p.hasNote(UpdatePlanParser.LEGACY_ARTIFACTS), "1.17 removes unedited legacy files unasked");
+        assertEquals(List.of(".claude/commands/openspec/apply.md", ".claude/commands/openspec/archive.md",
+                        ".claude/commands/openspec/proposal.md", "openspec/AGENTS.md"),
+                deletes(p, "openspec"));
+        assertTrue(p.changes().stream().filter(c -> c.action().equals("delete")).noneMatch(Change::outsideProject));
+        assertTrue(p.failures().isEmpty());
+    }
+
+    @Test
+    void oneEdited117LegacyFileLeavesOnlyTheNote() {
+        Plan p = plan117("legacy-one-edited");
+        assertTrue(p.hasNote(UpdatePlanParser.LEGACY_ARTIFACTS));
+        assertTrue(p.changes().isEmpty(), "cleanup is all-or-nothing: nothing is removed when one file was edited");
+        assertEquals(deletes(plan117("legacy-unedited"), "openspec"),
+                deletes(plan117("legacy-one-edited-force"), "openspec"), "--force lists the same cleanup");
+    }
+
+    @Test
+    void earlierReleaseSweepIsItsOwnTool() {
+        Plan p = plan117("earlier-release");
+        List<String> swept = deletes(p, "earlier-release");
+        assertEquals(List.of(".agent/workflows/opsx-apply.md", ".agent/workflows/opsx-archive.md",
+                ".agent/workflows/opsx-explore.md", ".agent/workflows/opsx-propose.md",
+                ".agent/workflows/opsx-sync.md", ".agent/workflows/opsx-update.md"), swept);
+        assertEquals(6, deletes(p, "antigravity").size(), "the former-root skills move under the tool's own id");
+        assertTrue(p.notes().isEmpty());
+    }
 }

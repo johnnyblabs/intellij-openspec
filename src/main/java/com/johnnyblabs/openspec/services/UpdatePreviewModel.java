@@ -28,6 +28,10 @@ public record UpdatePreviewModel(String summary, List<NoteRow> notes, List<Failu
                                  @Nullable String focusTool, boolean applyEnabled, boolean cancelIsDefault) {
 
     public static final String OUTSIDE_PROJECT = "Outside this project";
+    /** The plan's tool value for untouched files an earlier release left where no tool reads them (CLI 1.17.0+). */
+    public static final String EARLIER_RELEASE_TOOL = "earlier-release";
+    /** How the preview names the {@link #EARLIER_RELEASE_TOOL} group. */
+    public static final String EARLIER_RELEASE_LABEL = "Left by an earlier OpenSpec release";
     public static final String FAILURES_EXPLANATION =
             "openspec update stops at the first tool it can't update, so fix these before applying.";
 
@@ -37,8 +41,10 @@ public record UpdatePreviewModel(String summary, List<NoteRow> notes, List<Failu
 
     /** {@code tool} is the tool's id, or {@link #OUTSIDE_PROJECT} for the outside group. */
     public record Group(String tool, boolean outsideProject, List<Change> changes) {
+        /** The tool's id and count; the earlier-release sweep is named in words rather than by its tool value. */
         public String label() {
-            return tool + " (" + changes.size() + ")";
+            String name = !outsideProject && EARLIER_RELEASE_TOOL.equals(tool) ? EARLIER_RELEASE_LABEL : tool;
+            return name + " (" + changes.size() + ")";
         }
     }
 

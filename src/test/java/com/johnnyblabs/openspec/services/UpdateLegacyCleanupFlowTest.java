@@ -25,6 +25,12 @@ public class UpdateLegacyCleanupFlowTest extends OpenSpecIntegrationTestBase {
     protected void setUp() throws Exception {
         super.setUp();
         raised.clear();
+        // These tests feed the text output of a real re-run, which is the pre-1.15 verification path; pin the CLI so a
+        // newer one installed on the machine can't route them to the read-only check.
+        CliDetectionService detection = new CliDetectionService(getProject());
+        CliDetectionTestSupport.fakeAvailable(detection, "1.14.3");
+        com.intellij.testFramework.ServiceContainerUtil.replaceService(getProject(), CliDetectionService.class,
+                detection, getTestRootDisposable());
         getProject().getMessageBus().connect(getTestRootDisposable())
                 .subscribe(Notifications.TOPIC, new Notifications() {
                     @Override
@@ -143,7 +149,7 @@ public class UpdateLegacyCleanupFlowTest extends OpenSpecIntegrationTestBase {
         }
     }
 
-    public void testFailedVerificationIsNotReportedClean() throws Exception {
+    public void testFailedPre115VerificationIsNotReportedClean() throws Exception {
         // Real 1.14.3 `update` failure (exit 1, empty stdout) as the re-run: used to say "a clean state".
         verifyWith(com.johnnyblabs.openspec.util.CliFixtures.error("update-fail"));
         assertFalse("must not claim a clean state", raised.stream().anyMatch(n -> n.getContent().contains("clean state")));
@@ -151,7 +157,7 @@ public class UpdateLegacyCleanupFlowTest extends OpenSpecIntegrationTestBase {
                 raised.stream().anyMatch(n -> n.getContent().contains("couldn't be verified")));
     }
 
-    public void testSuccessfulCleanVerificationStillReportsClean() throws Exception {
+    public void testSuccessfulPre115VerificationStillReportsClean() throws Exception {
         verifyWith(new com.johnnyblabs.openspec.util.CliRunner.CliResult(0, loadFixture("update-clean.txt"), ""));
         assertTrue(raised.stream().anyMatch(n -> n.getContent().contains("clean state")));
     }

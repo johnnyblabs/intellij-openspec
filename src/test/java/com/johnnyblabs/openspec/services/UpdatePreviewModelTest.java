@@ -18,7 +18,11 @@ import static org.junit.jupiter.api.Assertions.*;
 class UpdatePreviewModelTest {
 
     private static Plan plan(String name) {
-        String base = "/fixtures/cli/1.15.0/update-dry-run/" + name;
+        return plan("1.15.0", name);
+    }
+
+    private static Plan plan(String version, String name) {
+        String base = "/fixtures/cli/" + version + "/update-dry-run/" + name;
         try (InputStream json = UpdatePreviewModelTest.class.getResourceAsStream(base + ".json");
              InputStream exit = UpdatePreviewModelTest.class.getResourceAsStream(base + ".exit")) {
             assertNotNull(json, base);
@@ -109,5 +113,33 @@ class UpdatePreviewModelTest {
         assertEquals("1 change: 1 update", UpdatePreviewModel.summary(List.of(new Change("a", "update", "t"))));
         assertEquals("3 changes: 1 delete, 1 add, 1 rename", UpdatePreviewModel.summary(List.of(
                 new Change("a", "rename", "t"), new Change("b", "add", "t"), new Change("c", "delete", "t"))));
+    }
+
+    // --- CLI 1.17.0 cleanup plans ---
+
+    @Test
+    void unaskedLegacyDeletesSitInTheirToolGroupAndMakeCancelTheDefault() {
+        Plan plan = plan("1.17.0", "legacy-unedited");
+        UpdatePreviewModel m = UpdatePreviewModel.of(plan, null);
+        assertTrue(m.cancelIsDefault(), "1.17 deletes the unedited legacy files, so Cancel is the default");
+        assertTrue(m.notes().isEmpty());
+        UpdatePreviewModel.Group openspec = m.groups().stream().filter(g -> g.tool().equals("openspec")).findFirst()
+                .orElseThrow();
+        long deletes = plan.changes().stream().filter(c -> c.tool().equals("openspec") && c.action().equals("delete"))
+                .count();
+        assertEquals(4, deletes);
+        assertTrue(openspec.changes().subList(0, (int) deletes).stream().allMatch(c -> c.action().equals("delete")),
+                "deletes are listed first in the group");
+        assertEquals("openspec (" + openspec.changes().size() + ")", openspec.label(), "other tools keep their id");
+    }
+
+    @Test
+    void theEarlierReleaseGroupIsNamedInWordsWithItsCount() {
+        Plan plan = plan("1.17.0", "earlier-release");
+        UpdatePreviewModel m = UpdatePreviewModel.of(plan, null);
+        long swept = plan.changes().stream().filter(c -> c.tool().equals(UpdatePreviewModel.EARLIER_RELEASE_TOOL)).count();
+        assertEquals(6, swept);
+        List<String> labels = m.groups().stream().map(UpdatePreviewModel.Group::label).toList();
+        assertEquals(List.of("antigravity (13)", "Left by an earlier OpenSpec release (" + swept + ")"), labels);
     }
 }

@@ -8,6 +8,14 @@
 
 - Support for OpenSpec CLI 1.17. The plugin now targets 1.17.0 and supports the 1.3.x through 1.17.x lines. 1.17 changes only how `openspec update` cleans up old generated files, so everything the plugin reads works as it did on 1.16.
 
+### Changed
+
+- The update preview names the group of untouched files an earlier OpenSpec release left behind ("Left by an earlier OpenSpec release") instead of showing the CLI's internal tool value.
+
+### Fixed
+
+- On OpenSpec 1.15 or later, checking a legacy-file cleanup no longer runs a real `openspec update`. It uses a dry run, which changes nothing. On OpenSpec 1.17 the real run removed other unedited legacy files without showing them first, and the plugin then reported those files as still pending. When the update still has work to do, the notice offers **Update OpenSpec…**, which shows the preview first. A file you kept is no longer mistaken for one OpenSpec recreated.
+
 ## v0.16.1
 
 ### Changed

@@ -39,6 +39,10 @@ public final class UpdateLegacyCleanupService {
     static final String DISMISSED_SET_KEY = "openspec.update.cleanup.dismissedSet";
     static final String REGENERATING_SET_KEY = "openspec.update.cleanup.regeneratingSet";
 
+    /** The registered Update action the completion notice offers; it opens the preview first on 1.15+. */
+    static final String UPDATE_ACTION_ID = "OpenSpec.Update";
+    static final String UPDATE_ACTION_TEXT = "Update OpenSpec…";
+
     private final Project project;
 
     public UpdateLegacyCleanupService(Project project) {
@@ -118,20 +122,46 @@ public final class UpdateLegacyCleanupService {
         verifyCleanup(reported);
     }
 
-    /** Re-runs {@code openspec update} off the EDT and reports what it established. Package-private for tests. */
+    /** Verifies the cleanup off the EDT and reports what the CLI established. Package-private for tests. */
     void verifyCleanup(List<String> reported) {
-        // Verification re-run: the CLI is the judge of whether the cleanup stuck.
+        // The CLI is the judge of whether the cleanup stuck.
         ApplicationManager.getApplication().executeOnPooledThread(() -> {
-            Verification verification;
-            try {
-                verification = classifyVerification(updateCli.run(project, "update"), null);
-            } catch (CliRunner.CliException e) {
-                LOG.warn("Verification re-run failed", e);
-                verification = classifyVerification(null, e);
-            }
-            Verification outcome = verification;
-            ApplicationManager.getApplication().invokeLater(() -> reportVerification(reported, outcome));
+            if (project.isDisposed()) return;
+            Verification outcome = runVerification();
+            // Expires with the project: two CLI runs give the user time to close it before the report lands.
+            ApplicationManager.getApplication().invokeLater(() -> reportVerification(reported, outcome),
+                    project.getDisposed());
         });
+    }
+
+    /**
+     * On CLI 1.15.0+ a read-only dry run ({@link UpdatePreviewService#verifyCleanupReadOnly()}): from 1.17 a real
+     * {@code openspec update} removes unedited legacy files unasked and still prints them as "to remove". Below 1.15,
+     * which has no dry run, a re-run of {@code openspec update}. Call off the EDT; package-private for tests.
+     */
+    Verification runVerification() {
+        UpdatePreviewService preview = UpdatePreviewService.getInstance(project);
+        if (preview != null && preview.supportsPreview()) {
+            UpdatePreviewService.CleanupCheck check = preview.verifyCleanupReadOnly();
+            if (check.unverifiedReason() != null) {
+                LOG.info("Read-only cleanup verification failed: " + check.unverifiedReason());
+            }
+            return fromReadOnly(check);
+        }
+        try {
+            return classifyVerification(updateCli.run(project, "update"), null);
+        } catch (CliRunner.CliException e) {
+            LOG.warn("Verification re-run failed", e);
+            return classifyVerification(null, e);
+        }
+    }
+
+    /** Maps a read-only check onto a {@link Verification}. Pure; package-private for tests. */
+    static Verification fromReadOnly(UpdatePreviewService.CleanupCheck check) {
+        if (check.unverifiedReason() != null) {
+            return new Verification(List.of(), check.unverifiedReason(), true, false, false);
+        }
+        return new Verification(check.pending(), null, true, check.noteRemains(), check.updateRemains());
     }
 
     /** Runs {@code openspec update}; a seam so tests can feed the verification re-run captured output. */
@@ -150,7 +180,17 @@ public final class UpdateLegacyCleanupService {
      * What the verification re-run established: the files {@code openspec update} still reports, or, when the re-run
      * failed, why the cleanup could not be verified ({@code unverifiedReason} non-null, {@code after} empty).
      */
-    record Verification(List<String> after, @org.jetbrains.annotations.Nullable String unverifiedReason) {
+    record Verification(List<String> after, @org.jetbrains.annotations.Nullable String unverifiedReason,
+                        boolean readOnly, boolean noteRemains, boolean updateRemains) {
+        /**
+         * The outcome of a re-run of {@code openspec update} (CLIs below 1.15). {@code readOnly}: a dry-run check,
+         * where nothing ran that could regenerate files. {@code noteRemains}: the plan still notes legacy files.
+         * {@code updateRemains}: a note-free plan that still has work, so Update is offered.
+         */
+        Verification(List<String> after, @org.jetbrains.annotations.Nullable String unverifiedReason) {
+            this(after, unverifiedReason, false, false, false);
+        }
+
         boolean verified() {
             return unverifiedReason == null;
         }
@@ -174,7 +214,8 @@ public final class UpdateLegacyCleanupService {
         return new Verification(UpdateOutputParser.parseLegacyCleanup(rerun.stdout()), null);
     }
 
-    private void reportVerification(List<String> removedSet, Verification verification) {
+    /** Reports a verification on the EDT. Package-private for tests. */
+    void reportVerification(List<String> removedSet, Verification verification) {
         if (!verification.verified()) {
             OpenSpecNotifier.warn(project, "OpenSpec update",
                     "Legacy files were removed, but the cleanup couldn't be verified: "
@@ -183,7 +224,7 @@ public final class UpdateLegacyCleanupService {
         }
         List<String> reportedAfter = verification.after();
         PropertiesComponent state = PropertiesComponent.getInstance(project);
-        if (isRegenerationLoop(removedSet, reportedAfter)) {
+        if (!verification.readOnly() && isRegenerationLoop(removedSet, reportedAfter)) {
             // Truthful terminal state: this CLI version's tool integration both
             // generates and flags these files. Deletion is futile; suppress and
             // never offer it again for this set.
@@ -193,6 +234,18 @@ public final class UpdateLegacyCleanupService {
                             + "integration both generates and flags them. Nothing on your side needs fixing; "
                             + "this notice is suppressed until the CLI reports something different (e.g. after a CLI upgrade).",
                     com.intellij.notification.NotificationType.INFORMATION);
+        } else if (reportedAfter.isEmpty() && verification.noteRemains()) {
+            // The CLI still notes legacy files but lists none to remove, e.g. OpenSpec markers left in an edited file.
+            OpenSpecNotifier.info(project, "Legacy cleanup applied, but openspec update still reports legacy files"
+                    + " it lists nothing to remove for. Run openspec update in a terminal to finish the cleanup.");
+        } else if (reportedAfter.isEmpty() && verification.updateRemains()) {
+            // Read-only check (1.15+): nothing pending, but the update itself hasn't run — finish it via the preview.
+            OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_SYSTEM, "OpenSpec update",
+                    "Legacy cleanup complete — openspec update reports no legacy files left. Run Update OpenSpec"
+                            + " to refresh your skills and commands; it shows you what it will change first.",
+                    com.intellij.notification.NotificationType.INFORMATION,
+                    com.johnnyblabs.openspec.actions.ActionLauncher.notificationAction(project, UPDATE_ACTION_TEXT,
+                            UPDATE_ACTION_ID));
         } else if (reportedAfter.isEmpty()) {
             OpenSpecNotifier.info(project, "Legacy cleanup complete — openspec update reports a clean state.");
         } else {

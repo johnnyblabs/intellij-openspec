@@ -763,3 +763,14 @@ Real CLI **1.17.0** captures (npm `@fission-ai/openspec@1.17.0`, released 2026-1
 - `explore/`, `update/`, `explore-context/`, `workflow-invocations.json` and `update-dry-run/`: `scripts/capture-explore-fixtures.py`, `scripts/capture-workflow-invocations.py`, `scripts/capture-explore-context-fixtures.py` and `scripts/capture-update-dry-run-fixtures.py`. Apart from the `generatedBy: "1.17.0"` stamp in the generated skills and `cliVersion`, every file equals 1.16.1's. The update-dry-run cases' seeded legacy files are hand-written, so they match no released file fingerprint and 1.17 plans them exactly as 1.16.1 did.
 
 1.16.1's `behaviours/` positive controls have no 1.17.0 twin, because validation is unchanged.
+
+### `1.17.0/update-dry-run/`: 1.17's cleanup of files an earlier release left
+
+`scripts/capture-update-dry-run-fixtures.py`, with the installed 1.17.0 package as the CLI under test. Each case is seeded by an older CLI through `npx`. The script's longest-first sanitizing keeps macOS's `/private` prefix out of every capture.
+
+- `legacy-unedited`: a project set up by 0.12.0 for `claude` (`LEGACY_BIN`), untouched. The plan deletes the legacy files (`.claude/commands/openspec/*.md`, `openspec/AGENTS.md`) with `tool: "openspec"` and has **no** `legacy-artifacts` note. 1.17 removes unedited legacy files without `--force`; 1.16.1 only noted them.
+- `legacy-one-edited`: the same project with one line appended to `.claude/commands/openspec/apply.md`. Cleanup is all-or-nothing, so the plan has only the `legacy-artifacts` note and no changes.
+- `legacy-one-edited-force`: the same project with `--dry-run --force`. It lists the cleanup, and is byte-identical to `legacy-unedited`.
+- `earlier-release`: Antigravity set up by 1.6.0 (`FORMER_ROOT_BIN`, former root `.agent/`), then `config set delivery skills`. The old `.agent/workflows/opsx-*.md` files reach 1.17's sweep and are deleted with `tool: "earlier-release"`. The old skills move to `.agents/` under `tool: "antigravity"`.
+
+`UpdatePlanContractTest`, `UpdatePreviewModelTest`, `UpdatePreviewDialogTest` and `UpdateCleanupVerificationTest` read these. The legacy cleanup's deletes carry `tool: "openspec"` in every forced plan captured (1.15.0 and 1.17.0), which is how the cleanup flow tells them from other deletes.

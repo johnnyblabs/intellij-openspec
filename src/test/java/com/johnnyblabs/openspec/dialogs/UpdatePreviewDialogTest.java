@@ -6,6 +6,9 @@ import com.johnnyblabs.openspec.services.UpdatePreviewModel;
 import com.johnnyblabs.openspec.util.CliRunner;
 import com.johnnyblabs.openspec.util.UpdatePlanParser;
 
+import com.intellij.ui.ColoredTreeCellRenderer;
+
+import javax.swing.JTree;
 import javax.swing.tree.DefaultMutableTreeNode;
 import java.io.IOException;
 import java.io.InputStream;
@@ -17,7 +20,11 @@ import java.util.List;
 public class UpdatePreviewDialogTest extends BasePlatformTestCase {
 
     private static UpdatePlanParser.Plan plan(String name) {
-        String base = "/fixtures/cli/1.15.0/update-dry-run/" + name;
+        return plan("1.15.0", name);
+    }
+
+    private static UpdatePlanParser.Plan plan(String version, String name) {
+        String base = "/fixtures/cli/" + version + "/update-dry-run/" + name;
         return (UpdatePlanParser.Plan) UpdatePlanParser.parse(new CliRunner.CliResult(
                 Integer.parseInt(read(base + ".exit").strip()), read(base + ".json"), ""));
     }
@@ -37,11 +44,16 @@ public class UpdatePreviewDialogTest extends BasePlatformTestCase {
         return dialog;
     }
 
+    /** Each group row's text as the tree's own renderer draws it, so a renderer that stops using the label fails. */
     private static List<String> groupLabels(UpdatePreviewDialog dialog) {
-        DefaultMutableTreeNode root = (DefaultMutableTreeNode) dialog.treeForTest().getModel().getRoot();
+        JTree tree = dialog.treeForTest();
+        DefaultMutableTreeNode root = (DefaultMutableTreeNode) tree.getModel().getRoot();
         List<String> labels = new ArrayList<>();
         for (int i = 0; i < root.getChildCount(); i++) {
-            labels.add(((UpdatePreviewModel.Group) ((DefaultMutableTreeNode) root.getChildAt(i)).getUserObject()).label());
+            Object node = root.getChildAt(i);
+            ColoredTreeCellRenderer rendered = (ColoredTreeCellRenderer) tree.getCellRenderer()
+                    .getTreeCellRendererComponent(tree, node, false, false, false, i, false);
+            labels.add(rendered.getCharSequence(false).toString());
         }
         return labels;
     }
@@ -65,5 +77,11 @@ public class UpdatePreviewDialogTest extends BasePlatformTestCase {
         UpdatePreviewDialog d = dialog(UpdatePreviewModel.of(plan("first-run-global-config"), null));
         assertEquals(List.of(UpdatePreviewModel.OUTSIDE_PROJECT + " (1)"), groupLabels(d));
         assertTrue(d.isApplyEnabledForTest());
+    }
+
+    public void testTheEarlierReleaseGroupIsNamedInWords() {
+        UpdatePreviewDialog d = dialog(UpdatePreviewModel.of(plan("1.17.0", "earlier-release"), null));
+        assertEquals(List.of("antigravity (13)", UpdatePreviewModel.EARLIER_RELEASE_LABEL + " (6)"), groupLabels(d));
+        assertTrue("its deletes make Cancel the default", d.isCancelDefaultForTest());
     }
 }

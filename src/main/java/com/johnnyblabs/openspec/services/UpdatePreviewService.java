@@ -167,18 +167,18 @@ public final class UpdatePreviewService {
 
     /** Called off the EDT after an applied update that left legacy artifacts: reads their removal from the forced plan. */
     private void offerLegacyCleanup(UpdatePlanParser.Plan applied, ModalityState modality) {
-        UpdatePlanParser.Result forced = dryRun("update", "--dry-run", "--force", "--json");
+        LegacyPending pending = pendingLegacyFiles();
         String guidance = applied.notes().stream()
                 .filter(n -> UpdatePlanParser.LEGACY_ARTIFACTS.equals(n.code()))
                 .map(UpdatePlanParser.Note::message).findFirst().orElse(null);
         ui.run(modality, () -> {
-            if (forced instanceof UpdatePlanParser.Failed failed) {
-                LOG.info("Legacy cleanup list couldn't be read: " + failed.message());
+            if (pending.failure() != null) {
+                LOG.info("Legacy cleanup list couldn't be read: " + pending.failure());
                 OpenSpecNotifier.warn(project, "OpenSpec update",
-                        "The legacy cleanup list couldn't be read: " + failed.message());
+                        "The legacy cleanup list couldn't be read: " + pending.failure());
                 return;
             }
-            List<String> files = legacyDeletes((UpdatePlanParser.Plan) forced);
+            List<String> files = pending.files();
             LOG.info("Legacy cleanup: " + files.size() + " file(s) offered from the forced plan");
             if (files.isEmpty()) {
                 return;
@@ -190,12 +190,68 @@ public final class UpdatePreviewService {
         });
     }
 
-    /** The in-project deletes of a forced plan: the only files the cleanup flow may offer. Package-private for tests. */
+    /** The plan tool value of OpenSpec's own legacy cleanup; other tools' deletes are ordinary update work. */
+    static final String LEGACY_CLEANUP_TOOL = "openspec";
+
+    /**
+     * The in-project deletes OpenSpec's legacy cleanup lists in a forced plan: the only files the cleanup flow may
+     * offer. Deletes of other tools (stale skills, the earlier-release sweep) are not legacy files. Package-private
+     * for tests.
+     */
     static List<String> legacyDeletes(UpdatePlanParser.Plan forced) {
         return forced.changes().stream()
-                .filter(c -> c.action().equals("delete") && !c.outsideProject())
+                .filter(c -> c.action().equals("delete") && !c.outsideProject()
+                        && LEGACY_CLEANUP_TOOL.equals(c.tool()))
                 .map(UpdatePlanParser.Change::path)
                 .toList();
+    }
+
+    /** The legacy files the read-only forced plan would remove, or why that plan couldn't be read. */
+    record LegacyPending(List<String> files, @Nullable String failure) {
+    }
+
+    /** Reads the pending legacy files from {@code update --dry-run --force --json}, which writes nothing. Off the EDT. */
+    LegacyPending pendingLegacyFiles() {
+        UpdatePlanParser.Result forced = dryRun("update", "--dry-run", "--force", "--json");
+        if (forced instanceof UpdatePlanParser.Failed failed) {
+            return new LegacyPending(List.of(), failed.message());
+        }
+        return new LegacyPending(legacyDeletes((UpdatePlanParser.Plan) forced), null);
+    }
+
+    /**
+     * What a read-only cleanup verification established. {@code unverifiedReason} is non-null when a dry run failed.
+     * Otherwise {@code noteRemains} says whether the plan still carries the legacy-artifacts note, {@code pending}
+     * lists the legacy files the forced plan would still remove, and {@code updateRemains} says whether a note-free
+     * plan still has anything to do (changes, notes or failures).
+     */
+    record CleanupCheck(List<String> pending, boolean noteRemains, boolean updateRemains,
+                        @Nullable String unverifiedReason) {
+        static CleanupCheck unverified(String reason) {
+            return new CleanupCheck(List.of(), false, false, reason);
+        }
+    }
+
+    /**
+     * Verifies a legacy-file cleanup without writing anything (CLI 1.15.0+). Runs {@code update --dry-run --json}; a
+     * plan without the legacy-artifacts note has nothing pending. When the note remains, the pending files come from
+     * {@link #pendingLegacyFiles()}, as when the cleanup was first offered. Never runs {@code update} without
+     * {@code --dry-run}. Call off the EDT.
+     */
+    CleanupCheck verifyCleanupReadOnly() {
+        UpdatePlanParser.Result result = dryRun("update", "--dry-run", "--json");
+        if (result instanceof UpdatePlanParser.Failed failed) {
+            return CleanupCheck.unverified(failed.message());
+        }
+        UpdatePlanParser.Plan plan = (UpdatePlanParser.Plan) result;
+        if (!plan.hasNote(UpdatePlanParser.LEGACY_ARTIFACTS)) {
+            return new CleanupCheck(List.of(), false, !plan.isEmpty(), null);
+        }
+        LegacyPending pending = pendingLegacyFiles();
+        if (pending.failure() != null) {
+            return CleanupCheck.unverified(pending.failure());
+        }
+        return new CleanupCheck(pending.files(), true, false, null);
     }
 
     private UpdatePlanParser.Result dryRun(String... args) {

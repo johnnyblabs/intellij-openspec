@@ -18,6 +18,10 @@ Usage: scripts/capture-update-dry-run-fixtures.py                    (uses the `
                                                                      (only the unknown-option case, for an older CLI)
        STALE_BIN="npx -y @fission-ai/openspec@1.14.3"                (the CLI that seeds the stale-skills case;
                                                                      defaults to that npx pin)
+       LEGACY_BIN="npx -y @fission-ai/openspec@0.12.0"               (seeds the legacy-* cases: a pre-skills project)
+       FORMER_ROOT_BIN="npx -y @fission-ai/openspec@1.6.0"           (seeds the earlier-release case: a former tool root)
+
+The legacy-* and earlier-release cases need CLI 1.17.0 or later under test: older CLIs only note legacy files.
 """
 import hashlib
 import os
@@ -31,6 +35,8 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 OPENSPEC = os.environ.get("OPENSPEC_BIN", "openspec").split()
 STALE = os.environ.get("STALE_BIN", "npx -y @fission-ai/openspec@1.14.3").split()
+LEGACY = os.environ.get("LEGACY_BIN", "npx -y @fission-ai/openspec@0.12.0").split()
+FORMER_ROOT = os.environ.get("FORMER_ROOT_BIN", "npx -y @fission-ai/openspec@1.6.0").split()
 
 LEGACY_CURSOR_FILES = ["openspec-proposal.md", "openspec-apply.md", "openspec-archive.md"]
 
@@ -118,6 +124,24 @@ def no_openspec_dir(project, home):
     pass
 
 
+def legacy_unedited(project, home):
+    """A project a pre-skills release set up, untouched: 1.17 removes its legacy files without --force."""
+    init(project, home, "claude", cli=LEGACY)
+
+
+def legacy_one_edited(project, home):
+    """The same project with one legacy command file edited: 1.17 removes nothing and only notes the legacy files."""
+    legacy_unedited(project, home)
+    with (project / ".claude" / "commands" / "openspec" / "apply.md").open("a") as f:
+        f.write("\nA line the user added.\n")
+
+
+def earlier_release(project, home):
+    """Antigravity set up by 1.6 (former root .agent/) on skills-only delivery: its old workflows reach the sweep."""
+    init(project, home, "antigravity", cli=FORMER_ROOT)
+    run(OPENSPEC + ["config", "set", "delivery", "skills"], project, home)
+
+
 CASES = {
     "up-to-date": (up_to_date, ["--dry-run", "--json"]),
     "first-run-global-config": (first_run_global_config, ["--dry-run", "--json"]),
@@ -128,14 +152,20 @@ CASES = {
     "read-only-failure": (read_only_failure, ["--dry-run", "--json"]),
     "no-openspec-dir": (no_openspec_dir, ["--dry-run", "--json"]),
     "json-without-dry-run": (up_to_date, ["--json"]),
+    "legacy-unedited": (legacy_unedited, ["--dry-run", "--json"]),
+    "legacy-one-edited": (legacy_one_edited, ["--dry-run", "--json"]),
+    "legacy-one-edited-force": (legacy_one_edited, ["--dry-run", "--force", "--json"]),
+    "earlier-release": (earlier_release, ["--dry-run", "--json"]),
 }
 OLDER_CASES = {"update-dry-run-unknown-option": (up_to_date, ["--dry-run", "--json"])}
 
 
 def sanitize(text: str, project: Path, home: Path) -> str:
-    for real, fake in ((project, "/fixture/demo-project"), (home, "/fixture/home")):
-        for form in {str(real), str(real.resolve())}:
-            text = text.replace(form, fake)
+    # Longest form first: on macOS the resolved path (/private/var/...) contains the unresolved one (/var/...).
+    pairs = [(form, fake) for real, fake in ((project, "/fixture/demo-project"), (home, "/fixture/home"))
+             for form in {str(real), str(real.resolve())}]
+    for form, fake in sorted(pairs, key=lambda p: len(p[0]), reverse=True):
+        text = text.replace(form, fake)
     return text
 
 
