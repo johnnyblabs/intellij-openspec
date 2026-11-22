@@ -463,9 +463,14 @@ The plugin SHALL declare its supported OpenSpec CLI versions, with floor `1.3.0`
 - **THEN** the plugin SHALL deliver the capability set it delivers for `1.16.0` (no re-gating), and per-generation contract coverage against captured 1.16.1 CLI output SHALL exist for the closing-`#`-run heading behaviour and the unrecognized delta-section error
 - **AND** a version-floor/at-least assertion SHALL include `1.16.1`
 
+#### Scenario: The 1.17.x line is a supported generation
+- **WHEN** the detected CLI is in the `1.17.x` line
+- **THEN** the plugin SHALL deliver the capability set it delivers for `1.16.x` with no re-gating, because 1.17 changes no command, flag, workflow, AI-tool registry entry or JSON shape the plugin parses; over the parity corpus the `validate --all --json` default and `--strict` documents of `1.17.0` match `1.16.1`, so the verdict-parity anchors stay default `1.8.0` and strict `1.6.0`
+- **AND** the plugin's version comparison SHALL order `1.17.0` above `1.16.1` and `1.9.0`; per-generation contract coverage against captured 1.17.0 CLI output SHALL exist, and a version-floor/at-least assertion SHALL include `1.17.0`
+
 #### Scenario: Supported version set
 - **WHEN** the plugin declares its supported CLI versions
-- **THEN** the set SHALL be the `1.3.x` through `1.16.x` lines, with the `1.16.1` patch named explicitly, and the version comparison SHALL order numerically (so `1.10.0` sorts above `1.9.0`)
+- **THEN** the set SHALL be the `1.3.x` through `1.17.x` lines, with the `1.16.1` patch named explicitly, and the version comparison SHALL order numerically (so `1.10.0` sorts above `1.9.0`)
 
 #### Scenario: Faithful mirroring of the client
 - **WHEN** the client differs between supported versions
