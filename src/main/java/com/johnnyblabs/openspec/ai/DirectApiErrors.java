@@ -28,6 +28,15 @@ final class DirectApiErrors {
     static final String SERVICE_TIER_SUGGESTION = "This OpenAI project doesn't allow the service tier the request "
             + "resolved to. Check the allowed service tiers in the project's settings on the OpenAI platform";
 
+    /**
+     * For a saved model the provider retired (or one the key can't use; the providers answer both alike). The
+     * provider's message, which names the model, comes first.
+     */
+    static final String MODEL_NOT_FOUND_SUGGESTION = "This model is retired or not available to your API key. Choose "
+            + "another under Settings → Tools → OpenSpec → Direct API → Model, or in the tool window's model selector";
+    // Claude's workspace 404 shares not_found_error; only its message, which starts this way, tells it apart.
+    private static final String CLAUDE_WORKSPACE_PREFIX = "Workspace";
+
     private DirectApiErrors() {
     }
 
@@ -70,6 +79,9 @@ final class DirectApiErrors {
     }
 
     private static @Nullable ErrorKind fromBody(String provider, int status, JsonObject error) {
+        if (modelNotFound(provider, status, error)) {
+            return ErrorKind.MODEL_NOT_FOUND;
+        }
         if (CLAUDE.equals(provider)) {
             return claude(error);
         } else if (OPENAI.equals(provider)) {
@@ -78,6 +90,38 @@ final class DirectApiErrors {
             return gemini(error);
         }
         return null;
+    }
+
+    /**
+     * The documented model-not-found field. OpenAI's {@code error.code} {@code model_not_found} names the case on its
+     * own, so it decides whatever the status (the body field decides over the status). Gemini's {@code NOT_FOUND} and
+     * Claude's {@code not_found_error} are generic 404 types, so each also needs status 404, and Gemini a message
+     * naming {@code models/} (as both live captures do); Claude's workspace 404 is excluded.
+     */
+    private static boolean modelNotFound(String provider, int status, JsonObject error) {
+        if (OPENAI.equals(provider)) {
+            return "model_not_found".equals(string(error, "code"));
+        } else if (GEMINI.equals(provider)) {
+            String message = string(error, "message");
+            return status == 404 && "NOT_FOUND".equals(string(error, "status"))
+                    && message != null && message.contains("models/");
+        } else if (CLAUDE.equals(provider)) {
+            return status == 404 && "not_found_error".equals(string(error, "type"))
+                    && !isClaudeWorkspaceNotFound(status, error);
+        }
+        return false;
+    }
+
+    /**
+     * Claude's 404 for a workspace the key can't see: {@code not_found_error} with a message starting "Workspace".
+     * The one place that tells it from a missing model, used by classification and by the workspace message mapping.
+     */
+    static boolean isClaudeWorkspaceNotFound(int status, @Nullable JsonObject error) {
+        if (status != 404 || error == null || !"not_found_error".equals(string(error, "type"))) {
+            return false;
+        }
+        String message = string(error, "message");
+        return message != null && message.startsWith(CLAUDE_WORKSPACE_PREFIX);
     }
 
     private static @Nullable ErrorKind claude(JsonObject error) {
@@ -181,6 +225,7 @@ final class DirectApiErrors {
             case RATE_LIMIT -> RATE_LIMIT_SUGGESTION;
             case OVERLOADED -> OVERLOADED_SUGGESTION;
             case SERVICE_TIER -> SERVICE_TIER_SUGGESTION;
+            case MODEL_NOT_FOUND -> MODEL_NOT_FOUND_SUGGESTION;
             case UNKNOWN -> null;
         };
     }

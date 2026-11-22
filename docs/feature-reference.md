@@ -342,6 +342,7 @@ API keys are stored securely in your operating system's keychain via IntelliJ's 
 | A plain rate limit | Wait a moment and retry |
 | The provider is overloaded or unavailable (Claude `529`, `503`, other server errors) | Try again shortly |
 | OpenAI rejects the project's service tier | Check which service tiers the OpenAI project allows; the plugin requests none, so this means the project's default tier isn't allowed |
+| The model isn't found (OpenAI `model_not_found`; a `404` with Claude `not_found_error` or Gemini `NOT_FOUND` naming the model), for example a saved model the provider has since retired | The model is retired or not available to your API key; choose another under **Settings → Tools → OpenSpec → Direct API → Model**, or in the tool window's model selector. The provider's message names the model. A retired model and one your key can't use look the same to the plugin, because the providers answer both alike |
 
 When the response carries a request ID (Claude's `request-id`, OpenAI's `x-request-id`), it ends the error message, as "(request ID: …)", and is written to the IDE log. Quote it to the provider's support. Gemini sends none. The plugin doesn't retry failed requests itself. The suggestion appears wherever the failure is reported: Settings → Test, Generate, Generate All, Fast-Forward, Explore and Verify.
 

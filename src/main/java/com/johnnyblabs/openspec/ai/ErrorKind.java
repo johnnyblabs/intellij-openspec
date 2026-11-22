@@ -12,5 +12,7 @@ public enum ErrorKind {
     RATE_LIMIT,
     OVERLOADED,
     SERVICE_TIER,
+    /** HTTP 404 for the requested model: retired, never existed, or not available to the key. */
+    MODEL_NOT_FOUND,
     UNKNOWN
 }

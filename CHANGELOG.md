@@ -14,6 +14,7 @@
 
 ### Fixed
 
+- When the Direct API model you saved has been retired by its provider, a failed generation now says so and tells you where to choose another model, instead of showing only the provider's "not found" error. Claude Sonnet 4.5, the plugin's earlier Claude default, retires on 2026-11-30.
 - On OpenSpec 1.15 or later, checking a legacy-file cleanup no longer runs a real `openspec update`. It uses a dry run, which changes nothing. On OpenSpec 1.17 the real run removed other unedited legacy files without showing them first, and the plugin then reported those files as still pending. When the update still has work to do, the notice offers **Update OpenSpec…**, which shows the preview first. A file you kept is no longer mistaken for one OpenSpec recreated.
 
 ## v0.16.1

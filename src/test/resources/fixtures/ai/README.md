@@ -118,7 +118,9 @@ re-capture, `grep -rnE "sk-ant|wrkspc_[A-Za-z0-9]{6}" claude/` must return nothi
 
 **No live 404.** The workspace-not-found mapping is tested on a body derived from the live 400 envelope: a 404
 needs a well-formed ID for a workspace the key can't see, and every ID tried so far returned the format 400 above.
-Capture one when such an ID is available.
+Capture one when such an ID is available. The model-not-found 404 is derived too (see the errors table below); it
+shares the workspace 404's `not_found_error` type, and only the workspace message's "Workspace" prefix tells them
+apart.
 
 **The thinking-first shape is load-bearing.** Models with thinking on by default (Claude 5.5 and
 later) return a `thinking` block whose `thinking` text is empty (`display: "omitted"`) **before** the
@@ -174,5 +176,10 @@ These back `DirectApiErrorsContractTest`, which classifies each body and reads e
 | `gemini/errors/generatecontent-402-payment-required` | DERIVED (billing page) | HTTP 402; the RPC `status` string is undocumented, so the body has none and the HTTP status decides |
 | `gemini/errors/generatecontent-429-resource-exhausted` | DERIVED, message *placeholder* (rate-limits page) | `RESOURCE_EXHAUSTED`, which Google documents as wait-and-retry even when spend-based |
 | `gemini/errors/generatecontent-503-unavailable` | DERIVED, message from the live 503 noted above | `UNAVAILABLE` |
+| `openai/errors/chat-completions-404-model-not-found-retired` | LIVE (`POST /v1/chat/completions`, 2026-11-22, `scripts/capture-model-not-found.py`) | `code: model_not_found` for the retired `gpt-4-32k`; the message names the model |
+| `openai/errors/chat-completions-404-model-not-found-unknown` | LIVE (same) | the same shape for an id that never existed, so the two can't be told apart |
+| `gemini/errors/generatecontent-404-model-not-found-retired` | LIVE (`POST …:generateContent`, 2026-11-22, same script) | `status: NOT_FOUND` for the retired `gemini-1.5-pro`; the message names the model |
+| `gemini/errors/generatecontent-404-model-not-found-unknown` | LIVE (same) | the same shape for an id that never existed |
+| `claude/errors/messages-404-model-not-found` | DERIVED (live `messages-401-invalid-key` envelope; errors page, 404 row) | `not_found_error` with a message naming the model. **No Anthropic key was available on 2026-11-22**; to replace it, run `ANTHROPIC_API_KEY=… scripts/capture-model-not-found.py claude`, which writes `messages-404-model-not-found-{retired,unknown}`; then delete this derived pair, point `EXPECTED` and `ModelNotFound.FIXTURES` in `DirectApiErrorsContractTest` at the two live files, and mark their rows LIVE (until then the hygiene test fails on the unlisted live files, so the swap can't be half-done). The classifier reads only `error.type`, so the message wording doesn't matter |
 
 Re-capture the LIVE rows with a fake key whenever a provider's error envelope changes; replace a DERIVED row with a live capture whenever one becomes possible.

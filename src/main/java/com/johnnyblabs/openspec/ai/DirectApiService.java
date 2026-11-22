@@ -714,7 +714,7 @@ public final class DirectApiService {
                 // The same header name appears in two live 400s: a malformed ID, and a key with no workspace at all.
                 return message.contains("valid workspace ID") ? INVALID_WORKSPACE_MESSAGE : UNSCOPED_KEY_MESSAGE;
             }
-            if (statusCode == 404 && "not_found_error".equals(type) && message.startsWith("Workspace")) {
+            if (DirectApiErrors.isClaudeWorkspaceNotFound(statusCode, error)) {
                 return WORKSPACE_NOT_FOUND_MESSAGE;
             }
         } catch (Exception ignored) {

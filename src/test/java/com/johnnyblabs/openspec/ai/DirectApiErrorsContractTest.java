@@ -65,6 +65,11 @@ public class DirectApiErrorsContractTest {
         EXPECTED.put("gemini/errors/generatecontent-402-payment-required", ErrorKind.BILLING);
         EXPECTED.put("gemini/errors/generatecontent-429-resource-exhausted", ErrorKind.RATE_LIMIT);
         EXPECTED.put("gemini/errors/generatecontent-503-unavailable", ErrorKind.OVERLOADED);
+        EXPECTED.put("claude/errors/messages-404-model-not-found", ErrorKind.MODEL_NOT_FOUND);
+        EXPECTED.put("openai/errors/chat-completions-404-model-not-found-retired", ErrorKind.MODEL_NOT_FOUND);
+        EXPECTED.put("openai/errors/chat-completions-404-model-not-found-unknown", ErrorKind.MODEL_NOT_FOUND);
+        EXPECTED.put("gemini/errors/generatecontent-404-model-not-found-retired", ErrorKind.MODEL_NOT_FOUND);
+        EXPECTED.put("gemini/errors/generatecontent-404-model-not-found-unknown", ErrorKind.MODEL_NOT_FOUND);
     }
 
     // ---- fixture loading ----
@@ -347,6 +352,142 @@ public class DirectApiErrorsContractTest {
     }
 
     // ---- fixture hygiene ----
+
+    /** A saved model the provider retired, or one the key can't use: HTTP 404 with the documented model field. */
+    @Nested
+    class ModelNotFound {
+
+        private static final List<String> FIXTURES = List.of(
+                "claude/errors/messages-404-model-not-found",
+                "openai/errors/chat-completions-404-model-not-found-retired",
+                "openai/errors/chat-completions-404-model-not-found-unknown",
+                "gemini/errors/generatecontent-404-model-not-found-retired",
+                "gemini/errors/generatecontent-404-model-not-found-unknown");
+
+        private static AiApiException build(String provider, int status, String body) {
+            return DirectApiService.buildApiError(provider, status, body, ProviderRequestSettings.NONE, null);
+        }
+
+        private static String withError(String fixture, String member, @org.jetbrains.annotations.Nullable String value) {
+            JsonObject root = JsonParser.parseString(body(fixture)).getAsJsonObject();
+            if (value == null) {
+                root.getAsJsonObject("error").add(member, com.google.gson.JsonNull.INSTANCE);
+            } else {
+                root.getAsJsonObject("error").addProperty(member, value);
+            }
+            return root.toString();
+        }
+
+        /** The documented field that marks each provider's model-not-found 404. */
+        private static String field(String fixture) {
+            return switch (provider(fixture)) {
+                case "Claude" -> "type";
+                case "OpenAI" -> "code";
+                default -> "status";
+            };
+        }
+
+        @Test
+        void everyCaptureGetsTheModelSuggestionAfterTheProvidersMessage() {
+            for (String fixture : FIXTURES) {
+                AiApiException ex = DirectApiErrorsContractTest.build(fixture);
+                assertEquals(DirectApiErrors.MODEL_NOT_FOUND_SUGGESTION, ex.getSuggestion(), fixture);
+                String message = JsonParser.parseString(body(fixture)).getAsJsonObject().getAsJsonObject("error")
+                        .get("message").getAsString();
+                assertTrue(ex.getMessage().contains(message), fixture + ": " + ex.getMessage());
+            }
+        }
+
+        @Test
+        void theProvidersMessageNamesTheModel() {
+            assertTrue(DirectApiErrorsContractTest.build("openai/errors/chat-completions-404-model-not-found-retired")
+                    .getMessage().contains("gpt-4-32k"));
+            assertTrue(DirectApiErrorsContractTest.build("gemini/errors/generatecontent-404-model-not-found-retired")
+                    .getMessage().contains("models/gemini-1.5-pro"));
+            assertTrue(DirectApiErrorsContractTest.build("openai/errors/chat-completions-404-model-not-found-unknown")
+                    .getMessage().contains("openspec-probe-no-such-model"));
+        }
+
+        @Test
+        void aRetiredModelAndAnUnknownIdReadTheSame() {
+            for (String base : List.of("openai/errors/chat-completions-404-model-not-found",
+                    "gemini/errors/generatecontent-404-model-not-found")) {
+                AiApiException retired = DirectApiErrorsContractTest.build(base + "-retired");
+                AiApiException unknown = DirectApiErrorsContractTest.build(base + "-unknown");
+                assertEquals(retired.getKind(), unknown.getKind(), base);
+                assertEquals(retired.getSuggestion(), unknown.getSuggestion(), base);
+            }
+        }
+
+        @Test
+        void geminiAndClaudeGenericTypesNeedA404() {
+            for (String fixture : FIXTURES) {
+                if (provider(fixture).equals("OpenAI")) continue;
+                AiApiException ex = build(provider(fixture), 400, body(fixture));
+                assertNotEquals(ErrorKind.MODEL_NOT_FOUND, ex.getKind(), fixture);
+                assertNotEquals(DirectApiErrors.MODEL_NOT_FOUND_SUGGESTION, ex.getSuggestion(), fixture);
+            }
+        }
+
+        @Test
+        void openAisModelCodeDecidesWhateverTheStatus() {
+            // OpenAI also answers a model the project can't use with this code; the key hint would send the user to
+            // rotate a working key.
+            String body = body("openai/errors/chat-completions-404-model-not-found-retired");
+            AiApiException ex = build("OpenAI", 403, body);
+            assertEquals(ErrorKind.MODEL_NOT_FOUND, ex.getKind());
+            assertEquals(DirectApiErrors.MODEL_NOT_FOUND_SUGGESTION, ex.getSuggestion());
+        }
+
+        @Test
+        void aGemini404ThatDoesNotNameAModelIsNotAModelError() {
+            String body = withError("gemini/errors/generatecontent-404-model-not-found-retired", "message",
+                    "Requested entity was not found.");
+            AiApiException ex = build("Gemini", 404, body);
+            assertNotEquals(ErrorKind.MODEL_NOT_FOUND, ex.getKind());
+            assertNull(ex.getSuggestion());
+        }
+
+        @Test
+        void theFieldDecidesNotTheMessageWording() {
+            for (String fixture : FIXTURES) {
+                if (!provider(fixture).equals("Gemini")) { // Gemini's generic NOT_FOUND also needs "models/"
+                    assertEquals(ErrorKind.MODEL_NOT_FOUND,
+                            build(provider(fixture), 404, withError(fixture, "message", "Reworded")).getKind(),
+                            fixture + ": a reworded message still names the case through the field");
+                }
+                List<String> others = switch (provider(fixture)) {
+                    case "Claude" -> List.of("invalid_request_error");
+                    case "OpenAI" -> java.util.Arrays.asList(null, "invalid_value"); // absent, and a competing code
+                    default -> List.of("INVALID_ARGUMENT");
+                };
+                for (String other : others) {
+                    AiApiException without = build(provider(fixture), 404, withError(fixture, field(fixture), other));
+                    assertNotEquals(ErrorKind.MODEL_NOT_FOUND, without.getKind(), fixture + " with " + other);
+                    assertNull(without.getSuggestion(), fixture + " with " + other + ": no model suggestion");
+                }
+            }
+        }
+
+        @Test
+        void a404ThatIsNotJsonHasNoModelSuggestion() {
+            AiApiException ex = build("OpenAI", 404, "<html><body>Not Found</body></html>");
+            assertEquals(ErrorKind.UNKNOWN, ex.getKind());
+            assertNull(ex.getSuggestion());
+        }
+
+        @Test
+        void theClaudeWorkspace404KeepsItsMessageAndIsNotAModel() {
+            // The same derivation DirectApiServiceTest uses: no live workspace 404 has been captured.
+            String body = withError("claude/errors/messages-404-model-not-found", "message", "Workspace not found");
+            assertEquals(ErrorKind.UNKNOWN,
+                    DirectApiErrors.classify("Claude", 404, DirectApiErrors.errorObject(body)),
+                    "the workspace message is excluded before the suggestion is chosen");
+            AiApiException ex = build("Claude", 404, body);
+            assertTrue(ex.getMessage().startsWith(DirectApiService.WORKSPACE_NOT_FOUND_MESSAGE), ex.getMessage());
+            assertNull(ex.getSuggestion());
+        }
+    }
 
     @Nested
     class Hygiene {
