@@ -75,7 +75,7 @@ The plugin SHALL recognize when `openspec update` leaves legacy cleanup pending 
 
 #### Scenario: Legacy files from the forced dry-run plan
 - **WHEN** the CLI is 1.15.0+ and the applied plan's notes include `legacy-artifacts`
-- **THEN** the plugin SHALL run `openspec update --dry-run --force --json` and offer its in-project `delete` entries in the cleanup flow, with the note's message as the guidance line
+- **THEN** the plugin SHALL run `openspec update --dry-run --force --json` and offer the in-project `delete` entries of OpenSpec's own legacy cleanup (tool `openspec`) in the cleanup flow, with the note's message as the guidance line
 - **AND** it SHALL NOT offer an entry outside the project, and SHALL NOT run `--force` without `--dry-run`
 
 #### Scenario: The forced dry run fails
@@ -84,8 +84,12 @@ The plugin SHALL recognize when `openspec update` leaves legacy cleanup pending 
 
 #### Scenario: Plan sources
 - **WHEN** the applied plan's notes include `legacy-artifacts` on CLI 1.15.0 or later
-- **THEN** the files to remove SHALL be the plan's `delete` entries whose paths resolve inside the project
+- **THEN** the files to remove SHALL be the plan's `delete` entries of tool `openspec` whose paths resolve inside the project
 - **AND** on older CLIs the plugin SHALL parse the header and bulleted entries of the text output, accepting and recording the guidance line the CLI prints
+
+#### Scenario: Other deletes are not legacy files
+- **WHEN** the forced plan also deletes files for another tool, such as stale skills or files left by an earlier release (`earlier-release`)
+- **THEN** the plugin SHALL NOT offer those files in the cleanup flow
 
 ### Requirement: Consented surgical cleanup
 
@@ -129,19 +133,23 @@ The cleanup flow SHALL preserve non-destructive exits: a terminal handoff for th
 
 ### Requirement: Regeneration-loop recognition
 
-The plugin SHALL recognize a regeneration loop, where the CLI recreates the files its migration detector flags, from its post-cleanup verification re-run. It SHALL explain that the CLI regenerates these files and that nothing on the user's side needs fixing, suppress the notice while the CLI reports the same set, and not offer deletion again for a set observed to regenerate.
+The plugin SHALL recognize a regeneration loop, where the CLI recreates the files its migration detector flags, from a post-cleanup re-run of `openspec update` (CLIs below 1.15.0). A read-only verification SHALL NOT count as a loop. It SHALL explain that the CLI regenerates these files and that nothing on the user's side needs fixing, suppress the notice while the CLI reports the same set, and not offer deletion again for a set observed to regenerate.
 
 #### Scenario: Cleanup verified successful
-- **WHEN** the post-cleanup `openspec update` re-run reports no pending files (or a disjoint set)
+- **WHEN** the post-cleanup verification reports no pending files (or a disjoint set)
 - **THEN** the plugin SHALL report the cleanup as complete
 
 #### Scenario: Regeneration loop detected
-- **WHEN** the post-cleanup `openspec update` re-run reports the same file set that was just removed
+- **WHEN** the post-cleanup re-run reports the same file set that was just removed
 - **THEN** the plugin SHALL explain that this CLI version regenerates the flagged files, SHALL auto-suppress the notice while the reported set is unchanged, and SHALL NOT offer deletion for that set again
 
 #### Scenario: CLI change re-opens the flow
 - **WHEN** a later `openspec update` (e.g. after a CLI upgrade) reports a pending set different from the recorded regenerating set
 - **THEN** the cleanup flow SHALL be available again for the new set
+
+#### Scenario: A read-only verification is never a loop
+- **WHEN** a read-only verification still lists files that were in the set the user was offered
+- **THEN** the plugin SHALL report them as still pending, SHALL NOT say the CLI regenerated them, and SHALL NOT record them as a regenerating set
 
 #### Scenario: Known regenerating set
 - **WHEN** CLI 1.4.1 or 1.5.0 is used with the junie integration
@@ -149,19 +157,37 @@ The plugin SHALL recognize a regeneration loop, where the CLI recreates the file
 
 ### Requirement: Cleanup verification reports only what the CLI confirmed
 
-After a legacy-file cleanup, the plugin SHALL report a clean state only when the verification re-run of `openspec update` succeeds and reports no files to remove. If the re-run exits non-zero, times out or cannot be started, the plugin SHALL say the cleanup could not be verified, and SHALL NOT report a clean state.
+After a legacy-file cleanup, the plugin SHALL verify on CLI 1.15.0+ with `openspec update --dry-run --json`, which writes nothing, and below 1.15.0 with a re-run of `openspec update`. It SHALL report a clean state only when the verification succeeds and reports no files to remove. If it fails, times out or cannot start, the plugin SHALL say the cleanup could not be verified and SHALL NOT report a clean state.
 
 #### Scenario: Verification re-run fails
-- **WHEN** the files are removed and the verification `openspec update` exits 1 with no stdout
+- **WHEN** the files are removed and the verification exits 1 with no stdout
 - **THEN** the plugin SHALL report that the cleanup could not be verified, with the CLI's stderr when it has text, and SHALL NOT say the state is clean
 
 #### Scenario: Verification re-run cannot start
-- **WHEN** the verification re-run times out or the CLI is not found
+- **WHEN** the verification times out or the CLI is not found
 - **THEN** the plugin SHALL report that the cleanup could not be verified
 
 #### Scenario: Successful verification is unchanged
-- **WHEN** the verification re-run exits 0 and reports no files to remove
+- **WHEN** the verification exits 0 and reports no files to remove
 - **THEN** the plugin SHALL report the clean state as before
+
+#### Scenario: Verification on CLI 1.15 or later writes nothing
+- **WHEN** the user removes legacy files on CLI 1.15.0 or later
+- **THEN** the plugin SHALL verify with `openspec update --dry-run --json` and SHALL NOT run `openspec update` without `--dry-run` for the verification
+- **AND** a plan that has no `legacy-artifacts` note SHALL count as no files to remove
+
+#### Scenario: Files still pending after a read-only verification
+- **WHEN** the verification plan still has the `legacy-artifacts` note
+- **THEN** the plugin SHALL take the pending files from `openspec update --dry-run --force --json` in the same way as when the cleanup was first offered, and SHALL report them as still pending
+
+#### Scenario: Finishing the update goes through the preview
+- **WHEN** a read-only verification finds no `legacy-artifacts` note but its plan still has changes, notes or failures
+- **THEN** the plugin SHALL offer to run Update, and accepting SHALL open the update preview before anything changes
+- **AND** the plugin SHALL NOT report a clean state for that plan
+
+#### Scenario: A remaining note with nothing listed
+- **WHEN** the verification plan still has the `legacy-artifacts` note but the forced plan lists no legacy files to remove
+- **THEN** the plugin SHALL say that OpenSpec still reports legacy files, and SHALL NOT report the cleanup as complete
 
 ### Requirement: Update preview
 
@@ -202,6 +228,14 @@ On CLI 1.15.0+, before any plugin-started `openspec update`, the plugin SHALL ru
 #### Scenario: Unknown note codes
 - **WHEN** a note's code is neither `legacy-tool-directories` nor `legacy-artifacts`
 - **THEN** the preview SHALL still show the note's message
+
+#### Scenario: Unedited legacy files the update removes unasked
+- **WHEN** on CLI 1.17.0 or later the plan deletes unedited legacy files and has no `legacy-artifacts` note
+- **THEN** the preview SHALL list those deletes in their tool's group like any other delete, and Cancel SHALL be the default button
+
+#### Scenario: Files left by an earlier release
+- **WHEN** a change's tool is `earlier-release`
+- **THEN** the preview SHALL label its group as files left by an earlier OpenSpec release instead of showing the raw tool value, and the group SHALL keep its change count
 
 ### Requirement: A failed dry run is never "no changes"
 
