@@ -750,3 +750,16 @@ Real CLI **1.16.0** captures (npm `@fission-ai/openspec@1.16.0`, released 2026-1
 - `parity-corpus/openspec/specs/inline-backtick-req/spec.md` and `spec-structure/inline-backtick-req.show.json`: a single-line triple-backtick span (`` ```npm test``` ``) is inline code, not a fence, per CommonMark. Captured with `openspec show inline-backtick-req --json --type spec` in an isolated project (`root.path` sanitized to `/fixture`). Two requirements, one scenario each. `SpecParserCliStructureContractTest.inlineBacktickCorpusMatchesCaptured116Cli` checks the parser against it. The corpus is kept apart from the 1.6.0 corpus, which has no 1.16 capture and must not gain one.
 
 To re-capture, regenerate in the same isolated way. Never hand-edit a capture; if the CLI's output changes, re-capture and fix the tests.
+
+## `1.17.0/` — the target: the unchanged surfaces, pinned by real captures
+
+Real CLI **1.17.0** captures (npm `@fission-ai/openspec@1.17.0`, released 2026-11-09), each under a fresh isolated `HOME`/`XDG_*` with `OPENSPEC_TELEMETRY=0`, with machine paths sanitized to `/fixture`. Every script ran through the installed package file (`OPENSPEC_BIN` set to its `bin/openspec.js`, or `node` plus that file), not `npx`, so no package-cache path reaches a fixture. 1.17.0 changes only how `openspec update` cleans up old generated files, and every capture below confirms that the parsed surfaces are unchanged.
+
+- `validate-parity-corpus.json` / `validate-parity-corpus-strict.json`: the "Durable next-generation capture" recipe above. Apart from `durationMs`, both are identical to the `1.16.1/` twins.
+- `version.txt`: bare `1.17.0` from the npm install.
+- `ai-tools.json`, `init-help.txt` and `detect/`: `CAPTURE_VERSIONS=1.17.0 scripts/capture-ai-tools-fixtures.py`. Identical to 1.16.1's apart from the version.
+- `workflows.json`: `scripts/capture-workflow-ids.py`. Identical to 1.16.1's apart from `cliVersion`.
+- `instructions/instructions-design.json` and `instructions-specs.json`: the `1.15.0/instructions/` recipe. Byte-identical to 1.16.1's.
+- `explore/`, `update/`, `explore-context/`, `workflow-invocations.json` and `update-dry-run/`: `scripts/capture-explore-fixtures.py`, `scripts/capture-workflow-invocations.py`, `scripts/capture-explore-context-fixtures.py` and `scripts/capture-update-dry-run-fixtures.py`. Apart from the `generatedBy: "1.17.0"` stamp in the generated skills and `cliVersion`, every file equals 1.16.1's. The update-dry-run cases' seeded legacy files are hand-written, so they match no released file fingerprint and 1.17 plans them exactly as 1.16.1 did.
+
+1.16.1's `behaviours/` positive controls have no 1.17.0 twin, because validation is unchanged.

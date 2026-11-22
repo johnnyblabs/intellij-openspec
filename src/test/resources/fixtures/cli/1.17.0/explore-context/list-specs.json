@@ -1,0 +1,16 @@
+{
+  "specs": [
+    {
+      "id": "billing",
+      "requirementCount": 1
+    },
+    {
+      "id": "identity/user-auth",
+      "requirementCount": 1
+    }
+  ],
+  "root": {
+    "path": "/fixture/project",
+    "source": "nearest"
+  }
+}
