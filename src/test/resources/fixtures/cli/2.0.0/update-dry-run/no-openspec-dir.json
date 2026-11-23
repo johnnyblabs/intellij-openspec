@@ -1,0 +1,12 @@
+{
+  "changes": [],
+  "notes": [],
+  "failures": [],
+  "status": [
+    {
+      "severity": "error",
+      "code": "update_error",
+      "message": "No OpenSpec directory found. Run 'openspec init' first."
+    }
+  ]
+}

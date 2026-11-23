@@ -50,7 +50,7 @@ public class AiToolServiceBehaviourTest extends BasePlatformTestCase {
     /** Lays a captured {@code init --tools} project ({@code fixtures/cli/1.14.3/detect/<case>}) under the base path. */
     private void layOut(String caseName) throws Exception {
         JsonObject layout = JsonParser.parseString(Files.readString(
-                AiToolDetectionContractTest.CASES.resolve(caseName).resolve("layout.json"))).getAsJsonObject();
+                AiToolDetectionContractTest.CLI.resolve("1.14.3/detect").resolve(caseName).resolve("layout.json"))).getAsJsonObject();
         Path base = Path.of(getProject().getBasePath());
         for (String path : layout.getAsJsonObject("project").keySet()) {
             created.add(base.resolve(path.substring(0, path.contains("/") ? path.indexOf('/') : path.length())).toFile());

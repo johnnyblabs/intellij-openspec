@@ -774,3 +774,75 @@ Real CLI **1.17.0** captures (npm `@fission-ai/openspec@1.17.0`, released 2026-1
 - `earlier-release`: Antigravity set up by 1.6.0 (`FORMER_ROOT_BIN`, former root `.agent/`), then `config set delivery skills`. The old `.agent/workflows/opsx-*.md` files reach 1.17's sweep and are deleted with `tool: "earlier-release"`. The old skills move to `.agents/` under `tool: "antigravity"`.
 
 `UpdatePlanContractTest`, `UpdatePreviewModelTest`, `UpdatePreviewDialogTest` and `UpdateCleanupVerificationTest` read these. The legacy cleanup's deletes carry `tool: "openspec"` in every forced plan captured (1.15.0 and 1.17.0), which is how the cleanup flow tells them from other deletes.
+
+## CLI 2.x captures: how they are made
+
+Every 2.x file below was written by a script, never by hand. Each script installs the release into a scratch npm prefix through `scripts/lib/openspec_capture.py` (never `npx`, never the developer's global CLI), runs it under an isolated `HOME`/`XDG_*` with telemetry off, `OPEN_SPEC_INTERACTIVE=0` and stdin closed, and refuses to write a file that still holds the scratch path, the temp directory or the real HOME. Project paths become `/fixture/demo-project` and HOME paths `/fixture/home`. CLI 2.1.x needs Node 22.20 or newer, and 2.1.0 installs skills by cloning the upstream repository, so it needs Git and network access; the scripts check both first.
+
+On 2.1.0 and later a plain `init --tools` installs skills for the whole machine. Every capture that means "set up this project" therefore passes `--scope project`; the cases that mean "the machine-wide default" say so in their name.
+
+| Family | Script |
+|---|---|
+| `ai-tools.json`, `init-help.txt`, `detect/` | `CAPTURE_VERSIONS=<v> scripts/capture-ai-tools-fixtures.py` |
+| `workflows.json` | `OPENSPEC_BIN=<package>/bin/openspec.js scripts/capture-workflow-ids.py` |
+| `workflow-invocations.json` | `OPENSPEC_BIN=<package>/bin/openspec.js scripts/capture-workflow-invocations.py` |
+| `explore/`, `update/` | `OPENSPEC_BIN="node <package>/bin/openspec.js" scripts/capture-explore-fixtures.py` |
+| `update-dry-run/` | `CAPTURE_VERSION=<v> scripts/capture-update-dry-run-fixtures.py` |
+| `version.txt`, `config-list.json`, `errors/init-*`, `home-state/projects.json`, `validate-parity-corpus{,-strict}.json` | `scripts/capture-cli-generation.py <v>...` |
+| `help/` (every supported line, not only 2.x) | `scripts/capture-help-sweep.py` |
+
+### Links in a detection layout
+
+From 2.0, a tool that doesn't read `.agents/skills/` gets one directory link per skill from its own folder into it (`.claude/skills/openspec-explore` → `../../.agents/skills/openspec-explore`). Git never holds a real link: `FixtureNoSymlinkHygieneTest` fails on a link on disk or a mode-`120000` entry in the index. `layout.json` records them as data, in a top-level map present only when a side has links:
+
+```json
+{
+  "project": {".agents/skills/openspec-explore/SKILL.md": "..."},
+  "home": {},
+  "links": {"project": {".claude/skills/openspec-explore": "../../.agents/skills/openspec-explore"}}
+}
+```
+
+The capture walks the tree without following links, so each skill is recorded once, where it really is. A relative target that lands inside the captured tree is recomputed from real paths, because an installer that resolved macOS's `/private/var` differently from `/var` writes a target that climbs through the temp directory. Any other target is kept as written and sanitized (an absolute `/fixture/home/...` target is remapped onto the test's HOME). `FixtureLayout` recreates a layout with each link as a real link, a copy of the target folder, or the plain-text file git writes for a link when `core.symlinks` is off.
+
+### `help/`: the flags each release accepts
+
+`help/<command>.txt` is `openspec <command> --help` and `help/<command>-<sub>.txt` the same for each subcommand the command lists, for the newest patch of every minor from 1.3 (1.3.1, 1.4.1, 1.5.0 … 1.17.0) and for 2.0.0, 2.1.0 and 2.1.1. `help/index.json` lists every command asked about, with its exit code and file, or `"file": null` when the release lacks the command. Releases before 1.5 answer an unknown command's `--help` with the top-level help and exit 0, so a help text counts only when its `Usage:` line names the command; 1.3.1 and 1.4.1 record `store`, `workset` and `context` as missing. `HelpSweepContractTest` keeps the record whole and pins one fact the plugin will gate on: `init --scope` exists from 2.1.0, not in 2.0.0 or 1.17.0.
+
+### Contract tests across releases, and the gaps
+
+The registry, detection, invocation and update-plan contract tests run once per captured release. Where the plugin doesn't yet match a 2.x capture, the case is listed in `KnownGaps` with the change that closes it; a listed case must still fail, so closing a gap forces the entry's removal, and `KnownGapsTest` rejects an entry that names no real case. Every 1.x case passes, including the 1.16.1 and 1.17.0 detection captures, which the detection test had not replayed before.
+
+## `2.0.0/` — the first 2.x layout
+
+Real CLI **2.0.0** captures (npm `@fission-ai/openspec@2.0.0`, released 2026-11-11, `dist.integrity` `sha512-TsGwEAWogMOhuI8npa3o8Y3popwqBIHLdbn80KGUv6rSExvlmY1kYNALMfSZG+qbliH9gffc+CWC4JPlkoFshw==`), captured 2026-11-23.
+
+- `ai-tools.json`: 49 tools. Amazon Q is gone (`errors/init-amazon-q.*`: exit 1, "Amazon Q Developer is no longer supported … Set up Kiro instead"). The dump gains `effective`: per tool, where its skills are written (`.agents/skills` for every project tool) and the folder linked into them (`linkDir`, null for tools that read `.agents/skills/` themselves), from upstream's `shared/skill-paths.js`.
+- `init-help.txt`, `help/init.txt`: no `--scope`; `errors/init-scope-project.*` is the rejection (`unknown option '--scope'`).
+- `detect/` (33 cases): the 1.x cases plus `mixed-1.17-and-2x`, `global-2.1-read-by-2.0` (a 2.1.1 machine-wide install, which 2.0 doesn't detect: `[]`) and `user-skill-kept`, whose `.openspec-target` is `claude own-files` then `keep openspec-explore`. Only 2.0 writes `keep` lines.
+- `workflows.json`: the same 6 core and 12 workflows as 1.17.0.
+- `workflow-invocations.json` (96 rows): one `skills` row per tool and workflow, `commands: false`. The invocation is upstream's own skill reference: `/openspec-<skill>` for most tools, `$openspec-<skill>` for Codex, `/skill:openspec-<skill>` for Kimi, prose ("the openspec-explore skill") for tools with no slash surface. `linkPath` is the tool-folder path linked to the shared skill, if any.
+- `explore/`, `update/`: only `listing-skills.txt`, because 2.0 ignores `delivery` ("delivery no longer changes anything"). A linked entry is listed as `<path> -> <target>`.
+- `update-dry-run/` (12 cases): the 1.17 set without `windsurf-move`, because 2.0 makes no `.devin` folder to move.
+- `version.txt`, `config-list.json` (telemetry id zeroed), `validate-parity-corpus{,-strict}.json` (12 of 13 valid by default, unchanged from 1.17.0).
+
+## `2.1.0/` — `--scope` and the machine-wide default
+
+Real CLI **2.1.0** captures (released 2026-11-17, `dist.integrity` `sha512-3mVVOU97QmRsqQQYl0Jb7XvIwWES+Jh6nMbGy1tJiQvKVVI1lD7M0PTB2gH2f/ayX4SEoVJGiLKL51Z1pkTHqw==`), captured 2026-11-23. Skills are installed by cloning the upstream repository at the release tag.
+
+- `ai-tools.json`: 87 tools. `init-help.txt` moves the id list out of the `--tools` description into a trailing "Use … comma-separated list of: …" line, and adds `--scope <scope>` (global or project).
+- `detect/` (35 cases) adds `scope-project` and `scope-default-global`. With no scope, the skills and the `.claude` links land in HOME and the project detects nothing (`[]`). `minimax-global` is also `[]`: a machine-wide install isn't a project's tool. `skills-lock-agents` is `[]` too, because only 2.1.1 reads `skills-lock.json`. `devin-via-windsurf-id` records `devin own-files`.
+- `workflow-invocations.json` (174 rows). One upstream quirk is recorded rather than smoothed over: for `eve` (folder `agent/`) the matrix says link, but init writes a copy of the skill, upstream's own fallback when it can't link (`createSkillLink`). `WorkflowInvocationContractTest` accepts either form.
+- `update-dry-run/` (16 cases) adds `global-skills-up-to-date`, `global-skills-added` and `global-skills-removed`. They start from a machine-wide install and change the profile. The dry run plans no project change and reports `global-skills` (refresh of `~/.agents/skills`) and, when workflows are dropped, `removed-skills`. The type list also names `left-alone-skills` and `edited-skills`, but no 2.1 code emits them, so they have no capture. The failure form of `global-skills` needs the network to fail and is not captured.
+- `home-state/projects.json`: the projects the machine-wide skills serve, `{"projects": ["/fixture/demo-project"]}`.
+- `errors/init-scope-project.*` succeeds (exit 0); `errors/init-amazon-q.*` is the retirement message.
+- `version.txt`, `config-list.json`, the parity corpus (unchanged verdicts).
+
+## `2.1.1/` — offline installs and `skills-lock.json`
+
+Real CLI **2.1.1** captures (released 2026-11-19, `dist.integrity` `sha512-GQv1xU4uLrTVJ6MfOKNIxo/BgEk+e8C/XBmjTfzd/W3LNh4v2UMAsfTdn8mjHdjDA/KjfGstwUhZedQW4hdcZQ==`), captured 2026-11-23. Skills install offline. Every family matches 2.1.0's apart from:
+
+- `detect/skills-lock-agents`: `["agents"]`. 2.1.1 infers the `agents` tool from a `skills-lock.json` whose skills come from `Fission-AI/OpenSpec`. The lock file and skill are the shape `npx skills add` leaves (seeded input; the verdict is the CLI's).
+- The version stamps.
+
+`1.17.0/errors/init-scope-project.*` (exit 1, `unknown option '--scope'`) was captured alongside, by `scripts/capture-cli-generation.py`.

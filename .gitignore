@@ -102,3 +102,6 @@ docs/releases/
 .claude/agents/release-manager.md
 # Starter/Allure UI-test artifacts (emitted at repo root by the uiSmoke run)
 allure-results/
+
+# Python bytecode from the capture scripts (scripts/lib is imported)
+__pycache__/

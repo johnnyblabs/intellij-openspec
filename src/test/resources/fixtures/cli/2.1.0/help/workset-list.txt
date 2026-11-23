@@ -1,0 +1,7 @@
+Usage: openspec workset list|ls [options]
+
+Show saved worksets with their members
+
+Options:
+  --json      Output as JSON
+  -h, --help  display help for command

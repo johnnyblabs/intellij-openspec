@@ -1,0 +1,15 @@
+Usage: openspec validate [options] [item-name]
+
+Validate changes and specs
+
+Options:
+  --all              Validate all changes and specs
+  --changes          Validate all changes
+  --specs            Validate all specs
+  --type <type>      Specify item type when ambiguous: change|spec
+  --strict           Enable strict validation mode
+  --json             Output validation results as JSON
+  --concurrency <n>  Max concurrent validations (defaults to env
+                     OPENSPEC_CONCURRENCY or 6)
+  --no-interactive   Disable interactive prompts
+  -h, --help         display help for command

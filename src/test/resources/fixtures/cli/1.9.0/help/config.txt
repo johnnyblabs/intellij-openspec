@@ -1,0 +1,19 @@
+Usage: openspec config [options] [command]
+
+View and modify global OpenSpec configuration
+
+Options:
+  --scope <scope>              Config scope (only "global" supported currently)
+  -h, --help                   display help for command
+
+Commands:
+  path                         Show config file location
+  list [options]               Show all current settings
+  get <key>                    Get a specific value (raw, scriptable)
+  set [options] <key> <value>  Set a value (auto-coerce types)
+  unset <key>                  Remove a key (revert to default)
+  reset [options]              Reset configuration to defaults
+  edit                         Open config in $EDITOR
+  profile [preset]             Configure workflow profile (interactive picker or
+                               preset shortcut)
+  help [command]               display help for command

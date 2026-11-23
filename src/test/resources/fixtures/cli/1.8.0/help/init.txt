@@ -1,0 +1,21 @@
+Usage: openspec init [options] [path]
+
+Initialize OpenSpec in your project
+
+Options:
+  --tools <tools>      Configure AI tools non-interactively. Use "all", "none",
+                       or a comma-separated list of: amazon-q, antigravity,
+                       auggie, bob, claude, cline, codeartsagent, codex, devin,
+                       forgecode, codebuddy, continue, costrict, crush, cursor,
+                       factory, gemini, github-copilot, hermes, iflow, junie,
+                       kilocode, kimi, kiro, lingma, minimax-code, vibe,
+                       oh-my-pi, opencode, pi, qoder, qwen, rovodev, roocode,
+                       trae, zcode, agents. Also accepted: windsurf (now devin)
+  --force              Auto-cleanup legacy files without prompting
+  --profile <profile>  Override global config profile (core or custom)
+  --no-animation       Show a static welcome screen instead of the animated one
+  --copilot-cloud      Set up GitHub Copilot cloud coding-agent files without
+                       prompting
+  --no-copilot-cloud   Skip GitHub Copilot cloud coding-agent files without
+                       prompting
+  -h, --help           display help for command

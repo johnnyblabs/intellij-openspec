@@ -1,0 +1,10 @@
+Usage: openspec store register [options] [path]
+
+Register an existing local store
+
+Options:
+  --id <id>   Store id; defaults to metadata or folder name
+  --yes       Confirm creating store identity metadata for a healthy OpenSpec
+              root
+  --json      Output as JSON
+  -h, --help  display help for command

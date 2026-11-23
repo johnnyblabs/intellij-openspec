@@ -16,6 +16,11 @@ It also keeps a few real generated files, with machine paths replaced by /fixtur
     gemini-command.toml                            .gemini/commands/opsx/explore.toml
     agents-skill.md, agents-openspec-target.txt    the shared .agents skill (codex) and its owner marker
 
+From CLI 2.0 `delivery` no longer changes anything (2.0 installs skills only), so only `listing-skills.txt` is
+written, and on 2.1+ init runs with `--scope project` (a plain `init --tools` installs machine-wide). A path reached
+through a link is listed where the link sits, followed by ` -> <target>`, and the walk never descends into it, so a
+2.x tool folder that links into `.agents/skills/` shows as a link rather than as a copy of the shared files.
+
 The real global OpenSpec state is never touched.
 
 Usage: scripts/capture-explore-fixtures.py        (uses the `openspec` on PATH, or $OPENSPEC_BIN)
@@ -32,6 +37,11 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 DELIVERIES = ("both", "skills", "commands")
+VERSION = None  # set in main(): the CLI under test
+
+
+def at_least(version: str) -> bool:
+    return tuple(map(int, VERSION.split("."))) >= tuple(map(int, version.split(".")))
 
 
 def cli() -> list:
@@ -55,11 +65,13 @@ def init_project(tmp: Path, tool: str, delivery: str, workflows=None) -> tuple:
     project, home = tmp / f"{delivery}-{tool}" / "project", tmp / f"{delivery}-{tool}" / "home"
     project.mkdir(parents=True)
     env = isolated_env(home)
-    run(["config", "set", "delivery", delivery], project, env)
+    if not at_least("2.0.0"):
+        run(["config", "set", "delivery", delivery], project, env)
     if workflows is not None:
         run(["config", "set", "profile", "custom"], project, env)
         run(["config", "set", "workflows", json.dumps(workflows)], project, env)
-    result = run(["init", "--tools", tool, "--no-copilot-cloud", "--no-animation", "."], project, env)
+    scope = ["--scope", "project"] if at_least("2.1.0") else []
+    result = run(["init", "--tools", tool, "--no-copilot-cloud", "--no-animation", *scope, "."], project, env)
     if result.returncode != 0:
         sys.exit(f"init --tools {tool} ({delivery}) failed:\n{result.stdout}\n{result.stderr}")
     return project, home
@@ -67,13 +79,20 @@ def init_project(tmp: Path, tool: str, delivery: str, workflows=None) -> tuple:
 
 def workflow_files(root: Path, skip_openspec: bool, marker: str) -> list:
     found = []
-    for path in sorted(root.rglob("*")):
-        rel = path.relative_to(root)
-        if skip_openspec and rel.parts and rel.parts[0] == "openspec":
-            continue
-        if path.is_file() and marker in str(rel).lower():
-            found.append(rel.as_posix())
-    return found
+    for dirpath, dirnames, filenames in os.walk(root, followlinks=False):
+        here = Path(dirpath)
+        for name in dirnames + filenames:
+            path = here / name
+            rel = path.relative_to(root)
+            if skip_openspec and rel.parts and rel.parts[0] == "openspec":
+                continue
+            if marker not in str(rel).lower():
+                continue
+            if os.path.islink(path):
+                found.append(f"{rel.as_posix()} -> {os.readlink(path)}")
+            elif path.is_file():
+                found.append(rel.as_posix())
+    return sorted(found)
 
 
 def explore_files(root: Path, skip_openspec: bool) -> list:
@@ -91,7 +110,8 @@ def sanitize(text: str, home: Path) -> str:
 
 
 def main() -> None:
-    version = run(["--version"], REPO, os.environ.copy()).stdout.strip()
+    global VERSION
+    version = VERSION = run(["--version"], REPO, os.environ.copy()).stdout.strip()
     tools = [t["value"] for t in json.loads((REPO / f"src/test/resources/fixtures/cli/{version}/ai-tools.json")
                                            .read_text())["tools"]]
     out = REPO / f"src/test/resources/fixtures/cli/{version}/explore"
@@ -101,7 +121,7 @@ def main() -> None:
 
     with tempfile.TemporaryDirectory(prefix="openspec-explore-") as tmp_name:
         tmp = Path(tmp_name)
-        for delivery in DELIVERIES:
+        for delivery in (("skills",) if at_least("2.0.0") else DELIVERIES):
             lines, update_lines = [], []
             for tool in tools:
                 project, home = init_project(tmp, tool, delivery)
@@ -117,17 +137,24 @@ def main() -> None:
             source = (home if home_based else project) / rel
             (out / name).write_text(sanitize(source.read_text(), home))
 
-        keep("both", "claude", ".claude/skills/openspec-explore/SKILL.md", "claude-skill-both.md")
-        keep("skills", "claude", ".claude/skills/openspec-explore/SKILL.md", "claude-skill-skills.md")
-        keep("both", "claude", ".claude/commands/opsx/explore.md", "claude-command.md")
-        keep("both", "cursor", ".cursor/commands/opsx-explore.md", "cursor-command.md")
-        keep("both", "gemini", ".gemini/commands/opsx/explore.toml", "gemini-command.toml")
-        keep("both", "codex", ".agents/skills/openspec-explore/SKILL.md", "agents-skill.md")
-        keep("both", "codex", ".agents/skills/.openspec-target", "agents-openspec-target.txt")
+        if at_least("2.0.0"):
+            # 2.x: one shared skill, reached from .claude through a link; no command files exist.
+            keep("skills", "codex", ".agents/skills/openspec-explore/SKILL.md", "agents-skill.md")
+            keep("skills", "claude", ".agents/skills/.openspec-target", "agents-openspec-target-claude.txt")
+            keep("skills", "codex", ".agents/skills/.openspec-target", "agents-openspec-target.txt")
+        else:
+            keep("both", "claude", ".claude/skills/openspec-explore/SKILL.md", "claude-skill-both.md")
+            keep("skills", "claude", ".claude/skills/openspec-explore/SKILL.md", "claude-skill-skills.md")
+            keep("both", "claude", ".claude/commands/opsx/explore.md", "claude-command.md")
+            keep("both", "cursor", ".cursor/commands/opsx-explore.md", "cursor-command.md")
+            keep("both", "gemini", ".gemini/commands/opsx/explore.toml", "gemini-command.toml")
+            keep("both", "codex", ".agents/skills/openspec-explore/SKILL.md", "agents-skill.md")
+            keep("both", "codex", ".agents/skills/.openspec-target", "agents-openspec-target.txt")
 
-        project, home = init_project(tmp / "explore-only", "claude", "both", workflows=["explore"])
+        delivery = "skills" if at_least("2.0.0") else "both"
+        project, home = init_project(tmp / "explore-only", "claude", delivery, workflows=["explore"])
         (out / "claude-skill-explore-only.md").write_text(
-            sanitize((project / ".claude/skills/openspec-explore/SKILL.md").read_text(), home))
+            sanitize((project / ".claude/skills/openspec-explore/SKILL.md").read_text(), home))  # via the link on 2.x
 
     print(f"Wrote explore fixtures for {len(tools)} tools to {out.relative_to(REPO)}")
 

@@ -1,0 +1,8 @@
+Usage: openspec workset remove [options] <name>
+
+Delete a saved workset (member folders are never touched)
+
+Options:
+  --yes       Confirm removal non-interactively
+  --json      Output as JSON
+  -h, --help  display help for command

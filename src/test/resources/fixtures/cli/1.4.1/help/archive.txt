@@ -1,0 +1,10 @@
+Usage: openspec archive [options] [change-name]
+
+Archive a completed change and update main specs
+
+Options:
+  -y, --yes      Skip confirmation prompts
+  --skip-specs   Skip spec update operations (useful for infrastructure,
+                 tooling, or doc-only changes)
+  --no-validate  Skip validation (not recommended, requires confirmation)
+  -h, --help     display help for command

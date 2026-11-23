@@ -1,0 +1,8 @@
+Usage: openspec config set [options] <key> <value>
+
+Set a value (auto-coerce types)
+
+Options:
+  --string         Force value to be stored as string
+  --allow-unknown  Allow setting unknown keys
+  -h, --help       display help for command

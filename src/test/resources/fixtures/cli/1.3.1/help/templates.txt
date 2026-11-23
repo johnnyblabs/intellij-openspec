@@ -1,0 +1,8 @@
+Usage: openspec templates [options]
+
+Show resolved template paths for all artifacts in a schema
+
+Options:
+  --schema <name>  Schema to use (default: spec-driven)
+  --json           Output as JSON mapping artifact IDs to template paths
+  -h, --help       display help for command

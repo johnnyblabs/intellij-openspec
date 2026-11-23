@@ -1,0 +1,9 @@
+Usage: openspec schemas [options]
+
+List available workflow schemas with descriptions
+
+Options:
+  --json        Output as JSON (for agent use)
+  --store <id>  Store id to use as the OpenSpec root (a store is a standalone
+                OpenSpec repo you've registered)
+  -h, --help    display help for command

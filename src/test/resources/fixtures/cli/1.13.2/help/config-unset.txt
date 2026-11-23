@@ -1,0 +1,6 @@
+Usage: openspec config unset [options] <key>
+
+Remove a key (revert to default)
+
+Options:
+  -h, --help  display help for command

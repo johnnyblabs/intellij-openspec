@@ -1,0 +1,13 @@
+Usage: openspec schema init [options] <name>
+
+Create a new project-local schema
+
+Options:
+  --json                Output as JSON
+  --description <text>  Schema description
+  --artifacts <list>    Comma-separated artifact IDs
+                        (proposal,specs,design,tasks)
+  --default             Set as project default schema
+  --no-default          Do not prompt to set as default
+  --force               Overwrite existing schema
+  -h, --help            display help for command

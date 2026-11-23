@@ -4,6 +4,9 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.johnnyblabs.openspec.services.AiToolRegistry.AiTool;
+import com.johnnyblabs.openspec.util.FixtureLayout;
+import com.johnnyblabs.openspec.util.FixtureVersions;
+import com.johnnyblabs.openspec.util.KnownGaps;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
@@ -21,11 +24,19 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * {@link AiToolDetector} reaches upstream's verdicts: each case is a project captured from real
  * {@code openspec init --tools} runs or an edge case, with the tools the CLI's own {@code getAvailableTools}
- * reported for it ({@code fixtures/cli/1.14.3/detect/}).
+ * reported for it ({@code fixtures/cli/<version>/detect/}), replayed for every captured release.
+ * <p>
+ * From 2.0 a layout can hold links ({@link FixtureLayout}); they are written as real links, or as copies where the
+ * platform can't make links, which upstream's existence checks treat the same. 2.x cases the plugin doesn't handle
+ * yet are {@link KnownGaps} entries.
  */
 class AiToolDetectionContractTest {
 
-    static final Path CASES = Paths.get("src/test/resources/fixtures/cli/1.14.3/detect");
+    static final Path CLI = Paths.get("src/test/resources/fixtures/cli");
+
+    /** Each release's case count, so a lost case can't shrink the replay unnoticed. */
+    static final Map<String, Integer> CASE_COUNT = Map.of("1.14.3", 30, "1.16.1", 30, "1.17.0", 30,
+            "2.0.0", 33, "2.1.0", 35, "2.1.1", 35);
 
     @TempDir
     Path tmp;
@@ -36,34 +47,35 @@ class AiToolDetectionContractTest {
 
     /** Writes a captured side ({@code project} or {@code home}) of a layout under {@code root}. */
     static void materialize(JsonObject files, Path root) throws IOException {
-        Files.createDirectories(root);
-        for (Map.Entry<String, JsonElement> f : files.entrySet()) {
-            Path path = root.resolve(f.getKey());
-            Files.createDirectories(path.getParent());
-            Files.writeString(path, f.getValue().getAsString());
-        }
+        FixtureLayout.writeFiles(files, root);
     }
 
     @TestFactory
     Stream<DynamicTest> detectsWhatUpstreamDetects() throws IOException {
-        List<Path> cases;
-        try (Stream<Path> dirs = Files.list(CASES)) {
-            cases = dirs.sorted().toList();
-        }
-        assertEquals(30, cases.size(), "sanity: every captured case is replayed");
-        return cases.stream().map(c -> DynamicTest.dynamicTest(c.getFileName().toString(), () -> {
-            JsonObject layout = JsonParser.parseString(Files.readString(c.resolve("layout.json"))).getAsJsonObject();
-            List<String> expected = new ArrayList<>();
-            for (JsonElement id : JsonParser.parseString(Files.readString(c.resolve("detected.json"))).getAsJsonArray()) {
-                expected.add(id.getAsString());
+        List<DynamicTest> tests = new ArrayList<>();
+        for (String v : FixtureVersions.versionsWith("detect", CASE_COUNT.keySet())) {
+            List<Path> cases;
+            try (Stream<Path> dirs = Files.list(CLI.resolve(v).resolve("detect"))) {
+                cases = dirs.sorted().toList();
             }
-            Path project = tmp.resolve(c.getFileName().toString()).resolve("project");
-            Path home = tmp.resolve(c.getFileName().toString()).resolve("home");
-            materialize(layout.getAsJsonObject("project"), project);
-            materialize(layout.getAsJsonObject("home"), home);
+            assertEquals(CASE_COUNT.get(v), cases.size(), "sanity: every captured " + v + " case is replayed");
+            for (Path c : cases) {
+                String name = c.getFileName().toString();
+                tests.add(DynamicTest.dynamicTest(v + "/" + name, () -> KnownGaps.check(v, "detect", name, () -> {
+                    JsonObject layout = JsonParser.parseString(Files.readString(c.resolve("layout.json"))).getAsJsonObject();
+                    List<String> expected = new ArrayList<>();
+                    for (JsonElement id : JsonParser.parseString(Files.readString(c.resolve("detected.json"))).getAsJsonArray()) {
+                        expected.add(id.getAsString());
+                    }
+                    Path project = tmp.resolve(v).resolve(name).resolve("project");
+                    Path home = tmp.resolve(v).resolve(name).resolve("home");
+                    FixtureLayout.materialize(layout, project, home, FixtureLayout.LinkMode.SYMLINK_OR_COPY);
 
-            assertEquals(expected, ids(AiToolDetector.detect(project, home)));
-        }));
+                    assertEquals(expected, ids(AiToolDetector.detect(project, home)));
+                })));
+            }
+        }
+        return tests.stream();
     }
 
     /** A tool added without the CLI is then detected, alone in an otherwise empty project. */

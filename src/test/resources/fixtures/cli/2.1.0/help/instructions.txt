@@ -1,0 +1,11 @@
+Usage: openspec instructions [options] [artifact]
+
+Output enriched instructions for artifacts, apply, or archive
+
+Options:
+  --change <id>    Change name
+  --schema <name>  Schema override (auto-detected from config.yaml)
+  --json           Output as JSON
+  --store <id>     Store id to use as the OpenSpec root (a store is a standalone
+                   OpenSpec repo you've registered)
+  -h, --help       display help for command

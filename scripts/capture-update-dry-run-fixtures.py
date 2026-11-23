@@ -13,7 +13,10 @@ script hashes the project and HOME trees and stops if anything changed: the dry 
 
 Machine paths are replaced with /fixture/demo-project (the project) and /fixture/home (HOME).
 
-Usage: scripts/capture-update-dry-run-fixtures.py                    (uses the `openspec` on PATH, or $OPENSPEC_BIN)
+Usage: CAPTURE_VERSION=2.1.1 scripts/capture-update-dry-run-fixtures.py
+                                                                     (installs that release and the seeding releases
+                                                                     into a scratch prefix: no npx, no global CLI)
+       scripts/capture-update-dry-run-fixtures.py                    (uses the `openspec` on PATH, or $OPENSPEC_BIN)
        OPENSPEC_BIN="npx -y @fission-ai/openspec@1.14.3" scripts/capture-update-dry-run-fixtures.py --older
                                                                      (only the unknown-option case, for an older CLI)
        STALE_BIN="npx -y @fission-ai/openspec@1.14.3"                (the CLI that seeds the stale-skills case;
@@ -22,6 +25,11 @@ Usage: scripts/capture-update-dry-run-fixtures.py                    (uses the `
        FORMER_ROOT_BIN="npx -y @fission-ai/openspec@1.6.0"           (seeds the earlier-release case: a former tool root)
 
 The legacy-* and earlier-release cases need CLI 1.17.0 or later under test: older CLIs only note legacy files.
+
+On 2.1.0 and later a plain `init --tools` installs machine-wide, so the CLI under test inits with `--scope project`.
+The global-skills-* cases (2.1+) start from a machine-wide install, then change the profile so the dry run plans a
+refresh of ~/.agents/skills (`global-skills` note) and, when workflows are dropped, a `removed-skills` note.
+A case whose setup the CLI under test can't run is skipped and reported rather than captured.
 """
 import hashlib
 import os
@@ -33,10 +41,26 @@ import tempfile
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-OPENSPEC = os.environ.get("OPENSPEC_BIN", "openspec").split()
-STALE = os.environ.get("STALE_BIN", "npx -y @fission-ai/openspec@1.14.3").split()
-LEGACY = os.environ.get("LEGACY_BIN", "npx -y @fission-ai/openspec@0.12.0").split()
-FORMER_ROOT = os.environ.get("FORMER_ROOT_BIN", "npx -y @fission-ai/openspec@1.6.0").split()
+sys.path.insert(0, str(REPO / "scripts" / "lib"))
+from openspec_capture import cli as installed_cli, key as version_key  # noqa: E402
+
+UNDER_TEST = os.environ.get("CAPTURE_VERSION")
+
+
+def bin_for(var, version):
+    """$VAR if set, else the installed package for `version` (never a pinned npx: its cache leaks into fixtures)."""
+    return os.environ[var].split() if os.environ.get(var) else installed_cli(version)
+
+
+OPENSPEC = installed_cli(UNDER_TEST) if UNDER_TEST else os.environ.get("OPENSPEC_BIN", "openspec").split()
+STALE = bin_for("STALE_BIN", "1.14.3")
+LEGACY = bin_for("LEGACY_BIN", "0.12.0")
+FORMER_ROOT = bin_for("FORMER_ROOT_BIN", "1.6.0")
+VERSION = None  # the CLI under test, set in main()
+
+
+class SetupSkipped(Exception):
+    """The CLI under test can't run a case's setup (a retired tool, a removed flag): skip the case."""
 
 LEGACY_CURSOR_FILES = ["openspec-proposal.md", "openspec-apply.md", "openspec-archive.md"]
 
@@ -55,8 +79,12 @@ def env_for(home: Path) -> dict:
 def run(cmd, cwd: Path, home: Path, check=True):
     result = subprocess.run(cmd, cwd=cwd, env=env_for(home), capture_output=True, text=True, stdin=subprocess.DEVNULL)
     if check and result.returncode != 0:
-        sys.exit(f"setup step failed: {' '.join(cmd)}\n{result.stdout}\n{result.stderr}")
+        raise SetupSkipped(f"{' '.join(cmd[-4:])}: {(result.stderr or result.stdout).strip()[:200]}")
     return result
+
+
+def at_least(version):
+    return VERSION is not None and version_key(VERSION) >= version_key(version)
 
 
 def tree_hash(*roots: Path) -> str:
@@ -75,8 +103,10 @@ def tree_hash(*roots: Path) -> str:
 
 # --- Case setups: each takes (project, home) and leaves the project ready for the dry run ---
 
-def init(project, home, *tools, cli=None):
-    run((cli or OPENSPEC) + ["init", "--tools", ",".join(tools), "."], project, home)
+def init(project, home, *tools, cli=None, scope="project"):
+    """Init with `cli` (default: the CLI under test). On 2.1+ under test, project scope unless scope=None."""
+    extra = ["--scope", scope] if cli is None and scope and at_least("2.1.0") else []
+    run((cli or OPENSPEC) + ["init", "--tools", ",".join(tools), *extra, "."], project, home)
 
 
 def global_config(home: Path) -> Path:
@@ -142,7 +172,32 @@ def earlier_release(project, home):
     run(OPENSPEC + ["config", "set", "delivery", "skills"], project, home)
 
 
+def global_install(project, home):
+    """A machine-wide install by the CLI under test (2.1's default scope), with the core profile."""
+    if not at_least("2.1.0"):
+        raise SetupSkipped("machine-wide installs arrive in 2.1.0")
+    init(project, home, "claude", scope=None)
+
+
+def global_skills_added(project, home):
+    """The profile gains a workflow after a machine-wide install: the dry run plans a refresh of ~/.agents/skills."""
+    global_install(project, home)
+    run(OPENSPEC + ["config", "set", "profile", "custom"], project, home)
+    run(OPENSPEC + ["config", "set", "workflows", '["propose","explore","apply","update","sync","archive","new"]'],
+        project, home)
+
+
+def global_skills_removed(project, home):
+    """The profile drops workflows after a machine-wide install: a refresh plus a removed-skills note."""
+    global_install(project, home)
+    run(OPENSPEC + ["config", "set", "profile", "custom"], project, home)
+    run(OPENSPEC + ["config", "set", "workflows", '["propose","explore"]'], project, home)
+
+
 CASES = {
+    "global-skills-up-to-date": (global_install, ["--dry-run", "--json"]),
+    "global-skills-added": (global_skills_added, ["--dry-run", "--json"]),
+    "global-skills-removed": (global_skills_removed, ["--dry-run", "--json"]),
     "up-to-date": (up_to_date, ["--dry-run", "--json"]),
     "first-run-global-config": (first_run_global_config, ["--dry-run", "--json"]),
     "stale-skills": (stale_skills, ["--dry-run", "--json"]),
@@ -176,8 +231,10 @@ def unlock(root: Path):
 
 
 def main():
+    global VERSION
     older = "--older" in sys.argv
-    version = run(OPENSPEC + ["--version"], Path.cwd(), Path(tempfile.mkdtemp()), check=True).stdout.strip()
+    version = VERSION = run(OPENSPEC + ["--version"], Path.cwd(), Path(tempfile.mkdtemp()), check=True).stdout.strip()
+    skipped = []
     out = REPO / "src/test/resources/fixtures/cli" / version
     if not older:
         out = out / "update-dry-run"
@@ -188,7 +245,12 @@ def main():
         project.mkdir()
         home.mkdir()
         try:
-            setup(project, home)
+            try:
+                setup(project, home)
+            except (SetupSkipped, FileNotFoundError) as e:
+                # FileNotFoundError: the layout the case edits isn't one this CLI creates (2.0 has no .devin).
+                skipped.append(f"{name}: {e}")
+                continue
             before = tree_hash(project, home)
             result = run(OPENSPEC + ["update"] + args, project, home, check=False)
             if tree_hash(project, home) != before:
@@ -202,6 +264,8 @@ def main():
         finally:
             unlock(scratch)
             shutil.rmtree(scratch, ignore_errors=True)
+    for line in skipped:
+        print(f"skipped {line}")
 
 
 if __name__ == "__main__":

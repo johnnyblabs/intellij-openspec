@@ -1,0 +1,8 @@
+Usage: openspec store remove [options] <id>
+
+Forget a local store registration and delete its local folder
+
+Options:
+  --yes       Confirm local store folder deletion
+  --json      Output as JSON
+  -h, --help  display help for command

@@ -1,0 +1,10 @@
+{
+  "changes": [],
+  "notes": [
+    {
+      "code": "global-skills",
+      "message": "Update will also refresh the OpenSpec skills installed for this machine in ~/.agents/skills."
+    }
+  ],
+  "failures": []
+}

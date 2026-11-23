@@ -1,0 +1,10 @@
+Usage: openspec new [options] [command]
+
+Create new items
+
+Options:
+  -h, --help               display help for command
+
+Commands:
+  change [options] <name>  Create a new change directory
+  help [command]           display help for command

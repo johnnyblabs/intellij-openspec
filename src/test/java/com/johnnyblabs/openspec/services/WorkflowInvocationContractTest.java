@@ -6,7 +6,11 @@ import com.google.gson.JsonParser;
 import com.intellij.openapi.project.Project;
 import com.johnnyblabs.openspec.services.AiToolRegistry.AiTool;
 import com.johnnyblabs.openspec.services.ExplorePromptService.Instructions;
+import com.johnnyblabs.openspec.util.FixtureVersions;
+import com.johnnyblabs.openspec.util.KnownGaps;
+import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestFactory;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
@@ -14,7 +18,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
@@ -25,20 +31,36 @@ import static org.mockito.Mockito.when;
  * {@code workflow-invocations.json} is captured from upstream's own functions by
  * {@code scripts/capture-workflow-invocations.py}. Each row's files are seeded into a fresh project with the row's tool
  * as the only candidate; explore rows go through Explore's own lookup, the others through {@link WorkflowInvocation#find}.
+ * <p>
+ * The plugin is held to the target and every later captured release. A release whose matrix the plugin doesn't match
+ * yet is one {@link KnownGaps} entry for the whole release, closed when every row matches. The check of upstream's
+ * matrix against what a real init wrote compares upstream with itself, so it runs for every release and always passes.
  */
 class WorkflowInvocationContractTest {
 
-    private static final Path MATRIX = AiToolRegistryContractTest.FIXTURES.resolve(AiToolRegistryContractTest.TARGET)
-            .resolve("workflow-invocations.json");
+    private static final String TARGET = AiToolRegistryContractTest.TARGET;
+
+    /** Each release's row count: 2 workflows x tools with skills x deliveries (one delivery from 2.0). */
+    private static final Map<String, Integer> ROWS = Map.of("1.17.0", 294, "2.0.0", 96, "2.1.0", 174, "2.1.1", 174);
 
     @TempDir Path root;
 
-    private static List<JsonObject> rows() throws IOException {
+    private static List<String> releases() {
+        return FixtureVersions.atLeast(FixtureVersions.versionsWith("workflow-invocations.json", ROWS.keySet()), TARGET);
+    }
+
+    private static List<JsonObject> rows(String version) throws IOException {
+        Path matrix = AiToolRegistryContractTest.FIXTURES.resolve(version).resolve("workflow-invocations.json");
         List<JsonObject> rows = new ArrayList<>();
-        for (JsonElement row : JsonParser.parseString(Files.readString(MATRIX)).getAsJsonObject().getAsJsonArray("rows")) {
+        for (JsonElement row : JsonParser.parseString(Files.readString(matrix)).getAsJsonObject().getAsJsonArray("rows")) {
             rows.add(row.getAsJsonObject());
         }
+        assertEquals(ROWS.get(version), rows.size(), "sanity: CLI " + version + "'s matrix rows");
         return rows;
+    }
+
+    private static List<String> deliveries(String version) {
+        return FixtureVersions.compare(version, "2.0.0") >= 0 ? List.of("skills") : List.of("both", "skills", "commands");
     }
 
     private static String stringOrNull(JsonObject row, String key) {
@@ -68,18 +90,23 @@ class WorkflowInvocationContractTest {
                 AiToolRegistry.exploreCommandPath(tool), instructions.hasCommand(), instructions.hasSkill());
     }
 
-    @Test
-    void everyWorkflowToolAndDeliveryGetsUpstreamsInvocation() throws IOException {
+    @TestFactory
+    Stream<DynamicTest> everyWorkflowToolAndDeliveryGetsUpstreamsInvocation() {
+        return releases().stream().map(v -> DynamicTest.dynamicTest(v,
+                () -> KnownGaps.check(v, "invocation", "every-row", () -> invocationsMatch(v))));
+    }
+
+    private void invocationsMatch(String version) throws IOException {
         List<String> wrong = new ArrayList<>();
         List<String> workflows = new ArrayList<>();
         int checked = 0;
-        for (JsonObject row : rows()) {
+        for (JsonObject row : rows(version)) {
             String workflow = row.get("workflow").getAsString();
             String tool = row.get("tool").getAsString();
             String delivery = row.get("delivery").getAsString();
             String expected = stringOrNull(row, "invocation");
 
-            Path project = Files.createDirectory(root.resolve(workflow + "-" + tool + "-" + delivery));
+            Path project = Files.createDirectories(root.resolve(version).resolve(workflow + "-" + tool + "-" + delivery));
             for (String path : new String[] {stringOrNull(row, "commandPath"), stringOrNull(row, "skillPath")}) {
                 if (path == null) continue;
                 Path file = project.resolve(path);
@@ -94,14 +121,19 @@ class WorkflowInvocationContractTest {
             checked++;
         }
         assertEquals(List.of("explore", "update"), workflows);
-        assertEquals(294, checked, "the 1.15.0 matrix covers 2 workflows x 49 tools x 3 deliveries");
+        assertEquals(ROWS.get(version), checked, "every row of CLI " + version + "'s matrix is checked");
         assertTrue(wrong.isEmpty(), "invocations that differ from upstream's:\n" + String.join("\n", wrong));
     }
 
-    @Test
-    void theMatrixPathsAreTheRegistrysPaths() throws IOException {
+    @TestFactory
+    Stream<DynamicTest> theMatrixPathsAreTheRegistrysPaths() {
+        return releases().stream().map(v -> DynamicTest.dynamicTest(v,
+                () -> KnownGaps.check(v, "invocation", "registry-paths", () -> matrixPathsAreRegistryPaths(v))));
+    }
+
+    private void matrixPathsAreRegistryPaths(String version) throws IOException {
         List<String> drift = new ArrayList<>();
-        for (JsonObject row : rows()) {
+        for (JsonObject row : rows(version)) {
             AiTool tool = byUpstreamId(row.get("tool").getAsString());
             String workflow = row.get("workflow").getAsString();
             String skill = row.get("skill").getAsString();
@@ -119,34 +151,50 @@ class WorkflowInvocationContractTest {
         assertTrue(drift.isEmpty(), String.join("\n", drift));
     }
 
-    /** The update rows' paths are exactly the update files a real {@code openspec init} wrote, per tool and delivery. */
-    @Test
-    void theUpdatePathsAreWhatInitWrites() throws IOException {
-        Path listings = AiToolRegistryContractTest.FIXTURES.resolve(AiToolRegistryContractTest.TARGET).resolve("update");
+    /**
+     * The update rows' paths are exactly the update files a real {@code openspec init} wrote, per tool and delivery:
+     * upstream's matrix against upstream's own init, for every release. From 2.0 a tool folder can hold a link into
+     * {@code .agents/skills/}; the listing records it as {@code <path> -> <target>} and the matrix as {@code linkPath}.
+     * Where upstream can't link it copies the skill, which also satisfies {@code linkPath}.
+     */
+    @TestFactory
+    Stream<DynamicTest> theUpdatePathsAreWhatInitWrites() {
+        return FixtureVersions.atLeast(FixtureVersions.versionsWith("update/listing-skills.txt", ROWS.keySet()), TARGET)
+                .stream().map(v -> DynamicTest.dynamicTest(v, () -> updatePathsAreWhatInitWrites(v)));
+    }
+
+    private void updatePathsAreWhatInitWrites(String version) throws IOException {
+        Path listings = AiToolRegistryContractTest.FIXTURES.resolve(version).resolve("update");
         List<String> drift = new ArrayList<>();
         int compared = 0;
-        for (String delivery : List.of("both", "skills", "commands")) {
+        for (String delivery : deliveries(version)) {
             java.util.Map<String, java.util.Set<String>> written = new java.util.HashMap<>();
             for (String line : Files.readAllLines(listings.resolve("listing-" + delivery + ".txt"))) {
                 if (line.isBlank()) continue;
                 String[] parts = line.split(" ", 3);
                 assertEquals("P", parts[1], "update files are written in the project: " + line);
-                written.computeIfAbsent(parts[0], k -> new java.util.TreeSet<>()).add(parts[2]);
+                String path = parts[2].contains(" -> ") ? parts[2].substring(0, parts[2].indexOf(" -> ")) : parts[2];
+                written.computeIfAbsent(parts[0], k -> new java.util.TreeSet<>()).add(path);
             }
-            for (JsonObject row : rows()) {
+            for (JsonObject row : rows(version)) {
                 if (!"update".equals(row.get("workflow").getAsString()) || !delivery.equals(row.get("delivery").getAsString())) {
                     continue;
                 }
                 java.util.Set<String> matrix = new java.util.TreeSet<>();
-                for (String key : new String[] {"commandPath", "skillPath"}) {
+                for (String key : new String[] {"commandPath", "skillPath", "linkPath"}) {
                     if (stringOrNull(row, key) != null) matrix.add(stringOrNull(row, key));
                 }
-                java.util.Set<String> init = written.getOrDefault(row.get("tool").getAsString(), java.util.Set.of());
+                java.util.Set<String> init = new java.util.TreeSet<>(
+                        written.getOrDefault(row.get("tool").getAsString(), java.util.Set.of()));
+                // Where upstream can't make a link it copies the skill instead (shared/skill-links.js createSkillLink):
+                // 2.1's installer does that for eve, whose folder is agent/. Either form is upstream's.
+                String link = stringOrNull(row, "linkPath");
+                if (link != null && init.remove(link + "/SKILL.md")) init.add(link);
                 if (!matrix.equals(init)) drift.add(row.get("tool").getAsString() + "/" + delivery + ": matrix " + matrix + ", init " + init);
                 compared++;
             }
         }
-        assertEquals(147, compared);
+        assertEquals(ROWS.get(version) / 2, compared, "every update row of CLI " + version + " is compared");
         assertTrue(drift.isEmpty(), "update paths that differ from what init wrote:\n" + String.join("\n", drift));
     }
 

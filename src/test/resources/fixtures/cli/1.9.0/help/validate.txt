@@ -1,0 +1,19 @@
+Usage: openspec validate [options] [item-name]
+
+Validate changes and specs
+
+Options:
+  --all              Validate all changes and specs
+  --changes          Validate all changes
+  --specs            Validate all specs
+  --archived         Validate that archived changes have all tasks completed
+                     (for pre-commit linting)
+  --type <type>      Specify item type when ambiguous: change|spec
+  --strict           Enable strict validation mode
+  --json             Output validation results as JSON
+  --concurrency <n>  Max concurrent validations (defaults to env
+                     OPENSPEC_CONCURRENCY or 6)
+  --no-interactive   Disable interactive prompts
+  --store <id>       Store id to use as the OpenSpec root (a store is a
+                     standalone OpenSpec repo you've registered)
+  -h, --help         display help for command

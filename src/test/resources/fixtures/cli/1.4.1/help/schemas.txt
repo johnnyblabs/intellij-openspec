@@ -1,0 +1,7 @@
+Usage: openspec schemas [options]
+
+List available workflow schemas with descriptions
+
+Options:
+  --json      Output as JSON (for agent use)
+  -h, --help  display help for command

@@ -1,0 +1,6 @@
+Usage: openspec config get [options] <key>
+
+Get a specific value (raw, scriptable)
+
+Options:
+  -h, --help  display help for command

@@ -1,0 +1,9 @@
+Usage: openspec status [options]
+
+Display artifact completion status for a change
+
+Options:
+  --change <id>    Change name to show status for
+  --schema <name>  Schema override (auto-detected from config.yaml)
+  --json           Output as JSON
+  -h, --help       display help for command

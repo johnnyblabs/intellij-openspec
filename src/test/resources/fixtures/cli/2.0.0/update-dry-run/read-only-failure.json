@@ -1,0 +1,36 @@
+{
+  "changes": [
+    {
+      "path": ".agents/skills/openspec-apply-change/SKILL.md",
+      "action": "update",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-archive-change/SKILL.md",
+      "action": "update",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-explore/SKILL.md",
+      "action": "update",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-sync-specs/SKILL.md",
+      "action": "update",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-update-change/SKILL.md",
+      "action": "update",
+      "tool": "openspec"
+    }
+  ],
+  "notes": [],
+  "failures": [
+    {
+      "tool": "claude",
+      "error": "the shared skills in .agents/skills could not be written: EACCES: permission denied, access '/fixture/demo-project/.agents/skills/openspec-propose/SKILL.md'"
+    }
+  ]
+}

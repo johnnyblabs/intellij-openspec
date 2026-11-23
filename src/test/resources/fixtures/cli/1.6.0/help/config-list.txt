@@ -1,0 +1,7 @@
+Usage: openspec config list [options]
+
+Show all current settings
+
+Options:
+  --json      Output as JSON
+  -h, --help  display help for command

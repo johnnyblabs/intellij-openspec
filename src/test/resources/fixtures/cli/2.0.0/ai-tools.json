@@ -1,0 +1,630 @@
+{
+  "version": "2.0.0",
+  "tools": [
+    {
+      "name": "Amp",
+      "value": "amp",
+      "available": true,
+      "successLabel": "Amp",
+      "skillsDir": ".agents",
+      "detectionPaths": [
+        ".amp",
+        ".agents/skills"
+      ]
+    },
+    {
+      "name": "Antigravity",
+      "value": "antigravity",
+      "available": true,
+      "successLabel": "Antigravity",
+      "skillsDir": ".agents",
+      "legacySkillsDirs": [
+        ".agent"
+      ],
+      "detectionPaths": [
+        ".agent",
+        ".agents/workflows"
+      ],
+      "requiresIdeRestart": true
+    },
+    {
+      "name": "AtomCode",
+      "value": "atomcode",
+      "available": true,
+      "successLabel": "AtomCode",
+      "skillsDir": ".atomcode"
+    },
+    {
+      "name": "Auggie (Augment CLI)",
+      "value": "auggie",
+      "available": true,
+      "successLabel": "Auggie",
+      "skillsDir": ".augment"
+    },
+    {
+      "name": "IBM Bob",
+      "value": "bob",
+      "available": true,
+      "successLabel": "IBM Bob",
+      "skillsDir": ".bob"
+    },
+    {
+      "name": "Claude Code",
+      "value": "claude",
+      "available": true,
+      "successLabel": "Claude Code",
+      "skillsDir": ".claude"
+    },
+    {
+      "name": "Cline",
+      "value": "cline",
+      "available": true,
+      "successLabel": "Cline",
+      "skillsDir": ".cline",
+      "requiresIdeRestart": true
+    },
+    {
+      "name": "Command Code",
+      "value": "command-code",
+      "available": true,
+      "successLabel": "Command Code",
+      "skillsDir": ".commandcode"
+    },
+    {
+      "name": "CodeArts",
+      "value": "codeartsagent",
+      "available": true,
+      "successLabel": "CodeArts",
+      "skillsDir": ".codeartsdoer"
+    },
+    {
+      "name": "Codex",
+      "value": "codex",
+      "available": true,
+      "successLabel": "Codex",
+      "skillsDir": ".agents",
+      "legacySkillsDirs": [
+        ".codex"
+      ],
+      "detectionPaths": [
+        ".agents/skills",
+        ".codex/skills"
+      ]
+    },
+    {
+      "name": "DeepSeek Harness",
+      "value": "dsh",
+      "available": true,
+      "successLabel": "DeepSeek Harness",
+      "skillsDir": ".dsh"
+    },
+    {
+      "name": "Devin Desktop (formerly Windsurf)",
+      "value": "devin",
+      "available": true,
+      "successLabel": "Devin Desktop",
+      "skillsDir": ".devin",
+      "detectionPaths": [
+        ".devin",
+        ".windsurf"
+      ],
+      "requiresIdeRestart": true
+    },
+    {
+      "name": "ForgeCode",
+      "value": "forgecode",
+      "available": true,
+      "successLabel": "ForgeCode",
+      "skillsDir": ".forge"
+    },
+    {
+      "name": "CodeBuddy Code (CLI)",
+      "value": "codebuddy",
+      "available": true,
+      "successLabel": "CodeBuddy Code",
+      "skillsDir": ".codebuddy"
+    },
+    {
+      "name": "Code Studio",
+      "value": "codestudio",
+      "available": true,
+      "successLabel": "Code Studio",
+      "skillsDir": ".codestudio",
+      "requiresIdeRestart": true
+    },
+    {
+      "name": "Continue",
+      "value": "continue",
+      "available": true,
+      "successLabel": "Continue (VS Code / JetBrains / Cli)",
+      "skillsDir": ".continue",
+      "requiresIdeRestart": true
+    },
+    {
+      "name": "CoStrict",
+      "value": "costrict",
+      "available": true,
+      "successLabel": "CoStrict",
+      "skillsDir": ".cospec",
+      "requiresIdeRestart": true
+    },
+    {
+      "name": "Crush",
+      "value": "crush",
+      "available": true,
+      "successLabel": "Crush",
+      "skillsDir": ".crush"
+    },
+    {
+      "name": "Cursor",
+      "value": "cursor",
+      "available": true,
+      "successLabel": "Cursor",
+      "skillsDir": ".cursor",
+      "requiresIdeRestart": true
+    },
+    {
+      "name": "EasyCode",
+      "value": "easycode",
+      "available": true,
+      "successLabel": "EasyCode",
+      "skillsDir": ".easycode"
+    },
+    {
+      "name": "Factory Droid",
+      "value": "factory",
+      "available": true,
+      "successLabel": "Factory Droid",
+      "skillsDir": ".factory"
+    },
+    {
+      "name": "Gemini CLI",
+      "value": "gemini",
+      "available": true,
+      "successLabel": "Gemini CLI",
+      "skillsDir": ".gemini"
+    },
+    {
+      "name": "GitHub Copilot",
+      "value": "github-copilot",
+      "available": true,
+      "successLabel": "GitHub Copilot",
+      "skillsDir": ".github",
+      "detectionPaths": [
+        ".github/copilot-instructions.md",
+        ".github/instructions",
+        ".github/workflows/copilot-setup-steps.yml",
+        ".github/prompts",
+        ".github/agents",
+        ".github/skills",
+        ".github/.mcp.json"
+      ],
+      "requiresIdeRestart": true
+    },
+    {
+      "name": "GigaCode",
+      "value": "gigacode",
+      "available": true,
+      "successLabel": "GigaCode",
+      "skillsDir": ".gigacode"
+    },
+    {
+      "name": "Grok Build",
+      "value": "grok",
+      "available": true,
+      "successLabel": "Grok Build",
+      "skillsDir": ".grok"
+    },
+    {
+      "name": "GSD",
+      "value": "gsd",
+      "available": true,
+      "successLabel": "GSD",
+      "skillsDir": ".agents",
+      "detectionPaths": [
+        ".gsd"
+      ]
+    },
+    {
+      "name": "Hermes Agent",
+      "value": "hermes",
+      "available": true,
+      "successLabel": "Hermes Agent",
+      "skillsDir": ".hermes",
+      "detectionPaths": [
+        ".hermes",
+        "HERMES.md",
+        ".hermes.md"
+      ],
+      "setupNote": "Hermes loads this project's .hermes/skills only once you trust the repo: run `hermes skills trust` in this project (Hermes v2026.6.5 or later). On older versions, add this project's .hermes/skills directory to skills.external_dirs in ~/.hermes/config.yaml instead."
+    },
+    {
+      "name": "iFlow",
+      "value": "iflow",
+      "available": true,
+      "successLabel": "iFlow",
+      "skillsDir": ".iflow"
+    },
+    {
+      "name": "Junie",
+      "value": "junie",
+      "available": true,
+      "successLabel": "Junie",
+      "skillsDir": ".junie",
+      "requiresIdeRestart": true
+    },
+    {
+      "name": "Kilo Code",
+      "value": "kilocode",
+      "available": true,
+      "successLabel": "Kilo Code",
+      "skillsDir": ".kilocode",
+      "requiresIdeRestart": true
+    },
+    {
+      "name": "Kimi Code",
+      "value": "kimi",
+      "available": true,
+      "successLabel": "Kimi Code",
+      "skillsDir": ".kimi-code",
+      "detectionPaths": [
+        ".kimi-code",
+        ".kimi"
+      ]
+    },
+    {
+      "name": "Kiro",
+      "value": "kiro",
+      "available": true,
+      "successLabel": "Kiro",
+      "skillsDir": ".kiro",
+      "requiresIdeRestart": true
+    },
+    {
+      "name": "Lingma",
+      "value": "lingma",
+      "available": true,
+      "successLabel": "Lingma",
+      "skillsDir": ".lingma",
+      "requiresIdeRestart": true
+    },
+    {
+      "name": "MiniMax Code",
+      "value": "minimax-code",
+      "available": true,
+      "successLabel": "MiniMax Code",
+      "globalSkillsDir": ".minimax"
+    },
+    {
+      "name": "Mistral Vibe",
+      "value": "vibe",
+      "available": true,
+      "successLabel": "Mistral Vibe",
+      "skillsDir": ".vibe"
+    },
+    {
+      "name": "Oh My Pi",
+      "value": "oh-my-pi",
+      "available": true,
+      "successLabel": "Oh My Pi",
+      "skillsDir": ".omp"
+    },
+    {
+      "name": "OpenCode",
+      "value": "opencode",
+      "available": true,
+      "successLabel": "OpenCode",
+      "skillsDir": ".opencode"
+    },
+    {
+      "name": "Pi",
+      "value": "pi",
+      "available": true,
+      "successLabel": "Pi",
+      "skillsDir": ".pi"
+    },
+    {
+      "name": "SourceCraft Code Assistant",
+      "value": "codeassistant",
+      "available": true,
+      "successLabel": "SourceCraft Code Assistant",
+      "skillsDir": ".codeassistant"
+    },
+    {
+      "name": "Qoder",
+      "value": "qoder",
+      "available": true,
+      "successLabel": "Qoder",
+      "skillsDir": ".qoder",
+      "requiresIdeRestart": true
+    },
+    {
+      "name": "Qwen Code",
+      "value": "qwen",
+      "available": true,
+      "successLabel": "Qwen Code",
+      "skillsDir": ".qwen"
+    },
+    {
+      "name": "Rovo Dev CLI",
+      "value": "rovodev",
+      "available": true,
+      "successLabel": "Rovo Dev CLI",
+      "skillsDir": ".rovodev",
+      "detectionPaths": [
+        ".rovodev/skills",
+        ".rovodev"
+      ]
+    },
+    {
+      "name": "Zoo Code",
+      "value": "roocode",
+      "available": true,
+      "successLabel": "Zoo Code",
+      "skillsDir": ".roo",
+      "requiresIdeRestart": true
+    },
+    {
+      "name": "Trae",
+      "value": "trae",
+      "available": true,
+      "successLabel": "Trae",
+      "skillsDir": ".trae",
+      "requiresIdeRestart": true
+    },
+    {
+      "name": "Veai",
+      "value": "veai",
+      "available": true,
+      "successLabel": "Veai",
+      "skillsDir": ".veai"
+    },
+    {
+      "name": "Warp",
+      "value": "warp",
+      "available": true,
+      "successLabel": "Warp",
+      "skillsDir": ".warp",
+      "detectionPaths": [
+        ".warp",
+        "WARP.md"
+      ]
+    },
+    {
+      "name": "Zed Agent",
+      "value": "zed",
+      "available": true,
+      "successLabel": "Zed Agent",
+      "skillsDir": ".agents",
+      "detectionPaths": [
+        ".zed",
+        ".agents/skills"
+      ]
+    },
+    {
+      "name": "ZCode",
+      "value": "zcode",
+      "available": true,
+      "successLabel": "ZCode",
+      "skillsDir": ".zcode"
+    },
+    {
+      "name": "Other / Universal (shared .agents skills)",
+      "value": "agents",
+      "available": true,
+      "successLabel": "shared .agents skills",
+      "skillsDir": ".agents",
+      "detectionPaths": [
+        ".agents/skills"
+      ],
+      "searchAliases": [
+        "universal",
+        "other",
+        "generic",
+        "custom",
+        "proprietary",
+        "unlisted",
+        "unsupported",
+        "vendor-neutral",
+        "agents.md"
+      ]
+    }
+  ],
+  "aliases": {
+    "windsurf": "devin"
+  },
+  "effective": {
+    "amp": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "antigravity": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "atomcode": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "auggie": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "bob": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "claude": {
+      "skills": ".agents/skills",
+      "linkDir": ".claude/skills"
+    },
+    "cline": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "command-code": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "codeartsagent": {
+      "skills": ".agents/skills",
+      "linkDir": ".codeartsdoer/skills"
+    },
+    "codex": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "dsh": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "devin": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "forgecode": {
+      "skills": ".agents/skills",
+      "linkDir": ".forge/skills"
+    },
+    "codebuddy": {
+      "skills": ".agents/skills",
+      "linkDir": ".codebuddy/skills"
+    },
+    "codestudio": {
+      "skills": ".agents/skills",
+      "linkDir": ".codestudio/skills"
+    },
+    "continue": {
+      "skills": ".agents/skills",
+      "linkDir": ".continue/skills"
+    },
+    "costrict": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "crush": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "cursor": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "easycode": {
+      "skills": ".agents/skills",
+      "linkDir": ".easycode/skills"
+    },
+    "factory": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "gemini": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "github-copilot": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "gigacode": {
+      "skills": ".agents/skills",
+      "linkDir": ".gigacode/skills"
+    },
+    "grok": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "gsd": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "hermes": {
+      "skills": ".agents/skills",
+      "linkDir": ".hermes/skills"
+    },
+    "iflow": {
+      "skills": ".agents/skills",
+      "linkDir": ".iflow/skills"
+    },
+    "junie": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "kilocode": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "kimi": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "kiro": {
+      "skills": ".agents/skills",
+      "linkDir": ".kiro/skills"
+    },
+    "lingma": {
+      "skills": ".agents/skills",
+      "linkDir": ".lingma/skills"
+    },
+    "vibe": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "oh-my-pi": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "opencode": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "pi": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "codeassistant": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "qoder": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "qwen": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "rovodev": {
+      "skills": ".agents/skills",
+      "linkDir": ".rovodev/skills"
+    },
+    "roocode": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "trae": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "veai": {
+      "skills": ".agents/skills",
+      "linkDir": ".veai/skills"
+    },
+    "warp": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "zed": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "zcode": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "agents": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    }
+  }
+}

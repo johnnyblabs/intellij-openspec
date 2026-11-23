@@ -1,0 +1,15 @@
+Usage: openspec workset [options] [command]
+
+Compose, keep, and open personal working views (purely local)
+
+Options:
+  -h, --help               display help for command
+
+Commands:
+  create [options] [name]  Compose and save a named working view of folders you
+                           choose
+  list|ls [options]        Show saved worksets with their members
+  open [options] <name>    Open a saved workset in your tool (editor window or
+                           agent session)
+  remove [options] <name>  Delete a saved workset (member folders are never
+                           touched)

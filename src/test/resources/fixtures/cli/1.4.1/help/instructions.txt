@@ -1,0 +1,9 @@
+Usage: openspec instructions [options] [artifact]
+
+Output enriched instructions for creating an artifact or applying tasks
+
+Options:
+  --change <id>    Change name
+  --schema <name>  Schema override (auto-detected from config.yaml)
+  --json           Output as JSON
+  -h, --help       display help for command

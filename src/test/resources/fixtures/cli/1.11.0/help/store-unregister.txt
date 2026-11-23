@@ -1,0 +1,7 @@
+Usage: openspec store unregister [options] <id>
+
+Forget a local store registration without deleting files
+
+Options:
+  --json      Output as JSON
+  -h, --help  display help for command

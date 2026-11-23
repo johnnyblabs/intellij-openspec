@@ -1,0 +1,21 @@
+Usage: openspec init [options] [path]
+
+Initialize OpenSpec in your project
+
+Options:
+  --tools <tools>        Configure all, none, or a comma-separated list of tool
+                         IDs
+  --language <language>  Write new OpenSpec artifacts in this language
+  --force                Auto-cleanup legacy files without prompting
+  --profile <profile>    Override global config profile (core or custom)
+  --no-animation         Show a static welcome screen instead of the animated
+                         one
+  --copilot-cloud        Set up GitHub Copilot cloud coding-agent files without
+                         prompting
+  --no-copilot-cloud     Skip GitHub Copilot cloud coding-agent files without
+                         prompting
+  --scope <scope>        Where the skills go: global (this machine, for every
+                         project) or project
+  -h, --help             display help for command
+
+Use "all", "none", or a comma-separated list of: amp, antigravity, atomcode, auggie, bob, claude, cline, command-code, codeartsagent, codex, dsh, devin, forgecode, codebuddy, codestudio, continue, costrict, crush, cursor, easycode, factory, gemini, github-copilot, gigacode, grok, gsd, hermes, iflow, junie, kilocode, kimi, kiro, lingma, minimax-code, vibe, oh-my-pi, opencode, pi, codeassistant, qoder, qwen, rovodev, roocode, trae, veai, warp, zed, zcode, agents, aider-desk, antigravity-cli, astrbot, autohand-code, openclaw, codemaker, cortex, deepagents, dexto, eve, firebender, fx, goose, inference-sh, jazz, kimchi, kode, loaf, mcpjam, moxby, mux, openhands, ona, posit-assistant, qoder-cn, replit, reasonix, sarvam-code, tabnine-cli, terramind, tinycloud, trae-cn, zencoder, zenflow, neovate, pochi, promptscript, adal. Also accepted: windsurf (now devin).

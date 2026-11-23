@@ -1,0 +1,6 @@
+Usage: openspec config path [options]
+
+Show config file location
+
+Options:
+  -h, --help  display help for command

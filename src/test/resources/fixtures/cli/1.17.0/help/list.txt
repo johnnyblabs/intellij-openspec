@@ -1,0 +1,14 @@
+Usage: openspec list [options]
+
+List items (changes by default). Use --specs to list specs.
+
+Options:
+  --specs         List specs instead of changes
+  --changes       List changes explicitly (default)
+  --archived      Show only archived changes
+  --all           Show both active and archived changes
+  --sort <order>  Sort order: "recent" (default) or "name" (default: "recent")
+  --json          Output as JSON (for programmatic use)
+  --store <id>    Store id to use as the OpenSpec root (a store is a standalone
+                  OpenSpec repo you've registered)
+  -h, --help      display help for command

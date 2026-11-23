@@ -1,0 +1,14 @@
+{
+  "changes": [],
+  "notes": [
+    {
+      "code": "global-skills",
+      "message": "Update will also refresh the OpenSpec skills installed for this machine in ~/.agents/skills."
+    },
+    {
+      "code": "removed-skills",
+      "message": "Update will remove 4 skills your workflow profile doesn't include: openspec-apply-change, openspec-update-change, openspec-sync-specs, openspec-archive-change. To keep them, add their workflows with: openspec config profile"
+    }
+  ],
+  "failures": []
+}

@@ -1,0 +1,1 @@
+✖ Error: Amazon Q Developer is no longer supported: it can't load skills, and AWS is retiring it in favor of Kiro. Set up Kiro instead: openspec init --tools kiro

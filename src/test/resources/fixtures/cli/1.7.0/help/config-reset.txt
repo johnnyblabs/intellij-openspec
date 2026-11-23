@@ -1,0 +1,8 @@
+Usage: openspec config reset [options]
+
+Reset configuration to defaults
+
+Options:
+  --all       Reset all configuration (required)
+  -y, --yes   Skip confirmation prompts
+  -h, --help  display help for command

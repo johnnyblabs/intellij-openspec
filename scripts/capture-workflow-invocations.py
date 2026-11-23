@@ -17,6 +17,12 @@ src/test/resources/fixtures/cli/<version>/workflow-invocations.json:
 
 `invocation` is null when the tool gets neither; `commandPath`/`skillPath` are null when that file isn't generated.
 
+From CLI 2.0 there are no command files and `delivery` changes nothing, so each tool gets one row per workflow with
+`delivery: "skills"`, `commands: false`, `commandPath: null`, the invocation from upstream's own skill-reference
+transformer (Codex `$openspec-<skill>`, Kimi `/skill:openspec-<skill>`, prose for tools with no slash surface,
+`/openspec-<skill>` elsewhere), `skillPath` where the skill is written (`.agents/skills/...` for shared tools), and
+`linkPath`, the tool-folder path that links to it (null when the tool reads `.agents/skills/` itself).
+
 Usage: scripts/capture-workflow-invocations.py   (uses the `openspec` on PATH, or $OPENSPEC_BIN pointing at it)
 """
 import json
@@ -58,6 +64,29 @@ for (const t of AI_TOOLS.filter(t => t.skillsDir)) {
 console.log(JSON.stringify(rows));
 """
 
+# CLI 2.0+: skills only; the paths come from upstream's shared/skill-paths.js.
+NODE_2X = r"""
+const D = process.argv[1];
+const {AI_TOOLS} = await import(D + '/core/config.js');
+const cs = await import(D + '/core/command-surface.js');
+const cr = await import(D + '/utils/command-references.js');
+const sp = await import(D + '/core/shared/skill-paths.js');
+const WORKFLOWS = {explore: 'openspec-explore', update: 'openspec-update-change'};
+const rel = p => p === undefined ? null : p.slice('/P/'.length).split('\\').join('/');
+const rows = [];
+for (const [w, skill] of Object.entries(WORKFLOWS))
+for (const t of AI_TOOLS.filter(t => t.skillsDir)) {
+  const id = t.value;
+  const skills = rel(sp.resolveToolSkillsDir('/P', t, {homeDir: '/H'}));
+  const link = rel(sp.resolveSkillLinkDir('/P', t));
+  rows.push({workflow: w, skill, tool: id, delivery: 'skills', capability: cs.resolveCommandSurfaceCapability(id),
+             commands: false, skills: true, invocation: cr.getSkillReferenceTransformer(id)('/opsx:' + w),
+             commandPath: null, skillPath: skills + '/' + skill + '/SKILL.md',
+             linkPath: link === null ? null : link + '/' + skill});
+}
+console.log(JSON.stringify(rows));
+"""
+
 
 def package_dir() -> Path:
     exe = os.environ.get("OPENSPEC_BIN") or shutil.which("openspec")
@@ -72,7 +101,8 @@ def package_dir() -> Path:
 def main():
     pkg = package_dir()
     version = json.loads((pkg / "package.json").read_text())["version"]
-    result = subprocess.run(["node", "--input-type=module", "-e", NODE, str(pkg / "dist")],
+    two_x = int(version.split(".")[0]) >= 2
+    result = subprocess.run(["node", "--input-type=module", "-e", NODE_2X if two_x else NODE, str(pkg / "dist")],
                             capture_output=True, text=True)
     if result.returncode != 0:
         sys.exit(f"node failed (upstream modules or exports moved?): {result.stderr.strip()}")

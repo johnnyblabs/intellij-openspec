@@ -1,0 +1,17 @@
+Usage: openspec show [options] [item-name]
+
+Show a change or spec
+
+Options:
+  --json                  Output as JSON
+  --type <type>           Specify item type when ambiguous: change|spec
+  --no-interactive        Disable interactive prompts
+  --deltas-only           Show only deltas (JSON only, change)
+  --requirements-only     Alias for --deltas-only (deprecated, change)
+  --diff                  Show per-requirement diffs for delta specs (change)
+  --requirements          JSON only: Show only requirements (exclude scenarios)
+  --no-scenarios          JSON only: Exclude scenario content
+  -r, --requirement <id>  JSON only: Show specific requirement by ID (1-based)
+  --store <id>            Store id to use as the OpenSpec root (a store is a
+                          standalone OpenSpec repo you've registered)
+  -h, --help              display help for command

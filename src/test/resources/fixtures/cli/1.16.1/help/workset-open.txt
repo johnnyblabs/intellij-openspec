@@ -1,0 +1,7 @@
+Usage: openspec workset open [options] <name>
+
+Open a saved workset in your tool (editor window or agent session)
+
+Options:
+  --tool <id>  Open with this tool just this once
+  -h, --help   display help for command

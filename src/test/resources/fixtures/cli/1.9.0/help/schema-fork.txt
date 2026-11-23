@@ -1,0 +1,8 @@
+Usage: openspec schema fork [options] <source> [name]
+
+Copy an existing schema to project for customization
+
+Options:
+  --json      Output as JSON
+  --force     Overwrite existing destination
+  -h, --help  display help for command

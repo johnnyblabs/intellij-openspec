@@ -1,0 +1,12 @@
+Usage: openspec store setup [options] [id]
+
+Create and register a local store
+
+Options:
+  --path <path>   Folder where the store should live (for example
+                  ~/openspec/<id>)
+  --init-git      Initialize a Git repository with an initial commit (default)
+  --no-init-git   Skip every Git action: no init, no initial commit
+  --remote <url>  Canonical clone source recorded in store.yaml
+  --json          Output as JSON
+  -h, --help      display help for command

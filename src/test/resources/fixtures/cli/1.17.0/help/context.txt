@@ -1,0 +1,11 @@
+Usage: openspec context [options]
+
+Print the working context for the resolved OpenSpec root
+
+Options:
+  --store <id>             Store id to use as the OpenSpec root (a store is a
+                           standalone OpenSpec repo you've registered)
+  --json                   Output the agent brief as JSON
+  --code-workspace <path>  Also write a VS Code workspace file for the set
+  --force                  Overwrite an existing --code-workspace file
+  -h, --help               display help for command

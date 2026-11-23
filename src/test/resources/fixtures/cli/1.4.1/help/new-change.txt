@@ -1,0 +1,14 @@
+Usage: openspec new change [options] <name>
+
+Create a new change directory
+
+Options:
+  --description <text>  Description to add to README.md
+  --goal <text>         Workspace product goal to store with the change
+  --areas <names>       Comma-separated affected workspace link names
+  --initiative <id>     Link the repo-local change to an initiative
+  --store <id>          Context store id for --initiative
+  --store-path <path>   Existing local context store root for --initiative
+  --schema <name>       Workflow schema to use (default: spec-driven)
+  --json                Output as JSON
+  -h, --help            display help for command

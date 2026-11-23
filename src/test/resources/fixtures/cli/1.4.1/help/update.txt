@@ -1,0 +1,7 @@
+Usage: openspec update [options] [path]
+
+Update OpenSpec instruction files
+
+Options:
+  --force     Force update even when tools are up to date
+  -h, --help  display help for command

@@ -1,0 +1,7 @@
+Usage: openspec store list|ls [options]
+
+List locally registered stores
+
+Options:
+  --json      Output as JSON
+  -h, --help  display help for command

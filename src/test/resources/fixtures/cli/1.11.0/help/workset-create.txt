@@ -1,0 +1,10 @@
+Usage: openspec workset create [options] [name]
+
+Compose and save a named working view of folders you choose
+
+Options:
+  --member <member>  Member folder as <path> or <name>=<path>; repeatable, first
+                     is the primary (default: [])
+  --tool <id>        Preferred tool to open this workset with
+  --json             Output as JSON
+  -h, --help         display help for command

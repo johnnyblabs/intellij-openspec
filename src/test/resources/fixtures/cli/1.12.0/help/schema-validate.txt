@@ -1,0 +1,8 @@
+Usage: openspec schema validate [options] [name]
+
+Validate a schema structure and templates
+
+Options:
+  --json      Output as JSON
+  --verbose   Show detailed validation steps
+  -h, --help  display help for command

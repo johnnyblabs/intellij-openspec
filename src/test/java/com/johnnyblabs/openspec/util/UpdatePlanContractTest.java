@@ -4,12 +4,18 @@ import com.johnnyblabs.openspec.util.UpdatePlanParser.Change;
 import com.johnnyblabs.openspec.util.UpdatePlanParser.Failed;
 import com.johnnyblabs.openspec.util.UpdatePlanParser.Plan;
 import com.johnnyblabs.openspec.util.UpdatePlanParser.Result;
+import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -17,8 +23,23 @@ import static org.junit.jupiter.api.Assertions.*;
  * {@link UpdatePlanParser} against real {@code openspec update --dry-run --json} runs captured by
  * {@code scripts/capture-update-dry-run-fixtures.py} (see {@code fixtures/cli/README.md}). Every failure case must come
  * back {@link Failed}, never as an empty plan.
+ * <p>
+ * The release-wide tests run over every captured release ({@link FixtureVersions}); the others pin the behaviour of
+ * the release named in their fixture path.
  */
 class UpdatePlanContractTest {
+
+    /** Releases with a captured update-dry-run set, and how many cases each holds; each must be present. */
+    static final java.util.Map<String, Integer> CASE_COUNT = java.util.Map.of("1.15.0", 9, "1.16.1", 9, "1.17.0", 13,
+            "2.0.0", 12, "2.1.0", 16, "2.1.1", 16);
+    static final java.util.Set<String> RELEASES = CASE_COUNT.keySet();
+
+    /** A capture that must exist: a missing file fails rather than reading as empty output. */
+    static String required(String name) {
+        String text = fixture(name);
+        assertNotNull(UpdatePlanContractTest.class.getResource("/fixtures/cli/" + name), "fixture missing: " + name);
+        return text;
+    }
 
     static String fixture(String name) {
         String path = "/fixtures/cli/" + name;
@@ -131,7 +152,77 @@ class UpdatePlanContractTest {
     @Test
     void aStatusErrorFailsEvenWithExitZero() {
         // The captured no-openspec-dir envelope, replayed with exit 0: only the status[] check can catch it.
-        failed(new CliRunner.CliResult(0, fixture("1.15.0/update-dry-run/no-openspec-dir.json"), ""));
+        failed(new CliRunner.CliResult(0, required("1.15.0/update-dry-run/no-openspec-dir.json"), ""));
+    }
+
+    // ---------- Every captured release ----------
+
+    /** The case names captured for {@code version}, from its {@code .exit} files. */
+    static List<String> cases(String version) throws IOException {
+        Path dir = FixtureVersions.CLI.resolve(version).resolve("update-dry-run");
+        List<String> names = new ArrayList<>();
+        try (Stream<Path> files = Files.list(dir)) {
+            for (Path f : files.sorted().toList()) {
+                String n = f.getFileName().toString();
+                if (n.endsWith(".exit")) names.add(n.substring(0, n.length() - ".exit".length()));
+            }
+        }
+        assertEquals(CASE_COUNT.get(version), names.size(), "sanity: " + version + "'s update-dry-run cases " + names);
+        return names;
+    }
+
+    /** Exit 0 is a plan; anything else is a failure, never an empty plan. Upstream's own exit decides which. */
+    @TestFactory
+    Stream<DynamicTest> everyCapturedRunParsesAsItsExitSays() throws IOException {
+        List<DynamicTest> tests = new ArrayList<>();
+        for (String v : FixtureVersions.versionsWith("update-dry-run", RELEASES)) {
+            for (String c : cases(v)) {
+                tests.add(DynamicTest.dynamicTest(v + "/" + c, () -> KnownGaps.check(v, "update-dry-run", c, () -> {
+                    CliRunner.CliResult run = captured(v + "/update-dry-run", c);
+                    Result r = UpdatePlanParser.parse(run);
+                    if (run.exitCode() == 0) {
+                        assertInstanceOf(Plan.class, r, "exit 0 must parse as a plan");
+                    } else {
+                        assertInstanceOf(Failed.class, r, "exit " + run.exitCode() + " must be a failure");
+                    }
+                })));
+            }
+        }
+        return tests.stream();
+    }
+
+    @TestFactory
+    Stream<DynamicTest> upToDateIsEmptyAndAStatusErrorFailsOnEveryRelease() {
+        return FixtureVersions.versionsWith("update-dry-run", RELEASES).stream().map(v -> DynamicTest.dynamicTest(v, () -> {
+            assertTrue(assertInstanceOf(Plan.class, UpdatePlanParser.parse(captured(v + "/update-dry-run", "up-to-date")))
+                    .isEmpty(), v + " up-to-date");
+            Failed f = failed(captured(v + "/update-dry-run", "no-openspec-dir"));
+            assertTrue(f.message().contains("No OpenSpec directory found"), f.message());
+            failed(new CliRunner.CliResult(0, required(v + "/update-dry-run/no-openspec-dir.json"), ""));
+        }));
+    }
+
+    // --- CLI 2.1: the skills kept for the machine (~/.agents/skills) are refreshed by update, as notes ---
+
+    @TestFactory
+    Stream<DynamicTest> machineWideRefreshIsANoteNotAProjectChange() {
+        return FixtureVersions.versionsWith("update-dry-run/global-skills-added.json", List.of("2.1.0", "2.1.1")).stream()
+                .map(v -> DynamicTest.dynamicTest(v, () -> {
+                    Plan added = assertInstanceOf(Plan.class,
+                            UpdatePlanParser.parse(captured(v + "/update-dry-run", "global-skills-added")));
+                    assertTrue(added.hasNote("global-skills"), added.notes().toString());
+                    assertFalse(added.hasNote("removed-skills"), "adding a workflow removes no skill");
+                    assertTrue(added.changes().stream().noneMatch(c -> c.path().startsWith(".agents/")),
+                            "the machine's skills are not project changes: " + added.changes());
+
+                    Plan removed = assertInstanceOf(Plan.class,
+                            UpdatePlanParser.parse(captured(v + "/update-dry-run", "global-skills-removed")));
+                    assertTrue(removed.hasNote("global-skills") && removed.hasNote("removed-skills"), removed.notes().toString());
+
+                    Plan current = assertInstanceOf(Plan.class,
+                            UpdatePlanParser.parse(captured(v + "/update-dry-run", "global-skills-up-to-date")));
+                    assertFalse(current.hasNote("global-skills"), "nothing to refresh: " + current.notes());
+                }));
     }
 
     @Test

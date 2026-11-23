@@ -1,0 +1,8 @@
+Usage: openspec new change [options] <name>
+
+Create a new change directory
+
+Options:
+  --description <text>  Description to add to README.md
+  --schema <name>       Workflow schema to use (default: spec-driven)
+  -h, --help            display help for command

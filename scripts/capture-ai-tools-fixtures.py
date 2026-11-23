@@ -22,28 +22,51 @@ kept for ownership markers (`.openspec-target`) and, for generated `SKILL.md` fi
 naming a skill (`$openspec-...` or `/openspec-...`), which is what upstream reads to infer an
 unmarked shared root's owner; other files are recorded empty.
 
-Every run uses an isolated HOME and XDG directories, so the real global OpenSpec state is untouched.
+Links are recorded, never followed. From 2.0 a tool that doesn't read `.agents/skills/` gets one directory link
+per skill from its own folder into it; `layout.json` lists those under a top-level `links` map
+(`{"project": {path: target}, "home": {...}}`, present only when a side has links), with each target exactly as
+the CLI wrote it. Git never sees a real link: tests recreate them (see the fixtures README).
+
+From 2.0 the registry dump also carries `effective`: per tool, the project-relative folder its skills are written
+to and the folder that gets links into it (null when none), from upstream's own `shared/skill-paths.js`.
+
+On 2.1.0 and later a plain `init --tools` installs machine-wide, so an ("init", ...) step passes `--scope project`
+to keep the case's meaning; ("init-default", ...) runs with no scope and records what lands in HOME.
+
+Every run uses an isolated HOME and XDG directories, so the real global OpenSpec state is untouched, and every
+package is installed into a scratch prefix (scripts/lib/openspec_capture.py), never run through `npx`.
 
 Usage: scripts/capture-ai-tools-fixtures.py                 (every version from 1.3.0)
-       CAPTURE_VERSIONS=1.14.3 scripts/capture-ai-tools-fixtures.py
+       CAPTURE_VERSIONS=2.1.1 scripts/capture-ai-tools-fixtures.py
 """
 import json
-import os
 import shutil
 import subprocess
 import sys
 import tempfile
+import os
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO / "scripts" / "lib"))
+from openspec_capture import (cli, isolated_env, key, package, published_versions, require_git_and_network,
+                              sanitize, snapshot, write_fixture)  # noqa: E402
+
 FIXTURES = REPO / "src/test/resources/fixtures/cli"
-PACKAGE = "@fission-ai/openspec"
-FLOOR = (1, 3, 0)
 
 DUMP = """
-import(process.argv[1]).then(m => process.stdout.write(JSON.stringify({
-  tools: m.AI_TOOLS, aliases: m.TOOL_ID_ALIASES || {}
-}, null, 2)));
+const m = await import(process.argv[1]);
+const out = {tools: m.AI_TOOLS, aliases: m.TOOL_ID_ALIASES || {}};
+let sp = null;
+try { sp = await import(process.argv[2]); } catch (e) { /* before 2.0: no shared skills folder */ }
+if (sp && sp.resolveSkillLinkDir && sp.usesSharedSkills) {
+  const rel = p => p === undefined ? null : p.slice('/P/'.length).split('\\\\').join('/');
+  out.effective = Object.fromEntries(m.AI_TOOLS.filter(t => t.skillsDir).map(t => [t.value, {
+    skills: rel(sp.resolveToolSkillsDir('/P', t, {homeDir: '/H'})),
+    linkDir: rel(sp.resolveSkillLinkDir('/P', t)),
+  }]));
+}
+process.stdout.write(JSON.stringify(out, null, 2));
 """
 DETECT = """
 import(process.argv[1]).then(m => process.stdout.write(JSON.stringify(
@@ -85,25 +108,42 @@ CASES = {
     "bob": [("init", None, "bob")],
     "minimax-global": [("home-init", "minimax-code")],
     "several": [("init", None, "claude,cursor,github-copilot,gemini")],
+    # 2.x: a project mixing a 1.17 layout with a 2.x one, the 2.1 scope modes, and 2.1's machine-wide install read
+    # by 2.0 (the "skills are machine-wide" state a user downgrading meets).
+    "mixed-1.17-and-2x": [("init", "1.17.0", "claude,codex"), ("init", None, "claude,codex")],
+    "scope-project": [("init", None, "claude,codex,cursor")],
+    "scope-default-global": [("init-default", None, "claude,codex,cursor")],
+    "global-2.1-read-by-2.0": [("init-default", "2.1.1", "claude,codex")],
+    # A user's own openspec-* skill already in .agents/skills: 2.0 lists it as a `keep <skill>` line in
+    # .openspec-target and never overwrites it (2.1 dropped keep lines).
+    "user-skill-kept": [("file", ".agents/skills/openspec-explore/SKILL.md", "My own explore skill.\n"),
+                        ("init", None, "claude")],
+    # `npx skills add Fission-AI/OpenSpec` leaves skills and a skills-lock.json but no .openspec-target; 2.1.1
+    # infers the `agents` tool from the lock's source. The two files are the shape that installer writes.
+    "skills-lock-agents": [("file", "skills-lock.json",
+                            '{"version": 1, "skills": {"openspec-explore": {"source": "Fission-AI/OpenSpec"}}}\n'),
+                           ("file", ".agents/skills/openspec-explore/SKILL.md",
+                            "---\nname: openspec-explore\n---\nRun /openspec-explore.\n")],
+}
+
+# Cases that only make sense on some versions: name -> (lowest, highest), inclusive; None = open.
+APPLIES = {
+    "mixed-1.17-and-2x": ("2.0.0", None),
+    "scope-project": ("2.1.0", None),
+    "scope-default-global": ("2.1.0", None),
+    "global-2.1-read-by-2.0": ("2.0.0", "2.0.999"),
+    "user-skill-kept": ("2.0.0", None),
+    "skills-lock-agents": ("2.1.0", None),
 }
 
 
-def key(v):
-    return tuple(int(p) for p in v.split("."))
+def applies(name, version):
+    low, high = APPLIES.get(name, (None, None))
+    return (low is None or key(version) >= key(low)) and (high is None or key(version) <= key(high))
 
 
-def published_versions():
-    out = subprocess.run(["npm", "view", PACKAGE, "versions", "--json"], check=True,
-                         capture_output=True, text=True).stdout
-    return sorted((v for v in json.loads(out) if "-" not in v and key(v) >= FLOOR), key=key)
-
-
-def install(version, scratch):
-    prefix = scratch / "pkg" / version
-    if not prefix.exists():
-        subprocess.run(["npm", "install", "--silent", "--no-audit", "--no-fund", "--prefix", str(prefix),
-                        f"{PACKAGE}@{version}"], check=True, capture_output=True)
-    return prefix / "node_modules" / PACKAGE
+def install(version, scratch=None):
+    return package(version)
 
 
 def node(script, *args):
@@ -112,21 +152,17 @@ def node(script, *args):
 
 
 def dump(pkg):
-    return json.loads(node(DUMP, (pkg / "dist/core/config.js").as_uri()))
+    return json.loads(node(DUMP, (pkg / "dist/core/config.js").as_uri(),
+                           (pkg / "dist/core/shared/skill-paths.js").as_uri()))
 
 
-def isolated_env(home):
-    env = dict(os.environ, HOME=str(home), OPENSPEC_TELEMETRY="0", DO_NOT_TRACK="1", NO_COLOR="1",
-               OPEN_SPEC_INTERACTIVE="0")
-    for var, sub in [("XDG_CONFIG_HOME", ".config"), ("XDG_DATA_HOME", ".local/share"),
-                     ("XDG_STATE_HOME", ".local/state"), ("XDG_CACHE_HOME", ".cache")]:
-        env[var] = str(home / sub)
-    return env
-
-
-def init(pkg, project, home, tools):
-    subprocess.run(["node", str(pkg / "bin/openspec.js"), "init", "--tools", tools], cwd=project,
-                   env=isolated_env(home), check=True, capture_output=True, text=True)
+def init(version, project, home, tools, scope="project"):
+    """`openspec init --tools`, project-scoped on CLIs that have --scope unless scope=None (the CLI's default)."""
+    argv = cli(version) + ["init", "--tools", tools]
+    if scope and key(version) >= key("2.1.0"):
+        argv += ["--scope", scope]
+    subprocess.run(argv, cwd=project, env=isolated_env(home), check=True, capture_output=True, text=True,
+                   stdin=subprocess.DEVNULL)
 
 
 def recorded(path):
@@ -138,47 +174,46 @@ def recorded(path):
     return ""
 
 
-def snapshot(root, skip=()):
-    if not root.exists():
-        return {}
-    files = {}
-    for p in sorted(root.rglob("*")):
-        rel = p.relative_to(root).as_posix()
-        if p.is_file() and not any(rel == s or rel.startswith(s + "/") for s in skip):
-            files[rel] = recorded(p)
-    return files
-
-
-def capture_detection(newest, scratch, out_dir):
-    pkg = install(newest, scratch)
+def capture_detection(newest, out_dir):
+    pkg = install(newest)
     detect_js = (pkg / "dist/core/available-tools.js").as_uri()
-    for name, steps in CASES.items():
-        case = scratch / "cases" / name
-        project, home = case / "project", case / "home"
-        project.mkdir(parents=True)
-        home.mkdir()
-        for step in steps:
-            if step[0] == "init":
-                init(install(step[1] or newest, scratch), project, home, step[2])
-            elif step[0] == "home-init":
-                init(pkg, project, home, step[1])
-            elif step[0] == "file":
-                f = project / step[1]
-                f.parent.mkdir(parents=True, exist_ok=True)
-                f.write_text(step[2])
-            elif step[0] == "rm":
-                (project / step[1]).unlink()
-        detected = json.loads(subprocess.run(
-            ["node", "--input-type=module", "-e", DETECT, "--", detect_js, str(project)],
-            env=isolated_env(home), check=True, capture_output=True, text=True).stdout)
-        # The openspec/ tree and the CLI's own XDG state say nothing about tools.
-        layout = {"project": snapshot(project, skip=("openspec",)),
-                  "home": snapshot(home, skip=(".config", ".local", ".cache", ".npm"))}
-        target = out_dir / "detect" / name
-        target.mkdir(parents=True, exist_ok=True)
-        (target / "layout.json").write_text(json.dumps(layout, indent=2) + "\n")
-        (target / "detected.json").write_text(json.dumps(sorted(detected)) + "\n")
-        print(f"  detect/{name}: {sorted(detected)}")
+    with tempfile.TemporaryDirectory() as tmp:
+        for name, steps in CASES.items():
+            if not applies(name, newest):
+                continue
+            case = Path(tmp) / name
+            project, home = case / "project", case / "home"
+            project.mkdir(parents=True)
+            home.mkdir()
+            for step in steps:
+                if step[0] == "init":
+                    init(step[1] or newest, project, home, step[2])
+                elif step[0] == "init-default":
+                    init(step[1] or newest, project, home, step[2], scope=None)
+                elif step[0] == "home-init":
+                    # A tool whose skills belong in HOME: the CLI's own default scope, never --scope project.
+                    init(newest, project, home, step[1], scope=None)
+                elif step[0] == "file":
+                    f = project / step[1]
+                    f.parent.mkdir(parents=True, exist_ok=True)
+                    f.write_text(step[2])
+                elif step[0] == "rm":
+                    (project / step[1]).unlink()
+            detected = json.loads(subprocess.run(
+                ["node", "--input-type=module", "-e", DETECT, "--", detect_js, str(project)],
+                env=isolated_env(home), check=True, capture_output=True, text=True).stdout)
+            # The openspec/ tree and the CLI's own XDG state say nothing about tools.
+            project_files, project_links = snapshot(project, skip=("openspec",), content=recorded)
+            home_files, home_links = snapshot(home, skip=(".config", ".local", ".cache", ".npm"), content=recorded)
+            layout = {"project": project_files, "home": home_files}
+            links = {side: l for side, l in (("project", project_links), ("home", home_links)) if l}
+            if links:
+                layout["links"] = links
+            target = out_dir / "detect" / name
+            # A machine-wide install links with absolute targets into HOME; keep them, under the fixture names.
+            write_fixture(target / "layout.json", sanitize(json.dumps(layout, indent=2) + "\n", project, home))
+            write_fixture(target / "detected.json", json.dumps(sorted(detected)) + "\n")
+            print(f"  detect/{name}: {sorted(detected)}" + (f"  links: {sum(map(len, links.values()))}" if links else ""))
 
 
 def main():
@@ -186,30 +221,27 @@ def main():
     versions = published_versions()
     if wanted:
         versions = [v for v in versions if v in wanted.split(",")]
-    with tempfile.TemporaryDirectory() as tmp:
-        scratch = Path(tmp)
-        previous = None
-        for version in versions:
-            registry = dump(install(version, scratch))
-            if registry != previous or version == versions[-1]:
-                out_dir = FIXTURES / version
-                out_dir.mkdir(parents=True, exist_ok=True)
-                (out_dir / "ai-tools.json").write_text(
-                    json.dumps({"version": version, **registry}, indent=2) + "\n")
-                print(f"{version}: {len(registry['tools'])} tools")
-            else:
-                print(f"{version}: unchanged")
-            previous = registry
-        newest = versions[-1]
-        out_dir = FIXTURES / newest
-        home = scratch / "help-home"
-        home.mkdir()
-        help_text = subprocess.run(["node", str(install(newest, scratch) / "bin/openspec.js"), "init", "--help"],
-                                   env=isolated_env(home), check=True, capture_output=True, text=True).stdout
-        (out_dir / "init-help.txt").write_text(help_text)
-        if (out_dir / "detect").exists():
-            shutil.rmtree(out_dir / "detect")
-        capture_detection(newest, scratch, out_dir)
+    previous = None
+    for version in versions:
+        registry = dump(install(version))
+        if registry != previous or version == versions[-1]:
+            write_fixture(FIXTURES / version / "ai-tools.json",
+                          json.dumps({"version": version, **registry}, indent=2) + "\n")
+            print(f"{version}: {len(registry['tools'])} tools")
+        else:
+            print(f"{version}: unchanged")
+        previous = registry
+    newest = versions[-1]
+    if newest == "2.1.0":
+        require_git_and_network()
+    out_dir = FIXTURES / newest
+    with tempfile.TemporaryDirectory() as home:
+        help_text = subprocess.run(cli(newest) + ["init", "--help"], env=isolated_env(home), check=True,
+                                   capture_output=True, text=True, stdin=subprocess.DEVNULL).stdout
+    write_fixture(out_dir / "init-help.txt", help_text)
+    if (out_dir / "detect").exists():
+        shutil.rmtree(out_dir / "detect")
+    capture_detection(newest, out_dir)
 
 
 if __name__ == "__main__":

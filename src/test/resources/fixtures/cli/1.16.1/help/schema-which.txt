@@ -1,0 +1,8 @@
+Usage: openspec schema which [options] [name]
+
+Show where a schema resolves from
+
+Options:
+  --json      Output as JSON
+  --all       List all schemas with their resolution sources
+  -h, --help  display help for command

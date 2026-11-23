@@ -1,0 +1,6 @@
+Usage: openspec config profile [options] [preset]
+
+Configure workflow profile (interactive picker or preset shortcut)
+
+Options:
+  -h, --help  display help for command

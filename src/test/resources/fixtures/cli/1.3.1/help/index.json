@@ -1,0 +1,125 @@
+{
+  "cliVersion": "1.3.1",
+  "commands": {
+    "openspec": {
+      "exit": 0,
+      "file": "openspec.txt"
+    },
+    "init": {
+      "exit": 0,
+      "file": "init.txt"
+    },
+    "update": {
+      "exit": 0,
+      "file": "update.txt"
+    },
+    "validate": {
+      "exit": 0,
+      "file": "validate.txt"
+    },
+    "status": {
+      "exit": 0,
+      "file": "status.txt"
+    },
+    "instructions": {
+      "exit": 0,
+      "file": "instructions.txt"
+    },
+    "archive": {
+      "exit": 0,
+      "file": "archive.txt"
+    },
+    "schema": {
+      "exit": 0,
+      "file": "schema.txt"
+    },
+    "schema which": {
+      "exit": 0,
+      "file": "schema-which.txt"
+    },
+    "schema validate": {
+      "exit": 0,
+      "file": "schema-validate.txt"
+    },
+    "schema fork": {
+      "exit": 0,
+      "file": "schema-fork.txt"
+    },
+    "schema init": {
+      "exit": 0,
+      "file": "schema-init.txt"
+    },
+    "store": {
+      "exit": 0,
+      "file": null
+    },
+    "workset": {
+      "exit": 0,
+      "file": null
+    },
+    "list": {
+      "exit": 0,
+      "file": "list.txt"
+    },
+    "show": {
+      "exit": 0,
+      "file": "show.txt"
+    },
+    "new": {
+      "exit": 0,
+      "file": "new.txt"
+    },
+    "new change": {
+      "exit": 0,
+      "file": "new-change.txt"
+    },
+    "config": {
+      "exit": 0,
+      "file": "config.txt"
+    },
+    "config path": {
+      "exit": 0,
+      "file": "config-path.txt"
+    },
+    "config list": {
+      "exit": 0,
+      "file": "config-list.txt"
+    },
+    "config get": {
+      "exit": 0,
+      "file": "config-get.txt"
+    },
+    "config set": {
+      "exit": 0,
+      "file": "config-set.txt"
+    },
+    "config unset": {
+      "exit": 0,
+      "file": "config-unset.txt"
+    },
+    "config reset": {
+      "exit": 0,
+      "file": "config-reset.txt"
+    },
+    "config edit": {
+      "exit": 0,
+      "file": "config-edit.txt"
+    },
+    "config profile": {
+      "exit": 0,
+      "file": "config-profile.txt"
+    },
+    "context": {
+      "exit": 0,
+      "file": null
+    },
+    "schemas": {
+      "exit": 0,
+      "file": "schemas.txt"
+    },
+    "templates": {
+      "exit": 0,
+      "file": "templates.txt"
+    }
+  }
+}

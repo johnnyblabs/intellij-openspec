@@ -1,0 +1,6 @@
+Usage: openspec config edit [options]
+
+Open config in $EDITOR
+
+Options:
+  -h, --help  display help for command

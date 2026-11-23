@@ -1,0 +1,141 @@
+amp P .agents/skills/openspec-explore/SKILL.md
+antigravity P .agents/skills/openspec-explore/SKILL.md
+atomcode P .agents/skills/openspec-explore/SKILL.md
+auggie P .agents/skills/openspec-explore/SKILL.md
+auggie P .augment/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+bob P .agents/skills/openspec-explore/SKILL.md
+bob P .bob/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+claude P .agents/skills/openspec-explore/SKILL.md
+claude P .claude/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+cline P .agents/skills/openspec-explore/SKILL.md
+command-code P .agents/skills/openspec-explore/SKILL.md
+command-code P .commandcode/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+codeartsagent P .agents/skills/openspec-explore/SKILL.md
+codeartsagent P .codeartsdoer/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+codex P .agents/skills/openspec-explore/SKILL.md
+dsh P .agents/skills/openspec-explore/SKILL.md
+devin P .agents/skills/openspec-explore/SKILL.md
+devin P .devin/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+forgecode P .agents/skills/openspec-explore/SKILL.md
+forgecode P .forge/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+codebuddy P .agents/skills/openspec-explore/SKILL.md
+codebuddy P .codebuddy/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+codestudio P .agents/skills/openspec-explore/SKILL.md
+codestudio P .codestudio/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+continue P .agents/skills/openspec-explore/SKILL.md
+continue P .continue/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+costrict P .agents/skills/openspec-explore/SKILL.md
+crush P .agents/skills/openspec-explore/SKILL.md
+crush P .crush/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+cursor P .agents/skills/openspec-explore/SKILL.md
+easycode P .agents/skills/openspec-explore/SKILL.md
+factory P .agents/skills/openspec-explore/SKILL.md
+gemini P .agents/skills/openspec-explore/SKILL.md
+github-copilot P .agents/skills/openspec-explore/SKILL.md
+gigacode P .agents/skills/openspec-explore/SKILL.md
+grok P .agents/skills/openspec-explore/SKILL.md
+grok P .grok/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+gsd P .agents/skills/openspec-explore/SKILL.md
+hermes P .agents/skills/openspec-explore/SKILL.md
+hermes P .hermes/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+iflow P .agents/skills/openspec-explore/SKILL.md
+iflow P .iflow/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+junie P .agents/skills/openspec-explore/SKILL.md
+junie P .junie/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+kilocode P .agents/skills/openspec-explore/SKILL.md
+kimi P .agents/skills/openspec-explore/SKILL.md
+kiro P .agents/skills/openspec-explore/SKILL.md
+kiro P .kiro/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+lingma P .agents/skills/openspec-explore/SKILL.md
+lingma P .lingma/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+minimax-code P .agents/skills/openspec-explore/SKILL.md
+minimax-code P .minimax/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+vibe P .agents/skills/openspec-explore/SKILL.md
+vibe P .vibe/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+oh-my-pi P .agents/skills/openspec-explore/SKILL.md
+opencode P .agents/skills/openspec-explore/SKILL.md
+pi P .agents/skills/openspec-explore/SKILL.md
+codeassistant P .agents/skills/openspec-explore/SKILL.md
+qoder P .agents/skills/openspec-explore/SKILL.md
+qoder P .qoder/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+qwen P .agents/skills/openspec-explore/SKILL.md
+qwen P .qwen/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+rovodev P .agents/skills/openspec-explore/SKILL.md
+rovodev P .rovodev/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+roocode P .agents/skills/openspec-explore/SKILL.md
+roocode P .roo/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+trae P .agents/skills/openspec-explore/SKILL.md
+trae P .trae/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+veai P .agents/skills/openspec-explore/SKILL.md
+warp P .agents/skills/openspec-explore/SKILL.md
+zed P .agents/skills/openspec-explore/SKILL.md
+zcode P .agents/skills/openspec-explore/SKILL.md
+zcode P .zcode/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+agents P .agents/skills/openspec-explore/SKILL.md
+aider-desk P .agents/skills/openspec-explore/SKILL.md
+aider-desk P .aider-desk/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+antigravity-cli P .agents/skills/openspec-explore/SKILL.md
+astrbot P .agents/skills/openspec-explore/SKILL.md
+astrbot P data/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+autohand-code P .agents/skills/openspec-explore/SKILL.md
+autohand-code P .autohand/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+openclaw P .agents/skills/openspec-explore/SKILL.md
+openclaw P skills/openspec-explore -> ../.agents/skills/openspec-explore
+codemaker P .agents/skills/openspec-explore/SKILL.md
+codemaker P .codemaker/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+cortex P .agents/skills/openspec-explore/SKILL.md
+cortex P .cortex/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+deepagents P .agents/skills/openspec-explore/SKILL.md
+dexto P .agents/skills/openspec-explore/SKILL.md
+eve P .agents/skills/openspec-explore/SKILL.md
+eve P agent/skills/openspec-explore/SKILL.md
+firebender P .agents/skills/openspec-explore/SKILL.md
+fx P .agents/skills/openspec-explore/SKILL.md
+goose P .agents/skills/openspec-explore/SKILL.md
+goose P .goose/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+inference-sh P .agents/skills/openspec-explore/SKILL.md
+inference-sh P .inferencesh/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+jazz P .agents/skills/openspec-explore/SKILL.md
+jazz P .jazz/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+kimchi P .agents/skills/openspec-explore/SKILL.md
+kimchi P .kimchi/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+kode P .agents/skills/openspec-explore/SKILL.md
+kode P .kode/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+loaf P .agents/skills/openspec-explore/SKILL.md
+mcpjam P .agents/skills/openspec-explore/SKILL.md
+mcpjam P .mcpjam/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+moxby P .agents/skills/openspec-explore/SKILL.md
+moxby P .moxby/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+mux P .agents/skills/openspec-explore/SKILL.md
+mux P .mux/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+openhands P .agents/skills/openspec-explore/SKILL.md
+openhands P .openhands/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+ona P .agents/skills/openspec-explore/SKILL.md
+ona P .ona/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+posit-assistant P .agents/skills/openspec-explore/SKILL.md
+posit-assistant P .posit/assistant/skills/openspec-explore -> ../../../.agents/skills/openspec-explore
+qoder-cn P .agents/skills/openspec-explore/SKILL.md
+qoder-cn P .qoder/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+replit P .agents/skills/openspec-explore/SKILL.md
+reasonix P .agents/skills/openspec-explore/SKILL.md
+reasonix P .reasonix/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+sarvam-code P .agents/skills/openspec-explore/SKILL.md
+tabnine-cli P .agents/skills/openspec-explore/SKILL.md
+tabnine-cli P .tabnine/agent/skills/openspec-explore -> ../../../.agents/skills/openspec-explore
+terramind P .agents/skills/openspec-explore/SKILL.md
+terramind P .terramind/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+tinycloud P .agents/skills/openspec-explore/SKILL.md
+tinycloud P .tinycloud/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+trae-cn P .agents/skills/openspec-explore/SKILL.md
+trae-cn P .trae/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+zencoder P .agents/skills/openspec-explore/SKILL.md
+zencoder P .zencoder/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+zenflow P .agents/skills/openspec-explore/SKILL.md
+zenflow P .zencoder/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+neovate P .agents/skills/openspec-explore/SKILL.md
+neovate P .neovate/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+pochi P .agents/skills/openspec-explore/SKILL.md
+pochi P .pochi/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+promptscript P .agents/skills/openspec-explore/SKILL.md
+adal P .adal/skills/openspec-explore -> ../../.agents/skills/openspec-explore
+adal P .agents/skills/openspec-explore/SKILL.md
