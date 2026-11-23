@@ -70,6 +70,7 @@ public class DirectApiErrorsContractTest {
         EXPECTED.put("openai/errors/chat-completions-404-model-not-found-unknown", ErrorKind.MODEL_NOT_FOUND);
         EXPECTED.put("gemini/errors/generatecontent-404-model-not-found-retired", ErrorKind.MODEL_NOT_FOUND);
         EXPECTED.put("gemini/errors/generatecontent-404-model-not-found-unknown", ErrorKind.MODEL_NOT_FOUND);
+        EXPECTED.put("gemini/errors/generatecontent-404-model-not-found-new-users", ErrorKind.MODEL_NOT_FOUND);
     }
 
     // ---- fixture loading ----
@@ -362,7 +363,8 @@ public class DirectApiErrorsContractTest {
                 "openai/errors/chat-completions-404-model-not-found-retired",
                 "openai/errors/chat-completions-404-model-not-found-unknown",
                 "gemini/errors/generatecontent-404-model-not-found-retired",
-                "gemini/errors/generatecontent-404-model-not-found-unknown");
+                "gemini/errors/generatecontent-404-model-not-found-unknown",
+                "gemini/errors/generatecontent-404-model-not-found-new-users");
 
         private static AiApiException build(String provider, int status, String body) {
             return DirectApiService.buildApiError(provider, status, body, ProviderRequestSettings.NONE, null);
@@ -406,6 +408,23 @@ public class DirectApiErrorsContractTest {
                     .getMessage().contains("models/gemini-1.5-pro"));
             assertTrue(DirectApiErrorsContractTest.build("openai/errors/chat-completions-404-model-not-found-unknown")
                     .getMessage().contains("openspec-probe-no-such-model"));
+        }
+
+        /**
+         * A deprecated Gemini model that still serves keys which used it before is refused to a new key with a 404
+         * that names a replacement. The plugin shows Google's message as sent and adds only its own model hint: it
+         * names no replacement itself, because Google's message and its deprecations page disagree on which one.
+         */
+        @Test
+        void aGeminiModelClosedToNewUsersGetsTheModelHintAndKeepsGooglesMessage() {
+            AiApiException ex = DirectApiErrorsContractTest.build(
+                    "gemini/errors/generatecontent-404-model-not-found-new-users");
+            assertEquals(ErrorKind.MODEL_NOT_FOUND, ex.getKind());
+            assertEquals(DirectApiErrors.MODEL_NOT_FOUND_SUGGESTION, ex.getSuggestion());
+            assertTrue(ex.getMessage().contains("models/gemini-2.5-pro is no longer available to new users"),
+                    ex.getMessage());
+            assertFalse(DirectApiErrors.MODEL_NOT_FOUND_SUGGESTION.contains("gemini"),
+                    "the plugin's own hint must not name a replacement model");
         }
 
         @Test

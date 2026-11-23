@@ -8,6 +8,8 @@ naming (the status is the three-digit token in the name):
 
     <endpoint>-404-model-not-found-retired.{json,headers}   a model the provider has retired
     <endpoint>-404-model-not-found-unknown.{json,headers}   a model id that never existed
+    generatecontent-404-model-not-found-new-users.{...}     Gemini only: a deprecated model that still serves the
+                                                            keys that used it before, refused to a key that didn't
 
 <endpoint> is messages (Claude), chat-completions (OpenAI) or generatecontent (Gemini). Only the content-type and
 request-id headers are kept. A response that isn't a 404 is not saved, because the name would misstate it.
@@ -40,6 +42,12 @@ PROVIDERS = {
     "claude": ("claude", "messages", "ANTHROPIC_API_KEY", "claude-3-opus-20240229"),
     "openai": ("openai", "chat-completions", "OPENAI_API_KEY", "gpt-4-32k"),
     "gemini": ("gemini", "generatecontent", "GEMINI_API_KEY", "gemini-1.5-pro"),
+}
+# Extra cases per provider, as (name suffix, model id). gemini-2.5-pro is deprecated (shutdown 2026-12-01): Google
+# keeps serving it to keys that used it before and answers 404 "no longer available to new users" to the rest. Run
+# with a key that never used it, or the request succeeds and nothing is saved.
+EXTRA_CASES = {
+    "gemini": (("new-users", "gemini-2.5-pro"),),
 }
 KEPT_HEADERS = ("content-type", "request-id", "x-request-id")
 
@@ -89,7 +97,7 @@ def capture(provider: str) -> bool:
     out = FIXTURES / folder / "errors"
     out.mkdir(parents=True, exist_ok=True)
     ok = True
-    for suffix, model in (("retired", retired), ("unknown", NEVER_EXISTED)):
+    for suffix, model in (("retired", retired), ("unknown", NEVER_EXISTED)) + EXTRA_CASES.get(provider, ()):
         case = f"{endpoint}-404-model-not-found-{suffix}"
         status, body, headers = call(request(provider, key, model))
         if key in body or key in headers:
