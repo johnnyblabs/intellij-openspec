@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+## v0.17.0
+
 ### Added
 
 - Support for OpenSpec CLI 1.17. The plugin now targets 1.17.0 and supports the 1.3.x through 1.17.x lines. 1.17 changes only how `openspec update` cleans up old generated files, so everything the plugin reads works as it did on 1.16.

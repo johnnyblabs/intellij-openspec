@@ -20,7 +20,7 @@ plugins {
 }
 
 group = "com.johnnyblabs.openspec"
-version = "0.16.1"
+version = "0.17.0"
 
 // This plugin's version and the top-supported OpenSpec CLI (single-sourced from gradle.properties), shipped as a
 // classpath resource so the plugin can show both in Settings → Tools → OpenSpec.
