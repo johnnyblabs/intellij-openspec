@@ -33,11 +33,11 @@ import java.util.regex.Pattern;
  * <p>This checks structure only. Whether an action does what its workflow does (Propose currently behaves like
  * {@code new}), and whether users can find it, is the workflow-to-UI parity audit's job, not this test's.
  *
- * <p>Recorded behaviour exceptions, v0.16.0: <b>Apply</b> in the clipboard and editor-tab modes delivers the plugin's
- * own prompt, which names design, specs and tasks but not the proposal, and doesn't ask the CLI for the apply
- * instructions. Direct API hands off the upstream apply workflow instead. Its readiness check also requires every
- * artifact to be complete, where upstream requires only what the schema needs. Both are tracked for the next
- * release: one apply handoff in every delivery mode, and readiness from the schema's apply requirements.
+ * <p>Recorded behaviour exception, v0.17.0: <b>Propose</b> creates the change folder and proposal without generating
+ * its artifacts, which is upstream {@code new}. Upstream {@code propose} (create the change and every artifact it
+ * needs before apply, in one step) is reachable through Fast-Forward with Direct API, or as Propose followed by
+ * Generate All. It is scheduled for the OpenSpec 2.x release, whose new skill layout the propose handoff depends on.
+ * (The v0.16.0 Apply exception was resolved in v0.16.1.)
  */
 public class WorkflowParityContractTest extends BasePlatformTestCase {
 
