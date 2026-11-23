@@ -22,6 +22,8 @@ Without the middle step the card jumps Todo→Done and never appears in the "In 
 
 **A change must not archive without a tracker entry, unless the change says why it has none.** Mirror the change when its proposal lands. Before archiving, check for the `.tracking.yaml` sidecar. If it's missing, either mirror the change now or record the reason in the change's `tasks.md`, using vendor-neutral wording (for example, "Not tracked: created before the tracker convention"). Silently skipping the tracker step is not allowed.
 
+**Parked or planned changes.** A change whose artifacts live only on a branch has no directory on `main`. Don't create a stub change directory just to hold its sidecar: the mirror skill keeps the sidecar in a gitignored clone-local location until the change lands on `main`, then moves it into the change directory.
+
 **Do not commit these skills back into tracked state.** If you need a tracked skill that does similar work, write a vendor-neutral one that takes config from environment / a separate file rather than hardcoding the homelab references.
 
 ## Tracker IDs go in a gitignored `.tracking.yaml` sidecar
@@ -53,40 +55,23 @@ Since the 1.5.0 skills-only migration, `.claude/skills/openspec-*/` was the only
 - **Change main specs only through a change.** Write the delta, validate it, then archive. Do not edit `openspec/specs/` directly.
 - **Public specs stay vendor-neutral, including scenario titles.** Requirements, Purpose text and scenario titles in `openspec/specs/` must not name hosting or tracking services. A scenario title can't be renamed without renaming its requirement, so write neutral titles from the start.
 - **Removing a capability.** Archive can't delete a capability. In the same PR, `git rm` the spec, then archive with `--skip-specs`. The `git rm` is part of the change's PR, so the main specs still change only through a change. A change with no spec deltas needs `skip_specs: true` in its `.openspec.yaml`.
-- **Match the CLI to the target.** The installed CLI should equal `openspecTargetVersion` in `gradle.properties`. Check it with `openspec --version` after a bump, then run `openspec update` and restore customizations as described above. Don't use a pinned `npx` version for repo work, because its cache can leak into captured fixtures.
+- **Match the CLI to the target.** The installed CLI must equal `openspecTargetVersion` in `gradle.properties`. After a bump, run `openspec update` and restore customizations as above. Never use a pinned `npx` version for repo work (its cache leaks into captured fixtures).
 - **Validate the real tree, not a scratch copy.** Run `openspec validate --all --strict` on the branch you're about to merge, and again after archiving. A scratch copy with deltas applied is not proof, because deltas reach the main specs only on archive, so a copy can pass while `main` still fails.
 - **Tick a change's task list in the PR that completes the work.** Don't tick it in a separate batch PR. Batch PRs that each touch `tasks.md` conflict with one another, and every later PR then needs a conflict fix.
 
-## Branches, merges and CI
-
-- **Bring a branch up to date by merging or rebasing `main`. Don't rebuild a branch from a diff.** A net diff against a stale base silently reverts anything merged since that base.
-- **Merge `main` into a branch before merging it when an earlier PR touched the same file** (usually `CHANGELOG.md`). Otherwise the conflict appears at merge time.
-- **Merge PRs with rebase.** Use the rebase method on `origin`, not a merge commit or squash, so internal PR numbers stay out of the public log.
-- **Stop background wait loops when the work they watch finishes.** A loop that polls a PR's checks keeps running after the PR merges, and keeps calling the API until its own timeout. When the PR merges, stop its loop, and check for leftover loops with `ps` at the end of a session.
-- **A PR whose head predates a workflow change can't merge.** Its required check never ran on the new workflow, so the merge is refused. Merge `main` into the branch and push it to start a new run. An empty commit doesn't start CI, so use a real merge.
-- **"Build & Verify" always reports on a PR, but its heavy steps are skipped for bypass-only PRs.** The bypass paths are `openspec/**`, `CLAUDE.md`, `.claude/**`, `.githooks/**`, `.gitignore`, `LICENSE` and `ui-smoke.yaml`. Docs (`docs/**`, README, CHANGELOG) are not bypassed, because `DocumentationHygieneTest` validates them. A bypass-only PR reports green in seconds, so it merges without an admin override. An empty commit doesn't start CI.
-
 ## Plugin-internal config fields — audit before "aligning" to upstream
 
-When you're tempted to remove a field from `openspec/config.yaml`, `plugin.xml`, `.openspec.yaml`, or any other config file because "upstream's schema doesn't accept it / strips it / doesn't mention it", **stop and grep this codebase for reads of that field first**. We are a *wrapper around upstream OpenSpec*; both the upstream contract and the plugin's own internal contract are load-bearing.
+We wrap upstream OpenSpec, so both its contract and the plugin's own are load-bearing. Before deleting a key from `openspec/config.yaml`, `plugin.xml`, `.openspec.yaml` or any project config because upstream ignores it, run `grep -rn "<key>" src/main/java/ src/test/java/`. A hit means it's plugin-internal: keep it, with an inline comment saying why upstream doesn't see it. Surface a divergence that is load-bearing on both sides before changing anything. Example: `version:` and `profile:` in `openspec/config.yaml` are read-only legacy — no longer written, still read — and the config-format axis behind them is a deliberately kept seam for a future format bump. Don't delete it to "simplify".
 
-Concrete case — `version:` and the plugin-invented `profile:` in `openspec/config.yaml`: upstream's Zod schema (`@fission-ai/openspec`'s `project-config.ts`) ignores both, but the plugin *reads* them. They are **read-only-legacy**: absence is valid (it resolves to `VersionSupport.V1_2`), and the plugin no longer *writes* them when scaffolding (that shape now matches upstream `openspec init`). Two things stay true anyway — the *readers* remain (`OpenSpecSettings.getEffectiveVersion`'s config-format fallback and the tree-view `SpecTreeModel` nodes), because a legacy config on disk may still carry the fields; and the config-format axis is **deliberately retained as the seam for a future format bump — do not delete it to "simplify"**. Lesson: even after you stop *writing* a plugin-internal field, grep for its *readers* before removing them; "upstream strips it" is never sufficient reason to delete.
+## Branches, pull requests and CI
 
-The general rule:
-- Before deleting a key in any project config file, run `grep -rn "<key>" src/main/java/ src/test/java/`. If there are hits, the key is plugin-internal — keep it, even if upstream doesn't acknowledge it.
-- If a field is genuinely plugin-internal-only, leave an inline comment on the field explaining why upstream doesn't see it.
-- If you find an internal/upstream divergence that's load-bearing on both sides, surface it before changing — it's a candidate for either a plugin-side refactor (decouple from the upstream field) or upstream issue, not a quiet config edit.
-
-## Branching & pull requests — develop on `origin`, mirror to GitHub
-
-Default workflow (adopted 2026-06-27): non-trivial work goes through a **pull request on the Forgejo `origin` remote**, not a direct push to `main`.
-
-- Branch from `main` → push the branch to `origin` → open a PR on `origin` → let CI run → self-merge → then mirror with `git push github main`.
-- **GitHub is a read-only mirror** of `main`. Review/PRs live on `origin`. GitHub's classic branch protection no longer requires PRs (removed 2026-06-27 — you can't PR a mirror) but still blocks force-push and deletion of public `main`.
-- The `pre-push` leak guard (`.githooks/pre-push`, activated via `git config core.hooksPath .githooks`) vets every push to the GitHub mirror. Never weaken its pattern back to `\b` — git grep ignores it.
-- The `commit-msg` hook (same `core.hooksPath`) blocks the same patterns in commit messages — `pre-push` scans only the pushed tree, never `git log`. Keep the two `PATTERN`s in sync.
-- **Trivial changes** (doc/tracker/comment tweaks) may still go direct to `main` on `origin` — use judgement.
-- After a PR merges, delete the branch locally (`git branch -d`) and on `origin` (`git push origin --delete <name>`), per the standing workflow preference.
+- **Develop on `origin`; GitHub is a read-only mirror of `main`.** Non-trivial work: branch from `main` → push to `origin` → open a PR there → CI → self-merge. Trivial doc/tracker/comment tweaks may go direct to `main` on `origin`. **The user mirrors `main` to GitHub; the agent never pushes to the `github` remote** (a user-level hook refuses it). GitHub blocks force-push and deletion of public `main`.
+- **Merge PRs with rebase** on `origin`, not a merge commit or squash, so internal PR numbers stay out of the public log. Afterwards delete the branch locally and on `origin`.
+- **Bring a branch up to date by merging or rebasing `main`; never rebuild it from a diff.** A net diff against a stale base silently reverts work merged since. Merge `main` in before merging when an earlier PR touched the same file (usually `CHANGELOG.md`).
+- **A PR whose head predates a workflow change can't merge**: its required check never ran on the new workflow. Merge `main` in and push. An empty commit doesn't start CI.
+- **"Build & Verify" always reports, but skips its heavy steps for bypass-only PRs** (`openspec/**`, `CLAUDE.md`, `.claude/**`, `.githooks/**`, `.gitignore`, `LICENSE`, `ui-smoke.yaml`), so those go green in seconds. Docs aren't bypassed: `DocumentationHygieneTest` validates them.
+- **Hooks** (`git config core.hooksPath .githooks`): `pre-push` vets pushes to the GitHub mirror for leaks; `commit-msg` blocks the same patterns in messages (`pre-push` never scans `git log`). Keep the two `PATTERN`s in sync and never weaken them back to `\b` — git grep ignores it.
+- **Waiting on CI:** use one self-terminating wait command (a clone-local helper, when present) run in the background, not a hand-written polling loop. Treat "no run yet" as pending. Stop any wait when its PR merges, and check for leftovers with `ps` at session end.
 
 ## Testing — required, and tests must verify *real* behavior
 
@@ -115,10 +100,11 @@ Project subagents live in `.claude/agents/`. Their descriptions state when to in
 - **intellij-code-reviewer** — after the generic review, for any diff touching PSI/VFS/EDT/services/actions/inspections.
 - **Workflow ↔ UI parity audit (openspec-guru + plugin-ui-specialist)**: on every CLI bump, before every release, and whenever a change touches a workflow-bound action. openspec-guru compares each upstream workflow's template (`dist/core/templates/workflows/*.js` in the CLI package) with the plugin action gated on it: same result in every delivery mode, matching name and description, correct gating. plugin-ui-specialist checks that each new or changed workflow is discoverable (menu, toolbar, Getting Started, empty states). `WorkflowParityContractTest` and `CoreWorkflowsContractTest` catch the *structural* drift (an upstream workflow with no gated action and no recorded reason, a misspelled id, a diverging core set). Only this audit catches *behavioural* drift, such as an action named after one workflow that does another's job. Each gap becomes a tracked issue. In release prep, a core workflow that no UI action reaches is a blocker unless the user records an exception.
 - A gitignored, clone-local **project-management agent** may also exist (untracked — it references private infrastructure). When present: run its tracker/board **audit** after closing an epic item and before any release cut (`/release-prep` step 0 invokes it). Per-change tracker mechanics stay with the lifecycle skills, not the agent.
+- **Fan-out rule of thumb.** Spawn a subagent at a listed trigger point, or for independent research across many files. Anything settled in about five tool calls, do inline. One agent per question; never two agents on the same question.
 
 ## Release & publishing
 
-**Release-state preflight — do this BEFORE proposing any release step or version number.** Never infer release state from memory, a memory-index hook, or the resting `version = "..."` in `build.gradle.kts` — that value is the *last shipped* release, not the next one. Derive it from git and the changelog every time:
+**Derive release state before proposing any version or release step** — never from memory or the resting `version = "..."` in `build.gradle.kts`, which is the *last shipped* release:
 
 ```bash
 git tag -l 'v*' | sort -V | tail -1          # last SHIPPED version
@@ -126,13 +112,8 @@ git rev-list "$(git tag -l 'v*' | sort -V | tail -1)"..HEAD --count   # commits 
 awk '/^## Unreleased/{f=1;next} /^## v/{f=0} f' CHANGELOG.md | grep -c '\S'   # Unreleased non-empty?
 ```
 
-If HEAD is at the last tag and `## Unreleased` is empty, there is nothing to cut — say so. Otherwise the next version is the user's semver choice **strictly greater than the last tag** (the minor-vs-patch call is theirs, never inferred). If the last tag already equals the version you were about to prep, STOP — that release shipped; the pending work is the *next* one.
+HEAD at the last tag with an empty `## Unreleased` means there is nothing to cut. Otherwise the next version is the user's semver choice, strictly greater than the last tag (never inferred).
 
-**Doc-fidelity is a precondition, not a mid-cut afterthought.** Before *suggesting* the release process, run the doc-fidelity gate over the user-facing surfaces (`docs/marketplace-page.md`, `docs/feature-comparison-matrix.md`, `docs/feature-reference.md`) against the `## Unreleased` feature set, and land any refresh as its own doc commit. (`/release-cut` also gates on this at step 3, but surfacing stale user-facing docs *before* the cut is proposed avoids a late scramble — this is why the v0.5.0 pass was nearly skipped.)
-
-**Direct API provider gate — every release, every provider, no exceptions.** Before *suggesting* the release process, have `openspec-guru` audit **every provider in `AiProvider`** (today Anthropic, OpenAI, Google) against that provider's **live** docs: its authentication page, its API release notes / changelog **since the last tag's date**, and its deprecation / retirement pages. "Live" means fetched now. A skill reference, memory, or a prior audit doesn't count. It includes a **per-provider request-header audit**: every required or conditionally required header for each key type (workspace, organization and project selectors, versioning, the recommended auth header), whether the plugin sends it, and what that means for the Direct API settings form. It covers both **shipped** changes (new required headers, auth/key models, endpoint or parameter changes, retired models) and **announced or planned** ones (deprecations, sunset dates, scheduled header or version changes) that land before the *next* release is likely to ship. Each gap becomes a tracked issue. A gap that breaks a supported key type or the default model is a **BLOCKER**. Everything else is fixed in this release or scheduled into the next one by an explicit user decision. This runs whether or not the release touched Direct API code, because providers change underneath the plugin. Incident: Anthropic's 2026-08-27 identity-backed API keys made `anthropic-workspace-id` mandatory for keys not scoped to a workspace. Two releases shipped without the plugin sending it, because the only audit checked a reference copy, not the live auth docs, and no release step required a provider check. `/release-cut` step 3b and `/release-prep` step 0b enforce this gate.
-
-- Never run `publishPlugin` locally. CI handles signing and JetBrains Marketplace publishing on `v*` tag push.
-- Use `/release-cut <version>` to start a release — it bumps `build.gradle.kts`, rolls `## Unreleased` into a versioned changelog section (`./gradlew patchChangelog`), and opens the release PR.
-- Use `/release-prep <version>` before tagging — it validates `build.gradle.kts`, `CHANGELOG.md`, build, archived changes, and tracker state.
+- **Pipeline:** `/release-prep <v> --pre` → `/release-cut <v>` → merge → the user mirrors `main` → `/release-prep <v> --post` → tag both remotes. The BLOCKER gates run before the bump: tracker audit, the **Direct API provider gate** (every `AiProvider`, against *live* auth, release-notes and deprecation pages, shipped and planned changes, including request headers), the workflow ↔ UI parity audit, and **doc-fidelity** on the user-facing docs (`docs/marketplace-page.md`, `docs/feature-comparison-matrix.md`, `docs/feature-reference.md`). The skills hold the procedures and the incidents behind them.
+- Never run `publishPlugin` locally. CI signs and publishes to the Marketplace on `v*` tag push.
 - `CHANGELOG.md` is for plugin users only — no internal housekeeping, tracker triage, or personal workflow notes.
