@@ -2584,12 +2584,30 @@ public class WorkflowActionPanel extends JPanel {
         }
     }
 
-    /** Stops the artifact watcher, popover and animations, which a headless test's panel never removes. */
-    @org.jetbrains.annotations.TestOnly
-    void disposeForTest() {
+    /**
+     * Stops the artifact watcher, popover and animations. Runs from {@link #removeNotify()} when the panel leaves the
+     * component tree, and from the owning {@link OpenSpecToolWindowPanel#dispose()} so the watcher's Swing timers stop
+     * even when the panel was never shown (a headless test's panel is never removed, so removeNotify never fires).
+     */
+    void releaseResources() {
         disposeAnimations();
         disposeWatcher();
         dismissActivePopup();
+    }
+
+    @org.jetbrains.annotations.TestOnly
+    void disposeForTest() {
+        releaseResources();
+    }
+
+    @org.jetbrains.annotations.TestOnly
+    void startFileWatcherForTest(String changeDir, String outputPath) {
+        startFileWatcher(changeDir, outputPath);
+    }
+
+    @org.jetbrains.annotations.TestOnly
+    boolean hasRunningWatcherForTest() {
+        return activeWatcher != null && activeWatcher.isRunning();
     }
 
     // --- Generate All ---
@@ -2854,9 +2872,7 @@ public class WorkflowActionPanel extends JPanel {
 
     @Override
     public void removeNotify() {
-        disposeAnimations();
-        disposeWatcher();
-        dismissActivePopup();
+        releaseResources();
         super.removeNotify();
     }
 

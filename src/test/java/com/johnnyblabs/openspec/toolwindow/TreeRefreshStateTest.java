@@ -46,6 +46,69 @@ public class TreeRefreshStateTest extends OpenSpecIntegrationTestBase {
         LocalFileSystem.getInstance().refreshAndFindFileByIoFile(dir);
     }
 
+    // --- a refresh that finishes after the panel is disposed ---
+    // The build runs off the EDT and applies later on the EDT, so it can land after dispose (content rebuilt, project
+    // closing). Applying it scheduled on the disposed preview/refresh Alarms, which logs "Already disposed"; the test
+    // logger turns that into a failure, so each test fails without the panel's disposed guard.
+
+    public void testAFirstLoadThatFinishesAfterDisposeIsDropped() throws Exception {
+        CountDownLatch building = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        DefaultTreeModel late = model("add-auth:add-auth 1/3:CHANGE:ARTIFACT_READY");
+        next.set(() -> {
+            building.countDown();
+            awaitQuietly(release);
+            return late;
+        });
+        OpenSpecToolWindowPanel panel = new OpenSpecToolWindowPanel(getProject(), () -> next.get().get());
+        Disposer.register(getTestRootDisposable(), panel);
+        try {
+            assertTrue("the first build started", building.await(10, TimeUnit.SECONDS));
+
+            Disposer.dispose(panel);
+            release.countDown();
+            settle(500);
+
+            assertNotSame("a build that finishes after dispose is not applied", late, panel.treeModelForTest());
+        } finally {
+            release.countDown();
+        }
+    }
+
+    public void testAFailedRebuildAfterDisposeSchedulesNoRetry() throws Exception {
+        DefaultTreeModel before = model("add-auth:add-auth 1/3:CHANGE:ARTIFACT_READY");
+        OpenSpecToolWindowPanel panel = panel(before);
+        CountDownLatch building = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        AtomicInteger builds = new AtomicInteger();
+        next.set(() -> {
+            builds.incrementAndGet();
+            building.countDown();
+            awaitQuietly(release);
+            throw new IllegalStateException("change directory removed mid-scan");
+        });
+        try {
+            panel.refresh();
+            assertTrue("the rebuild started", building.await(10, TimeUnit.SECONDS));
+
+            Disposer.dispose(panel);
+            release.countDown();
+            settle(600); // well past the 100 ms retry delay
+
+            assertEquals("a failed rebuild after dispose schedules no retry", 1, builds.get());
+        } finally {
+            release.countDown();
+        }
+    }
+
+    private static void awaitQuietly(CountDownLatch latch) {
+        try {
+            latch.await(10, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
     private OpenSpecToolWindowPanel panel(DefaultTreeModel first) {
         next.set(() -> first);
         OpenSpecToolWindowPanel panel = new OpenSpecToolWindowPanel(getProject(), () -> next.get().get());

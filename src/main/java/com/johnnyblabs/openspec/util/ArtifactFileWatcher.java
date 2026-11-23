@@ -92,6 +92,11 @@ public class ArtifactFileWatcher implements Disposable {
         ApplicationManager.getApplication().invokeLater(onFileDetected);
     }
 
+    /** True between {@link #start()} and {@link #dispose()}: its timers are live. */
+    public boolean isRunning() {
+        return !disposed && (refreshTimer != null || timeoutTimer != null);
+    }
+
     @Override
     public void dispose() {
         disposed = true;

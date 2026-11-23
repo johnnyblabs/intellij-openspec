@@ -94,6 +94,12 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
     // Whether a built model has been shown; until then a failed build shows the error node.
     private boolean treeLoaded = false;
     private int refreshRetryDelayMs = 1000;
+    /**
+     * Set by {@link #dispose()}. A tree refresh builds off the EDT and applies later on the EDT, so it can finish after
+     * the panel is gone (content rebuilt, project closing). Every path that would schedule on the Alarms or touch the
+     * UI checks this first: scheduling on a disposed Alarm logs "Already disposed".
+     */
+    private volatile boolean disposed = false;
 
     public OpenSpecToolWindowPanel(Project project) {
         this(project, () -> new SpecTreeModel(project).buildModel());
@@ -265,6 +271,7 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
     private int previewGeneration = 0;
 
     private void schedulePreview() {
+        if (disposed) return;
         // Snapshot the selection on the EDT; the file read + render then runs off-EDT.
         PreviewSelection selection = snapshotSelection(tree.getSelectionPath());
         final int generation = ++previewGeneration;
@@ -275,7 +282,7 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
     /** Applies a preview mutation on the EDT only if no newer selection has superseded it. */
     private void applyIfCurrent(int generation, Runnable action) {
         ApplicationManager.getApplication().invokeLater(() -> {
-            if (generation == previewGeneration) action.run();
+            if (!disposed && generation == previewGeneration) action.run();
         });
     }
 
@@ -511,6 +518,7 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
      */
     private void refreshAsync(boolean retry) {
         Runnable doRefresh = () -> {
+            if (disposed) return;
             final int generation = ++treeGeneration;
             ApplicationManager.getApplication().executeOnPooledThread(() -> {
                 try {
@@ -564,7 +572,7 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
 
     /** Swaps in a rebuilt model, restoring selection and expansion by node identity ({@link TreeState}). */
     private void applyModel(DefaultTreeModel model, int generation) {
-        if (generation != treeGeneration) return; // a newer refresh started since this one
+        if (disposed || generation != treeGeneration) return; // disposed, or a newer refresh started since this one
         // Captured now, not when the refresh started, so anything the user did during the build is kept.
         String selectedId = nodeId(tree.getSelectionPath());
         TreeState state = TreeState.createOn(tree, new TreePath(tree.getModel().getRoot()));
@@ -611,7 +619,7 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
      * is, nothing is shown, and the build is retried once in case no further change arrives.
      */
     private void onBuildFailed(Exception e, int generation, boolean retry) {
-        if (generation != treeGeneration) return;
+        if (disposed || generation != treeGeneration) return;
         LOG.warn("Failed to build tree model", e);
         if (treeLoaded) {
             if (!retry) refreshAlarm.addRequest(() -> refreshAsync(true), refreshRetryDelayMs);
@@ -924,6 +932,10 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
         // The Alarms (parented to this) and the VFS message-bus connection (connect(this)) are
         // released when this panel is disposed via its Content disposer (see OpenSpecToolWindowFactory).
         // Wiring the disposer is what makes createNormalContent rebuilds not accumulate subscriptions.
+        disposed = true;
+        // The workflow panel is a plain JPanel, not a Disposable: release its watcher timers, popover and animations
+        // here too, because removeNotify only runs for a panel that was shown.
+        workflowPanel.releaseResources();
     }
 
     private void registerFileListener() {
@@ -961,7 +973,7 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
 
     private void debouncedRefresh() {
         OpenSpecSettings settings = OpenSpecSettings.getInstance(project);
-        if (!settings.isAutoRefresh()) return;
+        if (disposed || !settings.isAutoRefresh()) return;
 
         refreshAlarm.cancelAllRequests();
         refreshAlarm.addRequest(this::refreshAsync, 300);

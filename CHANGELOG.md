@@ -4,6 +4,10 @@
 
 ## Unreleased
 
+### Fixed
+
+- Closing the OpenSpec tool window, or a project, while the tree was still refreshing no longer reports an internal "Already disposed" error. A refresh that finishes after the tool window is gone is now dropped quietly.
+
 ## v0.17.0
 
 ### Added
