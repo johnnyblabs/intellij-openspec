@@ -5,7 +5,7 @@
       "type": "spec",
       "valid": true,
       "issues": [],
-      "durationMs": 5
+      "durationMs": 4
     },
     {
       "id": "fenced-keyword",
@@ -18,7 +18,7 @@
           "message": "Requirement \"Fenced\" should contain SHALL or MUST (RFC 2119 best practice for English specs)"
         }
       ],
-      "durationMs": 2
+      "durationMs": 1
     },
     {
       "id": "fenced-scenario",
@@ -36,7 +36,7 @@
           "message": "Requirement must have at least one scenario. Scenarios must use level-4 headers. Convert bullet lists into:\n#### Scenario: Short name\n- **WHEN** ...\n- **THEN** ...\n- **AND** ..."
         }
       ],
-      "durationMs": 1
+      "durationMs": 0
     },
     {
       "id": "header-only-keyword",
@@ -49,7 +49,7 @@
           "message": "Requirement \"It SHALL work\" should contain SHALL or MUST in the requirement body, not only in the header. Move the SHALL/MUST statement to the line immediately after the \"### Requirement: ...\" header. (RFC 2119 best practice for English specs)"
         }
       ],
-      "durationMs": 1
+      "durationMs": 0
     },
     {
       "id": "html-comment-req",
@@ -77,7 +77,7 @@
           "message": "Header \"### Implementation notes\" in ADDED Requirements is not a \"### Requirement:\" header and is ignored by validation. Use \"### Requirement: Implementation notes\" if it should be validated as a requirement."
         }
       ],
-      "durationMs": 14
+      "durationMs": 13
     },
     {
       "id": "nameless-change",
@@ -102,7 +102,7 @@
           "message": "Archive would refuse this delta: demo: target spec does not exist; only ADDED requirements are allowed for new specs. MODIFIED and RENAMED operations require an existing spec."
         }
       ],
-      "durationMs": 16
+      "durationMs": 15
     },
     {
       "id": "nested-list-scenario",
@@ -123,7 +123,7 @@
       "type": "spec",
       "valid": true,
       "issues": [],
-      "durationMs": 0
+      "durationMs": 1
     },
     {
       "id": "should-only",
@@ -136,7 +136,7 @@
           "message": "Requirement \"Soft\" should contain SHALL or MUST (RFC 2119 best practice for English specs)"
         }
       ],
-      "durationMs": 0
+      "durationMs": 1
     },
     {
       "id": "table-keyword",

@@ -30,7 +30,11 @@ class RegenerationNotePromptTest {
             "1.7.0/instructions-proposal.json", "1.7.0/instructions-specs.json", "1.7.0/instructions-tasks.json",
             "1.11.0/instructions-tasks-specs-done.json", "1.14.3/additive-shapes/instructions-proposal.json",
             "1.15.0/instructions/instructions-design.json", "1.15.0/instructions/instructions-specs.json",
-            "1.16.0/instructions/instructions-design.json", "1.16.0/instructions/instructions-specs.json");
+            "1.16.0/instructions/instructions-design.json", "1.16.0/instructions/instructions-specs.json",
+            "1.17.0/instructions/instructions-design.json", "1.17.0/instructions/instructions-specs.json",
+            "2.0.0/instructions/instructions-design.json", "2.0.0/instructions/instructions-specs.json",
+            "2.1.0/instructions/instructions-design.json", "2.1.0/instructions/instructions-specs.json",
+            "2.1.1/instructions/instructions-design.json", "2.1.1/instructions/instructions-specs.json");
 
     private static ArtifactInstruction captured(String name) {
         String path = "/fixtures/cli/" + name;

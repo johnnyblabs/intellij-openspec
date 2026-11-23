@@ -12,6 +12,10 @@ Under src/test/resources/fixtures/cli/<version>/ it writes:
     errors/init-amazon-q.*               `init --tools amazon-q`: Amazon Q is retired in 2.0
     validate-parity-corpus.json          `validate --all --json` over the committed 1.6.0 parity corpus
     validate-parity-corpus-strict.json   the same with --strict
+    instructions/instructions-{design,specs}.json
+                                         `instructions <artifact> --change demo --json` in a project made by
+                                         `init --tools none` and `new change demo`, with a filled proposal.md
+                                         (the 1.15.0 recipe), project path sanitized
 
 Each errors/ case is `<case>.stdout`, `<case>.stderr` and `<case>.exit`. Every run uses an isolated HOME and XDG
 directories and a package installed into a scratch prefix (scripts/lib/openspec_capture.py), never npx. A file is
@@ -31,6 +35,24 @@ from openspec_capture import cli, integrity, key, run, sanitize, write_fixture  
 
 FIXTURES = REPO / "src/test/resources/fixtures/cli"
 CORPUS = FIXTURES / "1.6.0" / "parity-corpus" / "openspec"
+PROPOSAL = """## Why
+
+Users need a way to export their data.
+
+## What Changes
+
+- Add a data export capability.
+
+## Capabilities
+
+### New Capabilities
+
+- `data-export`: export a user's data as a file.
+
+## Impact
+
+New export command.
+"""
 ANON = re.compile(r'("anonymousId":\s*")[0-9a-f-]{36}"')
 
 
@@ -76,6 +98,17 @@ def capture(version):
             for form in sorted({str(corpus), str(corpus.resolve())}, key=len, reverse=True):
                 text = text.replace(form, "/fixture/parity-corpus")
             write_fixture(out / name, sanitize(text, project, home))
+
+        # Artifact instructions (the regeneration-note prompt's input), by the 1.15.0 recipe.
+        demo = base / "instructions-project"
+        demo.mkdir()
+        run(osp + ["init", "--tools", "none", "."], demo, home)
+        run(osp + ["new", "change", "demo"], demo, home)
+        (demo / "openspec" / "changes" / "demo" / "proposal.md").write_text(PROPOSAL)
+        for artifact in ("design", "specs"):
+            text = run(osp + ["instructions", artifact, "--change", "demo", "--json"], demo, home).stdout
+            write_fixture(out / "instructions" / f"instructions-{artifact}.json", sanitize(text, demo, home))
+        print("  instructions/instructions-{design,specs}.json")
 
         # 2.1+ records each project it sets up; read it after one project init under a fresh HOME, so the record
         # holds only the demo project (the runs above set up others).

@@ -788,7 +788,7 @@ On 2.1.0 and later a plain `init --tools` installs skills for the whole machine.
 | `workflow-invocations.json` | `OPENSPEC_BIN=<package>/bin/openspec.js scripts/capture-workflow-invocations.py` |
 | `explore/`, `update/` | `OPENSPEC_BIN="node <package>/bin/openspec.js" scripts/capture-explore-fixtures.py` |
 | `update-dry-run/` | `CAPTURE_VERSION=<v> scripts/capture-update-dry-run-fixtures.py` |
-| `version.txt`, `config-list.json`, `errors/init-*`, `home-state/projects.json`, `validate-parity-corpus{,-strict}.json` | `scripts/capture-cli-generation.py <v>...` |
+| `version.txt`, `config-list.json`, `errors/init-*`, `home-state/projects.json`, `validate-parity-corpus{,-strict}.json`, `instructions/instructions-{design,specs}.json` | `scripts/capture-cli-generation.py <v>...` |
 | `help/` (every supported line, not only 2.x) | `scripts/capture-help-sweep.py` |
 
 ### Links in a detection layout
@@ -825,6 +825,7 @@ Real CLI **2.0.0** captures (npm `@fission-ai/openspec@2.0.0`, released 2026-11-
 - `explore/`, `update/`: only `listing-skills.txt`, because 2.0 ignores `delivery` ("delivery no longer changes anything"). A linked entry is listed as `<path> -> <target>`.
 - `update-dry-run/` (12 cases): the 1.17 set without `windsurf-move`, because 2.0 makes no `.devin` folder to move.
 - `version.txt`, `config-list.json` (telemetry id zeroed), `validate-parity-corpus{,-strict}.json` (12 of 13 valid by default, unchanged from 1.17.0).
+- `instructions/instructions-{design,specs}.json`: the `1.15.0/instructions/` recipe (the script reproduces 1.17.0's committed pair byte for byte). Identical to 1.17.0's, field for field, in 2.0.0, 2.1.0 and 2.1.1. The plugin reads these live, so users get their own CLI's wording; `ArtifactInstructionsVersionStabilityTest` fails when a release rewords them, and `RegenerationNotePromptTest` builds its prompts from every capture.
 
 ## `2.1.0/` — `--scope` and the machine-wide default
 

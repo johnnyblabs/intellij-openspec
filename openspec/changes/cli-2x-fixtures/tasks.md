@@ -19,6 +19,8 @@
 - [x] 3.5 Capture the `.openspec-target` each 2.x version writes (2.0 `keep` lines, 2.1 aliases, 2.1.1 inference from `skills-lock.json`), recorded in the detection layouts, and the init errors: `amazon-q` on 2.x, `--scope` on 1.17.0 and 2.0.0. Sanitize `projects.json`. Verify: each error capture has a non-zero `.exit`, and no new file contains the scratch prefix or the real HOME.
 - [x] 3.6 Capture the validation parity corpus output for each 2.x version and add 2.0.0, 2.1.0 and 2.1.1 to `ValidatorVerdictVersionStabilityTest.FLOOR`. Verify: the test passes and fails if a 2.x corpus file is removed.
 
+- [x] 3.7 Capture `instructions/instructions-{design,specs}.json` for each 2.x version by the 1.15.0 recipe, add them to `RegenerationNotePromptTest`, and add `ArtifactInstructionsVersionStabilityTest`, which fails when a release from 1.17.0 up rewords an instruction. Verify: the script reproduces 1.17.0's committed pair byte for byte, and by mutation one changed word in a 2.x capture, or a missing 2.x capture, fails the test.
+
 ## 4. `--help` sweep
 
 - [x] 4.1 Add a help-sweep capture that writes `<version>/help/<command>.txt` and `help/index.json` for the newest patch of every 1.x minor from 1.3 and for 2.0.0, 2.1.0 and 2.1.1, covering `init update validate status instructions archive schema store workset list show new`. Commands a version lacks are recorded with their exit code and `"file": null`. Add a contract test that every captured version has an index, and every index entry with a file points to a file that exists. Verify by mutation: deleting one help file fails the test.

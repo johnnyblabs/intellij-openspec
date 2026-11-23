@@ -12,6 +12,7 @@ OpenSpec CLI 2.0.0, 2.1.0 and 2.1.1 changed where skills live, how tools are rec
   - workflow ids and invocations (`workflows.json`, `workflow-invocations.json`), recording `/openspec-<skill>` and Codex's `$openspec-<skill>`;
   - `update` transcripts and `update --dry-run --json` results, including the 2.x note codes;
   - `config list` output, `--version`, and the `.openspec-target` file each version writes;
+  - the artifact instructions (`instructions design` and `instructions specs`) the generation prompts are built from;
   - init errors: `amazon-q` on 2.x, and `--scope` on 1.17.0 and 2.0.0.
   2.1.0 is captured separately from 2.1.1 because it installs skills over the network and lacks 2.1.1's tool inference and new warnings.
 - **A `--help` sweep.** Capture `<command> --help` for every command the plugin runs, at the newest patch of every 1.x minor from 1.3 and at each 2.x version, into `<version>/help/<command>.txt`. A later change uses these to check every flag the plugin passes against the CLI it is talking to.
