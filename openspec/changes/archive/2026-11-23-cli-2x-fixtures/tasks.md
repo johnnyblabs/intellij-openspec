@@ -33,7 +33,7 @@
 ## 6. Documentation and gates
 
 - [x] 6.1 Add 2.0.0, 2.1.0 and 2.1.1 sections to `src/test/resources/fixtures/cli/README.md` (CLI `--version`, `dist.integrity`, capture date, script per family), document the `links` schema and the help-sweep index, and update `scripts/README.md` for the new capture options. Verify: `DocumentationHygieneTest` passes.
-- [ ] 6.2 Run `./gradlew build`, `openspec validate --all --strict`, and the staged-file leak grep from `CLAUDE.md`. Verify: all three are clean, and CI is green on Linux, macOS and Windows (the hygiene and materializer tests matter most on Windows).
+- [x] 6.2 Run `./gradlew build`, `openspec validate --all --strict`, and the staged-file leak grep from `CLAUDE.md`. Verify: all three are clean, and CI is green on Linux, macOS and Windows (the hygiene and materializer tests matter most on Windows).
 
 ## Workflow follow-up
 
