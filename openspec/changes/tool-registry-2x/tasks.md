@@ -36,7 +36,7 @@
 
 ## 4. Documentation and checks
 
-- [ ] 4.1 Update `docs/feature-reference.md` (the tool list and its count, Amazon Q on 2.x, the shared-folder line, the 2.x wording), `README.md`, `docs/marketplace/getting-started.html` and `docs/feature-comparison-matrix.md` (the tool count), and `CHANGELOG.md` (Unreleased). Verify: `DocumentationHygieneTest`, `./gradlew build`, `openspec validate --all --strict`, the new plain test classes run alone, and `./gradlew verifyPlugin` (new `com.intellij` uses).
+- [x] 4.1 Update `docs/feature-reference.md` (the tool list and its count, Amazon Q on 2.x, the shared-folder line, the 2.x wording), `README.md`, `docs/marketplace/getting-started.html` and `docs/feature-comparison-matrix.md` (the tool count), and `CHANGELOG.md` (Unreleased). Verify: `DocumentationHygieneTest`, `./gradlew build`, `openspec validate --all --strict`, the new plain test classes run alone, and `./gradlew verifyPlugin` (compatible on all six target IDEs; no new deprecated or scheduled-for-removal use).
 
 ## Workflow follow-up
 
