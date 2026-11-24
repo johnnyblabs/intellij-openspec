@@ -85,6 +85,8 @@
    - 2.1.0 already says when Git is missing (`Git is needed to install the OpenSpec skills, and it is not on your PATH…`), but not when the clone fails for lack of network. So when the detected version is exactly 2.1.0, the warning appends one sentence covering both: "OpenSpec CLI 2.1.0 downloads its skills with Git during init; check that Git is installed and the network is reachable, or use CLI 2.1.1 or later."
    - The home-folder refusal can't arise: the wizard always passes the project scope, which 2.1 accepts in the home folder. If the IDE project is the home folder, its `.agents/skills/` is the machine's, so the verdict is "in this project" (`PROJECT`), and Add never passes `KEEP` there. The warning still shows any CLI error unchanged.
 
+7. **The CLI's init runs in the background.** Before this change, all four callers (the setup wizard, the Init action, the tool window's tree hint and Getting Started) ran `openspec init` on the UI thread. 2.1.0 clones its skills over the network during init, which could freeze the IDE. `ScaffoldingService.initOpenSpec(modality, onDone, onFailure)` runs the CLI in a `Task.Backgroundable`, then finishes on the EDT under the caller's modality: the VFS refresh, the kept-tree check and the built-in fallback, as before. The synchronous entry point is removed, so no caller can put the CLI back on the UI thread.
+
 ## Risks / Trade-offs
 
 - **The CLI might treat an existing project as machine-scoped while the plugin doesn't.** The plugin's own-skills test (any project skill) is broader than upstream's step 3, which looks at configured tools. Where they differ, the plugin chooses `PROJECT`, which only ever adds project files, never removes them. The `init` captures on a machine-scoped project pin both outcomes.

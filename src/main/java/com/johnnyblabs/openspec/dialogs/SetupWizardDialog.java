@@ -403,17 +403,21 @@ public class SetupWizardDialog extends DialogWrapper {
     }
 
     private void doInitialize() {
-        try {
-            ScaffoldingService scaffolding = project.getService(ScaffoldingService.class);
-            scaffolding.initOpenSpec();
-            model.setProjectInitialized(true);
-            initStatusLabel.setIcon(AllIcons.General.InspectionsOK);
-            initStatusLabel.setText("Initialized successfully");
-            initButton.setVisible(false);
-        } catch (java.io.IOException ex) {
-            initStatusLabel.setIcon(AllIcons.General.Error);
-            initStatusLabel.setText("Failed to initialize: " + ex.getMessage());
-        }
+        // The CLI's init runs in the background; its result comes back under this dialog's modality.
+        initButton.setEnabled(false);
+        initStatusLabel.setIcon(new com.intellij.ui.AnimatedIcon.Default());
+        initStatusLabel.setText("Initializing…");
+        project.getService(ScaffoldingService.class).initOpenSpec(
+                com.intellij.openapi.application.ModalityState.stateForComponent(initButton), dir -> {
+                    model.setProjectInitialized(true);
+                    initStatusLabel.setIcon(AllIcons.General.InspectionsOK);
+                    initStatusLabel.setText("Initialized successfully");
+                    initButton.setVisible(false);
+                }, ex -> {
+                    initButton.setEnabled(true);
+                    initStatusLabel.setIcon(AllIcons.General.Error);
+                    initStatusLabel.setText("Failed to initialize: " + ex.getMessage());
+                });
     }
 
     private void buildSummary() {

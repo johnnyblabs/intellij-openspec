@@ -84,11 +84,11 @@ class SkillsScopeConfigContractTest {
         }
         // Positive control: the reader itself must be found, so an empty scan can't pass.
         assertTrue(mentions.contains(Path.of("src/main/java/com/johnnyblabs/openspec/model/OpenSpecConfig.java")), mentions.toString());
+        // Writing the key means emitting `skillsScope:` from a string literal; comments may name it.
+        java.util.regex.Pattern written = java.util.regex.Pattern.compile("\"[^\"\\n]*skillsScope\\s*:");
+        assertTrue(written.matcher("String s = \"skillsScope: project\\n\";").find(), "positive control for the pattern");
         for (Path p : mentions) {
-            String text = Files.readString(p);
-            assertFalse(text.contains("skillsScope:") && !p.endsWith("OpenSpecConfig.java")
-                            && !p.endsWith("ConfigValidationInspection.java"),
-                    p + " writes or templates skillsScope");
+            assertFalse(written.matcher(Files.readString(p)).find(), p + " writes or templates skillsScope");
         }
         String builtIn = Files.readString(Path.of("src/main/java/com/johnnyblabs/openspec/scaffolding/ScaffoldingService.java"));
         assertFalse(builtIn.contains("skillsScope"), "the built-in init's config holds only schema:");

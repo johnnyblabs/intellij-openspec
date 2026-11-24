@@ -1,10 +1,7 @@
 package com.johnnyblabs.openspec.actions;
 
 import com.intellij.openapi.actionSystem.AnActionEvent;
-import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.progress.ProgressIndicator;
-import com.intellij.openapi.progress.ProgressManager;
-import com.intellij.openapi.progress.Task;
+import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.project.Project;
 import com.johnnyblabs.openspec.scaffolding.ScaffoldingService;
 import com.johnnyblabs.openspec.util.OpenSpecFileUtil;
@@ -39,22 +36,10 @@ public class OpenSpecInitAction extends OpenSpecBaseAction {
             return;
         }
 
-        ProgressManager.getInstance().run(new Task.Backgroundable(project, "Initializing OpenSpec", false) {
-            @Override
-            public void run(@NotNull ProgressIndicator indicator) {
-                // initOpenSpec() uses WriteAction internally, so dispatch to EDT via invokeLater
-                ApplicationManager.getApplication().invokeLater(() -> {
-                    try {
-                        ScaffoldingService scaffolding = project.getService(ScaffoldingService.class);
-                        scaffolding.initOpenSpec();
-                        OpenSpecNotifier.info(project, "Initialize", "OpenSpec initialized");
-                        refreshToolWindow(project);
-                    } catch (Exception ex) {
-                        OpenSpecNotifier.error(project, "Initialize",
-                                "Failed to initialize OpenSpec: " + ex.getMessage());
-                    }
-                });
-            }
-        });
+        // The CLI's init runs in the background; the rest comes back to the EDT.
+        project.getService(ScaffoldingService.class).initOpenSpec(ModalityState.nonModal(), dir -> {
+            OpenSpecNotifier.info(project, "Initialize", "OpenSpec initialized");
+            refreshToolWindow(project);
+        }, ex -> OpenSpecNotifier.error(project, "Initialize", "Failed to initialize OpenSpec: " + ex.getMessage()));
     }
 }

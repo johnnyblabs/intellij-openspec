@@ -692,17 +692,12 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
             }
         } else if ("OpenSpec".equals(parent.getUserObject())) {
             // Root-level hint — trigger Init
-            try {
-                com.johnnyblabs.openspec.scaffolding.ScaffoldingService scaffolding =
-                        project.getService(com.johnnyblabs.openspec.scaffolding.ScaffoldingService.class);
-                scaffolding.initOpenSpec();
-                refreshAsync();
-            } catch (java.io.IOException ex) {
-                com.johnnyblabs.openspec.util.OpenSpecNotifier.notify(project,
-                        com.johnnyblabs.openspec.util.OpenSpecNotifier.GROUP_SYSTEM, "Initialize",
-                        "Failed to initialize: " + ex.getMessage(),
-                        com.intellij.notification.NotificationType.ERROR);
-            }
+            project.getService(com.johnnyblabs.openspec.scaffolding.ScaffoldingService.class).initOpenSpec(
+                    com.intellij.openapi.application.ModalityState.nonModal(), dir -> refreshAsync(),
+                    ex -> com.johnnyblabs.openspec.util.OpenSpecNotifier.notify(project,
+                            com.johnnyblabs.openspec.util.OpenSpecNotifier.GROUP_SYSTEM, "Initialize",
+                            "Failed to initialize: " + ex.getMessage(),
+                            com.intellij.notification.NotificationType.ERROR));
         }
     }
 

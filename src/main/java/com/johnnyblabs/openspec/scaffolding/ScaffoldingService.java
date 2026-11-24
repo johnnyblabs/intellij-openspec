@@ -1,6 +1,12 @@
 package com.johnnyblabs.openspec.scaffolding;
 
+import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.application.WriteAction;
+import com.intellij.openapi.progress.ProcessCanceledException;
+import com.intellij.openapi.progress.ProgressIndicator;
+import com.intellij.openapi.progress.ProgressManager;
+import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.components.Service;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
@@ -14,15 +20,30 @@ import com.johnnyblabs.openspec.settings.OpenSpecSettings;
 import com.johnnyblabs.openspec.util.CliRunner;
 import com.johnnyblabs.openspec.util.OpenSpecFileUtil;
 import com.johnnyblabs.openspec.util.OpenSpecNotifier;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.function.Consumer;
 
 @Service(Service.Level.PROJECT)
 public final class ScaffoldingService {
     private static final Logger LOG = Logger.getInstance(ScaffoldingService.class);
+
+    /** How the init's CLI command is run; a test replaces it, from any thread. */
+    @FunctionalInterface
+    interface InitRunner {
+        CliRunner.CliResult run(Project project, com.johnnyblabs.openspec.util.CliArgs args) throws CliRunner.CliException;
+    }
+
+    private volatile InitRunner cliRunner = CliRunner::run;
+
+    @org.jetbrains.annotations.TestOnly
+    void setCliRunnerForTest(InitRunner runner) {
+        cliRunner = runner;
+    }
 
     private final Project project;
 
@@ -80,40 +101,70 @@ public final class ScaffoldingService {
         });
     }
 
-    public VirtualFile initOpenSpec() throws IOException {
+    /**
+     * Sets up OpenSpec in the project. The CLI's init runs in a background task (CLI 2.1.0 clones its skills over the
+     * network); the VFS refresh and the built-in fallback then run on the EDT under {@code modality}, the caller's
+     * (a dialog's, when started from one). Without a CLI the built-in init runs at once. Call on the EDT.
+     *
+     * @param onDone    gets the {@code openspec/} directory, on the EDT
+     * @param onFailure gets the error when neither the CLI nor the built-in init could set it up, on the EDT
+     */
+    public void initOpenSpec(ModalityState modality, Consumer<VirtualFile> onDone, Consumer<IOException> onFailure) {
         String basePath = project.getBasePath();
-        if (basePath == null) throw new IOException("Project base path is null");
-
-        // Try CLI-delegated init first
+        if (basePath == null) {
+            onFailure.accept(new IOException("Project base path is null"));
+            return;
+        }
         CliDetectionService cliService = project.getService(CliDetectionService.class);
-        if (cliService != null && cliService.isAvailable()) {
-            try {
-                initWithCli();
-                // Synchronous VFS refresh to pick up files created by CLI
-                String openspecPath = basePath + "/openspec";
-                VirtualFile openspecDir = LocalFileSystem.getInstance()
-                        .refreshAndFindFileByPath(openspecPath);
-                if (openspecDir != null) {
-                    // Ensure children (config.yaml, specs/, changes/) are also indexed
-                    VfsUtil.markDirtyAndRefresh(false, true, true, openspecDir);
-                    return openspecDir;
+        if (cliService == null || !cliService.isAvailable()) {
+            finishInit(basePath, null, null, onDone, onFailure);
+            return;
+        }
+        ProgressManager.getInstance().run(new Task.Backgroundable(project, "Initializing OpenSpec", false) {
+            @Override
+            public void run(@NotNull ProgressIndicator indicator) {
+                Exception failure = null;
+                try {
+                    initWithCli();
+                } catch (ProcessCanceledException e) {
+                    throw e;
+                } catch (Exception e) {
+                    failure = e;
                 }
-            } catch (Exception e) {
-                LOG.warn("CLI init failed, falling back to built-in: " + e.getMessage());
+                Exception cliFailure = failure;
+                ApplicationManager.getApplication().invokeLater(
+                        () -> finishInit(basePath, cliService, cliFailure, onDone, onFailure),
+                        modality, project.getDisposed());
+            }
+        });
+    }
+
+    /**
+     * The EDT half of {@link #initOpenSpec}: picks up what the CLI wrote, or reports its failure and keeps the
+     * {@code openspec/} it already wrote, or runs the built-in init. {@code cli} is null when the CLI didn't run.
+     */
+    private void finishInit(String basePath, @Nullable CliDetectionService cli, @Nullable Exception cliFailure,
+                            Consumer<VirtualFile> onDone, Consumer<IOException> onFailure) {
+        try {
+            VirtualFile written = cli == null ? null
+                    : LocalFileSystem.getInstance().refreshAndFindFileByPath(basePath + "/openspec");
+            if (cliFailure != null) {
+                LOG.warn("CLI init failed, falling back to built-in: " + cliFailure.getMessage());
                 // A CLI can fail after writing openspec/ (2.1.0 creates it, then fails to fetch the skills); that
                 // tree is the CLI's own, so it is kept rather than set up again.
-                VirtualFile written = LocalFileSystem.getInstance().refreshAndFindFileByPath(basePath + "/openspec");
-                OpenSpecNotifier.warn(project, failedInitNotice(String.valueOf(e.getMessage()),
-                        cliService.getDetectedVersion(), written != null));
-                if (written != null) {
-                    VfsUtil.markDirtyAndRefresh(false, true, true, written);
-                    return written;
-                }
+                OpenSpecNotifier.warn(project, failedInitNotice(String.valueOf(cliFailure.getMessage()),
+                        cli.getDetectedVersion(), written != null));
             }
+            if (written != null) {
+                // Ensure children (config.yaml, specs/, changes/) are also indexed
+                VfsUtil.markDirtyAndRefresh(false, true, true, written);
+                onDone.accept(written);
+                return;
+            }
+            onDone.accept(initBuiltIn(basePath));
+        } catch (IOException e) {
+            onFailure.accept(e);
         }
-
-        // Built-in fallback
-        return initBuiltIn(basePath);
     }
 
     /** {@code init --tools <ids>} for the detected tools, or {@code --tools none} when there are none. */
@@ -128,7 +179,7 @@ public final class ScaffoldingService {
         }
 
         List<String> toolIds = toolService != null ? toolService.getDetectedCliToolIds() : List.of();
-        CliRunner.CliResult result = CliRunner.run(project, initArgs(toolIds));
+        CliRunner.CliResult result = cliRunner.run(project, initArgs(toolIds));
         if (!result.isSuccess()) throw new CliRunner.CliException(cliErrorText(result));
     }
 

@@ -29,6 +29,11 @@ The plugin SHALL detect OpenSpec projects by checking for `openspec/`, and initi
 - **THEN** the plugin SHALL show a warning carrying the CLI's error text as the CLI wrote it, including the reason lines of its summary
 - **AND** when the detected CLI is 2.1.0, the warning SHALL add that this release needs Git and network access during init
 
+#### Scenario: The CLI's init runs off the UI thread
+- **WHEN** the plugin initializes a project with the CLI, from the setup wizard, the Init action or the tool window
+- **THEN** the CLI SHALL run in a background task, and the IDE SHALL stay responsive while it runs, including while CLI 2.1.0 downloads its skills
+- **AND** the result SHALL come back to the caller under the caller's modality, so the setup wizard shows it while open
+
 #### Scenario: A failed CLI init that already wrote openspec
 - **WHEN** the CLI init exits with an error after creating `openspec/`, as 2.1.0 does when it can't fetch the skills
 - **THEN** the plugin SHALL keep that `openspec/` as the CLI wrote it and SHALL NOT run the built-in init

@@ -237,6 +237,111 @@ class OpenSpecUiSmokeTest {
         }
     }
 
+    @Remote("com.intellij.ui.HyperlinkLabel")
+    interface HyperlinkLabelRef {
+        fun doClick()
+    }
+
+    @Remote("javax.swing.AbstractButton")
+    interface AbstractButtonRef {
+        fun isSelected(): Boolean
+        fun setSelected(selected: Boolean)
+        fun isEnabled(): Boolean
+    }
+
+    /** CLI 2.1.1 from the cliMatrix cache (scripts/install-cli-matrix.py); the host CLI matches the older target. */
+    private fun cli211(): Path {
+        val cache = System.getenv("OSP_CAPTURE_CACHE")?.takeIf { it.isNotBlank() }?.let { Path.of(it) }
+            ?: Path.of(System.getProperty("java.io.tmpdir"), "osp-capture-pkgs")
+        val bin = cache.resolve("2.1.1/node_modules/.bin/openspec")
+        check(Files.isExecutable(bin)) {
+            "the install-list journey needs CLI 2.1.1 at $bin: run scripts/install-cli-matrix.py (OSP_CAPTURE_CACHE=$cache)"
+        }
+        return bin
+    }
+
+    /** Every file under [root] (links not followed) with its bytes, to compare before and after. */
+    private fun tree(root: Path): Map<String, List<Byte>> =
+        if (!Files.exists(root)) emptyMap()
+        else Files.walk(root).use { s ->
+            s.filter { Files.isRegularFile(it, java.nio.file.LinkOption.NOFOLLOW_LINKS) }
+                .toList().associate { root.relativize(it).toString() to Files.readAllBytes(it).toList() }
+        }
+
+    /**
+     * Journey: a project whose skills are only on the machine shows that in Manage AI Tools and offers "Install into
+     * this project" on CLI 2.1. The link opens the tool list over the dialog, with Claude ticked from the machine's
+     * ~/.claude; Install is disabled once nothing is ticked; Cancel changes nothing in the project or the home folder.
+     * The home folder is a throwaway one (HOME and XDG), so the run never touches the real one.
+     */
+    @Test
+    fun installToolListOpensFromAMachineScopedProject() {
+        val cli = cli211()
+        val project = Files.createTempDirectory("openspec-ui-smoke-machine-")
+        Files.createDirectories(project.resolve("openspec/specs"))
+        Files.writeString(project.resolve("openspec/config.yaml"), "schema: spec-driven\n")
+        Files.createDirectories(project.resolve(".idea"))
+        Files.writeString(project.resolve(".idea/openspec.xml"), """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <project version="4">
+              <component name="OpenSpecSettings">
+                <option name="cliPath" value="$cli" />
+              </component>
+            </project>
+        """.trimIndent() + "\n")
+        val home = Files.createTempDirectory("openspec-ui-smoke-home-")
+        Files.createDirectories(home.resolve(".agents/skills/openspec-explore"))
+        Files.writeString(home.resolve(".agents/skills/openspec-explore/SKILL.md"), "---\nname: openspec-explore\n---\n")
+        Files.createDirectories(home.resolve(".claude"))
+        val projectBefore = tree(project.resolve("openspec"))
+        val homeBefore = tree(home.resolve(".agents")) + tree(home.resolve(".claude"))
+
+        val context = newContext(project).apply {
+            applyVMOptionsPatch {
+                withEnv("HOME", home.toString())
+                withEnv("XDG_CONFIG_HOME", home.resolve(".config").toString())
+                withEnv("XDG_DATA_HOME", home.resolve(".local/share").toString())
+                withEnv("XDG_STATE_HOME", home.resolve(".local/state").toString())
+                withEnv("OPENSPEC_TELEMETRY", "0")
+            }
+        }
+        context.runIdeWithDriver().useDriverAndCloseIde {
+            waitForIndicators(5.minutes)
+            invokeAction("OpenSpec.ManageTools", now = false)
+            val dialog = ui.x { byTitle("Manage AI Tools") }
+            waitUntil("Manage AI Tools open", timeout = 2.minutes) { dialog.present() }
+            waitUntil("scope line filled", timeout = 2.minutes) {
+                dialog.hasSubtext("Skills: on this machine (~/.agents/skills)")
+            }
+            val link = dialog.x { byAccessibleName("Install into this project") }
+            waitUntil("install link shown on CLI 2.1") { link.present() }
+            withContext(OnDispatcher.EDT) { cast(link.component, HyperlinkLabelRef::class).doClick() }
+
+            val list = ui.x { byTitle("Install Skills into This Project") }
+            waitUntil("install list open over the dialog", timeout = 2.minutes) { list.present() }
+            val claude = cast(list.x { byAccessibleName("Claude Code") }.component, AbstractButtonRef::class)
+            val install = cast(list.x { byAccessibleName("Install") }.component, AbstractButtonRef::class)
+            withContext(OnDispatcher.EDT) {
+                check(claude.isSelected()) { "Claude Code is installed on the machine (~/.claude) but not ticked" }
+                check(install.isEnabled()) { "Install disabled with a tool ticked" }
+                claude.setSelected(false)
+            }
+            waitUntil("Install disabled with nothing ticked") {
+                withContext(OnDispatcher.EDT) { !install.isEnabled() }
+            }
+            list.x { byAccessibleName("Cancel") }.click(null)
+            waitUntil("install list closed on cancel") { list.notPresent() }
+            withContext(OnDispatcher.EDT) { cast(dialog.component, WindowRef::class).dispose() }
+        }
+        check(tree(project.resolve("openspec")) == projectBefore) { "cancelling changed the project's openspec/" }
+        check(!Files.exists(project.resolve(".agents")) && !Files.exists(project.resolve(".claude"))) {
+            "cancelling installed skills into the project"
+        }
+        check(tree(home.resolve(".agents")) + tree(home.resolve(".claude")) == homeBefore) {
+            "cancelling changed the machine's skills"
+        }
+    }
+
     private fun notificationContents(driver: Driver): List<String> {
         val project = driver.singleProject()
         return driver.utility(ActionCenterRef::class)

@@ -303,7 +303,7 @@ public class OpenSpecSettingsPanel {
         refreshConfigProfileSection();
         updateSchemaSectionVisibility();
         detectCli(false);
-        scopeLine.refresh(uiModality());
+        scopeLine.refresh(uiModality(), ignored -> !mainPanel.isDisplayable());
     }
 
     /** Headless stand-in for the panel being shown in the Settings dialog (a light test can't show a window). */

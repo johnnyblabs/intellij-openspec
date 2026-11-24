@@ -3,6 +3,7 @@ package com.johnnyblabs.openspec.dialogs;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.Condition;
 import com.intellij.ui.HyperlinkLabel;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.components.JBLabel;
@@ -70,12 +71,16 @@ public final class SkillsScopeLine {
         return panel;
     }
 
-    /** Reads the state off the EDT, then fills the line under {@code modality}. */
-    public void refresh(ModalityState modality) {
+    /**
+     * Reads the state off the EDT, then fills the line under {@code modality}, unless {@code expired} by then (the
+     * dialog or page that owns the line closed).
+     */
+    public void refresh(ModalityState modality, Condition<?> expired) {
         label.setText(CHECKING);
         ApplicationManager.getApplication().executeOnPooledThread(() -> {
             State state = read(project);
-            ApplicationManager.getApplication().invokeLater(() -> apply(state), modality, ignored -> project.isDisposed());
+            ApplicationManager.getApplication().invokeLater(() -> apply(state), modality,
+                    ignored -> project.isDisposed() || expired.value(null));
         });
     }
 

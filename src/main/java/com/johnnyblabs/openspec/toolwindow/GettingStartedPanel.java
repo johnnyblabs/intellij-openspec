@@ -210,16 +210,15 @@ public class GettingStartedPanel extends JPanel implements Disposable {
     private JButton createInitButton() {
         JButton btn = new JButton("Initialize OpenSpec");
         btn.addActionListener(e -> {
-            try {
-                ScaffoldingService scaffolding = project.getService(ScaffoldingService.class);
-                scaffolding.initOpenSpec();
-                rebuild();
-            } catch (java.io.IOException ex) {
-                com.johnnyblabs.openspec.util.OpenSpecNotifier.notify(project,
-                        com.johnnyblabs.openspec.util.OpenSpecNotifier.GROUP_SYSTEM, "Initialize",
-                        "Failed to initialize: " + ex.getMessage(),
-                        com.intellij.notification.NotificationType.ERROR);
-            }
+            btn.setEnabled(false);
+            project.getService(ScaffoldingService.class).initOpenSpec(
+                    com.intellij.openapi.application.ModalityState.stateForComponent(btn), dir -> rebuild(), ex -> {
+                        btn.setEnabled(true);
+                        com.johnnyblabs.openspec.util.OpenSpecNotifier.notify(project,
+                                com.johnnyblabs.openspec.util.OpenSpecNotifier.GROUP_SYSTEM, "Initialize",
+                                "Failed to initialize: " + ex.getMessage(),
+                                com.intellij.notification.NotificationType.ERROR);
+                    });
         });
         return btn;
     }

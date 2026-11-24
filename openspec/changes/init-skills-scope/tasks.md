@@ -25,6 +25,8 @@
   - `FailedInitNoticeContractTest` builds the warning from the captured 2.1.0 no-Git and 2.1.1 home-folder errors;
   - `ScaffoldingFailedInitTest` drives a failing init on a real project: the CLI's tree is kept (a mutation disabling that turns it red), a failure that wrote nothing runs the built-in init, and a success raises nothing.
 
+- [x] 2.3 Run the CLI's init off the UI thread: `initOpenSpec(modality, onDone, onFailure)` runs the CLI in a background task and finishes on the EDT under the caller's modality; the setup wizard, the Init action, the tree hint and Getting Started use it, and the synchronous form is removed. Verify: `ScaffoldingFailedInitTest` records the thread the CLI runs on (a mutation running it on the EDT turns it red) and still passes its kept-tree, built-in and quiet-success cases through the new entry point.
+
 ## 3. Reading `skillsScope`
 
 - [x] 3.1 `OpenSpecConfig` reads `skillsScope` (`project` or `global`); any other value leaves it empty, and the config still loads. Verify: `SkillsScopeConfigContractTest` loads, through `ConfigService.load`, the captured `remembered-config.yaml` (project), a config without the key, and the captured `team` config (no recorded choice; schema and context still read).
@@ -47,8 +49,8 @@
   - `InstallToolListDialogTest`: Install needs a tick, the argv names the ticked tools in registry order with `--scope project`, and Cancel returns before any run;
   - mutations: dropping the preferred tick and hard-coding `~/.config` each turn tests red;
   - the intellij-code-reviewer pass finds no EDT reads.
-- [ ] 4.5 Add a uiSmoke journey, "install tool list opens from a machine-scoped project". Seed a project with `openspec/` and no skills of its own, and start the sandbox IDE with `HOME` set to a throwaway folder holding `.agents/skills/` (OpenSpec skills) and `.claude/`, so the run never touches the real home. The journey opens Manage AI Tools, checks the scope line reads "Skills: on this machine (~/.agents/skills)" and the link is shown, clicks "Install into this project", checks that the list opens with Claude ticked and that OK is disabled once every tick is cleared, then cancels. It stops before `init` runs: the argv is covered by 2.1 and 4.4. Verify:
-  - after cancelling, the project and the throwaway home are byte-identical to the seed;
+- [ ] 4.5 Add a uiSmoke journey, "install tool list opens from a machine-scoped project". Seed a project with `openspec/` and no skills of its own, with `.idea/openspec.xml` pointing the plugin at CLI 2.1.1 from the cliMatrix cache (`scripts/install-cli-matrix.py`; the journey fails, rather than skips, when it's missing, since the host CLI matches the older target). Start the sandbox IDE with `HOME` and the XDG folders set to a throwaway folder holding `.agents/skills/` (OpenSpec skills) and `.claude/`, so the run never touches the real home. The journey opens Manage AI Tools, checks the scope line reads "Skills: on this machine (~/.agents/skills)" and the link is shown, clicks "Install into this project", checks that the list opens with Claude ticked and that OK is disabled once every tick is cleared, then cancels. It stops before `init` runs: the argv is covered by 2.1 and 4.4. Verify:
+  - after cancelling, the project's `openspec/` and the throwaway home's `.agents/` and `.claude/` are byte-identical to the seed, and the project has no `.agents/` or `.claude/` (the IDE's own `.idea/` and caches are left out of the comparison);
   - the journey passes under `caffeinate -dimsu ./gradlew uiSmoke`, and fails when the link is removed or the dialog's ticks are left empty.
 
 ## 5. Documentation and checks

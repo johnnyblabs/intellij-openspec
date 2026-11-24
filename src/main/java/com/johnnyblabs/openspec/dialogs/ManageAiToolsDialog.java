@@ -141,7 +141,7 @@ public class ManageAiToolsDialog extends DialogWrapper {
         toolService.detect();
         allTools = toolService.getAllToolsWithStatus();
         filterTools(searchField.getText().trim());
-        if (dialogModality != null) scopeLine.refresh(dialogModality);
+        if (dialogModality != null) scopeLine.refresh(dialogModality, ignored -> isDisposed());
     }
 
     /**
