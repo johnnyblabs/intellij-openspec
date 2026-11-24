@@ -26,6 +26,12 @@ class ExplorePathsContractTest {
         }
     }
 
+    /** The tools the target CLI has, whose explore files this capture records (2.1's tools came later). */
+    private static java.util.List<AiTool> targetTools() {
+        return AiToolRegistry.all().stream()
+                .filter(t -> AiToolRegistry.acceptedBy(t, AiToolRegistryContractTest.TARGET)).toList();
+    }
+
     private static Listing listing(String delivery) throws IOException {
         Map<String, Set<String>> project = new HashMap<>(), home = new HashMap<>();
         for (String line : Files.readAllLines(DIR.resolve("listing-" + delivery + ".txt"))) {
@@ -58,7 +64,7 @@ class ExplorePathsContractTest {
     void theSkillIsWrittenWhereTheRegistrySaysUnlessDeliveryIsCommands() throws IOException {
         for (String delivery : List.of("both", "skills")) {
             Listing listing = listing(delivery);
-            for (AiTool tool : AiToolRegistry.all()) {
+            for (AiTool tool : targetTools()) {
                 String skill = AiToolRegistry.exploreSkillPath(tool);
                 if (skill == null) continue;
                 assertTrue(listing.project(tool.id()).contains(skill),
@@ -71,7 +77,7 @@ class ExplorePathsContractTest {
     void theCommandIsWrittenWhereTheRegistrySaysUnlessDeliveryIsSkills() throws IOException {
         for (String delivery : List.of("both", "commands")) {
             Listing listing = listing(delivery);
-            for (AiTool tool : AiToolRegistry.all()) {
+            for (AiTool tool : targetTools()) {
                 String command = AiToolRegistry.exploreCommandPath(tool);
                 Set<String> written = listing.project(tool.id());
                 if (command != null) {
@@ -107,7 +113,7 @@ class ExplorePathsContractTest {
     @Test
     void everyRegistryToolWasCaptured() throws IOException {
         Listing listing = listing("both");
-        for (AiTool tool : AiToolRegistry.all()) {
+        for (AiTool tool : targetTools()) {
             assertTrue(listing.project().containsKey(tool.id()) || listing.home().containsKey(tool.id()),
                     tool.id() + " is missing from the capture; re-run scripts/capture-explore-fixtures.py");
         }

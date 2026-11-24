@@ -72,7 +72,7 @@ A comprehensive comparison of the OpenSpec IntelliJ plugin against known VS Code
 | Secure credential storage (OS keychain) | Yes (PasswordSafe) | No | No | No | No |
 | API connection test | Yes | No | No | No | No |
 | Actionable provider errors | Yes (billing/limit vs retry, request ID) | No | No | No | No |
-| AI tool auto-detection | Yes (all 50 tools OpenSpec supports, detected as the CLI detects them) | No | No | No | No |
+| AI tool auto-detection | Yes (every tool your OpenSpec CLI supports, 87 on 2.1, detected as the CLI detects them) | No | No | No | No |
 | Tool type classification (CLI/IDE panel) | Yes | No | No | No | No |
 | Tool-aware guidance text | Yes | No | No | No | No |
 | Preferred tool selection | Yes (persisted) | No | No | No | No |

@@ -32,7 +32,7 @@
 - [x] 3.3 Move `loadTools()`'s scan to a pooled thread (`scanThenPost`), filling the list with `invokeLater(dialogModality, expired)`, "Loading…" until then, with a generation counter so a late older scan can't replace a newer one. Add `ToolInfo.viaShared` and the "via shared .agents skills" line. Verify:
   - `ViaSharedFolderTest` on the captured 2.1.1 `scope-project` layout: the line for Cursor (skills only), not for Claude (linked, also when the links are checked out as text) or Codex (its own folder is `.agents`), and none on 1.x;
   - `ManageAiToolsDialogModalityTest`: the scan reaches the open modal dialog on the EDT, and a non-modal post is held (negative control); `ManageAiToolsRefreshHygieneTest` passes with the new hop. The generation counter is not exercised by a test, because no test constructs the dialog;
-  - the intellij-code-reviewer pass finds no EDT disk reads in the dialog.
+  - the intellij-code-reviewer pass finds no EDT disk reads in the dialog: its findings are fixed (the Add tooltips read a decision the scan made off the EDT, and a failing scan posts an empty list instead of leaving "Loading…", tested in `ManageAiToolsDialogModalityTest`). The workflow panel's tool selector still detects on the EDT, which predates this change.
 
 ## 4. Documentation and checks
 

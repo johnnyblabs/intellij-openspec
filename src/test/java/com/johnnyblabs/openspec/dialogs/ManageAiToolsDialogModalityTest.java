@@ -146,4 +146,14 @@ public class ManageAiToolsDialogModalityTest extends BasePlatformTestCase {
             PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
         }
     }
+
+    /** A scan that fails still ends "Loading…": an empty result is posted. */
+    public void testAFailingScanPostsAnEmptyResult() throws Exception {
+        AiToolDetectionService failing = org.mockito.Mockito.mock(AiToolDetectionService.class);
+        org.mockito.Mockito.doThrow(new IllegalStateException("disk gone")).when(failing).detect();
+        java.util.concurrent.atomic.AtomicReference<ManageAiToolsDialog.Scan> got = new java.util.concurrent.atomic.AtomicReference<>();
+        ManageAiToolsDialog.scanThenPost(failing, "2.1.1", null, ModalityState.defaultModalityState(), NEVER_EXPIRED, got::set);
+        assertTrue(within(() -> got.get() != null));
+        assertTrue(got.get().tools().isEmpty());
+    }
 }

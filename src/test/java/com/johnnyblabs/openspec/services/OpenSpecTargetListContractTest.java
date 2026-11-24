@@ -57,7 +57,9 @@ class OpenSpecTargetListContractTest {
                         // A case made by init alone sets up exactly the tools it lists. The builtin-add-* cases also
                         // hold a tool folder the plugin created without the CLI, detected from that folder, not the list.
                         if (!c.getFileName().toString().startsWith("builtin-add-")) {
-                            assertEquals(detected, ids.stream().sorted().toList(), "the listed tools are upstream's verdict");
+                            // Upstream's set-up verdict: Trae CN's folder also makes Trae available, but only the listed
+                            // one is set up.
+                            assertEquals(configured(c, detected), ids.stream().sorted().toList(), "the listed tools are upstream's verdict");
                         }
                         // own-files marks a tool OpenSpec gave files of its own: on 2.x, its links (no commands).
                         Set<String> linked = linkedTools(v);
@@ -153,5 +155,14 @@ class OpenSpecTargetListContractTest {
         assertFalse(SkillToolList.looks2x("codex\n"));
         assertTrue(SkillToolList.looks2x("claude own-files\n"));
         assertTrue(SkillToolList.looks2x("antigravity\ncodex\n"));
+    }
+
+    /** What upstream counted as set up for the case ({@code configured.json}), or its detection where not captured. */
+    private static List<String> configured(Path c, List<String> detected) throws java.io.IOException {
+        Path file = c.resolve("configured.json");
+        if (!Files.exists(file)) return detected;
+        List<String> out = new ArrayList<>();
+        for (JsonElement id : JsonParser.parseString(Files.readString(file)).getAsJsonArray()) out.add(id.getAsString());
+        return out;
     }
 }

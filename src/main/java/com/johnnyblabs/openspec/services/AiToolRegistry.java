@@ -556,7 +556,7 @@ public final class AiToolRegistry {
     public static @Nullable String setupNoteAfter(AiTool tool, @Nullable String cliVersion,
                                                   com.johnnyblabs.openspec.util.CliArgs args) {
         boolean keptOnMachine = cliVersion != null && CliVersion.atLeast(cliVersion, "2.1.0")
-                && !args.requested().contains("--scope");
+                && !com.johnnyblabs.openspec.util.CliCommands.asksForProjectScope(args);
         if (keptOnMachine && !UNIVERSAL_INSTALLER_TOOLS.contains(tool.id())) return null;
         return setupNote(tool, cliVersion);
     }

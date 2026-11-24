@@ -11,6 +11,8 @@
 
 ### Fixed
 
+- **Every OpenSpec CLI 2.x tool is known.** With CLI 2.1, Manage AI Tools, detection and "Install into this project" cover the 38 tools 2.1 added, 87 in all. Each has a CLI or IDE badge from its own documentation, or none where that doesn't settle it. With CLI 2.0 or later, Amazon Q, which 2.0 retired, is no longer offered.
+- **Manage AI Tools speaks CLI 2.x.** It says OpenSpec writes the tool's skills on 2.x (its `/opsx` commands on 1.x), passes on the CLI's own setup note (Hermes, and tools using the universal skills folder), marks a tool whose skills come only from the shared folder, and counts Trae, Qoder and Zencoder's regional variants as CLI 2.1 does. Its tool list now loads in the background.
 - **On OpenSpec CLI 2.1, setting up a project keeps its skills in the project.** CLI 2.1 installs skills for the whole machine by default, so a project set up from the plugin got no skills of its own, and teammates who cloned it got none. Init and the setup wizard now ask for the project scope. Adding a tool in Manage AI Tools keeps the project's current scope, so a team that chose machine-wide skills keeps them.
 - **Manage AI Tools and Settings show where the project's skills are**: in the project, on this machine, or not installed. On a project whose skills are only on your machine, **Install into this project** opens a list of tools, ticked as the CLI would tick them, and installs their skills into the project.
 - **A failed OpenSpec init is reported.** The plugin used to fall back to its built-in setup without saying why. It now shows the CLI's message, with a note about Git and the network on CLI 2.1.0. When the CLI had already created `openspec/` before failing, that folder is kept instead of failing again.

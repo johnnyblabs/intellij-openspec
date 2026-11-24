@@ -63,6 +63,11 @@ public final class CliCommands {
         return CliArgs.command("update").env(NON_INTERACTIVE, "0");
     }
 
+    /** Whether {@code args} is an init that asks for the project scope ({@link #initInProject}). */
+    public static boolean asksForProjectScope(CliArgs args) {
+        return args.requested().contains("--scope");
+    }
+
     /** Whether {@code args} only plans ({@code --dry-run}), writing nothing. */
     public static boolean isDryRun(CliArgs args) {
         return args.requested().contains("--dry-run");

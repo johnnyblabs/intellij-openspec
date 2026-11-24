@@ -44,6 +44,8 @@ public class ManageAiToolsDialog extends DialogWrapper {
     private final SearchTextField searchField;
     private final JPanel toolListPanel;
     private List<ToolInfo> allTools = List.of();
+    /** The last scan's built-in add decisions, by tool name, for the Add tooltips. */
+    private java.util.Map<String, com.johnnyblabs.openspec.services.AiToolRegistry.BuiltInAdd> builtInAdds = java.util.Map.of();
     /** Bumped by each scan, so an older scan finishing late can't replace a newer one's list. */
     private final java.util.concurrent.atomic.AtomicLong scanGeneration = new java.util.concurrent.atomic.AtomicLong();
     /**
@@ -160,13 +162,18 @@ public class ManageAiToolsDialog extends DialogWrapper {
                 ignored -> isDisposed() || project.isDisposed(), scan -> {
                     if (scanGeneration.get() != generation) return;
                     allTools = scan.tools();
+                    builtInAdds = scan.builtInAdds();
                     if (subtitleLabel != null) subtitleLabel.setText(subtitle(scan.cli2x()));
                     filterTools(searchField.getText().trim());
                 });
     }
 
-    /** What a scan found: the tools to list, and whether the CLI line is 2.x (with no CLI, by the project's layout). */
-    record Scan(List<ToolInfo> tools, boolean cli2x) {
+    /**
+     * What a scan found: the tools to list, whether the CLI line is 2.x (with no CLI, by the project's layout), and
+     * each tool's built-in add decision by name (it reads the project, so the tooltips don't).
+     */
+    record Scan(List<ToolInfo> tools, boolean cli2x,
+                java.util.Map<String, com.johnnyblabs.openspec.services.AiToolRegistry.BuiltInAdd> builtInAdds) {
     }
 
     /** Runs {@code service}'s scan on a pooled thread, then hands it to {@code sink} on the EDT under {@code modality}. */
@@ -175,9 +182,25 @@ public class ManageAiToolsDialog extends DialogWrapper {
                              @Nullable java.nio.file.Path project, ModalityState modality, Condition<?> expired,
                              java.util.function.Consumer<Scan> sink) {
         ApplicationManager.getApplication().executeOnPooledThread(() -> {
-            service.detect();
-            Scan scan = new Scan(service.getAllToolsWithStatus(), cli2x(cliVersion, project));
-            ApplicationManager.getApplication().invokeLater(() -> sink.accept(scan), modality, expired);
+            Scan scan;
+            try {
+                service.detect();
+                List<ToolInfo> tools = service.getAllToolsWithStatus();
+                java.util.Map<String, com.johnnyblabs.openspec.services.AiToolRegistry.BuiltInAdd> adds = new java.util.HashMap<>();
+                for (ToolInfo tool : tools) {
+                    var entry = com.johnnyblabs.openspec.services.AiToolRegistry.byName(tool.name());
+                    var decision = entry == null || project == null ? null
+                            : com.johnnyblabs.openspec.services.AiToolRegistry.builtInAdd(entry, project);
+                    if (decision != null) adds.put(tool.name(), decision);
+                }
+                scan = new Scan(tools, cli2x(cliVersion, project), adds);
+            } catch (RuntimeException e) {
+                // A scan that fails still ends "Loading…": an empty list, the error in the log.
+                com.intellij.openapi.diagnostic.Logger.getInstance(ManageAiToolsDialog.class).warn("Tool scan failed", e);
+                scan = new Scan(List.of(), false, java.util.Map.of());
+            }
+            Scan result = scan;
+            ApplicationManager.getApplication().invokeLater(() -> sink.accept(result), modality, expired);
         });
     }
 
@@ -366,7 +389,7 @@ public class ManageAiToolsDialog extends DialogWrapper {
                     btn.addActionListener(e -> runCliAction(() -> addArgs(project, tool.cliId()),
                             "Adding " + tool.name(), tool.name(), btn));
                 } else {
-                    btn.setToolTipText(addTooltip(project, tool));
+                    btn.setToolTipText(addTooltip(tool.name(), builtInAdds.get(tool.name())));
                     btn.addActionListener(e -> {
                         addToolBuiltIn(tool);
                         btn.setText("Added");
@@ -671,13 +694,18 @@ public class ManageAiToolsDialog extends DialogWrapper {
      */
     @VisibleForTesting
     static String addTooltip(Project project, ToolInfo tool) {
-        com.johnnyblabs.openspec.services.AiToolRegistry.AiTool entry =
-                com.johnnyblabs.openspec.services.AiToolRegistry.byName(tool.name());
+        var entry = com.johnnyblabs.openspec.services.AiToolRegistry.byName(tool.name());
         String basePath = project.getBasePath();
-        if (entry != null && basePath != null
-                && com.johnnyblabs.openspec.services.AiToolRegistry.builtInAdd(entry, java.nio.file.Path.of(basePath))
-                == com.johnnyblabs.openspec.services.AiToolRegistry.BuiltInAdd.NEEDS_CLI) {
-            return "Install the OpenSpec CLI to add " + tool.name() + " to this project";
+        var decision = entry == null || basePath == null ? null
+                : com.johnnyblabs.openspec.services.AiToolRegistry.builtInAdd(entry, java.nio.file.Path.of(basePath));
+        return addTooltip(tool.name(), decision);
+    }
+
+    /** The Add button's tooltip without the CLI, from the decision the scan made off the EDT. */
+    static String addTooltip(String toolName,
+                             com.johnnyblabs.openspec.services.AiToolRegistry.@Nullable BuiltInAdd decision) {
+        if (decision == com.johnnyblabs.openspec.services.AiToolRegistry.BuiltInAdd.NEEDS_CLI) {
+            return "Install the OpenSpec CLI to add " + toolName + " to this project";
         }
         return "Create tool directory and set as preferred (install CLI for skill generation)";
     }
