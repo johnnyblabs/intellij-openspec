@@ -50,6 +50,7 @@ public class GettingStartedPanel extends JPanel implements Disposable {
         this.toolWindow = toolWindow;
         this.lastState = detectState();
         registerFileListener();
+        resolveRealAgents();
         rebuild();
     }
 
@@ -282,16 +283,25 @@ public class GettingStartedPanel extends JPanel implements Disposable {
         return link;
     }
 
+    /** The real path of {@code .agents} when it is a link, resolved off the EDT ({@link #resolveRealAgents}). */
+    private volatile @Nullable String realAgents;
+
+    /** Resolves where {@code .agents} really is, on a pooled thread, so the file-event check never touches the disk. */
+    private void resolveRealAgents() {
+        String basePath = project.getBasePath();
+        if (basePath == null) return;
+        com.intellij.openapi.application.ApplicationManager.getApplication().executeOnPooledThread(() ->
+                realAgents = com.johnnyblabs.openspec.services.ToolFolderEvents.realAgents(java.nio.file.Path.of(basePath)));
+    }
+
     private boolean isToolDirectoryEvent(com.intellij.openapi.vfs.VirtualFile file) {
         String basePath = project.getBasePath();
         if (basePath == null) return false;
-        String filePath = file.getPath();
-        // Check if the event is a tool directory being created at project root
-        for (String root : com.johnnyblabs.openspec.services.AiToolRegistry.topLevelPaths()) {
-            if (filePath.equals(basePath + "/" + root) || filePath.startsWith(basePath + "/" + root + "/")) {
-                return true;
-            }
-        }
-        return false;
+        // .agents itself appeared, moved or became a link: where it really is may have changed.
+        if (file.getPath().equals(basePath + "/.agents")) resolveRealAgents();
+        String agents = realAgents;
+        // Only needed when .agents is a link; a deleted file's canonical path isn't safe to ask for.
+        String canonical = agents != null && file.isValid() ? file.getCanonicalPath() : null;
+        return com.johnnyblabs.openspec.services.ToolFolderEvents.matches(basePath, file.getPath(), canonical, agents);
     }
 }

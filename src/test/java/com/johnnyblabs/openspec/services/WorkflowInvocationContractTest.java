@@ -90,39 +90,95 @@ class WorkflowInvocationContractTest {
                 AiToolRegistry.exploreCommandPath(tool), instructions.hasCommand(), instructions.hasSkill());
     }
 
-    @TestFactory
-    Stream<DynamicTest> everyWorkflowToolAndDeliveryGetsUpstreamsInvocation() {
-        return releases().stream().map(v -> DynamicTest.dynamicTest(v,
-                () -> KnownGaps.check(v, "invocation", "every-row", () -> invocationsMatch(v))));
+    /**
+     * How a 2.x row's tool-folder link is laid out: a real link (where this host can make one), a copy (Windows project
+     * installs, and 2.0 without link support), and the text git leaves for a link without link support. Copies and link
+     * text need no link support, so they run on every host.
+     */
+    enum Layout { SYMLINK, COPY, LINK_TEXT }
+
+    private static List<Layout> layouts(String version) {
+        return FixtureVersions.compare(version, "2.0.0") >= 0 ? List.of(Layout.values()) : List.of(Layout.COPY);
     }
 
-    private void invocationsMatch(String version) throws IOException {
+    @TestFactory
+    Stream<DynamicTest> everyWorkflowToolAndDeliveryGetsUpstreamsInvocation() {
+        List<DynamicTest> tests = new ArrayList<>();
+        for (String v : releases()) {
+            for (Layout layout : layouts(v)) {
+                tests.add(DynamicTest.dynamicTest(v + " [" + layout + "]", () -> KnownGaps.check(v, "invocation", "every-row",
+                        () -> invocationsMatch(v, layout))));
+            }
+        }
+        return tests.stream();
+    }
+
+    private void invocationsMatch(String version, Layout layout) throws IOException {
+        if (layout == Layout.SYMLINK) com.johnnyblabs.openspec.util.SymlinkProbe.requireLinks(root);
+        boolean is2x = FixtureVersions.compare(version, "2.0.0") >= 0;
         List<String> wrong = new ArrayList<>();
         List<String> workflows = new ArrayList<>();
-        int checked = 0;
+        java.util.Set<String> unknown = new java.util.TreeSet<>();
+        int checked = 0, skipped = 0;
         for (JsonObject row : rows(version)) {
             String workflow = row.get("workflow").getAsString();
             String tool = row.get("tool").getAsString();
             String delivery = row.get("delivery").getAsString();
             String expected = stringOrNull(row, "invocation");
+            if (!workflows.contains(workflow)) workflows.add(workflow);
+            if (AiToolRegistry.byId(tool) == null) {
+                // A tool only a later registry has: the registry change adds it (KnownGaps "registry" entries).
+                unknown.add(tool);
+                skipped++;
+                continue;
+            }
 
-            Path project = Files.createDirectories(root.resolve(version).resolve(workflow + "-" + tool + "-" + delivery));
+            Path project = Files.createDirectories(root.resolve(version).resolve(layout.name())
+                    .resolve(workflow + "-" + tool + "-" + delivery));
             for (String path : new String[] {stringOrNull(row, "commandPath"), stringOrNull(row, "skillPath")}) {
                 if (path == null) continue;
                 Path file = project.resolve(path);
                 Files.createDirectories(file.getParent());
                 Files.writeString(file, path.endsWith(".toml") ? "prompt = \"\"\"Run.\"\"\"\n" : "Run.\n");
             }
+            if (is2x) layOutWhatInitAdds(project, row, tool, layout);
             String actual = pluginInvocation(row, project, byUpstreamId(tool));
             if (!Objects.equals(expected, actual)) {
                 wrong.add(workflow + " " + tool + "/" + delivery + ": upstream " + expected + ", plugin " + actual);
             }
-            if (!workflows.contains(workflow)) workflows.add(workflow);
             checked++;
         }
         assertEquals(List.of("explore", "update"), workflows);
-        assertEquals(ROWS.get(version), checked, "every row of CLI " + version + "'s matrix is checked");
+        assertEquals(ROWS.get(version), checked + skipped, "every row of CLI " + version + "'s matrix is seen");
+        assertTrue(checked >= 90, "sanity: rows checked for CLI " + version);
+        if (FixtureVersions.compare(version, "2.1.0") < 0) assertEquals(java.util.Set.of(), unknown, "every tool is known");
         assertTrue(wrong.isEmpty(), "invocations that differ from upstream's:\n" + String.join("\n", wrong));
+    }
+
+    /**
+     * What a 2.x {@code init --tools <tool>} writes beside the shared skill: the tool's line in
+     * {@code .agents/skills/.openspec-target}, marked {@code own-files} when it gets links (captured as
+     * {@code explore/agents-openspec-target.txt} {@code codex} and {@code -claude.txt} {@code claude own-files}), and the
+     * link from its own folder, laid out as {@code layout} says.
+     */
+    private static void layOutWhatInitAdds(Path project, JsonObject row, String tool, Layout layout) throws IOException {
+        String link = stringOrNull(row, "linkPath");
+        Path list = SkillToolList.path(project);
+        Files.createDirectories(list.getParent());
+        Files.writeString(list, tool + (link != null ? " own-files" : "") + "\n");
+        if (link == null) return;
+        Path spot = project.resolve(link);
+        Path shared = project.resolve(stringOrNull(row, "skillPath")).getParent();
+        Files.createDirectories(spot.getParent());
+        String relative = spot.getParent().relativize(shared).toString().replace('\\', '/');
+        switch (layout) {
+            case SYMLINK -> Files.createSymbolicLink(spot, Path.of(relative));
+            case COPY -> {
+                Files.createDirectories(spot);
+                Files.copy(shared.resolve("SKILL.md"), spot.resolve("SKILL.md"));
+            }
+            case LINK_TEXT -> Files.writeString(spot, relative);
+        }
     }
 
     @TestFactory
@@ -132,20 +188,29 @@ class WorkflowInvocationContractTest {
     }
 
     private void matrixPathsAreRegistryPaths(String version) throws IOException {
+        DetectionRules rules = DetectionRules.forVersion(version);
+        SkillLinkDirs.Line line = FixtureVersions.compare(version, "2.1.0") >= 0 ? SkillLinkDirs.Line.V2_1 : SkillLinkDirs.Line.V2_0;
+        boolean is2x = rules.is2x();
         List<String> drift = new ArrayList<>();
         for (JsonObject row : rows(version)) {
+            if (AiToolRegistry.byId(row.get("tool").getAsString()) == null) continue;
             AiTool tool = byUpstreamId(row.get("tool").getAsString());
             String workflow = row.get("workflow").getAsString();
             String skill = row.get("skill").getAsString();
             String commandPath = stringOrNull(row, "commandPath");
             String skillPath = stringOrNull(row, "skillPath");
+            String linkPath = stringOrNull(row, "linkPath");
             if (commandPath != null && !commandPath.equals(AiToolRegistry.commandPath(tool, workflow))) {
                 drift.add(workflow + " " + tool.id() + " command: upstream " + commandPath + ", registry "
                         + AiToolRegistry.commandPath(tool, workflow));
             }
-            if (skillPath != null && !skillPath.equals(AiToolRegistry.skillPath(tool, skill))) {
+            if (skillPath != null && !skillPath.equals(AiToolRegistry.skillPath(tool, skill, rules))) {
                 drift.add(workflow + " " + tool.id() + " skill: upstream " + skillPath + ", registry "
-                        + AiToolRegistry.skillPath(tool, skill));
+                        + AiToolRegistry.skillPath(tool, skill, rules));
+            }
+            if (is2x && !Objects.equals(linkPath, SkillLinkDirs.linkPath(line, tool.id(), skill))) {
+                drift.add(workflow + " " + tool.id() + " link: upstream " + linkPath + ", plugin "
+                        + SkillLinkDirs.linkPath(line, tool.id(), skill));
             }
         }
         assertTrue(drift.isEmpty(), String.join("\n", drift));

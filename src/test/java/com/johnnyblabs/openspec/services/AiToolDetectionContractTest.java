@@ -36,7 +36,7 @@ class AiToolDetectionContractTest {
 
     /** Each release's case count, so a lost case can't shrink the replay unnoticed. */
     static final Map<String, Integer> CASE_COUNT = Map.of("1.14.3", 30, "1.16.1", 30, "1.17.0", 30,
-            "2.0.0", 33, "2.1.0", 35, "2.1.1", 35);
+            "2.0.0", 35, "2.1.0", 37, "2.1.1", 37);
 
     @TempDir
     Path tmp;
@@ -71,7 +71,7 @@ class AiToolDetectionContractTest {
                     Path home = tmp.resolve(v).resolve(name).resolve("home");
                     FixtureLayout.materialize(layout, project, home, FixtureLayout.LinkMode.SYMLINK_OR_COPY);
 
-                    assertEquals(expected, ids(AiToolDetector.detect(project, home)));
+                    assertEquals(expected, ids(AiToolDetector.detect(project, home, DetectionRules.forVersion(v))));
                 })));
             }
         }

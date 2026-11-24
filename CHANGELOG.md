@@ -11,6 +11,8 @@
 
 ### Fixed
 
+- **OpenSpec CLI 2.x projects work with every AI tool's skills.** CLI 2.x keeps every tool's skills in one shared `.agents/skills/` folder, with links (or, on Windows, copies) from each tool's own folder. Explore, Revise, Continue and Apply now find the skill there, so a Cursor or GitHub Copilot project hands off to the right tool instead of none. Skills installed for the whole machine, CLI 2.1's default, are found too.
+- **AI tool detection matches the CLI you have installed.** OpenSpec 1.x and 2.x detect tools differently from the same files, and the plugin now follows your CLI's rules. Manage AI Tools shows a 2.x skills-only tool as set up.
 - Closing the OpenSpec tool window, or a project, while the tree was still refreshing no longer reports an internal "Already disposed" error. A refresh that finishes after the tool window is gone is now dropped quietly.
 
 ## v0.17.0

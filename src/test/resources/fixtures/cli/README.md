@@ -790,6 +790,8 @@ On 2.1.0 and later a plain `init --tools` installs skills for the whole machine.
 | `update-dry-run/` | `CAPTURE_VERSION=<v> scripts/capture-update-dry-run-fixtures.py` |
 | `version.txt`, `config-list.json`, `errors/init-*`, `home-state/projects.json`, `validate-parity-corpus{,-strict}.json`, `instructions/instructions-{design,specs}.json` | `scripts/capture-cli-generation.py <v>...` |
 | `help/` (every supported line, not only 2.x) | `scripts/capture-help-sweep.py` |
+| `fingerprints/vectors.json`, and `src/main/resources/openspec/released-skill-fingerprints.txt` | `CAPTURE_VERSION=<v> scripts/capture-released-fingerprints.py` (`--vectors-only` leaves the resource alone) |
+| `skill-spots/` | `CAPTURE_VERSION=<v> scripts/capture-skill-spot-verdicts.py` |
 
 ### Links in a detection layout
 
@@ -814,6 +816,29 @@ The capture walks the tree without following links, so each skill is recorded on
 
 `CliFlagTableContractTest` holds the plugin's command and flag table (`util/CliFlags`) to these captures. `CliArgsVersionMatrixTest` resolves every command line the plugin can build against each release, and checks it against that release's help.
 
+### `fingerprints/`: upstream's "released file" check
+
+On 2.x, upstream reads a shared folder's wording only when a skill file is exactly one a release generated. It hashes a normalized copy of the file and looks it up in `RELEASED_GENERATED_FINGERPRINTS`. The plugin ships that set as `src/main/resources/openspec/released-skill-fingerprints.txt` and ports the normalization. `fingerprints/vectors.json` (2.0.0 and 2.1.1) records, from upstream's own functions:
+- `set`: the set's size and the sha256 of its sorted lines. It is 2,867 entries and the same digest in both releases. The set covers releases 0.12.0 through 1.16.1 only, so neither 1.17 nor any 2.x CLI counts its own skills as released.
+- `cases`: real `openspec-explore` and `openspec-propose` skills from a 1.16.1 `init`, with their normalized text, fingerprint and verdict.
+  - **Released:** the skill as written, with a BOM, with CRLF line endings, and with another valid `generatedBy` version (double-quoted, bare or single-quoted).
+  - **Not released:** a one-character edit, and a `generatedBy` that isn't a version.
+  - **Also not released:** the capturing release's own `openspec-explore`, and a user-written skill.
+
+### `skill-spots/`: what a tool folder's skill spot holds, by upstream's verdict
+
+Each case (2.0.0 and 2.1.1, the same verdicts in both) builds one shape at `.claude/skills/openspec-explore`, with the shared copy at `.agents/skills/openspec-explore/SKILL.md`. It records upstream's own `classifySkillLinkSpot` verdict in `verdict.txt` and the layout in the detect format, links as data.
+
+- **Links:** `link` and `link-target-missing` are both `link`, because upstream compares paths without checking the target exists. `link-elsewhere` and `skill-file-is-link` are `user`.
+- **Link text, as git writes it without link support:** `link-text-slash`, `link-text-slash-newline` and `link-text-backslash` are `released`; `link-text-elsewhere` is `user`.
+- **Copies:**
+  - `copy`, `copy-crlf` and `copy-beside-os-junk` are `copy`;
+  - `copy-released` (the real 1.16.1 skill) is `released`;
+  - `copy-edited` and `copy-beside-notes` are `user`.
+- **Empty:** `empty-folder`, `os-junk-only` and `absent` are `missing`.
+
+`SkillFolderShapeTest` maps each verdict onto the plugin's shape through the table in `SkillSpot`'s javadoc. Only the link cases need link support.
+
 ### Contract tests across releases, and the gaps
 
 The registry, detection, invocation and update-plan contract tests run once per captured release. Where the plugin doesn't yet match a 2.x capture, the case is listed in `KnownGaps` with the change that closes it; a listed case must still fail, so closing a gap forces the entry's removal, and `KnownGapsTest` rejects an entry that names no real case. Every 1.x case passes, including the 1.16.1 and 1.17.0 detection captures, which the detection test had not replayed before.
@@ -824,7 +849,8 @@ Real CLI **2.0.0** captures (npm `@fission-ai/openspec@2.0.0`, released 2026-11-
 
 - `ai-tools.json`: 49 tools. Amazon Q is gone (`errors/init-amazon-q.*`: exit 1, "Amazon Q Developer is no longer supported … Set up Kiro instead"). The dump gains `effective`: per tool, where its skills are written (`.agents/skills` for every project tool) and the folder linked into them (`linkDir`, null for tools that read `.agents/skills/` themselves), from upstream's `shared/skill-paths.js`.
 - `init-help.txt`, `help/init.txt`: no `--scope`; `errors/init-scope-project.*` is the rejection (`unknown option '--scope'`).
-- `detect/` (33 cases): the 1.x cases plus `mixed-1.17-and-2x`, `global-2.1-read-by-2.0` (a 2.1.1 machine-wide install, which 2.0 doesn't detect: `[]`) and `user-skill-kept`, whose `.openspec-target` is `claude own-files` then `keep openspec-explore`. Only 2.0 writes `keep` lines.
+- `detect/` (35 cases): the 1.x cases plus `mixed-1.17-and-2x`, `global-2.1-read-by-2.0` (a 2.1.1 machine-wide install, which 2.0 doesn't detect: `[]`) and `user-skill-kept`, whose `.openspec-target` is `claude own-files` then `keep openspec-explore`. Only 2.0 writes `keep` lines.
+- `detect/agents-unmarked-from-1.17` and `detect/codex-unmarked-from-1.17` (in 2.0.0, 2.1.0 and 2.1.1): a shared folder written by 1.17.0 with its list removed, each `SKILL.md` kept **whole**. 2.x reads the wording only of a file a release generated byte for byte, so these are the cases where its released-file gate opens (`["agents"]`, `["codex"]`); the stripped `agents-unmarked-*` cases stay `[]`.
 - `workflows.json`: the same 6 core and 12 workflows as 1.17.0.
 - `workflow-invocations.json` (96 rows): one `skills` row per tool and workflow, `commands: false`. The invocation is upstream's own skill reference: `/openspec-<skill>` for most tools, `$openspec-<skill>` for Codex, `/skill:openspec-<skill>` for Kimi, prose ("the openspec-explore skill") for tools with no slash surface. `linkPath` is the tool-folder path linked to the shared skill, if any.
 - `explore/`, `update/`: only `listing-skills.txt`, because 2.0 ignores `delivery` ("delivery no longer changes anything"). A linked entry is listed as `<path> -> <target>`.
@@ -837,7 +863,7 @@ Real CLI **2.0.0** captures (npm `@fission-ai/openspec@2.0.0`, released 2026-11-
 Real CLI **2.1.0** captures (released 2026-11-17, `dist.integrity` `sha512-3mVVOU97QmRsqQQYl0Jb7XvIwWES+Jh6nMbGy1tJiQvKVVI1lD7M0PTB2gH2f/ayX4SEoVJGiLKL51Z1pkTHqw==`), captured 2026-11-23. Skills are installed by cloning the upstream repository at the release tag.
 
 - `ai-tools.json`: 87 tools. `init-help.txt` moves the id list out of the `--tools` description into a trailing "Use … comma-separated list of: …" line, and adds `--scope <scope>` (global or project).
-- `detect/` (35 cases) adds `scope-project` and `scope-default-global`. With no scope, the skills and the `.claude` links land in HOME and the project detects nothing (`[]`). `minimax-global` is also `[]`: a machine-wide install isn't a project's tool. `skills-lock-agents` is `[]` too, because only 2.1.1 reads `skills-lock.json`. `devin-via-windsurf-id` records `devin own-files`.
+- `detect/` (37 cases) adds `scope-project` and `scope-default-global`. With no scope, the skills and the `.claude` links land in HOME and the project detects nothing (`[]`). `minimax-global` is also `[]`: a machine-wide install isn't a project's tool. `skills-lock-agents` is `[]` too, because only 2.1.1 reads `skills-lock.json`. `devin-via-windsurf-id` records `devin own-files`.
 - `workflow-invocations.json` (174 rows). One upstream quirk is recorded rather than smoothed over: for `eve` (folder `agent/`) the matrix says link, but init writes a copy of the skill, upstream's own fallback when it can't link (`createSkillLink`). `WorkflowInvocationContractTest` accepts either form.
 - `update-dry-run/` (16 cases) adds `global-skills-up-to-date`, `global-skills-added` and `global-skills-removed`. They start from a machine-wide install and change the profile. The dry run plans no project change and reports `global-skills` (refresh of `~/.agents/skills`) and, when workflows are dropped, `removed-skills`. The type list also names `left-alone-skills` and `edited-skills`, but no 2.1 code emits them, so they have no capture. The failure form of `global-skills` needs the network to fail and is not captured.
 - `home-state/projects.json`: the projects the machine-wide skills serve, `{"projects": ["/fixture/demo-project"]}`.

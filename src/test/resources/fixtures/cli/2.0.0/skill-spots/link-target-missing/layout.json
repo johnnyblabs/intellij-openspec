@@ -1,0 +1,9 @@
+{
+  "project": {},
+  "home": {},
+  "links": {
+    "project": {
+      ".claude/skills/openspec-explore": "../../.agents/skills/openspec-explore"
+    }
+  }
+}

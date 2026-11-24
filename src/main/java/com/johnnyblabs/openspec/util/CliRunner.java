@@ -47,11 +47,30 @@ public final class CliRunner {
                 throw CliException.timeout("OpenSpec CLI command timed out after " + (timeoutMs / 1000) + "s");
             }
 
-            return capturedResult(process.exitValue(), stdoutFuture.join(), stderrFuture.join());
+            try {
+                return capturedResult(process.exitValue(), stdoutFuture.join(), stderrFuture.join());
+            } finally {
+                afterFinishedRun(project, args);
+            }
         } catch (CliException e) {
             throw e;
         } catch (Exception e) {
             throw new CliException("Failed to run OpenSpec CLI: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * What follows a finished run that may have written skills: the machine-wide skills cache is cleared and the
+     * skills folders refreshed ({@code SkillsWritten}). A failure here never turns a finished run into a failed one.
+     */
+    private static void afterFinishedRun(Project project, CliArgs args) {
+        try {
+            com.johnnyblabs.openspec.services.SkillsWritten.afterRun(project, args);
+        } catch (com.intellij.openapi.progress.ProcessCanceledException e) {
+            throw e;
+        } catch (RuntimeException e) {
+            com.intellij.openapi.diagnostic.Logger.getInstance(CliRunner.class)
+                    .warn("Refreshing skills after " + args.command() + " failed", e);
         }
     }
 

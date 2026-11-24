@@ -60,15 +60,40 @@ public final class WorkflowInvocation {
     }
 
     /**
-     * The first of {@code candidates} with the workflow's command or skill in the project at {@code base}, and its
-     * invocation, or {@code null} when none has either.
+     * The first of the project's {@link #candidateTools} with the workflow installed, and its invocation, or
+     * {@code null}. Machine-wide skills come from {@link GlobalSkillsCache}, which never reads the disk on the EDT.
      */
+    public static @Nullable Found find(Project project, String workflowId, String skillName) {
+        String base = project.getBasePath();
+        if (base == null) return null;
+        GlobalSkillsCache cache = GlobalSkillsCache.getInstance(project);
+        HomeSkills home = cache != null ? cache.snapshot() : HomeSkills.NONE;
+        return find(Path.of(base), candidateTools(project), workflowId, skillName, home, preferredTool(project));
+    }
+
+    /** The tool chosen in Settings, or {@code null}. */
+    static @Nullable AiTool preferredTool(Project project) {
+        OpenSpecSettings settings = OpenSpecSettings.getInstance(project);
+        return settings == null ? null : AiToolRegistry.byName(settings.getPreferredTool());
+    }
+
+    /** {@link #find(Path, List, String, String, HomeSkills, AiTool)} for the project's files alone. */
     public static @Nullable Found find(Path base, List<AiTool> candidates, String workflowId, String skillName) {
+        return find(base, candidates, workflowId, skillName, HomeSkills.NONE, null);
+    }
+
+    /**
+     * The first of {@code candidates} with the workflow's command or skill, and its invocation, or {@code null} when
+     * none has either. The skill is found wherever it is ({@link SkillLocator}): the shared {@code .agents/skills/}
+     * for a listed tool, through a tool folder's link, a copy, or the home directory.
+     */
+    public static @Nullable Found find(Path base, List<AiTool> candidates, String workflowId, String skillName,
+                                       HomeSkills home, @Nullable AiTool preferred) {
+        List<String> listed = SkillToolList.ids(SkillToolList.read(base));
         for (AiTool tool : candidates) {
             String commandPath = AiToolRegistry.commandPath(tool, workflowId);
-            String skillPath = AiToolRegistry.skillPath(tool, skillName);
             boolean hasCommand = commandPath != null && Files.isRegularFile(base.resolve(commandPath));
-            boolean hasSkill = skillPath != null && Files.isRegularFile(base.resolve(skillPath));
+            boolean hasSkill = SkillLocator.find(base, listed, home, tool, skillName, tool.equals(preferred)) != null;
             String invocation = of(tool.id(), workflowId, skillName, commandPath, hasCommand, hasSkill);
             if (invocation != null) return new Found(tool, invocation);
         }

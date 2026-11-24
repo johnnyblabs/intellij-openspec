@@ -126,6 +126,10 @@ class ExplorePromptServiceTest {
         void includesThreeSections() {
             when(project.getBasePath()).thenReturn("/nonexistent");
             when(project.getService(ExploreContextService.class)).thenReturn(contextService);
+            // The skill lookup asks for the machine-wide skills cache and the preferred tool; neither exists here.
+            org.mockito.Mockito.lenient().when(project.getService(GlobalSkillsCache.class)).thenReturn(null);
+            org.mockito.Mockito.lenient().when(project.getService(com.johnnyblabs.openspec.settings.OpenSpecSettings.class))
+                    .thenReturn(null);
             when(contextService.assembleContext()).thenReturn("# Project Context\n\nSome context.");
 
             String prompt = service.buildPrompt("How should we handle auth?");
@@ -145,6 +149,10 @@ class ExplorePromptServiceTest {
         void blankTopicUsesDefaultText() {
             when(project.getBasePath()).thenReturn("/nonexistent");
             when(project.getService(ExploreContextService.class)).thenReturn(contextService);
+            // The skill lookup asks for the machine-wide skills cache and the preferred tool; neither exists here.
+            org.mockito.Mockito.lenient().when(project.getService(GlobalSkillsCache.class)).thenReturn(null);
+            org.mockito.Mockito.lenient().when(project.getService(com.johnnyblabs.openspec.settings.OpenSpecSettings.class))
+                    .thenReturn(null);
             when(contextService.assembleContext()).thenReturn("context");
 
             String prompt = service.buildPrompt("");
@@ -156,6 +164,10 @@ class ExplorePromptServiceTest {
         void nullTopicUsesDefaultText() {
             when(project.getBasePath()).thenReturn("/nonexistent");
             when(project.getService(ExploreContextService.class)).thenReturn(contextService);
+            // The skill lookup asks for the machine-wide skills cache and the preferred tool; neither exists here.
+            org.mockito.Mockito.lenient().when(project.getService(GlobalSkillsCache.class)).thenReturn(null);
+            org.mockito.Mockito.lenient().when(project.getService(com.johnnyblabs.openspec.settings.OpenSpecSettings.class))
+                    .thenReturn(null);
             when(contextService.assembleContext()).thenReturn("context");
 
             String prompt = service.buildPrompt(null);
@@ -167,6 +179,10 @@ class ExplorePromptServiceTest {
         void topicIsTrimmed() {
             when(project.getBasePath()).thenReturn("/nonexistent");
             when(project.getService(ExploreContextService.class)).thenReturn(contextService);
+            // The skill lookup asks for the machine-wide skills cache and the preferred tool; neither exists here.
+            org.mockito.Mockito.lenient().when(project.getService(GlobalSkillsCache.class)).thenReturn(null);
+            org.mockito.Mockito.lenient().when(project.getService(com.johnnyblabs.openspec.settings.OpenSpecSettings.class))
+                    .thenReturn(null);
             when(contextService.assembleContext()).thenReturn("context");
 
             String prompt = service.buildPrompt("  auth system  ");

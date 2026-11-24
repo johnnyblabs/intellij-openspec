@@ -22,8 +22,17 @@ public final class AiToolDetector {
     private AiToolDetector() {
     }
 
-    /** The tools detected in {@code project}, in registry order; global tools are looked for under {@code home}. */
+    /** The tools detected in {@code project} by 1.x rules, in registry order; global tools are looked for under {@code home}. */
     public static List<AiTool> detect(Path project, @Nullable Path home) {
+        return detect(project, home, DetectionRules.V1);
+    }
+
+    /** The tools detected in {@code project} by {@code rules}' release line, in registry order. */
+    public static List<AiTool> detect(Path project, @Nullable Path home, DetectionRules rules) {
+        return rules.is2x() ? Detector2x.detect(project, home, rules) : detect1x(project, home);
+    }
+
+    private static List<AiTool> detect1x(Path project, @Nullable Path home) {
         List<AiTool> candidates = new ArrayList<>();
         for (AiTool tool : AiToolRegistry.all()) {
             if (isCandidate(project, home, tool)) candidates.add(tool);

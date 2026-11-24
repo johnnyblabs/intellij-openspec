@@ -1,7 +1,7 @@
 {
   "project": {
     ".agents/skills/openspec-explore/SKILL.md": "Run /openspec-explore.\n",
-    "skills-lock.json": ""
+    "skills-lock.json": "{\"version\": 1, \"skills\": {\"openspec-explore\": {\"source\": \"Fission-AI/OpenSpec\"}}}\n"
   },
   "home": {}
 }

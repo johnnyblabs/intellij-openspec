@@ -48,7 +48,14 @@ public final class AiToolDetectionService {
     private List<AiToolRegistry.AiTool> scan() {
         String basePath = project.getBasePath();
         if (basePath == null) return List.of();
-        return AiToolDetector.detect(Path.of(basePath), home());
+        Path base = Path.of(basePath);
+        return AiToolDetector.detect(base, home(), rules(base));
+    }
+
+    /** The detected CLI's release-line rules, or, with no CLI detected, the line the project's files show. */
+    DetectionRules rules(Path base) {
+        DetectionRules byCli = DetectionRules.forVersion(cliVersion());
+        return byCli != null ? byCli : DetectionRules.fromDisk(base);
     }
 
     private static @Nullable Path homeForTest;
@@ -58,10 +65,10 @@ public final class AiToolDetectionService {
         homeForTest = home;
     }
 
-    private static @Nullable Path home() {
+    /** Where machine-wide skills are looked for: the CLI's own home resolution ({@link HomeDirectory}). */
+    static @Nullable Path home() {
         if (homeForTest != null) return homeForTest;
-        String home = System.getProperty("user.home");
-        return home == null ? null : Path.of(home);
+        return HomeDirectory.current();
     }
 
     private @Nullable java.util.function.Supplier<String> cliVersionForTest;
@@ -190,7 +197,19 @@ public final class AiToolDetectionService {
         for (File root : roots) {
             if (hasOpenSpecFiles(root)) return ToolStatus.CONFIGURED;
         }
+        // 2.x: a tool's skills are in the shared .agents/skills (it is listed there) or reached through its link.
+        if (basePath != null && hasLocatedSkill(Path.of(basePath), tool)) return ToolStatus.CONFIGURED;
         return ToolStatus.DETECTED;
+    }
+
+    /** Whether {@link SkillLocator} finds any OpenSpec skill for {@code tool} in the project or the home directory. */
+    private boolean hasLocatedSkill(Path base, AiToolRegistry.AiTool tool) {
+        List<String> listed = SkillToolList.ids(SkillToolList.read(base));
+        GlobalSkillsCache cache = project.getService(GlobalSkillsCache.class);
+        HomeSkills homeSkills = cache != null ? cache.snapshot() : HomeSkills.NONE;
+        boolean preferred = tool.equals(WorkflowInvocation.preferredTool(project));
+        return AiToolRegistry.SKILL_NAMES.stream()
+                .anyMatch(skill -> SkillLocator.find(base, listed, homeSkills, tool, skill, preferred) != null);
     }
 
     private static boolean hasOpenSpecFiles(File toolDir) {

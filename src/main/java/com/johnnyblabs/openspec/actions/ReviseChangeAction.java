@@ -96,10 +96,10 @@ public class ReviseChangeAction extends OpenSpecBaseAction implements DumbAware 
 
     /** Asks for the note, then delivers the handoff for {@code changeName}. Call on the EDT. */
     public static void revise(@NotNull Project project, @NotNull String changeName) {
-        String base = project.getBasePath();
-        // A handful of file checks, cheap enough for the EDT; done before the dialog so nothing is asked for in vain.
-        WorkflowInvocation.Found found = base == null ? null : WorkflowInvocation.find(Path.of(base),
-                WorkflowInvocation.candidateTools(project), WorkflowInvocation.UPDATE, WorkflowInvocation.UPDATE_SKILL);
+        // A handful of project file checks, cheap enough for the EDT (home skills come from a cache that never reads
+        // there); done before the dialog so nothing is asked for in vain.
+        WorkflowInvocation.Found found = WorkflowInvocation.find(project,
+                WorkflowInvocation.UPDATE, WorkflowInvocation.UPDATE_SKILL);
         if (found == null) {
             OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_WORKFLOW, TITLE, NOT_INSTALLED_NOTICE,
                     NotificationType.WARNING, ActionLauncher.notificationAction(project, "Update OpenSpec…", "OpenSpec.Update"));

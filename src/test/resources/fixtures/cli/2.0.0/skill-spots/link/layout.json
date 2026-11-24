@@ -1,0 +1,11 @@
+{
+  "project": {
+    ".agents/skills/openspec-explore/SKILL.md": "---\nname: openspec-explore\n---\nThe shared copy.\n"
+  },
+  "home": {},
+  "links": {
+    "project": {
+      ".claude/skills/openspec-explore": "../../.agents/skills/openspec-explore"
+    }
+  }
+}

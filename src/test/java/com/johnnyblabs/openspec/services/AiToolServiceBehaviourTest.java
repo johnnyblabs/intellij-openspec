@@ -139,4 +139,56 @@ public class AiToolServiceBehaviourTest extends BasePlatformTestCase {
         settings.setPreferredTool("Roo Code");
         assertEquals("Zoo Code", settings.getState().preferredTool);
     }
+
+    /** The same files, the installed CLI's verdict: a lone {@code .gsd} folder is the shared-folder tool to 1.x, GSD to 2.x. */
+    public void testDetectionFollowsTheDetectedCliLine() throws Exception {
+        layOut("gsd");
+        String universal = AiToolRegistry.byId("agents").name();
+        String gsd = AiToolRegistry.byId("gsd").name();
+
+        service().setCliVersionForTest(() -> "1.17.0");
+        service().detect();
+        assertEquals(List.of(universal), service().getDetectedTools());
+
+        service().setCliVersionForTest(() -> "2.1.1");
+        service().detect();
+        assertEquals(List.of(gsd), service().getDetectedTools());
+
+        service().setCliVersionForTest(() -> "2.0.0");
+        service().detect();
+        assertEquals(List.of(gsd), service().getDetectedTools());
+    }
+
+    /** With no CLI, a 1.x layout is read by 1.x rules. */
+    public void testNoCliReadsA1xLayoutBy1xRules() throws Exception {
+        layOut("gsd");
+        service().setCliVersionForTest(() -> null);
+        service().detect();
+        assertEquals(List.of(AiToolRegistry.byId("agents").name()), service().getDetectedTools());
+    }
+
+    /** With no CLI, a 2.x list (several tools, or own-files) switches to 2.x rules. */
+    public void testNoCliReadsA2xListBy2xRules() throws Exception {
+        Path base = Path.of(getProject().getBasePath());
+        created.add(base.resolve(".agents").toFile());
+        Path skills = Files.createDirectories(base.resolve(".agents/skills/openspec-explore"));
+        Files.writeString(skills.resolve("SKILL.md"), "");
+        Files.writeString(base.resolve(".agents/skills/.openspec-target"), "cursor\ngithub-copilot\n");
+        service().setCliVersionForTest(() -> null);
+        assertEquals(DetectionRules.V2_1_1, service().rules(base));
+        service().detect();
+        assertEquals(List.of(AiToolRegistry.byId("cursor").name(), AiToolRegistry.byId("github-copilot").name()),
+                service().getDetectedTools());
+    }
+
+    /** On 2.x a skills-only tool has no folder of its own: listed with the shared skills, it is set up. */
+    public void testAListed2xSkillsOnlyToolIsConfigured() throws Exception {
+        Path base = Path.of(getProject().getBasePath());
+        created.add(base.resolve(".agents").toFile());
+        Path skill = Files.createDirectories(base.resolve(".agents/skills/openspec-explore"));
+        Files.writeString(skill.resolve("SKILL.md"), "");
+        Files.writeString(base.resolve(".agents/skills/.openspec-target"), "cursor\n");
+        service().setCliVersionForTest(() -> "2.1.1");
+        assertEquals(ToolStatus.CONFIGURED, service().getToolStatus(AiToolRegistry.byId("cursor").name()));
+    }
 }

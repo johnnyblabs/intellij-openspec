@@ -1574,7 +1574,8 @@ public class WorkflowActionPanel extends JPanel {
             // Clipboard and editor tab send the short handoff when the selected tool has the apply command or skill,
             // as Explore does; otherwise the full prompt.
             String shortHandoff = mode == DeliveryMode.DIRECT_API ? null
-                    : applyHandoff(project.getBasePath(), toolName, changeName);
+                    : applyHandoff(project.getBasePath(), toolName, changeName,
+                            com.johnnyblabs.openspec.services.GlobalSkillsCache.getInstance(project).snapshot());
             String prompt = shortHandoff != null ? shortHandoff : ApplyPromptBuilder.build(changeName, changeDir);
 
             lastPrompt = prompt;
@@ -1619,9 +1620,8 @@ public class WorkflowActionPanel extends JPanel {
                 });
                 case DIRECT_API -> {
                     // Like Revise and Explore: the agent does the work, so the handoff is copied for the user to paste.
-                    String base = project.getBasePath();
-                    WorkflowInvocation.Found found = base == null ? null : WorkflowInvocation.find(Path.of(base),
-                            WorkflowInvocation.candidateTools(project), WorkflowInvocation.APPLY, WorkflowInvocation.APPLY_SKILL);
+                    WorkflowInvocation.Found found = WorkflowInvocation.find(project,
+                            WorkflowInvocation.APPLY, WorkflowInvocation.APPLY_SKILL);
                     if (found == null) {
                         OpenSpecNotifier.warn(project, "Apply",
                                 "Apply needs your AI tool's apply workflow, which this project doesn't have. Run Update OpenSpec\u2026, then retry.");
@@ -1642,10 +1642,18 @@ public class WorkflowActionPanel extends JPanel {
      */
     @Nullable
     static String applyHandoff(@Nullable String basePath, @Nullable String toolName, String changeName) {
+        return applyHandoff(basePath, toolName, changeName, com.johnnyblabs.openspec.services.HomeSkills.NONE);
+    }
+
+    /** {@link #applyHandoff(String, String, String)}, also finding the selected tool's machine-wide skill in {@code home}. */
+    @Nullable
+    static String applyHandoff(@Nullable String basePath, @Nullable String toolName, String changeName,
+                               com.johnnyblabs.openspec.services.HomeSkills home) {
         AiTool tool = AiToolRegistry.byName(toolName);
         if (tool == null || basePath == null) return null;
+        // The selected tool is the one the user pastes into, so it counts as preferred for a machine-wide shared skill.
         WorkflowInvocation.Found found = WorkflowInvocation.find(Path.of(basePath), List.of(tool),
-                WorkflowInvocation.APPLY, WorkflowInvocation.APPLY_SKILL);
+                WorkflowInvocation.APPLY, WorkflowInvocation.APPLY_SKILL, home, tool);
         return found == null ? null : WorkflowInvocation.handoff(found.invocation(), WorkflowInvocation.APPLY_SKILL, changeName);
     }
 

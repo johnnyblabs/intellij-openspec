@@ -1,0 +1,8 @@
+{
+  "project": {
+    ".agents/skills/openspec-explore/SKILL.md": "---\nname: openspec-explore\n---\nThe shared copy.\n",
+    ".claude/skills/openspec-explore/SKILL.md": "---\nname: openspec-explore\n---\nThe shared copy.\n",
+    ".claude/skills/openspec-explore/notes.md": "Mine.\n"
+  },
+  "home": {}
+}

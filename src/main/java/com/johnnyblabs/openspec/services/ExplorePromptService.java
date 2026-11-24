@@ -163,14 +163,22 @@ public final class ExplorePromptService {
     Instructions loadInstructions() {
         String basePath = project.getBasePath();
         if (basePath != null) {
+            Path base = Path.of(basePath);
+            // Read once for every tool: the listed tools, the machine-wide skills (never read from disk on the EDT).
+            List<String> listed = SkillToolList.ids(SkillToolList.read(base));
+            GlobalSkillsCache cache = GlobalSkillsCache.getInstance(project);
+            HomeSkills home = cache != null ? cache.snapshot() : HomeSkills.NONE;
+            AiTool preferred = WorkflowInvocation.preferredTool(project);
             for (AiTool tool : candidateTools()) {
-                String skill = AiToolRegistry.exploreSkillPath(tool);
+                Path skillFile = SkillLocator.find(base, listed, home, tool, WorkflowInvocation.EXPLORE_SKILL,
+                        tool.equals(preferred));
+                String skill = skillFile == null ? null : shown(base, skillFile);
                 String command = AiToolRegistry.exploreCommandPath(tool);
-                boolean hasSkill = skill != null && Files.isRegularFile(Path.of(basePath, skill));
+                boolean hasSkill = skill != null;
                 boolean hasCommand = command != null && Files.isRegularFile(Path.of(basePath, command));
                 for (String relative : new String[] {hasSkill ? skill : null, hasCommand ? command : null}) {
                     if (relative == null) continue;
-                    Path path = Path.of(basePath, relative);
+                    Path path = base.resolve(relative);
                     try {
                         String body = extractBody(relative, Files.readString(path));
                         if (body == null) continue;
@@ -184,6 +192,13 @@ public final class ExplorePromptService {
         }
         LOG.info("No generated explore instructions found, using the built-in default");
         return new Instructions(DEFAULT_EXPLORE_PROMPT, null);
+    }
+
+    /** {@code file} as shown to the user: project-relative inside the project, else its full path (a home skill). */
+    private static String shown(Path base, Path file) {
+        Path abs = file.toAbsolutePath().normalize();
+        Path root = base.toAbsolutePath().normalize();
+        return abs.startsWith(root) ? root.relativize(abs).toString().replace('\\', '/') : abs.toString();
     }
 
     /** Project-relative paths to try, in order, without duplicates. */

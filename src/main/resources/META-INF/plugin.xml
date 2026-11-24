@@ -30,6 +30,7 @@
         <projectService serviceImplementation="com.johnnyblabs.openspec.services.WorkflowSchemaContextService"/>
         <projectService serviceImplementation="com.johnnyblabs.openspec.services.ChangeService"/>
         <projectService serviceImplementation="com.johnnyblabs.openspec.services.CliDetectionService"/>
+        <projectService serviceImplementation="com.johnnyblabs.openspec.services.GlobalSkillsCache"/>
         <projectService serviceImplementation="com.johnnyblabs.openspec.validation.BuiltInValidator"/>
         <projectService serviceImplementation="com.johnnyblabs.openspec.scaffolding.ScaffoldingService"/>
         <projectService serviceImplementation="com.johnnyblabs.openspec.settings.OpenSpecSettings"/>

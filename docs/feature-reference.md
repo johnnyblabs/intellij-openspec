@@ -306,10 +306,34 @@ The plugin knows every AI tool the OpenSpec CLI can set up (**50 tools** as of O
 
 A few rules come straight from the CLI:
 - **Copilot is detected only from its own files.** A plain `.github/` folder, which most repositories have, doesn't count.
-- **Tools sharing `.agents/`** (Codex, Amp, Antigravity, Zed and others) are told apart by OpenSpec's ownership marker, then by the generated skills.
+- **Tools sharing `.agents/`** (Codex, Amp, Antigravity, Zed and others) are told apart by OpenSpec's ownership marker, then by the generated skills. On 2.x the marker is a list of every tool set up, and a skill's wording counts only when the file is exactly one an OpenSpec release generated.
 - **Older directories still count:** `.windsurf/`, `.codex/` and `.kimi/`, for example.
 - **Tools that install into your home directory** (MiniMax Code) are detected there.
 - **Newer tools are hidden from older CLIs.** The plugin only offers or passes a tool to `openspec init` when your installed CLI accepts it.
+- **Each CLI line keeps its own rules.** OpenSpec 1.x and 2.x can reach different verdicts on the same files: a lone `.gsd/` folder means the shared-folder tool to 1.x but GSD to 2.x, and 2.1 never counts a machine-wide install as a project's tool. The plugin uses the rules of the CLI you have installed. With no CLI installed, it reads the files: a tool list naming several tools, an `own-files` mark, or a tool folder linking into `.agents/skills/` means 2.x rules, and anything else means 1.x rules.
+
+#### Skills on OpenSpec CLI 2.x
+
+From CLI 2.0, OpenSpec writes every tool's skills to one shared folder, `.agents/skills/`. It records the tools it set up in `.agents/skills/.openspec-target`, one per line. A tool that reads its own folder gets a link from there into the shared copy: `.claude/skills/openspec-explore` → `../../.agents/skills/openspec-explore`. Skills-only tools such as Cursor and GitHub Copilot get nothing of their own.
+
+The plugin finds a tool's skill wherever OpenSpec left it, whichever CLI is installed, so Explore, Revise, Continue and Apply hand off to the right tool on 1.x and 2.x projects alike:
+
+1. the shared `.agents/skills/` copy, when `.openspec-target` lists the tool;
+2. the tool's own folder, through a link, a copy, or the small text file Git checks a link out as when it can't make links;
+3. a 1.x copy in the tool's own folder, or an older folder;
+4. skills installed for the whole machine (CLI 2.1's default), under your home directory: the tool's own folder there, or `~/.agents/skills/` for the tool you prefer in Settings.
+
+What a tool's folder holds depends on your system, and each case is handled:
+
+| Your system | A tool's skill folder holds |
+|---|---|
+| macOS or Linux | a link into `.agents/skills/` |
+| Windows, CLI 2.1 | a copy (OpenSpec copies rather than links for projects on Windows, since Git can't carry a Windows link to a teammate) |
+| Windows, CLI 2.0, or machine-wide skills | a link when Windows allows it (Developer Mode), otherwise a copy |
+| A Windows clone of a project committed from macOS or Linux | a small text file holding the link's target; `openspec update` turns it into a copy |
+| Any system, with `.agents/` deleted or not checked out | a link to nothing: the tool still counts as set up, and Update OpenSpec… restores it |
+
+Your home directory is found the way the CLI finds it: `USERPROFILE`, then `HOME`, then Java's `user.home`. Machine-wide skills are read in the background and remembered until the plugin runs `init` or `update`, or you return to the IDE. After the plugin runs `init` or `update`, the skills folders are refreshed in the IDE, so links and folders that changed type show up without a manual refresh.
 
 Detected tools appear in bold in the settings panel and are available as clipboard delivery targets. **CLI** tools receive save-path hints in the guidance text; **IDE Panel** tools receive paste-target guidance.
 

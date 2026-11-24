@@ -355,9 +355,22 @@ public final class AiToolRegistry {
         return EXPLORE_COMMAND_PATHS.get(tool.id());
     }
 
-    /** The skill {@code skillName} OpenSpec writes into the project for this tool, or {@code null} for a global-only tool. */
+    /**
+     * The skill {@code skillName} a 1.x release writes into the project for this tool, or {@code null} for a global-only
+     * tool. Where a skill is on disk is {@link SkillLocator}'s question; this is where a release writes it.
+     */
     public static @Nullable String skillPath(AiTool tool, String skillName) {
         return tool.skillsDir() == null ? null : tool.skillsDir() + "/skills/" + skillName + "/SKILL.md";
+    }
+
+    /**
+     * Where {@code rules}' release line writes the skill: 2.x writes every project tool's skills to the shared
+     * {@code .agents/skills/} (a tool's own folder gets at most a link, {@link SkillLinkDirs}); 1.x as {@link #skillPath}.
+     */
+    public static @Nullable String skillPath(AiTool tool, String skillName, DetectionRules rules) {
+        if (!rules.is2x()) return skillPath(tool, skillName);
+        if (rules.skillsDir(tool) == null || rules.globalSkillsDir(tool) != null) return null;
+        return ".agents/skills/" + skillName + "/SKILL.md";
     }
 
     /**

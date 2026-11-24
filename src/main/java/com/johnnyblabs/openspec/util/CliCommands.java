@@ -47,6 +47,11 @@ public final class CliCommands {
         return CliArgs.command("update").env(NON_INTERACTIVE, "0");
     }
 
+    /** Whether {@code args} only plans ({@code --dry-run}), writing nothing. */
+    public static boolean isDryRun(CliArgs args) {
+        return args.requested().contains("--dry-run");
+    }
+
     /** The read-only update plan, {@code update --dry-run [--force] --json}, with prompts turned off. */
     @OfferedOn(since = UpdatePreviewService.DRY_RUN_FLOOR)
     public static CliArgs updatePlan(boolean force) {

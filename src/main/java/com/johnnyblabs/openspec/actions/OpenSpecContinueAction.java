@@ -66,9 +66,8 @@ public class OpenSpecContinueAction extends OpenSpecBaseAction {
             return;
         }
 
-        String base = project.getBasePath();
-        WorkflowInvocation.Found found = base == null ? null : WorkflowInvocation.find(Path.of(base),
-                WorkflowInvocation.candidateTools(project), WorkflowInvocation.CONTINUE, WorkflowInvocation.CONTINUE_SKILL);
+        WorkflowInvocation.Found found = WorkflowInvocation.find(project,
+                WorkflowInvocation.CONTINUE, WorkflowInvocation.CONTINUE_SKILL);
         if (found == null) {
             OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_WORKFLOW, TITLE, NOT_INSTALLED_NOTICE,
                     NotificationType.WARNING, ActionLauncher.notificationAction(project, "Update OpenSpec…", "OpenSpec.Update"));
