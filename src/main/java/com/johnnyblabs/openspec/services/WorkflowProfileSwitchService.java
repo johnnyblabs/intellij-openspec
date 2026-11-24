@@ -169,7 +169,7 @@ public final class WorkflowProfileSwitchService {
                 "Later",
                 Messages.getQuestionIcon());
         if (choice == Messages.YES) {
-            runUpdate(ModalityState.defaultModalityState());
+            runUpdate(callerModality());
         }
     }
 
@@ -177,19 +177,28 @@ public final class WorkflowProfileSwitchService {
      * Runs {@code openspec update} on a background thread and reports success or
      * failure via notifications. Package-private so tests can invoke directly.
      */
-    void runUpdate(ModalityState modality) {
+    void runUpdate(@Nullable ModalityState modality) {
         // The report comes back under the caller's modality, so it shows while Settings is still open.
         ApplicationManager.getApplication().executeOnPooledThread(() -> {
             try {
                 CliRunner.CliResult result = CliRunner.run(project, com.johnnyblabs.openspec.util.CliCommands.update());
-                ApplicationManager.getApplication().invokeLater(() -> reportUpdate(result), modality);
+                later(() -> reportUpdate(result), modality);
             } catch (CliRunner.CliException e) {
                 LOG.warn("openspec update failed", e);
-                ApplicationManager.getApplication().invokeLater(() ->
-                        OpenSpecNotifier.warn(project, "Profile",
-                                "openspec update failed: " + e.getMessage()), modality);
+                later(() -> OpenSpecNotifier.warn(project, "Profile",
+                        "openspec update failed: " + e.getMessage()), modality);
             }
         });
+    }
+
+    /** The modality to report back under: the caller's, or none when no application is running (plain unit tests). */
+    private static @Nullable ModalityState callerModality() {
+        return ApplicationManager.getApplication() == null ? null : ModalityState.defaultModalityState();
+    }
+
+    private static void later(Runnable r, @Nullable ModalityState modality) {
+        if (modality != null) ApplicationManager.getApplication().invokeLater(r, modality);
+        else ApplicationManager.getApplication().invokeLater(r);
     }
 
     /** Reports a finished profile-switch update. EDT. */
