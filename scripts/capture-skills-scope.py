@@ -11,6 +11,8 @@ Writes, for each release in RELEASES (2.1.0 and 2.1.1, plus 2.0.0 for the enviro
     fixtures/cli/<v>/errors/<case>.{stdout,stderr,exit}     the init errors the plugin can meet
     fixtures/cli/<v>/skills-scope/machine-markers.json      (2.1.x) the paths the installer checks to call a tool
                                                             installed on this machine, each confirmed alone
+    src/main/resources/openspec/machine-tool-markers.txt    the newest release's tickable markers, which the plugin
+                                                            reads to tick tools in "Install into this project"
 
 2.0.0 gets only env-ignored/: an init with OPENSPEC_SKILLS_SCOPE=project, which must match one without it.
 Every run uses a throwaway HOME (scripts/lib/openspec_capture.py); 2.1.0 needs git and the network.
@@ -32,6 +34,7 @@ from openspec_capture import cli, isolated_env, key, package, require_git_and_ne
 
 FIXTURES = Path(__file__).resolve().parent.parent / "src/test/resources/fixtures/cli"
 RELEASES = ["2.0.0", "2.1.0", "2.1.1"]
+RESOURCE = Path(__file__).resolve().parent.parent / "src/main/resources/openspec/machine-tool-markers.txt"
 
 # Variables the installer reads in place of a home folder; unset so every probe sees only the throwaway home.
 HOME_OVERRIDES = ["CODEX_HOME", "CLAUDE_CONFIG_DIR", "VIBE_HOME", "HERMES_HOME", "AUTOHAND_HOME", "GROK_HOME",
@@ -253,6 +256,13 @@ def capture_markers(version, tmp):
            "skipped": sorted(t for t, a in base["tools"].items() if a == "universal"),
            "entries": entries}
     write_fixture(FIXTURES / version / "skills-scope/machine-markers.json", json.dumps(doc, indent=2) + "\n")
+    if version == RELEASES[-1]:
+        # The plugin's copy: the tickable entries only, one per line, which MachineToolMarkersContractTest compares.
+        lines = ["# Paths the OpenSpec CLI's skills installer checks to call a tool installed on this machine.",
+                 f"# Written by scripts/capture-skills-scope.py from CLI {version} (skills {skills_version}); do not edit.",
+                 "# base<TAB>path<TAB>tool ids. base is home, or configHome ($XDG_CONFIG_HOME, else ~/.config)."]
+        lines += [f"{e['base']}\t{e['path']}\t{','.join(e['tools'])}" for e in entries if e["tickable"]]
+        RESOURCE.write_text("\n".join(lines) + "\n")
     print(f"  {version}: {sum(e['tickable'] for e in entries)} tickable markers of {len(entries)} probed paths")
 
 

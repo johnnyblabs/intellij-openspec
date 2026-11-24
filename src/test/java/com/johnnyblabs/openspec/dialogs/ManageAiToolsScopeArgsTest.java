@@ -75,8 +75,7 @@ public class ManageAiToolsScopeArgsTest extends HeavyPlatformTestCase {
     public void testAddAndConfigureUseTheDecision() throws Exception {
         String source = Files.readString(Path.of("src/main/java/com/johnnyblabs/openspec/dialogs/ManageAiToolsDialog.java"));
         assertEquals(2, source.split("runCliAction\\(\\(\\) -> addArgs\\(project, tool\\.cliId\\(\\)\\),", -1).length - 1);
-        assertFalse("no init built elsewhere in the dialog",
-                source.replace("CliCommands.initKeepingScope(cliId)", "").replace("CliCommands.initInProject(cliId)", "")
-                        .contains("CliCommands.init"));
+        assertEquals("init is built only by addArgs (two scopes) and installArgs", 3,
+                source.split("CliCommands\\.init", -1).length - 1);
     }
 }

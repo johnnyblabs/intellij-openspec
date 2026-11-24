@@ -61,6 +61,8 @@ public class OpenSpecSettingsPanel {
     // CLI section
     private final TextFieldWithBrowseButton cliPathField;
     private final JBLabel cliStatusLabel;
+    /** Where the project's skills are, read once the panel is showing (no install action here). */
+    private final com.johnnyblabs.openspec.dialogs.SkillsScopeLine scopeLine;
     /** The About line: this plugin's version, the CLI it targets, and the CLI detected on this machine. */
     private final JBLabel aboutLabel;
 
@@ -159,12 +161,14 @@ public class OpenSpecSettingsPanel {
         cliPathRow.add(detectButton);
 
         cliStatusLabel = new JBLabel("Checking...");
+        scopeLine = new com.johnnyblabs.openspec.dialogs.SkillsScopeLine(project, null);
         aboutLabel = new JBLabel(aboutText(null));
         aboutLabel.setForeground(UIManager.getColor("Label.disabledForeground"));
 
         JPanel cliSection = FormBuilder.createFormBuilder()
                 .addLabeledComponent(new JBLabel("CLI path:"), cliPathRow)
                 .addComponent(cliStatusLabel)
+                .addComponent(scopeLine.component())
                 .addComponent(aboutLabel)
                 .getPanel();
         cliSection.setBorder(IdeBorderFactory.createTitledBorder("OpenSpec CLI"));
@@ -299,6 +303,7 @@ public class OpenSpecSettingsPanel {
         refreshConfigProfileSection();
         updateSchemaSectionVisibility();
         detectCli(false);
+        scopeLine.refresh(uiModality());
     }
 
     /** Headless stand-in for the panel being shown in the Settings dialog (a light test can't show a window). */

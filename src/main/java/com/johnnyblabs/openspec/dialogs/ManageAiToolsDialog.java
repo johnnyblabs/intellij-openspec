@@ -49,6 +49,8 @@ public class ManageAiToolsDialog extends DialogWrapper {
      * the platform until this modal dialog closes (see {@code BulkArchiveDialog}).
      */
     private ModalityState dialogModality;
+    /** Where the project's skills are, with "Install into this project" for a machine-scoped project. */
+    private final SkillsScopeLine scopeLine;
 
     public ManageAiToolsDialog(Project project) {
         super(project, false);
@@ -66,6 +68,7 @@ public class ManageAiToolsDialog extends DialogWrapper {
 
         toolListPanel = new JPanel();
         toolListPanel.setLayout(new BoxLayout(toolListPanel, BoxLayout.Y_AXIS));
+        scopeLine = new SkillsScopeLine(project, this::installIntoProject);
 
         init();
         // A headless peer has no content panel; fall back rather than fail (that path is never modal anyway).
@@ -102,18 +105,22 @@ public class ManageAiToolsDialog extends DialogWrapper {
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
         mainPanel.add(scrollPane, BorderLayout.CENTER);
 
-        // Footer
+        // Footer: the skills scope, then the CLI hint when there is no CLI.
+        JPanel footer = new JPanel(new BorderLayout());
+        footer.setBorder(JBUI.Borders.emptyTop(8));
+        footer.add(scopeLine.component(), BorderLayout.NORTH);
+        mainPanel.add(footer, BorderLayout.SOUTH);
         CliDetectionService cliService = project.getService(CliDetectionService.class);
         if (cliService == null || !cliService.isAvailable()) {
             JBLabel cliHint = new JBLabel(
                     "<html>" + com.johnnyblabs.openspec.util.CliInstallHints.manageToolsHintBody(com.intellij.openapi.util.SystemInfo.isWindows) + "</html>");
             cliHint.setForeground(JBColor.GRAY);
             cliHint.setFont(cliHint.getFont().deriveFont(Font.PLAIN, 11f));
-            JPanel footer = new JPanel(new BorderLayout());
-            footer.setBorder(JBUI.Borders.emptyTop(8));
-            footer.add(cliHint, BorderLayout.CENTER);
-            footer.add(SetupWizardDialog.installInstructionsLink(), BorderLayout.SOUTH);
-            mainPanel.add(footer, BorderLayout.SOUTH);
+            JPanel hint = new JPanel(new BorderLayout());
+            hint.setBorder(JBUI.Borders.emptyTop(4));
+            hint.add(cliHint, BorderLayout.CENTER);
+            hint.add(SetupWizardDialog.installInstructionsLink(), BorderLayout.SOUTH);
+            footer.add(hint, BorderLayout.CENTER);
         }
 
         return mainPanel;
@@ -134,6 +141,36 @@ public class ManageAiToolsDialog extends DialogWrapper {
         toolService.detect();
         allTools = toolService.getAllToolsWithStatus();
         filterTools(searchField.getText().trim());
+        if (dialogModality != null) scopeLine.refresh(dialogModality);
+    }
+
+    /**
+     * "Install into this project": ticks the tool list off the EDT, opens it over this dialog, and on Install runs
+     * {@code init --tools <ticked> --scope project}. Cancelling runs nothing.
+     */
+    private void installIntoProject() {
+        String basePath = project.getBasePath();
+        if (basePath == null) return;
+        Component parent = getContentPanel();
+        String preferred = com.johnnyblabs.openspec.settings.OpenSpecSettings.getInstance(project).getPreferredTool();
+        Condition<?> expired = ignored -> isDisposed() || project.isDisposed();
+        ApplicationManager.getApplication().executeOnPooledThread(() -> {
+            List<com.johnnyblabs.openspec.services.InstallToolTicks.Row> rows =
+                    com.johnnyblabs.openspec.services.InstallToolTicks.rows(java.nio.file.Path.of(basePath),
+                            com.johnnyblabs.openspec.services.HomeDirectory.current(), System.getenv("XDG_CONFIG_HOME"),
+                            preferred);
+            ApplicationManager.getApplication().invokeLater(() -> {
+                InstallToolListDialog list = new InstallToolListDialog(parent, rows);
+                if (!list.showAndGet()) return;
+                runCliAction(installArgs(list.ticked()), "Installing skills into this project", null, null);
+            }, dialogModality, expired);
+        });
+    }
+
+    /** The install's command: the ticked tools, into the project. */
+    static com.johnnyblabs.openspec.util.CliArgs installArgs(List<com.johnnyblabs.openspec.services.AiToolRegistry.AiTool> ticked) {
+        return com.johnnyblabs.openspec.util.CliCommands.initInProject(
+                com.johnnyblabs.openspec.services.InstallToolTicks.toolsArg(ticked));
     }
 
     private void filterTools(String query) {
@@ -406,9 +443,8 @@ public class ManageAiToolsDialog extends DialogWrapper {
 
     /** Runs the command {@code args} builds, built on the background thread so it may read the disk. */
     private void runCliAction(java.util.function.Supplier<com.johnnyblabs.openspec.util.CliArgs> args, String title,
-                              @Nullable String setUpTool, JButton sourceButton) {
-        sourceButton.setEnabled(false);
-        sourceButton.setText("...");
+                              @Nullable String setUpTool, @Nullable JButton sourceButton) {
+        setBusy(sourceButton, true);
 
         ProgressManager.getInstance().run(new Task.Backgroundable(project, title, false) {
             @Override
@@ -431,15 +467,13 @@ public class ManageAiToolsDialog extends DialogWrapper {
                         ApplicationManager.getApplication().invokeLater(() -> {
                             OpenSpecNotifier.warn(project, "AI Tools",
                                     title + " failed: " + result.stderr().trim());
-                            sourceButton.setEnabled(true);
-                            sourceButton.setText("Retry");
+                            setBusy(sourceButton, false);
                         }, dialogModality, expired);
                     }
                 } catch (ProcessCanceledException ex) {
                     // Cancellation must propagate, but the button still comes back.
                     ApplicationManager.getApplication().invokeLater(() -> {
-                        sourceButton.setEnabled(true);
-                        sourceButton.setText("Retry");
+                        setBusy(sourceButton, false);
                     }, dialogModality, expired);
                     throw ex;
                 } catch (Exception ex) {
@@ -447,12 +481,18 @@ public class ManageAiToolsDialog extends DialogWrapper {
                     String reason = ex instanceof CliRunner.CliException ? ex.getMessage() : ex.toString();
                     ApplicationManager.getApplication().invokeLater(() -> {
                         OpenSpecNotifier.error(project, "AI Tools", title + " failed: " + reason);
-                        sourceButton.setEnabled(true);
-                        sourceButton.setText("Retry");
+                        setBusy(sourceButton, false);
                     }, dialogModality, expired);
                 }
             }
         });
+    }
+
+    /** The button a run started from: "..." while it runs, "Retry" after a failure. The install link has none. */
+    private static void setBusy(@Nullable JButton button, boolean busy) {
+        if (button == null) return;
+        button.setEnabled(!busy);
+        button.setText(busy ? "..." : "Retry");
     }
 
     /** {@link #runCliAction(java.util.function.Supplier, String, String, JButton)} for a fixed command. */

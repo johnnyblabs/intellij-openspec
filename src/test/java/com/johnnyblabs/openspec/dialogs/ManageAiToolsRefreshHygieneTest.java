@@ -64,4 +64,12 @@ class ManageAiToolsRefreshHygieneTest {
                 .map(c -> c.method() + " at line " + c.line()).toList();
         assertTrue(missing.isEmpty(), "pass the modality explicitly: " + missing);
     }
+
+    /** The scope line posts into Manage AI Tools and Settings, both modal: its hop must carry their modality. */
+    @Test
+    void theScopeLineHopCarriesAModality() throws IOException {
+        List<ModalityCallScanner.Call> calls = ModalityCallScanner.calls(ModalityCallScanner.mainSource("dialogs/SkillsScopeLine.java"));
+        assertTrue(calls.size() >= 1, "anti-vacuity: the line's EDT hop, found " + calls);
+        assertTrue(calls.stream().allMatch(ModalityCallScanner.Call::hasSecondArgument), "pass the modality: " + calls);
+    }
 }
