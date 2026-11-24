@@ -25,7 +25,9 @@ class CliCommandsTest {
 
     @Test
     void everyBuilderBuildsExactlyTheCommandLineThePluginSends() {
-        expect("init", CliCommands.init("claude,cursor"), "init", "--tools", "claude,cursor");
+        expect("initInProject", CliCommands.initInProject("claude,cursor"),
+                "init", "--tools", "claude,cursor", "--scope", "project");
+        expect("initKeepingScope", CliCommands.initKeepingScope("claude,cursor"), "init", "--tools", "claude,cursor");
         expect("update", CliCommands.update(), "update");
         expect("updateWithoutPrompts", CliCommands.updateWithoutPrompts(), "update");
         expect("updatePlan", CliCommands.updatePlan(false), "update", "--dry-run", "--json");
@@ -95,5 +97,37 @@ class CliCommandsTest {
         assertEquals(Map.of("OPEN_SPEC_INTERACTIVE", "0"), CliCommands.updatePlan(false).env());
         assertEquals(Map.of("OPEN_SPEC_INTERACTIVE", "0"), CliCommands.updateWithoutPrompts().env());
         assertEquals(Map.of(), CliCommands.update().env());
+    }
+
+    /** A project init asks for the project scope on 2.1+, leaves the flag out below, and always sets the backstop. */
+    @Test
+    void aProjectInitPassesTheScopeOnlyWhereTheReleaseHasIt() throws Exception {
+        CliArgs args = CliCommands.initInProject("claude");
+        assertEquals(Map.of("OPENSPEC_SKILLS_SCOPE", "project"), args.env());
+
+        for (String older : List.of("1.3.0", "1.17.0", "2.0.0")) {
+            CliArgs.Resolved r = args.resolve(older);
+            assertEquals(List.of("init", "--tools", "claude"), r.argv(), older);
+            assertEquals(List.of("--scope"), r.dropped(), older);
+        }
+        for (String newer : List.of("2.1.0", "2.1.1")) {
+            assertEquals(List.of("init", "--tools", "claude", "--scope", "project"), args.resolve(newer).argv(), newer);
+        }
+
+        // An undetected version resolves as the target release; the environment value covers a 2.1 binary either way.
+        boolean targetHasScope = FixtureVersions.compare(PluginVersions.targetCliVersion(), "2.1.0") >= 0;
+        assertEquals(targetHasScope, args.resolve(null).argv().contains("--scope"));
+        assertEquals("project", args.env().get("OPENSPEC_SKILLS_SCOPE"));
+    }
+
+    /** Keeping the scope passes neither the flag nor the environment value, on any release. */
+    @Test
+    void aScopeKeepingInitPassesNoScope() throws Exception {
+        CliArgs args = CliCommands.initKeepingScope("claude");
+        assertEquals(Map.of(), args.env());
+        for (String v : List.of("2.0.0", "2.1.0", "2.1.1")) {
+            assertEquals(List.of("init", "--tools", "claude"), args.resolve(v).argv(), v);
+            assertEquals(List.of(), args.resolve(v).dropped(), v);
+        }
     }
 }

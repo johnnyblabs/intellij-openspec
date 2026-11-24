@@ -20,7 +20,7 @@ class SkillsWrittenTest {
 
     @Test
     void initAndUpdateWriteSkillsADryRunAndOtherCommandsDont() {
-        assertTrue(SkillsWritten.writesSkills(CliCommands.init("claude")));
+        assertTrue(SkillsWritten.writesSkills(CliCommands.initInProject("claude")));
         assertTrue(SkillsWritten.writesSkills(CliCommands.update()));
         assertTrue(SkillsWritten.writesSkills(CliCommands.updateWithoutPrompts()));
         assertFalse(SkillsWritten.writesSkills(CliCommands.updatePlan(false)));

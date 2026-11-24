@@ -792,6 +792,7 @@ On 2.1.0 and later a plain `init --tools` installs skills for the whole machine.
 | `help/` (every supported line, not only 2.x) | `scripts/capture-help-sweep.py` |
 | `fingerprints/vectors.json`, and `src/main/resources/openspec/released-skill-fingerprints.txt` | `CAPTURE_VERSION=<v> scripts/capture-released-fingerprints.py` (`--vectors-only` leaves the resource alone) |
 | `skill-spots/` | `CAPTURE_VERSION=<v> scripts/capture-skill-spot-verdicts.py` |
+| `skills-scope/`, `errors/init-home-global.*`, `errors/init-scope-project-no-tools.*`, `errors/init-no-git.*` (2.1.0) | `CAPTURE_VERSIONS=<v> scripts/capture-skills-scope.py` |
 
 ### Links in a detection layout
 
@@ -847,6 +848,25 @@ Each case (2.0.0 and 2.1.1, the same verdicts in both) builds one shape at `.cla
 - **Empty:** `empty-folder`, `os-junk-only` and `absent` are `missing`.
 
 `SkillFolderShapeTest` maps each verdict onto the plugin's shape through the table in `SkillSpot`'s javadoc. Only the link cases need link support.
+
+### `skills-scope/`: where an init puts the skills, and the team's recorded choice
+
+From `scripts/capture-skills-scope.py`, on 2.1.0 and 2.1.1 (2.0.0 has only `env-ignored/`). Layouts use the detect format, links as data; `.agents/.skill-lock.json` is recorded by name only, because it holds per-run timestamps.
+
+- **Recorded choice:**
+  - `remembered-config.yaml` is the config upstream's own `rememberProjectSkills` writes (`skillsScope: project`).
+  - `config-team.yaml` is the input with an invalid value. `team-warning.stderr` and `.exit` hold what `instructions` prints for it (`Invalid 'skillsScope' field in config (must be "project" or "global")`, exit 0), and `team-context.txt` holds the config's `context`, which is still applied.
+- **Layouts:**
+  - `env-project/`: `OPENSPEC_SKILLS_SCOPE=project init --tools claude`, skills in the project only.
+  - `machine-only/`: `init --tools cursor`, the default, skills in the home folder only.
+  - `machine-add-keep/` and `machine-add-project/`: Claude added to that project without and with `--scope project`. Without it, the skills stay on the machine and `~/.claude/skills` links appear; with it, the project gets its own copy.
+  - `project-add-keep/`: Claude added with no scope to a project-scoped project, which stays in the project.
+  - `home-project/`: `init --scope project` in the home folder, accepted. `errors/init-home-global.*` is the default scope refused there.
+  - 2.0.0 `env-ignored/`: an init with the variable, byte-identical to one without (the script fails otherwise).
+- **Errors:**
+  - `errors/init-scope-project-no-tools.*`: `init --scope project` with no `--tools`, not interactive, on a machine-scoped project.
+  - 2.1.0 `errors/init-no-git.*`: no Git on `PATH`. The reason is on stdout (`Failed: Claude Code (… Git is needed …)`), only the tool on stderr, and `openspec/` was already written.
+- **`machine-markers.json`:** every path the `skills` installer (its version recorded) checks to call a tool installed on this machine, probed by patching `fs.existsSync` in a fresh `node` under an empty home. Each `home` or `configHome` path is then created alone (after its parent folder) and recorded with the agents it adds and the OpenSpec tools those map to. `cwd` and `absolute` paths are recorded but not tickable. `skipped` lists the tools that map to the `universal` agent, which the CLI's picker never ticks from the machine.
 
 ### Contract tests across releases, and the gaps
 

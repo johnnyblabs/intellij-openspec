@@ -31,8 +31,11 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class CliArgsVersionMatrixTest {
 
-    /** Optional flags a builder may drop inside its range, as {@code builder flag}. None yet. */
-    static final Set<String> ALLOWED_DROPS = Set.of();
+    /**
+     * Optional flags a builder may drop inside its range, as {@code builder flag}. {@code init --scope} exists from
+     * 2.1.0 and 2.0 rejects it, so a project init leaves it out below 2.1.0 and relies on the environment value.
+     */
+    static final Set<String> ALLOWED_DROPS = Set.of("initInProject --scope");
 
     static final Path SOURCE = Path.of("src/main/java/com/johnnyblabs/openspec/util/CliCommands.java");
 

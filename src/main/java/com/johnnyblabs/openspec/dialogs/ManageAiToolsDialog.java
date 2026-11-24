@@ -258,7 +258,7 @@ public class ManageAiToolsDialog extends DialogWrapper {
                 if (cliAvailable && tool.cliId() != null) {
                     btn.setToolTipText("Generate OpenSpec skills and commands for " + tool.name());
                     btn.addActionListener(e -> runCliAction(
-                            com.johnnyblabs.openspec.util.CliCommands.init(tool.cliId()),
+                            com.johnnyblabs.openspec.util.CliCommands.initInProject(tool.cliId()),
                             "Configuring " + tool.name(), tool.name(), btn));
                 } else {
                     btn.setToolTipText("Set as preferred tool (install CLI for full skill generation)");
@@ -275,7 +275,7 @@ public class ManageAiToolsDialog extends DialogWrapper {
                 if (cliAvailable && tool.cliId() != null) {
                     btn.setToolTipText("Add " + tool.name() + " to your project with OpenSpec skills");
                     btn.addActionListener(e -> runCliAction(
-                            com.johnnyblabs.openspec.util.CliCommands.init(tool.cliId()),
+                            com.johnnyblabs.openspec.util.CliCommands.initInProject(tool.cliId()),
                             "Adding " + tool.name(), tool.name(), btn));
                 } else {
                     btn.setToolTipText(addTooltip(project, tool));

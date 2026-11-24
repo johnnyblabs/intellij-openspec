@@ -128,7 +128,7 @@ public class SkillPathResolutionContractTest extends HeavyPlatformTestCase {
         // What init does behind the IDE's back: the tool's link into the shared copy.
         Files.createSymbolicLink(base.resolve(".claude/skills").resolve(SKILL), Path.of("../../.agents/skills/" + SKILL));
 
-        SkillsWritten.afterRun(getProject(), CliCommands.init("claude"));
+        SkillsWritten.afterRun(getProject(), CliCommands.initInProject("claude"));
         Path skill = base.resolve(".claude/skills").resolve(SKILL).resolve("SKILL.md");
         waitFor(() -> LocalFileSystem.getInstance().findFileByNioFile(skill) != null);
         assertNotNull("the linked skill is visible through the VFS", LocalFileSystem.getInstance().findFileByNioFile(skill));

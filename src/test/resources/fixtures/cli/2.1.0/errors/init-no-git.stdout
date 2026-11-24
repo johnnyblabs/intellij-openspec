@@ -1,0 +1,14 @@
+- Creating OpenSpec structure...
+▌ OpenSpec structure created
+
+OpenSpec Setup Incomplete
+
+Failed: Claude Code (the shared skills in .agents/skills could not be written: Git is needed to install the OpenSpec skills, and it is not on your PATH. Install Git and run this again.)
+Config: openspec/config.yaml (schema: spec-driven)
+
+Getting started:
+  Start your first change: /openspec-propose "your idea"
+
+Learn more: https://github.com/Fission-AI/OpenSpec
+Feedback:   https://github.com/Fission-AI/OpenSpec/issues
+

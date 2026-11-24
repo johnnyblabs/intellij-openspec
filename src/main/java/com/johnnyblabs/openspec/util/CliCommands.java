@@ -30,9 +30,25 @@ public final class CliCommands {
 
     // ---- project setup and update -------------------------------------------------------------------------------
 
-    /** {@code init --tools <ids>}: {@code ids} is a comma list, {@code all} or {@code none}. */
+    /** The environment variable CLI 2.1+ reads for an init's skills scope; earlier releases ignore it. */
+    static final String SKILLS_SCOPE = "OPENSPEC_SKILLS_SCOPE";
+
+    /**
+     * {@code init --tools <ids> --scope project}: {@code ids} is a comma list, {@code all} or {@code none}. The skills go
+     * into the project, as every release before 2.1 put them. {@code --scope} is dropped below 2.1.0 (2.0 rejects it);
+     * the environment value still reaches a 2.1 binary whose version wasn't detected, and older releases ignore it.
+     */
     @OfferedOn
-    public static CliArgs init(String tools) {
+    public static CliArgs initInProject(String tools) {
+        return CliArgs.command("init").flag("--tools", tools).optional("--scope", "project").env(SKILLS_SCOPE, "project");
+    }
+
+    /**
+     * {@code init --tools <ids>} with no scope, so CLI 2.1+ keeps the project where its skills already are: a project
+     * that uses the machine's skills stays on the machine.
+     */
+    @OfferedOn
+    public static CliArgs initKeepingScope(String tools) {
         return CliArgs.command("init").flag("--tools", tools);
     }
 

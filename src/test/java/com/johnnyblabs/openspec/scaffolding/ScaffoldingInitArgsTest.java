@@ -11,12 +11,12 @@ class ScaffoldingInitArgsTest {
 
     @Test
     void theDetectedToolsArePassedAsOneCommaList() {
-        assertEquals(List.of("init", "--tools", "claude,cursor"),
+        assertEquals(List.of("init", "--tools", "claude,cursor", "--scope", "project"),
                 ScaffoldingService.initArgs(List.of("claude", "cursor")).requested());
     }
 
     @Test
     void noDetectedToolsPassesNone() {
-        assertEquals(List.of("init", "--tools", "none"), ScaffoldingService.initArgs(List.of()).requested());
+        assertEquals(List.of("init", "--tools", "none", "--scope", "project"), ScaffoldingService.initArgs(List.of()).requested());
     }
 }
