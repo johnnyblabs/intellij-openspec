@@ -257,8 +257,7 @@ public class ManageAiToolsDialog extends DialogWrapper {
                 JButton btn = new JButton("Configure");
                 if (cliAvailable && tool.cliId() != null) {
                     btn.setToolTipText("Generate OpenSpec skills and commands for " + tool.name());
-                    btn.addActionListener(e -> runCliAction(
-                            com.johnnyblabs.openspec.util.CliCommands.initInProject(tool.cliId()),
+                    btn.addActionListener(e -> runCliAction(() -> addArgs(project, tool.cliId()),
                             "Configuring " + tool.name(), tool.name(), btn));
                 } else {
                     btn.setToolTipText("Set as preferred tool (install CLI for full skill generation)");
@@ -274,8 +273,7 @@ public class ManageAiToolsDialog extends DialogWrapper {
                 JButton btn = new JButton("Add");
                 if (cliAvailable && tool.cliId() != null) {
                     btn.setToolTipText("Add " + tool.name() + " to your project with OpenSpec skills");
-                    btn.addActionListener(e -> runCliAction(
-                            com.johnnyblabs.openspec.util.CliCommands.initInProject(tool.cliId()),
+                    btn.addActionListener(e -> runCliAction(() -> addArgs(project, tool.cliId()),
                             "Adding " + tool.name(), tool.name(), btn));
                 } else {
                     btn.setToolTipText(addTooltip(project, tool));
@@ -388,7 +386,27 @@ public class ManageAiToolsDialog extends DialogWrapper {
         return api != null && api.isConfigured();
     }
 
-    private void runCliAction(com.johnnyblabs.openspec.util.CliArgs args, String title, @Nullable String setUpTool, JButton sourceButton) {
+    /**
+     * Add and Configure's command: the project scope, unless the project uses only the machine's skills, where no
+     * scope is passed so CLI 2.1+ keeps it on the machine. Reads the project and the home snapshot: off the EDT.
+     */
+    static com.johnnyblabs.openspec.util.CliArgs addArgs(Project project, String cliId) {
+        return addArgs(project.getBasePath() == null ? null : java.nio.file.Path.of(project.getBasePath()),
+                com.johnnyblabs.openspec.services.GlobalSkillsCache.getInstance(project).snapshot(), cliId);
+    }
+
+    /** {@link #addArgs(Project, String)} for a project directory and home snapshot already in hand. */
+    static com.johnnyblabs.openspec.util.CliArgs addArgs(@Nullable java.nio.file.Path project,
+                                                         com.johnnyblabs.openspec.services.HomeSkills home, String cliId) {
+        boolean onMachine = project != null && com.johnnyblabs.openspec.services.ProjectSkillsScope.of(project, home)
+                == com.johnnyblabs.openspec.services.ProjectSkillsScope.ON_MACHINE;
+        return onMachine ? com.johnnyblabs.openspec.util.CliCommands.initKeepingScope(cliId)
+                : com.johnnyblabs.openspec.util.CliCommands.initInProject(cliId);
+    }
+
+    /** Runs the command {@code args} builds, built on the background thread so it may read the disk. */
+    private void runCliAction(java.util.function.Supplier<com.johnnyblabs.openspec.util.CliArgs> args, String title,
+                              @Nullable String setUpTool, JButton sourceButton) {
         sourceButton.setEnabled(false);
         sourceButton.setText("...");
 
@@ -397,7 +415,7 @@ public class ManageAiToolsDialog extends DialogWrapper {
             public void run(@NotNull ProgressIndicator indicator) {
                 Condition<?> expired = ignored -> isDisposed() || project.isDisposed();
                 try {
-                    CliRunner.CliResult result = CliRunner.run(project, args);
+                    CliRunner.CliResult result = CliRunner.run(project, args.get());
                     if (result.isSuccess()) {
                         // The CLI wrote files outside the VFS. A synchronous refresh is illegal here (off the EDT),
                         // so refresh the project directory asynchronously and reload the list once it finishes.
@@ -435,6 +453,12 @@ public class ManageAiToolsDialog extends DialogWrapper {
                 }
             }
         });
+    }
+
+    /** {@link #runCliAction(java.util.function.Supplier, String, String, JButton)} for a fixed command. */
+    private void runCliAction(com.johnnyblabs.openspec.util.CliArgs args, String title, @Nullable String setUpTool,
+                              JButton sourceButton) {
+        runCliAction(() -> args, title, setUpTool, sourceButton);
     }
 
     /**

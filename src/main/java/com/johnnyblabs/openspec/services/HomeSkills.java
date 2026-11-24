@@ -57,6 +57,11 @@ public final class HomeSkills {
         return home != null && present.contains(rel) ? home.resolve(rel) : null;
     }
 
+    /** Whether any OpenSpec skill was under {@code dir} (relative to home) when scanned. */
+    public boolean holdsAny(String dir) {
+        return AiToolRegistry.SKILL_NAMES.stream().anyMatch(s -> skill(dir, s) != null);
+    }
+
     public boolean isEmpty() {
         return present.isEmpty();
     }
