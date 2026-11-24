@@ -8,6 +8,7 @@ import com.johnnyblabs.openspec.settings.OpenSpecSettings;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 
@@ -176,7 +177,17 @@ public final class AiToolDetectionService {
 
     public enum ToolStatus { CONFIGURED, DETECTED, AVAILABLE }
 
-    public record ToolInfo(String name, ToolStatus status, ToolType type, @Nullable String cliId) {}
+    /**
+     * One row of Manage AI Tools.
+     *
+     * @param viaShared set up on a 2.x project only through the shared {@code .agents/skills} copy, with nothing of
+     *                  its own in a folder that isn't {@code .agents}
+     */
+    public record ToolInfo(String name, ToolStatus status, ToolType type, @Nullable String cliId, boolean viaShared) {
+        public ToolInfo(String name, ToolStatus status, ToolType type, @Nullable String cliId) {
+            this(name, status, type, cliId, false);
+        }
+    }
 
     /**
      * The directory OpenSpec writes a tool's files into (e.g. "Claude Code" → ".claude"), or {@code null} for a tool
@@ -233,6 +244,31 @@ public final class AiToolDetectionService {
         return group.stream().noneMatch(t -> listed.contains(t.id())) && group.getFirst().equals(tool);
     }
 
+    /**
+     * Whether a set-up tool reaches its skills only through the shared {@code .agents/skills} copy on a 2.x project:
+     * its own folder isn't {@code .agents}, the tool list names it, the shared copy holds a skill, and neither its link
+     * folder nor its own skills folder holds an OpenSpec entry of any kind (a link, a copy, or a link as text).
+     */
+    boolean viaSharedFolder(Path base, AiToolRegistry.AiTool tool) {
+        DetectionRules rules = rules(base);
+        if (!rules.is2x() || tool.skillsDir() == null || ".agents".equals(tool.skillsDir())) return false;
+        if (!SkillToolList.ids(SkillToolList.read(base)).contains(tool.id())) return false;
+        Path shared = base.resolve(".agents/skills");
+        boolean sharedHolds = AiToolRegistry.SKILL_NAMES.stream()
+                .anyMatch(s -> Files.isRegularFile(shared.resolve(s).resolve("SKILL.md")));
+        if (!sharedHolds) return false;
+        List<Path> own = new ArrayList<>();
+        String linkDir = SkillLinkDirs.linkDir(rules.linkLine(), tool.id());
+        if (linkDir != null) own.add(base.resolve(linkDir));
+        own.add(base.resolve(tool.skillsDir()).resolve("skills"));
+        for (Path dir : own) {
+            for (String s : AiToolRegistry.SKILL_NAMES) {
+                if (Files.exists(dir.resolve(s), java.nio.file.LinkOption.NOFOLLOW_LINKS)) return false;
+            }
+        }
+        return true;
+    }
+
     /** Whether {@link SkillLocator} finds any OpenSpec skill for {@code tool} in the project or the home directory. */
     private boolean hasLocatedSkill(Path base, AiToolRegistry.AiTool tool) {
         List<String> listed = SkillToolList.ids(SkillToolList.read(base));
@@ -269,7 +305,9 @@ public final class AiToolDetectionService {
             boolean accepted = AiToolRegistry.acceptedBy(tool, version);
             ToolStatus status = detected.contains(tool) ? statusOfDetected(tool) : ToolStatus.AVAILABLE;
             if (!accepted && status == ToolStatus.AVAILABLE) continue;
-            ToolInfo info = new ToolInfo(tool.name(), status, tool.type(), accepted ? tool.cliId() : null);
+            boolean viaShared = status == ToolStatus.CONFIGURED && project.getBasePath() != null
+                    && viaSharedFolder(Path.of(project.getBasePath()), tool);
+            ToolInfo info = new ToolInfo(tool.name(), status, tool.type(), accepted ? tool.cliId() : null, viaShared);
             switch (status) {
                 case CONFIGURED -> configured.add(info);
                 case DETECTED -> found.add(info);

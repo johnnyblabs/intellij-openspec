@@ -1,5 +1,6 @@
 package com.johnnyblabs.openspec.dialogs;
 
+import com.johnnyblabs.openspec.services.AiToolDetectionService;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.application.impl.LaterInvocator;
@@ -105,5 +106,44 @@ public class ManageAiToolsDialogModalityTest extends BasePlatformTestCase {
             LaterInvocator.leaveModal(modal);
         }
         assertTrue("control: it runs once the dialog closes", within(reloaded::get));
+    }
+
+    /** The tool scan runs off the EDT and its result reaches the open dialog, under the dialog's modality. */
+    public void testTheToolScanReachesTheOpenDialog() throws Exception {
+        AiToolDetectionService service = getProject().getService(AiToolDetectionService.class);
+        AtomicBoolean onEdt = new AtomicBoolean(true);
+        java.util.concurrent.atomic.AtomicReference<ManageAiToolsDialog.Scan> got = new java.util.concurrent.atomic.AtomicReference<>();
+        Object modal = new Object();
+        LaterInvocator.enterModal(modal);
+        try {
+            ModalityState modality = ModalityState.current();
+            ManageAiToolsDialog.scanThenPost(service, "2.1.1", null, modality, NEVER_EXPIRED, scan -> {
+                onEdt.set(ApplicationManager.getApplication().isDispatchThread());
+                got.set(scan);
+            });
+            assertTrue("the scan result must arrive while the dialog is open", within(() -> got.get() != null));
+            assertTrue("and be applied on the EDT", onEdt.get());
+            assertTrue("2.1.1 is the 2.x line", got.get().cli2x());
+            assertFalse(got.get().tools().isEmpty());
+        } finally {
+            LaterInvocator.leaveModal(modal);
+            PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
+        }
+    }
+
+    /** Negative control: posted non-modally, the scan would be held until the dialog closes. */
+    public void testANonModalScanIsHeldByTheDialog() throws Exception {
+        AiToolDetectionService service = getProject().getService(AiToolDetectionService.class);
+        AtomicBoolean got = new AtomicBoolean();
+        Object modal = new Object();
+        LaterInvocator.enterModal(modal);
+        try {
+            ManageAiToolsDialog.scanThenPost(service, "2.1.1", null, ModalityState.nonModal(), NEVER_EXPIRED, scan -> got.set(true));
+            within(() -> false);
+            assertFalse("non-modal posts wait for the dialog to close", got.get());
+        } finally {
+            LaterInvocator.leaveModal(modal);
+            PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
+        }
     }
 }

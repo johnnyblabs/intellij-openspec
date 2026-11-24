@@ -43,7 +43,9 @@ public class ManageAiToolsDialog extends DialogWrapper {
     private final Project project;
     private final SearchTextField searchField;
     private final JPanel toolListPanel;
-    private List<ToolInfo> allTools;
+    private List<ToolInfo> allTools = List.of();
+    /** Bumped by each scan, so an older scan finishing late can't replace a newer one's list. */
+    private final java.util.concurrent.atomic.AtomicLong scanGeneration = new java.util.concurrent.atomic.AtomicLong();
     /**
      * The dialog's modality, captured once after {@code init()}. Background results posted without it are held by
      * the platform until this modal dialog closes (see {@code BulkArchiveDialog}).
@@ -137,17 +139,53 @@ public class ManageAiToolsDialog extends DialogWrapper {
         return new Action[]{getOKAction()};
     }
 
+    /**
+     * Rescans the tools on a pooled thread (it reads the project and the home folder) and fills the list under the
+     * dialog's modality; "Loading…" until then. A newer scan wins over an older one that finishes later.
+     */
     private void loadTools() {
         AiToolDetectionService toolService = project.getService(AiToolDetectionService.class);
-        if (toolService == null) {
+        if (dialogModality != null) scopeLine.refresh(dialogModality, ignored -> isDisposed());
+        if (toolService == null || dialogModality == null) {
             allTools = List.of();
             filterTools("");
             return;
         }
-        toolService.detect();
-        allTools = toolService.getAllToolsWithStatus();
-        filterTools(searchField.getText().trim());
-        if (dialogModality != null) scopeLine.refresh(dialogModality, ignored -> isDisposed());
+        showLoading();
+        long generation = scanGeneration.incrementAndGet();
+        CliDetectionService cli = project.getService(CliDetectionService.class);
+        String version = cli != null && cli.isAvailable() ? cli.getDetectedVersion() : null;
+        String basePath = project.getBasePath();
+        scanThenPost(toolService, version, basePath == null ? null : java.nio.file.Path.of(basePath), dialogModality,
+                ignored -> isDisposed() || project.isDisposed(), scan -> {
+                    if (scanGeneration.get() != generation) return;
+                    allTools = scan.tools();
+                    if (subtitleLabel != null) subtitleLabel.setText(subtitle(scan.cli2x()));
+                    filterTools(searchField.getText().trim());
+                });
+    }
+
+    /** What a scan found: the tools to list, and whether the CLI line is 2.x (with no CLI, by the project's layout). */
+    record Scan(List<ToolInfo> tools, boolean cli2x) {
+    }
+
+    /** Runs {@code service}'s scan on a pooled thread, then hands it to {@code sink} on the EDT under {@code modality}. */
+    @VisibleForTesting
+    static void scanThenPost(AiToolDetectionService service, @Nullable String cliVersion,
+                             @Nullable java.nio.file.Path project, ModalityState modality, Condition<?> expired,
+                             java.util.function.Consumer<Scan> sink) {
+        ApplicationManager.getApplication().executeOnPooledThread(() -> {
+            service.detect();
+            Scan scan = new Scan(service.getAllToolsWithStatus(), cli2x(cliVersion, project));
+            ApplicationManager.getApplication().invokeLater(() -> sink.accept(scan), modality, expired);
+        });
+    }
+
+    private void showLoading() {
+        toolListPanel.removeAll();
+        toolListPanel.add(new JBLabel("Loading…"));
+        toolListPanel.revalidate();
+        toolListPanel.repaint();
     }
 
     /**
@@ -247,6 +285,13 @@ public class ManageAiToolsDialog extends DialogWrapper {
         JBLabel nameLabel = new JBLabel(tool.name());
         nameLabel.setFont(nameLabel.getFont().deriveFont(Font.PLAIN, 13f));
         namePanel.add(nameLabel);
+        if (tool.viaShared()) {
+            // Upstream's own label for the folder the tool's skills come from.
+            JBLabel via = new JBLabel(VIA_SHARED);
+            via.setForeground(JBColor.GRAY);
+            via.setFont(via.getFont().deriveFont(Font.PLAIN, 11f));
+            namePanel.add(via);
+        }
 
         // Type badge; an unclassified tool gets none.
         String typeText = tool.type().badge();
@@ -522,6 +567,8 @@ public class ManageAiToolsDialog extends DialogWrapper {
             }
         });
     }
+
+    static final String VIA_SHARED = "via shared .agents skills";
 
     /** The button a run started from: "..." while it runs, "Retry" after a failure. The install link has none. */
     private static void setBusy(@Nullable JButton button, boolean busy) {
