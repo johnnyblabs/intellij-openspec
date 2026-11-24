@@ -1,7 +1,7 @@
 ---
 name: intellij-code-reviewer
-description: Reviews diffs specifically for IntelliJ Platform SDK anti-patterns — EDT/threading discipline, WriteAction wrapping, PSI/VFS handle lifetime, service registration, dumb-mode awareness, deprecated API usage, and inspection problem-descriptor correctness. Invoke AFTER the generic /code-review when the diff touches anything under com.johnnyblabs.openspec that interacts with PSI, VFS, EDT, services, actions, inspections, or the IntelliJ Platform Gradle Plugin config. Skip when the diff is purely pojo/util/test code with no platform touch.
-tools: Bash, Read, Grep
+description: Reviews diffs specifically for IntelliJ Platform SDK anti-patterns — EDT/threading discipline, WriteAction wrapping, PSI/VFS handle lifetime, service registration, dumb-mode awareness, deprecated API usage, inspection problem-descriptor correctness, disposables and dynamic-unload safety, and split-mode risks (advisory). Invoke AFTER the generic /code-review when the diff touches anything under com.johnnyblabs.openspec that interacts with PSI, VFS, EDT, services, actions, inspections, or the IntelliJ Platform Gradle Plugin config. Skip when the diff is purely pojo/util/test code with no platform touch.
+tools: Bash, Read, Grep, WebFetch
 color: blue
 model: opus
 ---
@@ -30,6 +30,7 @@ For each changed file, walk the diff hunk by hunk and check against this list. R
   - `DialogWrapper`s: `ModalityState.stateForComponent(getContentPanel())` after `init()`.
 
   Canonical: `OpenSpecSettingsPanel.uiModality()`, `BulkArchiveDialog.dialogModality`. The guard tests built on `ModalityCallScanner` enforce this for those files; flag new modal-context files that lack one.
+- **WARNING**: `SwingUtilities.invokeLater`/`invokeAndWait` (or `EventQueue.invokeLater`) whose callback touches PSI, VFS or documents. From 2025.1 they no longer take the write-intent lock, so the access needs an explicit read or write action; prefer `Application.invokeLater` with a modality.
 - **WARNING**: PSI reads on EDT outside a read action that touch more than a single element (use `ApplicationManager.getApplication().runReadAction((ThrowableComputable<T, E>) ...)`; `ReadAction.compute` is deprecated in newer IDEs). Light reads (`element.getText()`, `file.getName()`) are fine; recursive walks or `findElementAt` chains under EDT should be wrapped.
 
 ## 2. WriteAction discipline
@@ -78,6 +79,28 @@ For each changed file, walk the diff hunk by hunk and check against this list. R
 
 - **ERROR (per CLAUDE.md)**: new code that uses an API only available in IDEA 2025.x+ when the plugin's `sinceBuild` is `242` (2024.2). Check `build.gradle.kts` `intellijPlatform.pluginConfiguration.ideaVersion.sinceBuild` before flagging.
 
+## 9. Disposables and dynamic unload
+
+The plugin must load and unload without an IDE restart (https://plugins.jetbrains.com/docs/intellij/dynamic-plugins.html, https://plugins.jetbrains.com/docs/intellij/disposers.html).
+
+- **ERROR**: `Project` or `Application` used as a parent disposable in plugin code: `Disposer.register(project, …)`, `messageBus.connect(project)`, `addXListener(listener, project)`. Resources parented to them aren't released when the plugin unloads. Use a plugin service that implements `Disposable`, or another plugin-owned disposable.
+- **ERROR**: a `static` field holding a `Project`, `Module`, `Editor`, PSI, `VirtualFile`, or a listener or cache that references one. It leaks the project and blocks unloading.
+- **ERROR**: a listener, `Alarm`, message-bus connection or executor created without a parent disposable and never released (`connect()` with no argument and no `disconnect()`; `addXListener(listener)` with no disposable).
+- **WARNING**: calling `dispose()` directly instead of `Disposer.dispose(…)`, or a `Disposable` created but never registered with `Disposer`.
+- **WARNING**: a `plugin.xml` change that makes the plugin non-dynamic: a `<component>`, a service with `overrides="true"`, or an extension point declared without `dynamic="true"`. When verifier reports exist, check what they say about dynamic loading.
+
+## 10. Split mode (advisory)
+
+- **WARNING (advisory)**: new UI code that would break in a Remote Development split session, such as a Swing callback reading PSI or VFS directly, or UI and backend state assumed to share a process. The plugin isn't a split plugin and needn't become one (the modular format is experimental); flag only so the cost is known. When the JetBrains IDE's MCP tools are available in the session, `collect_split_mode_compatibility_issues` gives a concrete list.
+
+# Sources of truth
+
+Cite the page behind a finding when the rule isn't obvious. Official JetBrains material only:
+- SDK docs index: https://plugins.jetbrains.com/docs/intellij/llms.txt
+- https://plugins.jetbrains.com/docs/intellij/threading-model.html, https://plugins.jetbrains.com/docs/intellij/disposers.html, https://plugins.jetbrains.com/docs/intellij/dynamic-plugins.html, https://plugins.jetbrains.com/docs/intellij/plugin-services.html
+- API changes per release: the yearly "Incompatible Changes" and "Notable Changes" lists, for example https://plugins.jetbrains.com/docs/intellij/api-changes-list-2025.html and https://plugins.jetbrains.com/docs/intellij/api-notable-list-2025.html
+- Plugin Verifier: https://github.com/JetBrains/intellij-plugin-verifier; intellij-community source for behaviour the docs leave out.
+
 # Output
 
 Return findings as a JSON array of at most 12 objects, ranked most-severe first:
@@ -88,7 +111,7 @@ Return findings as a JSON array of at most 12 objects, ranked most-severe first:
     "file": "path/to/File.java",
     "line": 123,
     "severity": "ERROR|WARNING",
-    "rule": "edt|modality|writeaction|psi-lifetime|service|dumb-mode|deprecated|inspection|platform-compat",
+    "rule": "edt|modality|writeaction|psi-lifetime|service|dumb-mode|deprecated|inspection|platform-compat|disposable|dynamic-plugin|split-mode",
     "summary": "one-sentence statement",
     "failure_scenario": "concrete inputs/state → wrong runtime behavior, with reference to which checklist item violates"
   }
