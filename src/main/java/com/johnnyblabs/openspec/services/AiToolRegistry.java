@@ -520,6 +520,47 @@ public final class AiToolRegistry {
         return group.size() > 1 ? group : List.of();
     }
 
+    /** Hermes's setup note in the CLI's registry from 1.7.0 until 2.0.0. */
+    static final String HERMES_NOTE_1X = "Hermes only loads skills from ~/.hermes/skills by default. Add this project's .hermes/skills directory to skills.external_dirs in ~/.hermes/config.yaml so Hermes picks up the generated OpenSpec skills.";
+    /** Hermes's setup note from 2.0.0. */
+    static final String HERMES_NOTE_2X = "Hermes loads this project's .hermes/skills only once you trust the repo: run `hermes skills trust` in this project (Hermes v2026.6.5 or later). On older versions, add this project's .hermes/skills directory to skills.external_dirs in ~/.hermes/config.yaml instead.";
+    /** The note 2.1 gives every tool its installer treats as universal, except {@code agents} itself. */
+    static final String UNIVERSAL_FOLDER_NOTE = "Skills are in the universal skills folder. If your tool needs its own folder, see https://github.com/Fission-AI/OpenSpec/blob/main/docs-lab/reference/supported-tools.md#link-another-tool";
+
+    /**
+     * The tools 2.1's installer treats as universal: they read the shared skills folder as their own. The CLI's
+     * {@code installerAgent} maps them to {@code universal}; the skills-scope capture's {@code skipped} list records it.
+     */
+    public static final Set<String> UNIVERSAL_INSTALLER_TOOLS = Set.of("agents", "atomcode", "codeassistant",
+            "costrict", "dsh", "easycode", "gigacode", "gsd", "oh-my-pi", "veai");
+
+    /**
+     * The setup note the CLI's registry of {@code version} gives {@code tool}, which its {@code init} and
+     * {@code update} print as "Setup required for <tool>", or {@code null}.
+     */
+    public static @Nullable String setupNote(AiTool tool, @Nullable String version) {
+        if (version == null || version.isBlank()) return null;
+        if ("hermes".equals(tool.id())) {
+            if (CliVersion.atLeast(version, "2.0.0")) return HERMES_NOTE_2X;
+            return CliVersion.atLeast(version, "1.7.0") ? HERMES_NOTE_1X : null;
+        }
+        boolean universal = UNIVERSAL_INSTALLER_TOOLS.contains(tool.id()) && !UNIVERSAL_ID.equals(tool.id());
+        return universal && CliVersion.atLeast(version, "2.1.0") ? UNIVERSAL_FOLDER_NOTE : null;
+    }
+
+    /**
+     * The setup note to pass on after {@code args} set {@code tool} up, as the CLI's {@code init} prints it (captured
+     * in {@code setup-notes.json}): none for a tool outside the universal skills folder when the run kept the skills
+     * on the machine.
+     */
+    public static @Nullable String setupNoteAfter(AiTool tool, @Nullable String cliVersion,
+                                                  com.johnnyblabs.openspec.util.CliArgs args) {
+        boolean keptOnMachine = cliVersion != null && CliVersion.atLeast(cliVersion, "2.1.0")
+                && !args.requested().contains("--scope");
+        if (keptOnMachine && !UNIVERSAL_INSTALLER_TOOLS.contains(tool.id())) return null;
+        return setupNote(tool, cliVersion);
+    }
+
     /** Whether CLI 2.1 added the tool, from its bundled installer. */
     static boolean addedIn21(AiTool tool) {
         return CliVersion.atLeast(tool.sinceCli(), "2.1.0");

@@ -874,6 +874,7 @@ From `scripts/capture-skills-scope.py`, on 2.1.0 and 2.1.1 (2.0.0 has only `env-
 - **Errors:**
   - `errors/init-scope-project-no-tools.*`: `init --scope project` with no `--tools`, not interactive, on a machine-scoped project.
   - 2.1.0 `errors/init-no-git.*`: no Git on `PATH`. The reason is on stdout (`Failed: Claude Code (… Git is needed …)`), only the tool on stderr, and `openspec/` was already written.
+- **`setup-notes.json`** (2.1.0, 2.1.1, and 1.17.0 for Hermes only): the `Setup required for <tool>: <note>` lines `init` printed for Hermes and GSD, with `--scope project` and with the default scope. On 2.1, Hermes, which isn't a universal-folder tool, gets no note when the skills went to the machine; GSD gets one either way.
 - **`machine-markers.json`:** every path the `skills` installer (its version recorded) checks to call a tool installed on this machine, probed by patching `fs.existsSync` in a fresh `node` under an empty home. Each `home` or `configHome` path is then created alone (after its parent folder) and recorded with the agents it adds and the OpenSpec tools those map to. `cwd` and `absolute` paths are recorded but not tickable. `skipped` lists the tools that map to the `universal` agent, which the CLI's picker never ticks from the machine.
 
 ### Contract tests across releases, and the gaps

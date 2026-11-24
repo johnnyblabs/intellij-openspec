@@ -1,0 +1,5 @@
+{
+  "hermes default": [
+    "Setup required for Hermes Agent: Hermes only loads skills from ~/.hermes/skills by default. Add this project's .hermes/skills directory to skills.external_dirs in ~/.hermes/config.yaml so Hermes picks up the generated OpenSpec skills."
+  ]
+}

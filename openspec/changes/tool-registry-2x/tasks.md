@@ -26,9 +26,9 @@
 ## 3. Wording, notes and the shared-folder line
 
 - [ ] 3.1 Make `SUBTITLE` and `toolSetUpNotice` say "skills" on CLI 2.x and "/opsx commands" on 1.x (no CLI: the project's layout decides). Verify: tests for 1.17.0, 2.0.0, 2.1.1 and no CLI with a 2.x and a 1.x layout; `ManageAiToolsSetUpNoticeTest` updated.
-- [ ] 3.2 Add `AiToolRegistry.setupNote(tool, version)` and append it to the set-up notice, except for a tool outside the universal folder after a machine-scoped add, as upstream prints it. Verify:
-  - a contract test that `setupNote(tool, v)` equals each tool's `setupNote` in every captured dump (Hermes from 1.7.0, its 2.x text from 2.0.0; the nine universal-folder tools on 2.1.x; nothing for any other tool);
-  - notice tests: Hermes on 1.17.0 and on 2.1.1, GSD on 2.1.1, Hermes after a machine-scoped add (no note), and Cursor (none).
+- [x] 3.2 Add `AiToolRegistry.setupNote(tool, version)` and `setupNoteAfter(tool, version, args)`, appended to the set-up notice ("Setup required for <tool>: <note>", the CLI's wording), except for a tool outside the universal folder after a machine-scoped add, as upstream prints it. Verify:
+  - `SetupNotesContractTest`: `setupNote(tool, v)` equals each tool's `setupNote` in every captured dump (Hermes from 1.7.0, its 2.x text from 2.0.0; the nine universal-folder tools on 2.1.x; nothing for any other); the universal set equals the installer's (the skills-scope capture's `skipped`); and the note passed on equals what `init` printed, captured in `setup-notes.json` for Hermes and GSD with each scope (and Hermes on 1.17.0); dropping the machine-scope exception turns the Hermes default case red;
+  - notice tests: Hermes on 1.17.0 and 2.1.1, GSD on 2.1.1 and 2.0.0, Hermes after a machine-scoped add (no note), and Cursor (none).
 - [ ] 3.3 Move `loadTools()`'s scan to a pooled thread, filling the list with `invokeLater(dialogModality, expired)` ("Loading…" until then). Add `ToolInfo.viaShared` and the "via shared .agents skills" line. Verify:
   - a heavy test on the captured 2.1.1 `scope-project` layout shows the line for Cursor (skills only) and not for Claude (linked) or Codex (its own folder is `.agents`);
   - `ManageAiToolsRefreshHygieneTest` covers the new hop, and existing dialog tests wait for the list;

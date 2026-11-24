@@ -1,0 +1,12 @@
+{
+  "gsd default": [
+    "Setup required for GSD: Skills are in the universal skills folder. If your tool needs its own folder, see https://github.com/Fission-AI/OpenSpec/blob/main/docs-lab/reference/supported-tools.md#link-another-tool"
+  ],
+  "gsd project": [
+    "Setup required for GSD: Skills are in the universal skills folder. If your tool needs its own folder, see https://github.com/Fission-AI/OpenSpec/blob/main/docs-lab/reference/supported-tools.md#link-another-tool"
+  ],
+  "hermes default": [],
+  "hermes project": [
+    "Setup required for Hermes Agent: Hermes loads this project's .hermes/skills only once you trust the repo: run `hermes skills trust` in this project (Hermes v2026.6.5 or later). On older versions, add this project's .hermes/skills directory to skills.external_dirs in ~/.hermes/config.yaml instead."
+  ]
+}

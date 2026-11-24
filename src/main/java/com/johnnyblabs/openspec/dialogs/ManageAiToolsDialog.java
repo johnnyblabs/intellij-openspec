@@ -51,6 +51,8 @@ public class ManageAiToolsDialog extends DialogWrapper {
     private ModalityState dialogModality;
     /** Where the project's skills are, with "Install into this project" for a machine-scoped project. */
     private final SkillsScopeLine scopeLine;
+    /** The subtitle, reworded once the scan knows the CLI line. */
+    private @Nullable JBLabel subtitleLabel;
 
     public ManageAiToolsDialog(Project project) {
         super(project, false);
@@ -86,7 +88,11 @@ public class ManageAiToolsDialog extends DialogWrapper {
         JPanel headerPanel = new JPanel(new BorderLayout(JBUI.scale(8), 0));
         headerPanel.setBorder(JBUI.Borders.emptyBottom(8));
 
-        JBLabel title = new JBLabel(SUBTITLE);
+        CliDetectionService detected = project.getService(CliDetectionService.class);
+        // From the detected version here; with no CLI, the tool scan refines it from the project's layout.
+        JBLabel title = new JBLabel(subtitle(detected != null && detected.isAvailable()
+                && cli2x(detected.getDetectedVersion(), null)));
+        subtitleLabel = title;
         title.setForeground(JBColor.GRAY);
         headerPanel.add(title, BorderLayout.NORTH);
 
@@ -379,27 +385,45 @@ public class ManageAiToolsDialog extends DialogWrapper {
                 });
     }
 
-    /** The dialog's subtitle: these are agents, and generating inside the IDE is something else. */
-    static final String SUBTITLE = "AI coding agents that run OpenSpec's /opsx commands. "
-            + "To generate inside the IDE instead, set up Direct API in Settings.";
+    /**
+     * The dialog's subtitle: these are agents, and generating inside the IDE is something else. On CLI 2.x OpenSpec
+     * writes skills, on 1.x its {@code /opsx} commands.
+     */
+    static String subtitle(boolean cli2x) {
+        return "AI coding agents that run OpenSpec's " + (cli2x ? "skills" : "/opsx commands") + ". "
+                + "To generate inside the IDE instead, set up Direct API in Settings.";
+    }
 
-    /** What adding or configuring {@code tool} did, and, without Direct API, how to generate inside the IDE instead. */
-    static String toolSetUpNotice(String tool, boolean directApiConfigured) {
-        String notice = tool + " is set up: OpenSpec wrote its /opsx commands to this project. Prompts are labeled \"Copy for "
-                + tool + "\"; paste them into the agent.";
+    /**
+     * What adding or configuring {@code tool} did, the CLI's setup note for it when there is one, and, without Direct
+     * API, how to generate inside the IDE instead.
+     */
+    static String toolSetUpNotice(String tool, boolean directApiConfigured, boolean cli2x, @Nullable String setupNote) {
+        String notice = tool + " is set up: OpenSpec wrote its " + (cli2x ? "skills" : "/opsx commands")
+                + " to this project. Prompts are labeled \"Copy for " + tool + "\"; paste them into the agent.";
+        if (setupNote != null) notice += " Setup required for " + tool + ": " + setupNote;
         return directApiConfigured ? notice : notice + " To generate inside the IDE instead, set up Direct API.";
     }
+
+    /** Whether the CLI line is 2.x: the detected CLI's version, or with none detected, the project's layout. Reads disk. */
+    static boolean cli2x(@Nullable String cliVersion, @Nullable java.nio.file.Path project) {
+        if (cliVersion != null && !cliVersion.isBlank()) return com.johnnyblabs.openspec.util.CliVersion.atLeast(cliVersion, "2.0.0");
+        return project != null && com.johnnyblabs.openspec.services.DetectionRules.fromDisk(project).is2x();
+    }
+
+
 
     /**
      * Says a CLI action succeeded: for setting up a tool ({@code setUpTool} non-null), what that did and, without Direct
      * API, a "Set up Direct API…" action; otherwise that {@code title} is done.
      */
-    static void notifySucceeded(Project project, String title, @Nullable String setUpTool, boolean directApiConfigured) {
+    static void notifySucceeded(Project project, String title, @Nullable String setUpTool, boolean directApiConfigured,
+                                boolean cli2x, @Nullable String setupNote) {
         if (setUpTool == null) {
             OpenSpecNotifier.info(project, "AI Tools", title + " \u2014 done");
             return;
         }
-        String content = toolSetUpNotice(setUpTool, directApiConfigured);
+        String content = toolSetUpNotice(setUpTool, directApiConfigured, cli2x, setupNote);
         if (directApiConfigured) {
             OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_SYSTEM, "AI Tools", content, NotificationType.INFORMATION);
         } else {
@@ -453,8 +477,17 @@ public class ManageAiToolsDialog extends DialogWrapper {
             public void run(@NotNull ProgressIndicator indicator) {
                 Condition<?> expired = ignored -> isDisposed() || project.isDisposed();
                 try {
-                    CliRunner.CliResult result = CliRunner.run(project, args.get());
+                    com.johnnyblabs.openspec.util.CliArgs command = args.get();
+                    CliRunner.CliResult result = CliRunner.run(project, command);
                     if (result.isSuccess()) {
+                        // The wording reads the detected version and, with none, the project's layout: decided here.
+                        CliDetectionService cli = project.getService(CliDetectionService.class);
+                        String version = cli != null && cli.isAvailable() ? cli.getDetectedVersion() : null;
+                        boolean twoX = cli2x(version, project.getBasePath() == null ? null : java.nio.file.Path.of(project.getBasePath()));
+                        com.johnnyblabs.openspec.services.AiToolRegistry.AiTool entry =
+                                setUpTool == null ? null : com.johnnyblabs.openspec.services.AiToolRegistry.byName(setUpTool);
+                        String note = entry == null ? null
+                                : com.johnnyblabs.openspec.services.AiToolRegistry.setupNoteAfter(entry, version, command);
                         // The CLI wrote files outside the VFS. A synchronous refresh is illegal here (off the EDT),
                         // so refresh the project directory asynchronously and reload the list once it finishes.
                         // loadTools() rebuilds every row, which also replaces the "..." button.
@@ -463,7 +496,7 @@ public class ManageAiToolsDialog extends DialogWrapper {
                                 ? LocalFileSystem.getInstance().findFileByPath(basePath) : null;
                         refreshThenPost(projectDir, dialogModality, expired, () -> {
                             loadTools();
-                            notifySucceeded(project, title, setUpTool, directApiConfigured());
+                            notifySucceeded(project, title, setUpTool, directApiConfigured(), twoX, note);
                         });
                     } else {
                         ApplicationManager.getApplication().invokeLater(() -> {

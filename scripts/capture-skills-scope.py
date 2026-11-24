@@ -34,6 +34,7 @@ from openspec_capture import cli, isolated_env, key, package, require_git_and_ne
 
 FIXTURES = Path(__file__).resolve().parent.parent / "src/test/resources/fixtures/cli"
 RELEASES = ["2.0.0", "2.1.0", "2.1.1"]
+NOTE_RELEASES = ["1.17.0"]  # setup notes only: the last 1.x line, for Hermes's 1.x note
 RESOURCE = Path(__file__).resolve().parent.parent / "src/main/resources/openspec/machine-tool-markers.txt"
 
 # Variables the installer reads in place of a home folder; unset so every probe sees only the throwaway home.
@@ -294,17 +295,37 @@ def capture_20(tmp):
     write_fixture(FIXTURES / version / "skills-scope/env-ignored/layout.json", layouts[0])
 
 
+def capture_setup_notes(version, tmp):
+    """Whether init prints "Setup required for <tool>" for Hermes and GSD, with each scope (1.17: Hermes only)."""
+    cases = [("hermes", "project"), ("hermes", None), ("gsd", "project"), ("gsd", None)]
+    if key(version) < key("2.1.0"):
+        cases = [("hermes", None)]
+    out = {}
+    for tool, scope in cases:
+        project, home = fresh(tmp, f"note-{tool}-{scope}")
+        args = ["init", "--tools", tool] + (["--scope", scope] if scope else [])
+        r = ok(run(version, project, home, args), " ".join(args))
+        lines = [l.strip() for l in r.stdout.splitlines() if l.strip().startswith("Setup required for")]
+        out[f"{tool} {scope or 'default'}"] = lines
+    write_fixture(FIXTURES / version / "setup-notes.json", json.dumps(out, indent=2, sort_keys=True) + "\n")
+
+
 def main():
     wanted = os.environ.get("CAPTURE_VERSIONS")
     versions = [v for v in RELEASES if not wanted or v in wanted.split(",")]
     if "2.1.0" in versions:
         require_git_and_network()
+    for version in [v for v in NOTE_RELEASES if not wanted or v in wanted.split(",")]:
+        print(version, "(setup notes)")
+        with tempfile.TemporaryDirectory() as tmp:
+            capture_setup_notes(version, tmp)
     for version in versions:
         print(version)
         with tempfile.TemporaryDirectory() as tmp:
             if key(version) >= key("2.1.0"):
                 capture_21(version, tmp)
                 capture_markers(version, tmp)
+                capture_setup_notes(version, tmp)
             else:
                 capture_20(tmp)
 
