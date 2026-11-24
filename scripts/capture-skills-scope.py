@@ -41,6 +41,7 @@ HOME_OVERRIDES = ["CODEX_HOME", "CLAUDE_CONFIG_DIR", "VIBE_HOME", "HERMES_HOME",
                   "SARVAM_HOME", "REASONIX_HOME", "APPDATA", "FLATPAK_XDG_CONFIG_HOME", "USERPROFILE"]
 
 TEAM_CONFIG = "schema: spec-driven\ncontext: Team context marker.\nskillsScope: team\n"
+EMPTY_CONFIG = "schema: spec-driven\nskillsScope:\n"
 
 
 def env(home, **extra):
@@ -127,6 +128,21 @@ def capture_21(version, tmp):
     if context is None:
         sys.exit(f"{version}: instructions dropped the config's context alongside the skillsScope warning")
     write_fixture(FIXTURES / version / "skills-scope/team-context.txt", context.strip() + "\n")
+
+    # An empty value: upstream checks only that the key is present, so it warns too.
+    (project / "openspec/config.yaml").write_text(EMPTY_CONFIG)
+    write_fixture(FIXTURES / version / "skills-scope/config-empty.yaml", EMPTY_CONFIG)
+    empty = run(version, project, home, ["instructions", "proposal", "--change", "demo", "--json"])
+    write_fixture(FIXTURES / version / "skills-scope/empty-warning.stderr", sanitize(empty.stderr, project, home))
+    write_fixture(FIXTURES / version / "skills-scope/empty-warning.exit", f"{empty.returncode}\n")
+
+    # What the setup wizard sends when no tool is detected: no tools, the project scope.
+    project, home = fresh(tmp, "tools-none")
+    none = run(version, project, home, ["init", "--tools", "none", "--scope", "project"])
+    write_fixture(FIXTURES / version / "skills-scope/tools-none/exit", f"{none.returncode}\n")
+    write_layout(version, "tools-none", project, home)
+    if not (project / "openspec/config.yaml").is_file():
+        sys.exit(f"{version}: init --tools none --scope project wrote no openspec/config.yaml")
 
     # The environment backstop: no --scope, the variable alone.
     project, home = fresh(tmp, "env-project")

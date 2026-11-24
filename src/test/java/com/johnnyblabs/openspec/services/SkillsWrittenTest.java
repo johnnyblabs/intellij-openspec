@@ -21,6 +21,7 @@ class SkillsWrittenTest {
     @Test
     void initAndUpdateWriteSkillsADryRunAndOtherCommandsDont() {
         assertTrue(SkillsWritten.writesSkills(CliCommands.initInProject("claude")));
+        assertTrue(SkillsWritten.writesSkills(CliCommands.initKeepingScope("claude")), "a scope-keeping add writes skills too");
         assertTrue(SkillsWritten.writesSkills(CliCommands.update()));
         assertTrue(SkillsWritten.writesSkills(CliCommands.updateWithoutPrompts()));
         assertFalse(SkillsWritten.writesSkills(CliCommands.updatePlan(false)));

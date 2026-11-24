@@ -117,7 +117,11 @@ public class ConfigValidationInspectionTest extends OpenSpecIntegrationTestBase 
     }
 
     public void testAnEmptySkillsScopeIsWarnedAboutAsUpstreamDoes() throws Exception {
-        assertEquals(1, check("schema: spec-driven\nskillsScope:\n").length);
+        for (String v : new String[] {"2.1.0", "2.1.1"}) {
+            ProblemDescriptor[] problems = check(fixture(v + "/skills-scope/config-empty.yaml"));
+            assertEquals(v, 1, problems.length);
+            assertEquals(v, fixture(v + "/skills-scope/empty-warning.stderr").strip(), problems[0].getDescriptionTemplate());
+        }
     }
 
     public void testValidOrMissingSkillsScopeIsClean() throws Exception {

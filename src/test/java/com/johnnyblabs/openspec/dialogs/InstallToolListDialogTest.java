@@ -39,6 +39,19 @@ public class InstallToolListDialogTest extends BasePlatformTestCase {
         assertTrue(dialog.okEnabledForTest());
     }
 
+    /** The install always names its tools: without --tools, a non-interactive 2.1 init can't choose (captured). */
+    public void testTheInstallAlwaysPassesToolsBecauseTheCliCantChooseWithoutThem() throws Exception {
+        for (String v : new String[] {"2.1.0", "2.1.1"}) {
+            Path errors = com.johnnyblabs.openspec.util.FixtureVersions.CLI.resolve(v).resolve("errors");
+            assertEquals(v, "1", Files.readString(errors.resolve("init-scope-project-no-tools.exit")).strip());
+            assertTrue(v, Files.readString(errors.resolve("init-scope-project-no-tools.stderr"))
+                    .contains("No tools detected and no --tools flag provided"));
+        }
+        List<String> argv = ManageAiToolsDialog.installArgs(List.of(AiToolRegistry.byId("claude"))).requested();
+        assertEquals("--tools", argv.get(1));
+        assertEquals("claude", argv.get(2));
+    }
+
     public void testNothingTickedOpensWithInstallDisabled() {
         assertFalse(open(List.of(new InstallToolTicks.Row(AiToolRegistry.byId("claude"), false))).okEnabledForTest());
     }

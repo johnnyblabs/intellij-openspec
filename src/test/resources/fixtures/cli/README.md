@@ -855,8 +855,10 @@ From `scripts/capture-skills-scope.py`, on 2.1.0 and 2.1.1 (2.0.0 has only `env-
 
 - **Recorded choice:**
   - `remembered-config.yaml` is the config upstream's own `rememberProjectSkills` writes (`skillsScope: project`).
+  - `config-empty.yaml` is `skillsScope:` with no value; `empty-warning.stderr` and `.exit` show upstream warns about it too (it checks only that the key is present).
   - `config-team.yaml` is the input with an invalid value. `team-warning.stderr` and `.exit` hold what `instructions` prints for it (`Invalid 'skillsScope' field in config (must be "project" or "global")`, exit 0), and `team-context.txt` holds the config's `context`, which is still applied.
 - **Layouts:**
+  - `tools-none/`: `init --tools none --scope project`, the setup wizard's command when no tool is detected. `exit` is 0 and the layout holds no skills on either side.
   - `env-project/`: `OPENSPEC_SKILLS_SCOPE=project init --tools claude`, skills in the project only.
   - `machine-only/`: `init --tools cursor`, the default, skills in the home folder only.
   - `machine-add-keep/` and `machine-add-project/`: Claude added to that project without and with `--scope project`. Without it, the skills stay on the machine and `~/.claude/skills` links appear; with it, the project gets its own copy.

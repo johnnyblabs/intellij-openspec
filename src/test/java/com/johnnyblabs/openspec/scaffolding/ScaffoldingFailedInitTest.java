@@ -49,6 +49,12 @@ public class ScaffoldingFailedInitTest extends HeavyPlatformTestCase {
         when(detection.isAvailable()).thenReturn(true);
         when(detection.getDetectedVersion()).thenReturn(version);
         ServiceContainerUtil.replaceService(getProject(), CliDetectionService.class, detection, getTestRootDisposable());
+        // Tool detection reads the home folder; this one detects nothing, so the run never depends on the machine.
+        com.johnnyblabs.openspec.services.AiToolDetectionService tools =
+                mock(com.johnnyblabs.openspec.services.AiToolDetectionService.class);
+        when(tools.getDetectedCliToolIds()).thenReturn(List.of());
+        ServiceContainerUtil.replaceService(getProject(), com.johnnyblabs.openspec.services.AiToolDetectionService.class,
+                tools, getTestRootDisposable());
     }
 
     private void write(String rel, String text) {
@@ -94,8 +100,8 @@ public class ScaffoldingFailedInitTest extends HeavyPlatformTestCase {
         assertEquals("the CLI's init runs off the UI thread", Boolean.FALSE, onEdt.get());
         assertEquals("the CLI's config is kept, not replaced", "schema: spec-driven\n# written by the CLI\n",
                 Files.readString(base.resolve("openspec/config.yaml")));
-        assertTrue("the wizard's init asks for the project scope",
-                sent.get().requested().containsAll(List.of("--scope", "project")));
+        assertEquals("the wizard's init with no tool detected, as InitNoToolsContractTest captured it",
+                List.of("init", "--tools", "none", "--scope", "project"), sent.get().resolve("2.1.0").argv());
         assertEquals(1, raised.size());
         String content = raised.getFirst().getContent();
         assertTrue(content, content.contains(FailedInitNoticeContractTest.reasonLine(noGit)));

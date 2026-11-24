@@ -21,7 +21,7 @@
   - `CliCommandsTest` covers `KEEP`, which passes neither;
   - a mutation check: making `--scope` required, or ungating it, turns the 2.0.0 row red (by the captured rejection).
 - [x] 2.2 `ScaffoldingService` uses `initInProject`. A failed CLI init raises an `OpenSpecNotifier.warn` with the CLI's text (stderr plus the summary's `Failed:` lines), plus the 2.1.0 Git/network sentence when the detected version is 2.1.0. An `openspec/` the failing CLI already wrote is kept; otherwise the built-in init runs as before. Verify:
-  - `ScaffoldingInitArgsTest` pins the argv, and the version matrix (task 2.1) checks it per release against captured help;
+  - `ScaffoldingInitArgsTest` pins the argv, and the version matrix (task 2.1) checks it per release against captured help; `InitNoToolsContractTest` replays the captured `init --tools none --scope project` (the wizard's command with no tool detected): accepted, no skills written;
   - `FailedInitNoticeContractTest` builds the warning from the captured 2.1.0 no-Git and 2.1.1 home-folder errors;
   - `ScaffoldingFailedInitTest` drives a failing init on a real project: the CLI's tree is kept (a mutation disabling that turns it red), a failure that wrote nothing runs the built-in init, and a success raises nothing.
 
@@ -41,7 +41,7 @@
 - [x] 4.3 Add the scope line (`SkillsScopeLine`) to Manage AI Tools (footer) and the Settings panel (OpenSpec CLI section). It is hidden unless the CLI is 2.1+, the project shows a 2.x layout, or the home `.agents/skills/` holds OpenSpec skills. The "Install into this project" link appears only in Manage AI Tools, for `ON_MACHINE` on 2.1.0+. Below 2.1, the text still says the skills are on this machine. Verify:
   - `SkillsScopeLineTest` (heavy) reads real project directories recreated from the captured layouts: the text for each verdict, with the captured `skillsScope: project` config and with the captured invalid one;
   - it asserts the link appears only on 2.1.0+ `ON_MACHINE` and never on the Settings line, and that a pure 1.x project hides the line;
-  - `ManageAiToolsRefreshHygieneTest` checks the line's EDT hop carries the dialog's modality;
+  - `ManageAiToolsRefreshHygieneTest` checks the line's EDT hop carries the dialog's modality. That the read itself runs off the EDT is checked by the intellij-code-reviewer pass, not by a runtime test;
   - the intellij-code-reviewer pass finds no EDT reads.
 - [x] 4.4 Add the install tool list: `InstallToolListDialog`, one checkbox per tool, parented to Manage AI Tools. `InstallToolTicks` ticks project detection, the shipped `machine-tool-markers.txt` (written by the capture script from the newest release) and the preferred tool, off the EDT. Install is disabled with nothing ticked and runs `init --tools <ticked> --scope project`; Cancel runs nothing. Verify:
   - `InstallToolTicksTest`: `~/.claude` ticks Claude, `~/.cursor` ticks Cursor, a project `.cursor/` ticks Cursor, the preferred tool is ticked, "Other / Universal" is never ticked from the home, ticked rows come first;
@@ -49,13 +49,13 @@
   - `InstallToolListDialogTest`: Install needs a tick, the argv names the ticked tools in registry order with `--scope project`, and Cancel returns before any run;
   - mutations: dropping the preferred tick and hard-coding `~/.config` each turn tests red;
   - the intellij-code-reviewer pass finds no EDT reads.
-- [ ] 4.5 Add a uiSmoke journey, "install tool list opens from a machine-scoped project". Seed a project with `openspec/` and no skills of its own, with `.idea/openspec.xml` pointing the plugin at CLI 2.1.1 from the cliMatrix cache (`scripts/install-cli-matrix.py`; the journey fails, rather than skips, when it's missing, since the host CLI matches the older target). Start the sandbox IDE with `HOME` and the XDG folders set to a throwaway folder holding `.agents/skills/` (OpenSpec skills) and `.claude/`, so the run never touches the real home. The journey opens Manage AI Tools, checks the scope line reads "Skills: on this machine (~/.agents/skills)" and the link is shown, clicks "Install into this project", checks that the list opens with Claude ticked and that OK is disabled once every tick is cleared, then cancels. It stops before `init` runs: the argv is covered by 2.1 and 4.4. Verify:
+- [x] 4.5 Add a uiSmoke journey, "install tool list opens from a machine-scoped project". Seed a project with `openspec/` and no skills of its own, with `.idea/openspec.xml` pointing the plugin at CLI 2.1.1 from the cliMatrix cache (`scripts/install-cli-matrix.py`; the journey fails, rather than skips, when it's missing, since the host CLI matches the older target). Start the sandbox IDE with `HOME` and the XDG folders set to a throwaway folder holding `.agents/skills/` (OpenSpec skills) and `.claude/`, so the run never touches the real home. The journey opens Manage AI Tools, checks the scope line reads "Skills: on this machine (~/.agents/skills)" and the link is shown, clicks "Install into this project", checks that the list opens with Claude ticked and that OK is disabled once every tick is cleared, then cancels. It stops before `init` runs: the argv is covered by 2.1 and 4.4. Verify:
   - after cancelling, the project's `openspec/` and the throwaway home's `.agents/` and `.claude/` are byte-identical to the seed, and the project has no `.agents/` or `.claude/` (the IDE's own `.idea/` and caches are left out of the comparison);
-  - the journey passes under `caffeinate -dimsu ./gradlew uiSmoke`, and fails when the link is removed or the dialog's ticks are left empty.
+  - the journey passes under `caffeinate -dimsu ./gradlew uiSmoke`, and fails when the link is hidden ("Timed out waiting for: install link shown on CLI 2.1") or when nothing is ticked from the machine ("Claude Code is installed on the machine (~/.claude) but not ticked").
 
 ## 5. Documentation and checks
 
-- [ ] 5.1 Update `CHANGELOG.md` (Unreleased), `docs/feature-reference.md` (scope line, install action, init scope) and the user-facing docs that describe init or Manage AI Tools. Verify: `DocumentationHygieneTest` passes, `./gradlew build` passes, `openspec validate --all --strict` passes, the new plain test classes pass run alone, and each mutation check in 2.1, 3.1 and 3.2 turns at least one test red.
+- [x] 5.1 Update `CHANGELOG.md` (Unreleased), `docs/feature-reference.md` (scope line, install action, init scope) and the user-facing docs that describe init or Manage AI Tools. Verify: `DocumentationHygieneTest` passes, `./gradlew build` passes, `openspec validate --all --strict` passes, the new plain test classes pass run alone, and each mutation check in 2.1, 3.1 and 3.2 turns at least one test red.
 
 ## Workflow follow-up
 
