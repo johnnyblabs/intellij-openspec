@@ -57,4 +57,4 @@
 ## 6. Documentation and verification
 
 - [x] 6.1 Document the flag table, the builder catalog and the guard tests for contributors. Add an "Adding a CLI flag" section to `CONTRIBUTING.md`, or wherever contributor docs live, and the `cliMatrix` gate and install script to `scripts/README.md`. Update `fixtures/cli/README.md` for the new help commands. Verify: `DocumentationHygieneTest` passes, and the grep for homelab identifiers over the changed docs is empty.
-- [ ] 6.2 Run `./gradlew build` and `openspec validate --all --strict` on the branch. Verify: both are green, origin CI is green, and after the user mirrors, the GitHub matrix (build, macOS, Windows, verify) is green.
+- [x] 6.2 Run `./gradlew build` and `openspec validate --all --strict` on the branch. Verify: both are green, origin CI is green, and after the user mirrors, the GitHub matrix (build, macOS, Windows, verify) is green.
