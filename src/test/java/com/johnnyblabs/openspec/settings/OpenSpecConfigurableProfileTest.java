@@ -37,11 +37,12 @@ class OpenSpecConfigurableProfileTest {
         @Test
         void switchedOutcome_refreshesConfigProfileSectionAndPrompts() throws Exception {
             when(project.getService(WorkflowProfileSwitchService.class)).thenReturn(switchService);
-            when(switchService.switchProfile("custom")).thenReturn(new SwitchResult(Outcome.SWITCHED, null));
+            deliver(new SwitchResult(Outcome.SWITCHED, null));
 
             invokeApplyProfileChange("custom", "core");
 
-            verify(switchService).switchProfile("custom");
+            verify(switchService).switchProfileInBackground(eq("custom"), any());
+            verify(switchService, never()).switchProfile(anyString());
             verify(panel).refreshConfigProfileSection();
             verify(switchService).promptAndRunUpdateIfConfirmed("custom");
             verify(panel, never()).setProfile(anyString());
@@ -50,8 +51,7 @@ class OpenSpecConfigurableProfileTest {
         @Test
         void cliFailureOutcome_revertsPanelToOldProfileAndWarns() throws Exception {
             when(project.getService(WorkflowProfileSwitchService.class)).thenReturn(switchService);
-            when(switchService.switchProfile("custom"))
-                    .thenReturn(new SwitchResult(Outcome.CLI_FAILURE, "Unknown profile"));
+            deliver(new SwitchResult(Outcome.CLI_FAILURE, "Unknown profile"));
 
             try (MockedStatic<OpenSpecNotifier> notifier = mockStatic(OpenSpecNotifier.class)) {
                 invokeApplyProfileChange("custom", "core");
@@ -67,8 +67,7 @@ class OpenSpecConfigurableProfileTest {
         @Test
         void cliUnavailableOutcome_refreshesConfigProfileSectionWithoutPrompt() throws Exception {
             when(project.getService(WorkflowProfileSwitchService.class)).thenReturn(switchService);
-            when(switchService.switchProfile("custom"))
-                    .thenReturn(new SwitchResult(Outcome.CLI_UNAVAILABLE, null));
+            deliver(new SwitchResult(Outcome.CLI_UNAVAILABLE, null));
 
             invokeApplyProfileChange("custom", "core");
 
@@ -100,6 +99,18 @@ class OpenSpecConfigurableProfileTest {
             verify(panel).refreshConfigProfileSection();
             verify(project, never()).getService(WorkflowProfileService.class);
         }
+    }
+
+    /**
+     * Stubs the background switch to deliver {@code result} at once, as its EDT callback would. The Settings path
+     * must never call the blocking {@code switchProfile} itself (verified in the tests).
+     */
+    @SuppressWarnings("unchecked")
+    private void deliver(SwitchResult result) {
+        doAnswer(inv -> {
+            ((java.util.function.Consumer<SwitchResult>) inv.getArgument(1)).accept(result);
+            return null;
+        }).when(switchService).switchProfileInBackground(eq("custom"), any());
     }
 
     /** Uses reflection to invoke the private no-arg scheduleProfileRefresh with the mock panel injected. */

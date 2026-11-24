@@ -250,10 +250,16 @@ public final class OpenSpecProfileStatusBarWidget implements StatusBarWidget, St
         }
     }
 
-    private void switchToProfile(String targetProfile) {
+    /** Switches off the EDT (the CLI can take seconds), then refreshes the widget and offers the update on the EDT. */
+    void switchToProfile(String targetProfile) {
         WorkflowProfileSwitchService switchService = project.getService(WorkflowProfileSwitchService.class);
         if (switchService == null) return;
-        WorkflowProfileSwitchService.SwitchResult result = switchService.switchProfile(targetProfile);
+        switchService.switchProfileInBackground(targetProfile, result -> onSwitched(switchService, targetProfile, result));
+    }
+
+    /** The switch finished. EDT. */
+    void onSwitched(WorkflowProfileSwitchService switchService, String targetProfile,
+                    WorkflowProfileSwitchService.SwitchResult result) {
         if (result.outcome() == WorkflowProfileSwitchService.Outcome.SWITCHED
                 || result.outcome() == WorkflowProfileSwitchService.Outcome.CLI_UNAVAILABLE) {
             // Refresh the widget label/tooltip to reflect the new active profile.

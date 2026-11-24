@@ -48,7 +48,7 @@ public class OpenSpecConfigurable implements Configurable {
         if (panel.isWorkflowProfileOrphanSelected()) return false;
         OpenSpecSettings settings = OpenSpecSettings.getInstance(project);
         return !panel.getCliPath().equals(safe(settings.getCliPath()))
-                || !panel.getProfile().equals(safe(settings.getProfile()))
+                || !panel.getProfile().equals(effectiveProfile(settings))
                 || panel.isAutoRefresh() != settings.isAutoRefresh()
                 || panel.getCliTimeout() != settings.getCliTimeoutSeconds()
                 || !panel.getAiProvider().equals(safe(settings.getAiProvider(), "NONE"))
@@ -58,6 +58,13 @@ public class OpenSpecConfigurable implements Configurable {
                 || !panel.getAiOpenAiProject().equals(settings.getAiOpenAiProject())
                 || !panel.getDefaultSchema().equals(safe(settings.getDefaultSchema()))
                 || isApiKeyModified();
+    }
+
+    /** The saved profile, or the one a background switch is moving to: Settings isn't modified while it runs. */
+    private String effectiveProfile(OpenSpecSettings settings) {
+        WorkflowProfileSwitchService switchService = project.getService(WorkflowProfileSwitchService.class);
+        String inFlight = switchService == null ? null : switchService.profileInFlight();
+        return inFlight != null ? inFlight : safe(settings.getProfile());
     }
 
     private boolean isApiKeyModified() {
@@ -82,7 +89,8 @@ public class OpenSpecConfigurable implements Configurable {
         // Handle profile change via CLI delegation
         String newProfile = panel.getProfile();
         String oldProfile = safe(settings.getProfile());
-        if (!newProfile.equals(oldProfile)) {
+        // A switch to this profile already running (Apply, then OK) is not a second change.
+        if (!newProfile.equals(oldProfile) && !newProfile.equals(effectiveProfile(settings))) {
             applyProfileChange(settings, newProfile, oldProfile);
         }
 
@@ -130,7 +138,20 @@ public class OpenSpecConfigurable implements Configurable {
             settings.setProfile(newProfile);
             return;
         }
-        WorkflowProfileSwitchService.SwitchResult result = switchService.switchProfile(newProfile);
+        // The CLI can take seconds, so the switch runs off the EDT; the result comes back while Settings is open.
+        switchService.switchProfileInBackground(newProfile, result -> onProfileSwitched(switchService, newProfile, oldProfile, result));
+    }
+
+    /** The switch finished. EDT; the panel may be gone if Settings closed meanwhile. */
+    private void onProfileSwitched(WorkflowProfileSwitchService switchService, String newProfile, String oldProfile,
+                                   WorkflowProfileSwitchService.SwitchResult result) {
+        OpenSpecSettingsPanel panel = this.panel;
+        if (panel == null) {
+            if (result.outcome() == WorkflowProfileSwitchService.Outcome.SWITCHED) {
+                switchService.promptAndRunUpdateIfConfirmed(newProfile);
+            }
+            return;
+        }
         switch (result.outcome()) {
             case SWITCHED -> {
                 panel.refreshConfigProfileSection();

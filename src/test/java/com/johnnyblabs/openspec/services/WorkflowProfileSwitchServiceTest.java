@@ -144,7 +144,7 @@ class WorkflowProfileSwitchServiceTest {
         @Test
         void yesChoice_invokesRunUpdate() {
             WorkflowProfileSwitchService spy = spy(service);
-            doNothing().when(spy).runUpdate();
+            doNothing().when(spy).runUpdate(any());
 
             try (MockedStatic<Messages> messages = mockStatic(Messages.class)) {
                 messages.when(() -> Messages.showYesNoDialog(
@@ -153,7 +153,7 @@ class WorkflowProfileSwitchServiceTest {
 
                 spy.promptAndRunUpdateIfConfirmed("custom");
 
-                verify(spy).runUpdate();
+                verify(spy).runUpdate(any());
             }
         }
 
@@ -168,7 +168,7 @@ class WorkflowProfileSwitchServiceTest {
 
                 spy.promptAndRunUpdateIfConfirmed("custom");
 
-                verify(spy, never()).runUpdate();
+                verify(spy, never()).runUpdate(any());
             }
         }
     }

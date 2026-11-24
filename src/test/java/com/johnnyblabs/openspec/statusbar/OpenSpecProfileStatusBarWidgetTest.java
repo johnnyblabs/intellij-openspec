@@ -129,4 +129,36 @@ class OpenSpecProfileStatusBarWidgetTest {
             assertEquals(OpenSpecProfileStatusBarWidget.ID, factory.getId());
         }
     }
+
+    /** Choosing a profile in the popup (on the EDT) never runs the CLI there: it goes through the background switch. */
+    @Nested
+    class SwitchFromPopup {
+
+        @Mock Project project;
+        @Mock com.johnnyblabs.openspec.services.WorkflowProfileSwitchService switchService;
+
+        @Test
+        void thePopupSwitchesInTheBackgroundNeverInline() {
+            when(project.getService(com.johnnyblabs.openspec.services.WorkflowProfileSwitchService.class)).thenReturn(switchService);
+            new OpenSpecProfileStatusBarWidget(project).switchToProfile("custom");
+            verify(switchService).switchProfileInBackground(eq("custom"), any());
+            verify(switchService, never()).switchProfile(anyString());
+        }
+
+        @Test
+        void aFinishedSwitchOffersTheUpdate() {
+            new OpenSpecProfileStatusBarWidget(project).onSwitched(switchService, "custom",
+                    new com.johnnyblabs.openspec.services.WorkflowProfileSwitchService.SwitchResult(
+                            com.johnnyblabs.openspec.services.WorkflowProfileSwitchService.Outcome.SWITCHED, null));
+            verify(switchService).promptAndRunUpdateIfConfirmed("custom");
+        }
+
+        @Test
+        void aFailedSwitchOffersNothing() {
+            new OpenSpecProfileStatusBarWidget(project).onSwitched(switchService, "custom",
+                    new com.johnnyblabs.openspec.services.WorkflowProfileSwitchService.SwitchResult(
+                            com.johnnyblabs.openspec.services.WorkflowProfileSwitchService.Outcome.CLI_FAILURE, "bad"));
+            verify(switchService, never()).promptAndRunUpdateIfConfirmed(anyString());
+        }
+    }
 }
