@@ -51,6 +51,22 @@ class CliHelpTest {
     }
 
     @Test
+    void positionalArityComesFromTheUsageLine() {
+        assertEquals(2, CliHelp.of("2.1.1").maxPositionals("schema fork"));
+        assertEquals(1, CliHelp.of("2.1.1").maxPositionals("archive"));
+        assertEquals(0, CliHelp.of("2.1.1").maxPositionals("status"));
+        assertEquals(0, CliHelp.of("1.4.1").maxPositionals("workspace setup"));
+        assertEquals(1, CliHelp.parseMaxPositionals("Usage: openspec x [options] [command] <id>\n"));
+    }
+
+    @Test
+    void aWrappedDescriptionStartingWithAFlagIsNotAFlag() {
+        String help = "Usage: openspec x [options]\n\nOptions:\n  --json        Output JSON; see\n"
+                + "                --specs for more\n  -h, --help    display help\n";
+        assertEquals(java.util.Set.of("json", "help"), CliHelp.parseOptions(help).keySet());
+    }
+
+    @Test
     void commandsComeFromTheIndex() {
         assertTrue(CliHelp.of("1.4.1").hasCommand("workspace setup"));
         assertFalse(CliHelp.of("1.5.0").hasCommand("workspace"));

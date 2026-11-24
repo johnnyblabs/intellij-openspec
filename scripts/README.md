@@ -31,7 +31,7 @@ OpenSpec setup is never touched. `src/test/resources/fixtures/cli/README.md` rec
 
 CLI 2.1 and later need Node 22.20 or newer; capturing 2.1.0 also needs Git and network access.
 
-`./gradlew cliMatrix` is an optional local release gate. It runs every CLI command line the plugin can build against the real package of each release with a `help/` sweep, in an isolated HOME. It fails on an `unknown option` or `unknown command` error. Install the packages with `install-cli-matrix.py`, then run the gate with the same `OSP_CAPTURE_CACHE`. Without installed packages the gate is skipped. It isn't part of `./gradlew build`.
+`./gradlew cliMatrix` is an optional local release gate. It runs every CLI command line the plugin can build against the real package of each release with a `help/` sweep, in an isolated HOME. It fails on any of the CLI parser's argument errors: an unknown option or command, too many arguments, or a missing option value. It also fails on a run that doesn't finish, a release that isn't installed, or a Node too old for 2.1. Install the packages with `install-cli-matrix.py`, then run the gate with the same `OSP_CAPTURE_CACHE`. Without installed packages the gate is skipped. It isn't part of `./gradlew build`.
 
 ## Libraries
 

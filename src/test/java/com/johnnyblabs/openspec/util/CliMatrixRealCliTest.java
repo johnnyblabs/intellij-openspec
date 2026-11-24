@@ -31,7 +31,12 @@ import static org.junit.jupiter.api.Assertions.*;
 @Tag("cli-matrix")
 class CliMatrixRealCliTest {
 
-    static final Pattern ARGUMENT_ERROR = Pattern.compile("(?i)unknown option|unknown command|too many arguments");
+    /**
+     * Commander's own argument errors all start a line with lowercase {@code error: } (unknown option, unknown
+     * command, too many arguments, an option's missing value, a missing required argument, an invalid choice). The
+     * CLI's own failures read {@code Error:} or {@code ✖ Error:}, so they don't match.
+     */
+    static final Pattern ARGUMENT_ERROR = Pattern.compile("(?m)^error: ");
 
     /** CLI 2.1.0 and later declare this Node floor. */
     static final int[] NODE_FLOOR_21 = {22, 20, 0};
@@ -50,12 +55,15 @@ class CliMatrixRealCliTest {
         List<String> releases = CliFlagTableContractTest.releases();
         List<CliArgsVersionMatrixTest.Builder> builders = CliArgsVersionMatrixTest.builders();
         boolean any = releases.stream().anyMatch(v -> Files.isRegularFile(bin(v)));
+        // Nothing installed means the gate was never set up: skip. Anything less than every release is a failure, so
+        // a partial install or an old Node can't pass the gate by running fewer releases.
         Assumptions.assumeTrue(any, "no CLI packages in " + cache() + ": run scripts/install-cli-matrix.py first");
         int[] node = nodeVersion();
         return releases.stream().map(v -> DynamicTest.dynamicTest(v, () -> {
-            Assumptions.assumeTrue(Files.isRegularFile(bin(v)), v + " is not installed in " + cache());
-            Assumptions.assumeTrue(FixtureVersions.compare(v, "2.1.0") < 0 || atLeast(node, NODE_FLOOR_21),
-                    v + " needs Node 22.20 or newer");
+            assertTrue(Files.isRegularFile(bin(v)), v + " is not installed in " + cache()
+                    + ": run scripts/install-cli-matrix.py");
+            assertTrue(FixtureVersions.compare(v, "2.1.0") < 0 || atLeast(node, NODE_FLOOR_21),
+                    v + " needs Node 22.20 or newer to run");
             List<String> wrong = runAll(v, builders);
             assertEquals(List.of(), wrong, v + ": the real CLI rejected the plugin's arguments");
         }));
@@ -71,13 +79,15 @@ class CliMatrixRealCliTest {
             List<String> wrong = new ArrayList<>();
             for (CliArgsVersionMatrixTest.Builder b : builders) {
                 if (!b.offeredOn(version)) continue;
-                Set<List<String>> seen = new HashSet<>();
+                Set<List<Object>> seen = new HashSet<>();
                 for (Object[] sample : b.samples()) {
                     CliArgs args = CliArgsVersionMatrixTest.build(b, sample);
                     List<String> argv = args.resolve(version).argv();
-                    if (!seen.add(argv)) continue;
+                    if (!seen.add(List.of(argv, args.env()))) continue;
                     Run r = run(version, project, home, argv, args.env());
-                    if (ARGUMENT_ERROR.matcher(r.output()).find()) {
+                    if (r.exit() == TIMED_OUT) {
+                        wrong.add("openspec " + String.join(" ", argv) + " -> did not finish in " + TIMEOUT_SECONDS + "s");
+                    } else if (ARGUMENT_ERROR.matcher(r.output()).find()) {
                         wrong.add("openspec " + String.join(" ", argv) + " -> " + firstLine(r.output()));
                     }
                 }
@@ -90,6 +100,9 @@ class CliMatrixRealCliTest {
 
     record Run(int exit, String output) {
     }
+
+    static final int TIMEOUT_SECONDS = 120;
+    static final int TIMED_OUT = Integer.MIN_VALUE;
 
     static Run run(String version, Path cwd, Path home, List<String> argv, Map<String, String> extraEnv)
             throws IOException, InterruptedException {
@@ -116,12 +129,19 @@ class CliMatrixRealCliTest {
         env.put("CI", "1");
         env.putAll(extraEnv);
         Process p = pb.start();
-        byte[] out = p.getInputStream().readAllBytes();
-        if (!p.waitFor(120, TimeUnit.SECONDS)) {
+        // Read on another thread, so the timeout below can fire while the process is still writing or hung.
+        java.util.concurrent.CompletableFuture<byte[]> out = java.util.concurrent.CompletableFuture.supplyAsync(() -> {
+            try {
+                return p.getInputStream().readAllBytes();
+            } catch (IOException e) {
+                return new byte[0];
+            }
+        });
+        if (!p.waitFor(TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
             p.destroyForcibly();
-            return new Run(-1, "timed out: " + String.join(" ", argv));
+            return new Run(TIMED_OUT, "");
         }
-        return new Run(p.exitValue(), new String(out, StandardCharsets.UTF_8));
+        return new Run(p.exitValue(), new String(out.join(), StandardCharsets.UTF_8));
     }
 
     static int[] nodeVersion() {

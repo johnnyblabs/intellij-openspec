@@ -58,6 +58,39 @@ class CliRunnerResolveTest {
     }
 
     @Test
+    void onTheEdtARunNeverWaitsForDetection() throws Exception {
+        CliDetectionService d = new CliDetectionService((Project) null);
+        AtomicInteger probes = new AtomicInteger();
+        d.setIdePathForTest(name -> null, () -> "");
+        CliDetectionTestSupport.setRunner(d, cmd -> {
+            probes.incrementAndGet();
+            return "openspec 1.4.1";
+        });
+        assertEquals(PluginVersions.targetCliVersion(), CliRunner.resolveFor(d, CliCommands.list(), true).version());
+        assertEquals(0, probes.get(), "no process started on the EDT");
+        assertFalse(d.isDetectedOnce());
+    }
+
+    @Test
+    void concurrentFirstRunsShareOneDetection() throws Exception {
+        CliDetectionService d = new CliDetectionService((Project) null);
+        AtomicInteger probes = new AtomicInteger();
+        d.setIdePathForTest(name -> null, () -> "");
+        CliDetectionTestSupport.setRunner(d, cmd -> {
+            if (!cmd.getParametersList().getList().contains("--version")) return null;
+            probes.incrementAndGet();
+            Thread.sleep(200);
+            return "openspec 1.4.1";
+        });
+        Thread other = new Thread(d::ensureDetected);
+        other.start();
+        Thread.sleep(50);
+        assertEquals("1.4.1", CliRunner.resolveFor(d, CliCommands.list(), false).version());
+        other.join();
+        assertEquals(1, probes.get(), "the startup detection and the first run probe once between them");
+    }
+
+    @Test
     void anAvailableCliWithAnUnreadableVersionResolvesAsTheTargetRelease() throws Exception {
         CliDetectionService d = detected("not-a-version");
         assertEquals(PluginVersions.targetCliVersion(), CliRunner.resolveFor(d, CliCommands.list()).version());

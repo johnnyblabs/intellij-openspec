@@ -152,6 +152,10 @@ class CliArgsVersionMatrixTest {
             wrong.add(call + ": openspec " + args.command() + " is not in " + v + "'s help");
             return wrong;
         }
+        int allowed = help.maxPositionals(args.command());
+        if (args.positionals() > allowed) {
+            wrong.add(call + ": " + args.positionals() + " positional arguments; " + v + "'s usage takes " + allowed);
+        }
         for (String token : resolved.argv()) {
             if (token.startsWith("--") && !help.hasFlag(args.command(), token)) {
                 wrong.add(call + ": openspec " + args.command() + " " + token + " is not in " + v + "'s help");

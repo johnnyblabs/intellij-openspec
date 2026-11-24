@@ -88,6 +88,11 @@ public final class CliArgs {
         return command;
     }
 
+    /** How many positional arguments follow the command words. */
+    public int positionals() {
+        return (int) parts.stream().filter(p -> p.flag() == null).count();
+    }
+
     /** Extra environment variables for the process. */
     public Map<String, String> env() {
         return Collections.unmodifiableMap(env);

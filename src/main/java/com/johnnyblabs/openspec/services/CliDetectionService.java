@@ -176,6 +176,20 @@ public final class CliDetectionService {
         return true;
     }
 
+    private final Object firstDetection = new Object();
+
+    /**
+     * Runs the first detection if none has completed yet, and otherwise returns at once. Concurrent first callers (the
+     * startup detection and an early CLI run) share one detection instead of each starting a login shell. Call off the
+     * EDT: a first detection can take seconds.
+     */
+    public void ensureDetected() {
+        if (detectedOnce) return;
+        synchronized (firstDetection) {
+            if (!detectedOnce) detect();
+        }
+    }
+
     /**
      * Probes for the CLI and publishes the result when done. The previous result stays visible to readers until then:
      * a detection in progress never reads as "unavailable". Reuses a login-shell PATH resolved in the last

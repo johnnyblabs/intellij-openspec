@@ -66,7 +66,8 @@ public final class OpenSpecProjectService {
 
             CliDetectionService detection = project.getService(CliDetectionService.class);
             if (detection != null) {
-                detection.detect();
+                // Shares the first detection with any CLI run that starts meanwhile, rather than racing it.
+                detection.ensureDetected();
                 if (!detection.isAvailable()) {
                     OpenSpecNotifier.cliMissing(project);
                 } else {

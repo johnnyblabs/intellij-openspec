@@ -122,8 +122,8 @@ tasks.test {
 }
 
 // Optional local release gate, not part of `check`: runs every invocation the plugin can make (CliCommands)
-// against the real CLI package of each swept release, in an isolated HOME, and fails on "unknown option" or
-// "unknown command". Install the packages first: scripts/install-cli-matrix.py, then
+// against the real CLI package of each swept release, in an isolated HOME, and fails on any of the CLI parser's
+// argument errors (lines starting "error: "), on a hung run, or on a swept release that isn't installed. Install the packages first: scripts/install-cli-matrix.py, then
 // OSP_CAPTURE_CACHE=<cache> ./gradlew cliMatrix. Without installed packages every release is skipped.
 val cliMatrix by tasks.registering(Test::class) {
     description = "Runs every CLI invocation against the real CLI package of each supported release."

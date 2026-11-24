@@ -100,7 +100,9 @@ public final class CliHelp {
                 inside = true;
             } else if (inside && (line.isBlank() || line.matches("^\\S.*:$"))) {
                 inside = false;
-            } else if (inside && line.matches("^\\s+-.*")) {
+            } else if (inside && line.startsWith("  -")) {
+                // Commander indents flag lines by exactly two spaces; a wrapped description is indented further, so a
+                // description line that happens to start with "--x" is never read as a flag.
                 // A flag line: "  -y, --yes   Skip...", "  --schema <name>  Use..."; description text follows two
                 // or more spaces, so only the part before it names flags.
                 String head = line.trim().split("\\s{2,}", 2)[0];
@@ -109,6 +111,33 @@ public final class CliHelp {
             }
         }
         return out;
+    }
+
+    /**
+     * The most positional arguments {@code command} takes, from its {@code Usage:} line: each {@code <x>} or
+     * {@code [x]} after {@code [options]} counts once ({@code schema fork [options] <source> [name]} takes two).
+     */
+    public int maxPositionals(String command) {
+        String file = files.get(command);
+        if (file == null) throw new IllegalArgumentException(version + " has no command " + command);
+        String text;
+        try {
+            text = Files.readString(FixtureVersions.CLI.resolve(version).resolve("help").resolve(file));
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        return parseMaxPositionals(text);
+    }
+
+    static int parseMaxPositionals(String text) {
+        String usage = text.lines().filter(l -> l.startsWith("Usage:")).findFirst().orElse("");
+        int at = usage.indexOf("[options]");
+        String rest = at < 0 ? "" : usage.substring(at + "[options]".length());
+        if (rest.contains("...")) return Integer.MAX_VALUE;
+        Matcher m = Pattern.compile("<[^>]+>|\\[[^]]+]").matcher(rest);
+        int n = 0;
+        while (m.find()) if (!m.group().equals("[command]")) n++;
+        return n;
     }
 
     private static String strip(String flag) {

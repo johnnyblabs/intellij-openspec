@@ -97,7 +97,7 @@ This avoids false positives from flags that a description merely mentions.
 
 Until the first detection completes, `getDetectedVersion()` is null. A tool-window refresh at startup on a 1.4 install would otherwise resolve as the target release.
 
-- **Before the first detection.** If `isDetectedOnce()` is false, `CliRunner.run` runs `detect()` once and synchronously before resolving. A lock stops concurrent first runs from repeating it. The runner already runs off the EDT, and the threading requirement holds it there.
+- **Before the first detection.** Off the EDT, `CliRunner.run` calls `CliDetectionService.ensureDetected()`, which runs the first detection under a per-project lock. Startup detection takes the same lock, so an early run and startup share one detection instead of each starting a login shell. On the EDT the runner never waits. The status-bar widget can reach a CLI run there through the workflow profile, so it resolves as the target release, as before this change.
 - **After detection, when the CLI is available but `--version` didn't parse.** `resolve` uses `PluginVersions.targetCliVersion()`. The plugin is built and tested against that release, and an unparseable version string usually means a newer CLI rather than an older one.
 - **When no CLI was found.** Arguments resolve as the target release too, and the run fails as it does today.
 
@@ -121,7 +121,7 @@ Until the first detection completes, `getDetectedVersion()` is null. A tool-wind
 - **How it is wired.** A `Test` task runs tests tagged `cli-matrix`. The default `test` task excludes that tag, so `check` never runs it.
 - **Where the CLIs come from.** The task needs the boundary releases (the 18 swept releases) installed in `$OSP_CAPTURE_CACHE` by `scripts/install-cli-matrix.py`, which uses `openspec_capture.package`. It never installs anything itself, and it skips with a message when the cache is empty.
 - **What a run does.** For each release, it builds a scratch project with `openspec init --tools none` and an isolated HOME and XDG (`isolated_env` semantics, `OPENSPEC_TELEMETRY=0`, stdin closed). It then resolves every builder that release is in range for, and runs it with `node <pkg>/bin/openspec.js`.
-- **What counts as a failure.** Only `unknown option`, `unknown command` or `too many arguments` on stderr fails the run. Non-zero exits for semantic reasons, such as no change named `demo`, are expected and ignored.
+- **What counts as a failure.** Commander's own argument errors fail the run. They are output lines starting with lowercase `error: `: an unknown option or command, too many arguments, a missing option value, or an invalid choice. A run that doesn't finish within its timeout fails too. So does a swept release that isn't installed, or a Node too old for 2.1, once any package is installed. Non-zero exits for semantic reasons, such as no change named `demo`, are expected and ignored.
 
 ### 9. More contract tests run per release
 

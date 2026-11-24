@@ -1,6 +1,8 @@
 package com.johnnyblabs.openspec.util;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
+import com.intellij.openapi.application.Application;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
 import com.johnnyblabs.openspec.services.CliDetectionService;
 import com.johnnyblabs.openspec.settings.OpenSpecSettings;
@@ -70,19 +72,22 @@ public final class CliRunner {
         return cmd;
     }
 
-    private static final Object FIRST_DETECTION = new Object();
-
     /**
      * {@code args} fitted to the installed release. Until the first detection has finished the version is unknown,
      * and an early run (a tool-window refresh at startup) would be fitted to the target release instead of, say, an
-     * installed 1.4; so the first run detects once, synchronously. Runs off the EDT, like every CLI run.
+     * installed 1.4; so a first run off the EDT joins the project's first detection. On the EDT it never waits, since
+     * detection can take seconds; it resolves as the target release, as before detection existed.
      */
     static CliArgs.Resolved resolveFor(@Nullable CliDetectionService detection, CliArgs args)
             throws UnsupportedCliArgumentException {
-        if (detection != null && !detection.isDetectedOnce()) {
-            synchronized (FIRST_DETECTION) {
-                if (!detection.isDetectedOnce()) detection.detect();
-            }
+        Application app = ApplicationManager.getApplication();
+        return resolveFor(detection, args, app != null && app.isDispatchThread());
+    }
+
+    static CliArgs.Resolved resolveFor(@Nullable CliDetectionService detection, CliArgs args, boolean onEdt)
+            throws UnsupportedCliArgumentException {
+        if (detection != null && !onEdt) {
+            detection.ensureDetected();
         }
         String version = detection != null && detection.isAvailable() ? detection.getDetectedVersion() : null;
         return args.resolve(version);
