@@ -91,9 +91,16 @@ public enum DetectionRules {
         return this == V2_1 || this == V2_1_1;
     }
 
-    /** Whether this line's registry has the tool: Amazon Q was retired in 2.0. */
+    /**
+     * Whether this line's registry has the tool, by its release range: 2.0 retired Amazon Q, and 2.1 added the tools
+     * of its bundled installer. Under 1.x rules every tool is read, as before.
+     */
     boolean knows(AiTool tool) {
-        return !(is2x() && "amazon-q".equals(tool.id()));
+        return switch (this) {
+            case V1 -> true;
+            case V2_0 -> AiToolRegistry.acceptedBy(tool, "2.0.0");
+            case V2_1, V2_1_1 -> AiToolRegistry.acceptedBy(tool, "2.1.0");
+        };
     }
 
     /** The home-directory skills folder the tool has on this line, or {@code null}: MiniMax Code became a project tool in 2.1. */

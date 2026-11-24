@@ -119,7 +119,7 @@ class WorkflowInvocationContractTest {
         List<String> wrong = new ArrayList<>();
         List<String> workflows = new ArrayList<>();
         java.util.Set<String> unknown = new java.util.TreeSet<>();
-        int checked = 0, skipped = 0;
+        int checked = 0;
         for (JsonObject row : rows(version)) {
             String workflow = row.get("workflow").getAsString();
             String tool = row.get("tool").getAsString();
@@ -127,9 +127,7 @@ class WorkflowInvocationContractTest {
             String expected = stringOrNull(row, "invocation");
             if (!workflows.contains(workflow)) workflows.add(workflow);
             if (AiToolRegistry.byId(tool) == null) {
-                // A tool only a later registry has: the registry change adds it (KnownGaps "registry" entries).
                 unknown.add(tool);
-                skipped++;
                 continue;
             }
 
@@ -149,9 +147,8 @@ class WorkflowInvocationContractTest {
             checked++;
         }
         assertEquals(List.of("explore", "update"), workflows);
-        assertEquals(ROWS.get(version), checked + skipped, "every row of CLI " + version + "'s matrix is seen");
-        assertTrue(checked >= 90, "sanity: rows checked for CLI " + version);
-        if (FixtureVersions.compare(version, "2.1.0") < 0) assertEquals(java.util.Set.of(), unknown, "every tool is known");
+        assertEquals(java.util.Set.of(), unknown, "every tool in CLI " + version + "'s matrix is in the registry");
+        assertEquals(ROWS.get(version), checked, "every row of CLI " + version + "'s matrix is checked");
         assertTrue(wrong.isEmpty(), "invocations that differ from upstream's:\n" + String.join("\n", wrong));
     }
 
@@ -193,8 +190,8 @@ class WorkflowInvocationContractTest {
         boolean is2x = rules.is2x();
         List<String> drift = new ArrayList<>();
         for (JsonObject row : rows(version)) {
-            if (AiToolRegistry.byId(row.get("tool").getAsString()) == null) continue;
             AiTool tool = byUpstreamId(row.get("tool").getAsString());
+            assertNotNull(tool, "CLI " + version + "'s matrix names a tool the registry lacks: " + row.get("tool").getAsString());
             String workflow = row.get("workflow").getAsString();
             String skill = row.get("skill").getAsString();
             String commandPath = stringOrNull(row, "commandPath");

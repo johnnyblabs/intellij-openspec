@@ -136,9 +136,10 @@ class AiToolDetectionServiceTest {
         @Test
         void enumValues() {
             AiToolDetectionService.ToolType[] values = AiToolDetectionService.ToolType.values();
-            assertEquals(2, values.length);
+            assertEquals(3, values.length);
             assertEquals(AiToolDetectionService.ToolType.CLI, values[0]);
             assertEquals(AiToolDetectionService.ToolType.IDE_PANEL, values[1]);
+            assertEquals(AiToolDetectionService.ToolType.UNCLASSIFIED, values[2]);
         }
 
         @Test
@@ -229,9 +230,10 @@ class AiToolDetectionServiceTest {
     class AllToolNames {
 
         @Test
-        void getAllToolNames_returnsTheCliRegistrysFiftyTools() {
+        void getAllToolNames_returnsEveryToolOfEveryCliRegistry() {
+            // 1.17's 50 (Amazon Q included) and the 38 CLI 2.1 added; each release's own set is the contract test's.
             var names = AiToolDetectionService.getAllToolNames();
-            assertEquals(50, names.size());
+            assertEquals(88, names.size());
         }
 
         @Test
@@ -332,7 +334,7 @@ class AiToolDetectionServiceTest {
         void allMapsHaveSameSize() {
             // Every tool has a type and a CLI id; all but global-only tools have a directory (OpenSpec 1.14.x)
             var names = AiToolDetectionService.getAllToolNames();
-            assertEquals(50, names.size(), "Should have 50 tools");
+            assertEquals(88, names.size(), "Should have 88 tools: 1.17's 50 and 2.1's 38");
 
             for (String name : names) {
                 assertNotNull(AiToolDetectionService.getToolType(name),

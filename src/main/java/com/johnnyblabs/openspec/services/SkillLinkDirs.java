@@ -13,8 +13,7 @@ import java.util.Map;
  * <p>
  * The two lines differ: 2.1 links Junie, Qoder, Zoo Code and others that 2.0 didn't, and stops linking EasyCode,
  * GigaCode and Veai. Contract-tested against the {@code effective} block of every 2.x {@code ai-tools.json} and the
- * {@code linkPath} column of every 2.x {@code workflow-invocations.json}. Tools only 2.1 knows are added by the
- * registry change.
+ * {@code linkPath} column of every 2.x {@code workflow-invocations.json}, for every tool, the ones 2.1 added included.
  */
 public final class SkillLinkDirs {
 
@@ -63,7 +62,37 @@ public final class SkillLinkDirs {
             Map.entry("rovodev", ".rovodev/skills"),
             Map.entry("roocode", ".roo/skills"),
             Map.entry("trae", ".trae/skills"),
-            Map.entry("zcode", ".zcode/skills")
+            Map.entry("zcode", ".zcode/skills"),
+            // Tools added in 2.1
+            Map.entry("aider-desk", ".aider-desk/skills"),
+            Map.entry("astrbot", "data/skills"),
+            Map.entry("autohand-code", ".autohand/skills"),
+            Map.entry("openclaw", "skills"),
+            Map.entry("codemaker", ".codemaker/skills"),
+            Map.entry("cortex", ".cortex/skills"),
+            Map.entry("eve", "agent/skills"),
+            Map.entry("goose", ".goose/skills"),
+            Map.entry("inference-sh", ".inferencesh/skills"),
+            Map.entry("jazz", ".jazz/skills"),
+            Map.entry("kimchi", ".kimchi/skills"),
+            Map.entry("kode", ".kode/skills"),
+            Map.entry("mcpjam", ".mcpjam/skills"),
+            Map.entry("moxby", ".moxby/skills"),
+            Map.entry("mux", ".mux/skills"),
+            Map.entry("openhands", ".openhands/skills"),
+            Map.entry("ona", ".ona/skills"),
+            Map.entry("posit-assistant", ".posit/assistant/skills"),
+            Map.entry("qoder-cn", ".qoder/skills"),
+            Map.entry("reasonix", ".reasonix/skills"),
+            Map.entry("tabnine-cli", ".tabnine/agent/skills"),
+            Map.entry("terramind", ".terramind/skills"),
+            Map.entry("tinycloud", ".tinycloud/skills"),
+            Map.entry("trae-cn", ".trae/skills"),
+            Map.entry("zencoder", ".zencoder/skills"),
+            Map.entry("zenflow", ".zencoder/skills"),
+            Map.entry("neovate", ".neovate/skills"),
+            Map.entry("pochi", ".pochi/skills"),
+            Map.entry("adal", ".adal/skills")
     );
 
     private SkillLinkDirs() {

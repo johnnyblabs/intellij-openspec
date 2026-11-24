@@ -79,6 +79,8 @@ import(process.argv[1]).then(m => process.stdout.write(JSON.stringify(
 # tools) runs init so tools with a global skills directory write into the isolated HOME.
 CASES = {
     "claude": [("init", None, "claude")],
+    # Amazon Q set up by the last release that has it; 2.x retired it, and its detection never reports it.
+    "amazon-q-from-1.17": [("init", "1.17.0", "amazon-q")],
     "devin-via-windsurf-id": [("init", None, "windsurf")],
     "windsurf-dir-from-1.6": [("init", "1.6.0", "windsurf")],
     "codex": [("init", None, "codex")],
@@ -137,6 +139,7 @@ CASES = {
 
 # Cases that only make sense on some versions: name -> (lowest, highest), inclusive; None = open.
 APPLIES = {
+    "amazon-q-from-1.17": ("1.17.0", None),
     "mixed-1.17-and-2x": ("2.0.0", None),
     "scope-project": ("2.1.0", None),
     "scope-default-global": ("2.1.0", None),

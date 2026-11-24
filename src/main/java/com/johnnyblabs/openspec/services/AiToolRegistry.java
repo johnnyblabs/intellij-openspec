@@ -32,11 +32,22 @@ public final class AiToolRegistry {
      * @param legacySkillsDirs directories the tool used before {@code skillsDir}
      * @param type             plugin-only: whether the tool runs in a terminal and can write files itself
      * @param sinceCli         the first CLI version that accepts {@code cliId}
+     * @param untilCli         the first CLI version that no longer accepts it (Amazon Q, retired in 2.0), or
+     *                         {@code null} when every release from {@code sinceCli} on does
      */
     public record AiTool(String id, String cliId, String name, List<String> aliases,
                          @Nullable String skillsDir, @Nullable String globalSkillsDir,
                          List<String> detectionPaths, List<String> legacySkillsDirs,
-                         ToolType type, String sinceCli) {
+                         ToolType type, String sinceCli, @Nullable String untilCli) {
+
+        /** A tool no release has retired. */
+        public AiTool(String id, String cliId, String name, List<String> aliases,
+                      @Nullable String skillsDir, @Nullable String globalSkillsDir,
+                      List<String> detectionPaths, List<String> legacySkillsDirs,
+                      ToolType type, String sinceCli) {
+            this(id, cliId, name, aliases, skillsDir, globalSkillsDir, detectionPaths, legacySkillsDirs, type, sinceCli,
+                    null);
+        }
     }
 
     /** Upstream's {@code OPENSPEC_SKILL_NAMES}: the skill folders OpenSpec generates. */
@@ -52,7 +63,7 @@ public final class AiToolRegistry {
     private static final List<AiTool> TOOLS = List.of(
             new AiTool("amazon-q", "amazon-q", "Amazon Q Developer", List.of("Amazon Q"),
                     ".amazonq", null, List.of(), List.of(),
-                    ToolType.IDE_PANEL, "1.3.0"),
+                    ToolType.IDE_PANEL, "1.3.0", "2.0.0"),
             new AiTool("amp", "amp", "Amp", List.of(),
                     ".agents", null, List.of(".amp", ".agents/skills"), List.of(),
                     ToolType.CLI, "1.14.0"),
@@ -199,7 +210,123 @@ public final class AiToolRegistry {
                     ToolType.IDE_PANEL, "1.7.0"),
             new AiTool("agents", "agents", "Other / Universal (shared .agents skills)", List.of(),
                     ".agents", null, List.of(".agents/skills"), List.of(),
-                    ToolType.IDE_PANEL, "1.3.0")
+                    ToolType.IDE_PANEL, "1.3.0"),
+            // Added in CLI 2.1, from the skills package it bundles; types from each vendor's documentation (see
+            // the tool-registry-2x design), unclassified where that doesn't settle it.
+            new AiTool("aider-desk", "aider-desk", "AiderDesk", List.of(),
+                    ".aider-desk", null, List.of(".aider-desk/skills"), List.of(),
+                    ToolType.UNCLASSIFIED, "2.1.0"),
+            new AiTool("antigravity-cli", "antigravity-cli", "Antigravity CLI", List.of(),
+                    ".agents", null, List.of(".agents/skills"), List.of(),
+                    ToolType.UNCLASSIFIED, "2.1.0"),
+            new AiTool("astrbot", "astrbot", "AstrBot", List.of(),
+                    "data", null, List.of("data/skills"), List.of(),
+                    ToolType.UNCLASSIFIED, "2.1.0"),
+            new AiTool("autohand-code", "autohand-code", "Autohand Code CLI", List.of(),
+                    ".autohand", null, List.of(".autohand/skills"), List.of(),
+                    ToolType.UNCLASSIFIED, "2.1.0"),
+            new AiTool("openclaw", "openclaw", "OpenClaw", List.of(),
+                    ".", null, List.of("skills"), List.of(),
+                    ToolType.UNCLASSIFIED, "2.1.0"),
+            new AiTool("codemaker", "codemaker", "Codemaker", List.of(),
+                    ".codemaker", null, List.of(".codemaker/skills"), List.of(),
+                    ToolType.UNCLASSIFIED, "2.1.0"),
+            new AiTool("cortex", "cortex", "Cortex Code", List.of(),
+                    ".cortex", null, List.of(".cortex/skills"), List.of(),
+                    ToolType.UNCLASSIFIED, "2.1.0"),
+            new AiTool("deepagents", "deepagents", "Deep Agents", List.of(),
+                    ".agents", null, List.of(".agents/skills"), List.of(),
+                    ToolType.UNCLASSIFIED, "2.1.0"),
+            new AiTool("dexto", "dexto", "Dexto", List.of(),
+                    ".agents", null, List.of(".agents/skills"), List.of(),
+                    ToolType.UNCLASSIFIED, "2.1.0"),
+            new AiTool("eve", "eve", "Eve", List.of(),
+                    "agent", null, List.of("agent/skills"), List.of(),
+                    ToolType.UNCLASSIFIED, "2.1.0"),
+            new AiTool("firebender", "firebender", "Firebender", List.of(),
+                    ".agents", null, List.of(".agents/skills"), List.of(),
+                    ToolType.UNCLASSIFIED, "2.1.0"),
+            new AiTool("fx", "fx", "fx", List.of(),
+                    ".agents", null, List.of(".agents/skills"), List.of(),
+                    ToolType.UNCLASSIFIED, "2.1.0"),
+            new AiTool("goose", "goose", "Goose", List.of(),
+                    ".goose", null, List.of(".goose/skills"), List.of(),
+                    ToolType.UNCLASSIFIED, "2.1.0"),
+            new AiTool("inference-sh", "inference-sh", "inference.sh", List.of(),
+                    ".inferencesh", null, List.of(".inferencesh/skills"), List.of(),
+                    ToolType.UNCLASSIFIED, "2.1.0"),
+            new AiTool("jazz", "jazz", "Jazz", List.of(),
+                    ".jazz", null, List.of(".jazz/skills"), List.of(),
+                    ToolType.UNCLASSIFIED, "2.1.0"),
+            new AiTool("kimchi", "kimchi", "Kimchi", List.of(),
+                    ".kimchi", null, List.of(".kimchi/skills"), List.of(),
+                    ToolType.UNCLASSIFIED, "2.1.0"),
+            new AiTool("kode", "kode", "Kode", List.of(),
+                    ".kode", null, List.of(".kode/skills"), List.of(),
+                    ToolType.UNCLASSIFIED, "2.1.0"),
+            new AiTool("loaf", "loaf", "Loaf", List.of(),
+                    ".agents", null, List.of(".agents/skills"), List.of(),
+                    ToolType.UNCLASSIFIED, "2.1.0"),
+            new AiTool("mcpjam", "mcpjam", "MCPJam", List.of(),
+                    ".mcpjam", null, List.of(".mcpjam/skills"), List.of(),
+                    ToolType.UNCLASSIFIED, "2.1.0"),
+            new AiTool("moxby", "moxby", "Moxby", List.of(),
+                    ".moxby", null, List.of(".moxby/skills"), List.of(),
+                    ToolType.UNCLASSIFIED, "2.1.0"),
+            new AiTool("mux", "mux", "Mux", List.of(),
+                    ".mux", null, List.of(".mux/skills"), List.of(),
+                    ToolType.UNCLASSIFIED, "2.1.0"),
+            new AiTool("openhands", "openhands", "OpenHands", List.of(),
+                    ".openhands", null, List.of(".openhands/skills"), List.of(),
+                    ToolType.UNCLASSIFIED, "2.1.0"),
+            new AiTool("ona", "ona", "Ona", List.of(),
+                    ".ona", null, List.of(".ona/skills"), List.of(),
+                    ToolType.UNCLASSIFIED, "2.1.0"),
+            new AiTool("posit-assistant", "posit-assistant", "Posit Assistant", List.of(),
+                    ".posit/assistant", null, List.of(".posit/assistant/skills"), List.of(),
+                    ToolType.UNCLASSIFIED, "2.1.0"),
+            new AiTool("qoder-cn", "qoder-cn", "Qoder CN", List.of(),
+                    ".qoder", null, List.of(".qoder/skills"), List.of(),
+                    ToolType.UNCLASSIFIED, "2.1.0"),
+            new AiTool("replit", "replit", "Replit", List.of(),
+                    ".agents", null, List.of(".agents/skills"), List.of(),
+                    ToolType.UNCLASSIFIED, "2.1.0"),
+            new AiTool("reasonix", "reasonix", "Reasonix", List.of(),
+                    ".reasonix", null, List.of(".reasonix/skills"), List.of(),
+                    ToolType.UNCLASSIFIED, "2.1.0"),
+            new AiTool("sarvam-code", "sarvam-code", "Sarvam Code", List.of(),
+                    ".agents", null, List.of(".agents/skills"), List.of(),
+                    ToolType.UNCLASSIFIED, "2.1.0"),
+            new AiTool("tabnine-cli", "tabnine-cli", "Tabnine CLI", List.of(),
+                    ".tabnine/agent", null, List.of(".tabnine/agent/skills"), List.of(),
+                    ToolType.UNCLASSIFIED, "2.1.0"),
+            new AiTool("terramind", "terramind", "Terramind", List.of(),
+                    ".terramind", null, List.of(".terramind/skills"), List.of(),
+                    ToolType.UNCLASSIFIED, "2.1.0"),
+            new AiTool("tinycloud", "tinycloud", "Tinycloud", List.of(),
+                    ".tinycloud", null, List.of(".tinycloud/skills"), List.of(),
+                    ToolType.UNCLASSIFIED, "2.1.0"),
+            new AiTool("trae-cn", "trae-cn", "Trae CN", List.of(),
+                    ".trae", null, List.of(".trae/skills"), List.of(),
+                    ToolType.UNCLASSIFIED, "2.1.0"),
+            new AiTool("zencoder", "zencoder", "Zencoder", List.of(),
+                    ".zencoder", null, List.of(".zencoder/skills"), List.of(),
+                    ToolType.UNCLASSIFIED, "2.1.0"),
+            new AiTool("zenflow", "zenflow", "Zenflow", List.of(),
+                    ".zencoder", null, List.of(".zencoder/skills"), List.of(),
+                    ToolType.UNCLASSIFIED, "2.1.0"),
+            new AiTool("neovate", "neovate", "Neovate", List.of(),
+                    ".neovate", null, List.of(".neovate/skills"), List.of(),
+                    ToolType.UNCLASSIFIED, "2.1.0"),
+            new AiTool("pochi", "pochi", "Pochi", List.of(),
+                    ".pochi", null, List.of(".pochi/skills"), List.of(),
+                    ToolType.UNCLASSIFIED, "2.1.0"),
+            new AiTool("promptscript", "promptscript", "PromptScript", List.of(),
+                    ".agents", null, List.of(".agents/skills"), List.of(),
+                    ToolType.UNCLASSIFIED, "2.1.0"),
+            new AiTool("adal", "adal", "AdaL", List.of(),
+                    ".adal", null, List.of(".adal/skills"), List.of(),
+                    ToolType.UNCLASSIFIED, "2.1.0")
     );
 
     private static final Map<String, ToolGuidance> GUIDANCE = Map.ofEntries(
@@ -309,9 +436,14 @@ public final class AiToolRegistry {
         return tool == null ? null : GUIDANCE.get(tool.id());
     }
 
-    /** Whether a CLI of this version accepts the tool's id. With no detected CLI nothing is passed, so all are. */
+    /**
+     * Whether a CLI of this version accepts the tool's id: from its {@code sinceCli}, and before its {@code untilCli}
+     * when it has one. With no detected CLI nothing is passed, so all are.
+     */
     public static boolean acceptedBy(AiTool tool, @Nullable String cliVersion) {
-        return cliVersion == null || cliVersion.isBlank() || CliVersion.atLeast(cliVersion, tool.sinceCli());
+        if (cliVersion == null || cliVersion.isBlank()) return true;
+        return CliVersion.atLeast(cliVersion, tool.sinceCli())
+                && (tool.untilCli() == null || CliVersion.below(cliVersion, tool.untilCli()));
     }
 
     /**
@@ -361,6 +493,9 @@ public final class AiToolRegistry {
      */
     public static @Nullable BuiltInAdd builtInAdd(AiTool tool, java.nio.file.Path project) {
         if (builtInDir(tool) == null) return null;
+        // A tool CLI 2.1 added is detected only by OpenSpec skills of its own or by the CLI's tool list, and only the
+        // CLI writes either.
+        if (addedIn21(tool)) return BuiltInAdd.NEEDS_CLI;
         if (builtInMarker(tool) == null) return BuiltInAdd.CREATE_DIR;
         DetectionRules rules = DetectionRules.fromDisk(project);
         if (rules.is2x()) return BuiltInAdd.NEEDS_CLI;
@@ -374,8 +509,17 @@ public final class AiToolRegistry {
         return BuiltInAdd.CREATE_DIR_AND_LIST;
     }
 
+    /** Whether CLI 2.1 added the tool, from its bundled installer. */
+    static boolean addedIn21(AiTool tool) {
+        return CliVersion.atLeast(tool.sinceCli(), "2.1.0");
+    }
+
+    /**
+     * Whether tools of the 1.x registry share the tool's skills root, which is where the 1.x ownership marker applies.
+     * Tools 2.1 added are left out: they never had a marker, and Trae CN sharing Trae's folder doesn't make it shared.
+     */
     private static boolean sharesRoot(AiTool tool) {
-        return TOOLS.stream().filter(t -> Objects.equals(t.skillsDir(), tool.skillsDir())).count() > 1;
+        return TOOLS.stream().filter(t -> !addedIn21(t) && Objects.equals(t.skillsDir(), tool.skillsDir())).count() > 1;
     }
 
     /** The explore skill OpenSpec writes into the project for this tool, or {@code null} for a global-only tool. */

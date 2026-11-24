@@ -23,17 +23,9 @@ public final class KnownGaps {
     /**
      * Key to the change that closes the gap. Closers: {@code skills-layout-2x} (skills under {@code .agents/skills/}
      * with links, and lookup; it closed every detection gap, including 2.0's {@code keep} lines, which detection
-     * ignores), {@code tool-registry-2x} (the 2.x tool list).
+     * ignores) and {@code tool-registry-2x} (the 2.x tool list) closed every gap they owned, so none is open.
      */
     public static final Map<String, String> GAPS = new TreeMap<>(Map.ofEntries(
-            Map.entry("2.0.0/registry/passed-ids-accepted", "tool-registry-2x"),
-            Map.entry("2.0.0/registry/tools-in-order", "tool-registry-2x"),
-            Map.entry("2.1.0/registry/passed-ids-accepted", "tool-registry-2x"),
-            Map.entry("2.1.0/registry/tool-fields", "tool-registry-2x"),
-            Map.entry("2.1.0/registry/tools-in-order", "tool-registry-2x"),
-            Map.entry("2.1.1/registry/passed-ids-accepted", "tool-registry-2x"),
-            Map.entry("2.1.1/registry/tool-fields", "tool-registry-2x"),
-            Map.entry("2.1.1/registry/tools-in-order", "tool-registry-2x")
     ));
 
     private KnownGaps() {
@@ -45,8 +37,14 @@ public final class KnownGaps {
 
     /** Runs {@code assertion}: directly for a case that isn't a gap, expecting it to fail for one that is. */
     public static void check(String version, String family, String caseName, Executable assertion) throws Throwable {
+        check(GAPS, version, family, caseName, assertion);
+    }
+
+    /** {@link #check} against {@code gaps}, so the mechanism can be tested while no gap is open. */
+    static void check(Map<String, String> gaps, String version, String family, String caseName, Executable assertion)
+            throws Throwable {
         String key = key(version, family, caseName);
-        String closer = GAPS.get(key);
+        String closer = gaps.get(key);
         if (closer == null) {
             assertion.execute();
             return;

@@ -1,0 +1,17 @@
+{
+  "project": {
+    ".amazonq/prompts/opsx-apply.md": "",
+    ".amazonq/prompts/opsx-archive.md": "",
+    ".amazonq/prompts/opsx-explore.md": "",
+    ".amazonq/prompts/opsx-propose.md": "",
+    ".amazonq/prompts/opsx-sync.md": "",
+    ".amazonq/prompts/opsx-update.md": "",
+    ".amazonq/skills/openspec-apply-change/SKILL.md": "",
+    ".amazonq/skills/openspec-archive-change/SKILL.md": "",
+    ".amazonq/skills/openspec-explore/SKILL.md": "",
+    ".amazonq/skills/openspec-propose/SKILL.md": "",
+    ".amazonq/skills/openspec-sync-specs/SKILL.md": "",
+    ".amazonq/skills/openspec-update-change/SKILL.md": ""
+  },
+  "home": {}
+}

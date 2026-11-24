@@ -49,8 +49,13 @@ public class AiToolServiceBehaviourTest extends BasePlatformTestCase {
 
     /** Lays a captured {@code init --tools} project ({@code fixtures/cli/1.14.3/detect/<case>}) under the base path. */
     private void layOut(String caseName) throws Exception {
+        layOut("1.14.3", caseName);
+    }
+
+    /** {@link #layOut(String)} from another release's captures. */
+    private void layOut(String release, String caseName) throws Exception {
         JsonObject layout = JsonParser.parseString(Files.readString(
-                AiToolDetectionContractTest.CLI.resolve("1.14.3/detect").resolve(caseName).resolve("layout.json"))).getAsJsonObject();
+                AiToolDetectionContractTest.CLI.resolve(release + "/detect").resolve(caseName).resolve("layout.json"))).getAsJsonObject();
         Path base = Path.of(getProject().getBasePath());
         for (String path : layout.getAsJsonObject("project").keySet()) {
             created.add(base.resolve(path.substring(0, path.contains("/") ? path.indexOf('/') : path.length())).toFile());
@@ -96,6 +101,26 @@ public class AiToolServiceBehaviourTest extends BasePlatformTestCase {
         assertEquals(ToolStatus.DETECTED, service().getToolStatus("GSD"));
     }
 
+    /** CLI 2.0 retired Amazon Q: not listed on 2.x, even for a project 1.17 set it up in; listed as before on 1.17. */
+    public void testAmazonQIsListedOnlyBelow200() throws Exception {
+        layOut("1.17.0", "amazon-q-from-1.17");
+        for (String v : List.of("2.0.0", "2.1.1")) {
+            service().setCliVersionForTest(() -> v);
+            service().detect();
+            assertNull(v + ": not listed, as 2.x doesn't report it", info("Amazon Q Developer"));
+            assertFalse(v, service().getDetectedCliToolIds().contains("amazon-q"));
+        }
+        service().setCliVersionForTest(() -> "1.17.0");
+        service().detect();
+        assertNotNull("1.17 still lists it", info("Amazon Q Developer"));
+        assertEquals("amazon-q", info("Amazon Q Developer").cliId());
+
+        FileUtil.delete(Path.of(getProject().getBasePath(), ".amazonq").toFile());
+        service().setCliVersionForTest(() -> "2.1.1");
+        service().detect();
+        assertNull("nor offered to add on 2.x", info("Amazon Q Developer"));
+    }
+
     public void testAnOlderCliIsNotOfferedOrPassedNewerTools() throws Exception {
         layOut("amp");
         layOut("claude");
@@ -125,7 +150,7 @@ public class AiToolServiceBehaviourTest extends BasePlatformTestCase {
     public void testWithNoCliNothingIsFiltered() {
         service().setCliVersionForTest(() -> null);
 
-        assertEquals(50, service().getAllToolsWithStatus().size());
+        assertEquals("with no CLI, every tool of every release", AiToolRegistry.all().size(), service().getAllToolsWithStatus().size());
     }
 
     public void testANameSavedByAnEarlierVersionMapsToTheCurrentOne() throws Exception {

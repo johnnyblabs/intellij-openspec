@@ -23,7 +23,7 @@ class KnownGapsTest {
             "registry", Set.of("tools-in-order", "tool-fields", "aliases", "passed-ids-accepted"),
             "invocation", Set.of("every-row", "registry-paths"));
 
-    static final Set<String> CLOSERS = Set.of("skills-layout-2x", "tool-registry-2x", "openspec-target-2x",
+    static final Set<String> CLOSERS = Set.of("skills-layout-2x", "openspec-target-2x",
             "init-skills-scope", "update-migration-2x");
 
     @Test
@@ -51,23 +51,26 @@ class KnownGapsTest {
         assertEquals(List.of(), bad);
     }
 
+    /** A gap to exercise the mechanism with, since none is open. */
+    static final Map<String, String> SAMPLE = Map.of("2.1.1/registry/tools-in-order", "tool-registry-2x");
+
     @Test
     void aListedCaseMustStillFail() throws Throwable {
-        String key = KnownGaps.GAPS.keySet().iterator().next();
+        String key = SAMPLE.keySet().iterator().next();
         String[] p = key.split("/", 3);
         // Still failing: the gap holds, so check passes.
-        KnownGaps.check(p[0], p[1], p[2], () -> fail("still diverges"));
+        KnownGaps.check(SAMPLE, p[0], p[1], p[2], () -> fail("still diverges"));
         // Now passing: the gap closed, so check fails and asks for the entry to go.
-        AssertionFailedError e = assertThrows(AssertionFailedError.class, () -> KnownGaps.check(p[0], p[1], p[2], () -> {
+        AssertionFailedError e = assertThrows(AssertionFailedError.class, () -> KnownGaps.check(SAMPLE, p[0], p[1], p[2], () -> {
         }));
         assertTrue(e.getMessage().contains("gap fixed: remove KnownGaps entry " + key), e.getMessage());
     }
 
     @Test
     void aListedCaseThatCrashesIsNotTheGap() {
-        String key = KnownGaps.GAPS.keySet().iterator().next();
+        String key = SAMPLE.keySet().iterator().next();
         String[] p = key.split("/", 3);
-        assertThrows(AssertionFailedError.class, () -> KnownGaps.check(p[0], p[1], p[2], () -> {
+        assertThrows(AssertionFailedError.class, () -> KnownGaps.check(SAMPLE, p[0], p[1], p[2], () -> {
             throw new IllegalStateException("a parser crash is a failure, not the gap");
         }));
     }

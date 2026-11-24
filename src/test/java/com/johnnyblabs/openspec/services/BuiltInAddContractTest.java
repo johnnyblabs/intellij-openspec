@@ -166,9 +166,15 @@ class BuiltInAddContractTest {
     void onlyTheListOnlyToolsAreEverRefused() {
         Set<String> listOnly = new TreeSet<>();
         for (AiTool tool : AiToolRegistry.all()) {
-            if (AiToolRegistry.builtInMarker(tool) != null) listOnly.add(tool.id());
+            if (AiToolRegistry.builtInMarker(tool) != null && !AiToolRegistry.addedIn21(tool)) listOnly.add(tool.id());
         }
-        assertEquals(Set.of("agents", "codex"), listOnly, "the tools whose only home is .agents/skills");
+        assertEquals(Set.of("agents", "codex"), listOnly, "the 1.x tools whose only home is .agents/skills");
+        assertNull(AiToolRegistry.builtInMarker(AiToolRegistry.byId("trae")), "Trae CN sharing .trae doesn't give Trae a marker");
+        for (AiTool tool : AiToolRegistry.all()) {
+            if (AiToolRegistry.addedIn21(tool) && AiToolRegistry.builtInDir(tool) != null) {
+                assertEquals(BuiltInAdd.NEEDS_CLI, AiToolRegistry.builtInAdd(tool, Path.of("unused")), tool.id());
+            }
+        }
     }
 
     @Test

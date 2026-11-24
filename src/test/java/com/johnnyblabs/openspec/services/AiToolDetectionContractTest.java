@@ -35,8 +35,8 @@ class AiToolDetectionContractTest {
     static final Path CLI = Paths.get("src/test/resources/fixtures/cli");
 
     /** Each release's case count, so a lost case can't shrink the replay unnoticed. */
-    static final Map<String, Integer> CASE_COUNT = Map.of("1.14.3", 30, "1.16.1", 30, "1.17.0", 32,
-            "2.0.0", 38, "2.1.0", 40, "2.1.1", 40);
+    static final Map<String, Integer> CASE_COUNT = Map.of("1.14.3", 30, "1.16.1", 30, "1.17.0", 33,
+            "2.0.0", 39, "2.1.0", 40, "2.1.1", 41);
 
     @TempDir
     Path tmp;
@@ -83,7 +83,8 @@ class AiToolDetectionContractTest {
     void whatBuiltInAddCreatesIsDetected() throws IOException {
         for (AiTool tool : AiToolRegistry.all()) {
             String dir = AiToolRegistry.builtInDir(tool);
-            if (dir == null) continue;
+            // A tool 2.1 added is never added without the CLI (BuiltInAddContractTest pins that it needs it).
+            if (dir == null || AiToolRegistry.addedIn21(tool)) continue;
             Path project = tmp.resolve("add-" + tool.id());
             Files.createDirectories(project.resolve(dir));
             String marker = AiToolRegistry.builtInMarker(tool);

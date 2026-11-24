@@ -15,7 +15,12 @@ import java.util.*;
 public final class AiToolDetectionService {
     private static final Logger LOG = Logger.getInstance(AiToolDetectionService.class);
 
-    public enum ToolType { CLI, IDE_PANEL }
+    /**
+     * Whether a tool runs in a terminal ({@code CLI}) or a panel or app ({@code IDE_PANEL}): the plugin's own field,
+     * which upstream doesn't record. {@code UNCLASSIFIED} when the tool's own documentation doesn't settle it: no
+     * badge, and the generic guidance.
+     */
+    public enum ToolType { CLI, IDE_PANEL, UNCLASSIFIED }
 
     /**
      * Guidance metadata for tool-specific delivery instructions.

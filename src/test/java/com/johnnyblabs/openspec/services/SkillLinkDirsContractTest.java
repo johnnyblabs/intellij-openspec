@@ -44,9 +44,20 @@ class SkillLinkDirsContractTest {
             JsonObject effective = read(v, "ai-tools.json").getAsJsonObject("effective");
             List<String> drift = new ArrayList<>();
             int linked = 0;
+            // Upstream's tools with a skills folder and the plugin's accepted ones are the same set: neither side skips.
+            java.util.Set<String> accepted = new java.util.TreeSet<>();
+            for (AiToolRegistry.AiTool tool : AiToolRegistry.all()) {
+                if (AiToolRegistry.acceptedBy(tool, v) && tool.skillsDir() != null) accepted.add(tool.id());
+            }
+            java.util.Set<String> upstreamIds = new java.util.TreeSet<>(effective.keySet());
+            if (!v.startsWith("2.0")) accepted.add("minimax-code"); // its project folder is 2.1's (DetectionRules)
+            assertEquals(upstreamIds, accepted, "CLI " + v + "'s tools with a skills folder");
             for (AiToolRegistry.AiTool tool : AiToolRegistry.all()) {
                 JsonElement entry = effective.get(tool.id());
-                if (entry == null) continue; // a tool this release doesn't have (Amazon Q on 2.x)
+                if (entry == null) {
+                    assertFalse(accepted.contains(tool.id()), tool.id() + " is accepted by " + v + " but has no effective entry");
+                    continue;
+                }
                 String upstream = stringOrNull(entry.getAsJsonObject(), "linkDir");
                 if (upstream != null) linked++;
                 String plugin = SkillLinkDirs.linkDir(line(v), tool.id());
@@ -67,7 +78,7 @@ class SkillLinkDirsContractTest {
             for (JsonElement e : read(v, "workflow-invocations.json").getAsJsonArray("rows")) {
                 JsonObject row = e.getAsJsonObject();
                 String tool = row.get("tool").getAsString();
-                if (AiToolRegistry.byId(tool) == null) continue; // tools only 2.1 knows: the registry change adds them
+                assertNotNull(AiToolRegistry.byId(tool), "CLI " + v + " linked a tool the registry lacks: " + tool);
                 String upstream = stringOrNull(row, "linkPath");
                 String plugin = SkillLinkDirs.linkPath(line(v), tool, row.get("skill").getAsString());
                 if (!Objects.equals(upstream, plugin)) drift.add(tool + ": upstream " + upstream + ", plugin " + plugin);

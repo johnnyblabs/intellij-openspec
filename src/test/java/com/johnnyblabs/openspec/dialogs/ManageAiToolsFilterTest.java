@@ -171,7 +171,8 @@ class ManageAiToolsFilterTest {
                     continue; // installs into the home directory
                 }
                 assertNotNull(dirName, name + " should have a directory name");
-                assertTrue(dirName.startsWith("."), name + " dir should start with dot");
+                // Upstream's folders for the tools 2.1 added include data, agent and the project root itself (.).
+                assertFalse(dirName.isBlank(), name + " dir should not be blank");
             }
         }
 

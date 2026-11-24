@@ -592,7 +592,7 @@ public class ManageAiToolsDialog extends DialogWrapper {
         com.johnnyblabs.openspec.services.AiToolRegistry.AiTool entry =
                 com.johnnyblabs.openspec.services.AiToolRegistry.byName(tool.name());
         String basePath = project.getBasePath();
-        if (entry != null && basePath != null && com.johnnyblabs.openspec.services.AiToolRegistry.builtInMarker(entry) != null
+        if (entry != null && basePath != null
                 && com.johnnyblabs.openspec.services.AiToolRegistry.builtInAdd(entry, java.nio.file.Path.of(basePath))
                 == com.johnnyblabs.openspec.services.AiToolRegistry.BuiltInAdd.NEEDS_CLI) {
             return "Install the OpenSpec CLI to add " + tool.name() + " to this project";

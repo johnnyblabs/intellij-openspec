@@ -109,11 +109,16 @@ class AiToolRegistryContractTest {
     Stream<DynamicTest> theToolsAreTheCliRegistryInItsOrder() {
         return perRelease("tools-in-order", v -> {
             List<String> upstream = new ArrayList<>(ids(dump(v)));
-            List<String> plugin = AiToolRegistry.all().stream().map(AiTool::id).toList();
+            List<String> plugin = accepted(v).stream().map(AiTool::id).toList();
 
             assertEquals(TOOL_COUNT.get(v), upstream.size(), "sanity: CLI " + v + "'s tool count");
             assertEquals(upstream, plugin);
         });
+    }
+
+    /** The plugin's tools a release accepts: the one list, filtered by each tool's release range. */
+    private static List<AiTool> accepted(String version) {
+        return AiToolRegistry.all().stream().filter(t -> AiToolRegistry.acceptedBy(t, version)).toList();
     }
 
     @TestFactory
@@ -127,9 +132,11 @@ class AiToolRegistryContractTest {
             String id = t.get("value").getAsString();
             AiTool tool = AiToolRegistry.byId(id);
             assertNotNull(tool, id);
+            // Folders as that release's line has them (MiniMax Code moved into the project in 2.1).
+            DetectionRules rules = DetectionRules.forVersion(version);
             assertEquals(t.get("name").getAsString(), tool.name(), id + " name");
-            assertEquals(stringOrNull(t, "skillsDir"), tool.skillsDir(), id + " skillsDir");
-            assertEquals(stringOrNull(t, "globalSkillsDir"), tool.globalSkillsDir(), id + " globalSkillsDir");
+            assertEquals(stringOrNull(t, "skillsDir"), rules.skillsDir(tool), id + " skillsDir");
+            assertEquals(stringOrNull(t, "globalSkillsDir"), rules.globalSkillsDir(tool), id + " globalSkillsDir");
             assertEquals(strings(t, "detectionPaths"), tool.detectionPaths(), id + " detectionPaths");
             assertEquals(strings(t, "legacySkillsDirs"), tool.legacySkillsDirs(), id + " legacySkillsDirs");
         }
@@ -154,32 +161,51 @@ class AiToolRegistryContractTest {
     Stream<DynamicTest> everyPassedIdIsAccepted() {
         return perRelease("passed-ids-accepted", v -> {
             JsonObject d = dump(v);
-            List<String> refused = AiToolRegistry.all().stream().map(AiTool::cliId)
+            List<String> refused = accepted(v).stream().map(AiTool::cliId)
                     .filter(id -> !ids(d).contains(id) && !d.getAsJsonObject("aliases").has(id)).toList();
             assertEquals(List.of(), refused, "CLI " + v + " refuses these ids");
         });
     }
 
     /**
-     * The id the plugin passes is accepted by every CLI from its sinceCli up to the target: as an id there, or later
-     * as an alias. Releases after the target are held to {@link #everyPassedIdIsAccepted} instead.
+     * Each tool's range is the captured releases that accept the id it passes, as an id or an alias: {@code sinceCli}
+     * is the first, {@code untilCli} the first after it that refuses it (null when none does), with no gap between.
      */
     @Test
-    void sinceCliIsTheFirstCapturedVersionAcceptingThePassedId() throws IOException {
-        List<JsonObject> dumps = dumps().stream()
-                .filter(d -> FixtureVersions.compare(d.get("version").getAsString(), TARGET) <= 0).toList();
+    void sinceAndUntilCliAreTheCapturedReleasesAcceptingThePassedId() throws IOException {
+        List<JsonObject> dumps = dumps();
         assertEquals("1.3.0", dumps.getFirst().get("version").getAsString(), "sanity: dumps start at the CLI floor");
+        assertTrue(dumps.stream().anyMatch(d -> d.get("version").getAsString().equals("2.1.1")), "sanity: 2.x dumps read");
         for (AiTool tool : AiToolRegistry.all()) {
             String first = null;
-            boolean acceptedSinceFirst = true;
+            String refused = null;
+            boolean gap = false;
             for (JsonObject d : dumps) {
+                String v = d.get("version").getAsString();
                 boolean accepts = ids(d).contains(tool.cliId()) || d.getAsJsonObject("aliases").has(tool.cliId());
-                if (accepts && first == null) first = d.get("version").getAsString();
-                if (!accepts && first != null) acceptedSinceFirst = false;
+                if (accepts && first == null) first = v;
+                else if (!accepts && first != null && refused == null) refused = v;
+                else if (accepts && refused != null) gap = true;
+                assertEquals(accepts, AiToolRegistry.acceptedBy(tool, v), tool.id() + " acceptedBy " + v);
             }
             assertEquals(first, tool.sinceCli(), tool.id() + " sinceCli");
-            assertTrue(acceptedSinceFirst, tool.cliId() + " stops being accepted after " + first);
+            assertEquals(refused, tool.untilCli(), tool.id() + " untilCli");
+            assertFalse(gap, tool.cliId() + " is accepted again after " + refused);
         }
+    }
+
+    /** CLI 2.0 retired Amazon Q: its init refuses the id, as captured on 2.0.0 and 2.1.1. */
+    @Test
+    void amazonQIsRefusedFrom200AsTheCliRefusesIt() throws IOException {
+        AiTool amazonQ = AiToolRegistry.byId("amazon-q");
+        for (String v : List.of("2.0.0", "2.1.1")) {
+            Path errors = FIXTURES.resolve(v).resolve("errors");
+            assertEquals("1", Files.readString(errors.resolve("init-amazon-q.exit")).strip(), v);
+            assertTrue(Files.readString(errors.resolve("init-amazon-q.stderr")).contains("Amazon Q Developer is no longer supported"), v);
+            assertFalse(AiToolRegistry.acceptedBy(amazonQ, v), v);
+        }
+        assertTrue(AiToolRegistry.acceptedBy(amazonQ, "1.17.0"));
+        assertTrue(AiToolRegistry.acceptedBy(amazonQ, null), "with no CLI nothing is passed, so nothing is filtered");
     }
 
     /** Upstream against itself: each release's init help lists exactly its registry's ids. */
