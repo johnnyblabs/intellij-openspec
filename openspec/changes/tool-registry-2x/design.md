@@ -52,11 +52,8 @@
 4. **A type for every new tool, from its documentation.** `ToolType` gains `UNCLASSIFIED`.
    - Each new tool is marked `CLI` (runs in a terminal) or `IDE_PANEL` (a panel or app) from its vendor's own documentation, with the source recorded in the table below. A tool its docs don't settle stays `UNCLASSIFIED`.
    - `UNCLASSIFIED` shows no badge (Manage AI Tools and the workflow panel's tool label), isn't a CLI tool for save-path hints, and gets the default guidance. Upstream records no type; this is the plugin's own field, as today.
-   - The table is filled in during implementation (task 2.2):
-
-     | Tool | Type | Source |
-     |---|---|---|
-     | (one row per new tool) | | |
+   - The evidence lives in `src/test/resources/tool-types-2.1.tsv` (tool id, type, the vendor's page), a committed file the type test reads, so it survives the archive. Of the 38 tools, 12 are `CLI`, 14 `IDE_PANEL` and 12 `UNCLASSIFIED` (terminal and desktop both primary, a framework or API platform, or no product found).
+   - Tools without a guidance entry, as all 38 are, get the default guidance, as today's unlisted tools do.
 
 5. **Amazon Q: not offered, no row of the plugin's own.** `acceptedBy` refuses it from 2.0, and 2.x detection already never reports it. The plugin adds no retired row: upstream reports a retired tool only while `update` has something to clean, and stops once only edited files remain, so a permanent row would disagree with the CLI. The cleanup and the Kiro advice come from `openspec update`, which **Update OpenSpec…** runs.
 6. **Wording by CLI line.**

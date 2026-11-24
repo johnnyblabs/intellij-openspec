@@ -565,7 +565,8 @@ public class WorkflowActionPanel extends JPanel {
             List<String> tools = detection.getDetectedTools();
             for (String tool : tools) {
                 AiToolDetectionService.ToolType type = AiToolDetectionService.getToolType(tool);
-                String label = tool + "  [" + (type == AiToolDetectionService.ToolType.CLI ? "CLI" : "IDE") + "]";
+                String badge = type.badge();
+                String label = badge == null ? tool : tool + "  [" + badge + "]";
                 toolSelector.addItem(label);
             }
         }

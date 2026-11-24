@@ -20,7 +20,18 @@ public final class AiToolDetectionService {
      * which upstream doesn't record. {@code UNCLASSIFIED} when the tool's own documentation doesn't settle it: no
      * badge, and the generic guidance.
      */
-    public enum ToolType { CLI, IDE_PANEL, UNCLASSIFIED }
+    public enum ToolType {
+        CLI, IDE_PANEL, UNCLASSIFIED;
+
+        /** The badge shown beside the tool, or {@code null} for an unclassified tool, which gets none. */
+        public @Nullable String badge() {
+            return switch (this) {
+                case CLI -> "CLI";
+                case IDE_PANEL -> "IDE";
+                case UNCLASSIFIED -> null;
+            };
+        }
+    }
 
     /**
      * Guidance metadata for tool-specific delivery instructions.

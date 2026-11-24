@@ -1,0 +1,41 @@
+# The plugin's own CLI/IDE type for each tool CLI 2.1 added, from the vendor's own documentation.
+# UNCLASSIFIED: the docs don't settle it (terminal and app both primary, a framework or API, or no product found).
+# id<TAB>type<TAB>source
+aider-desk	IDE_PANEL	https://github.com/hotovo/aider-desk
+antigravity-cli	CLI	https://antigravity.google/docs/getting-started?tab=cli
+astrbot	UNCLASSIFIED	
+autohand-code	CLI	https://github.com/autohandai/code-cli
+openclaw	UNCLASSIFIED	
+codemaker	UNCLASSIFIED	
+cortex	UNCLASSIFIED	
+deepagents	CLI	https://docs.langchain.com/oss/python/deepagents/cli
+dexto	UNCLASSIFIED	
+eve	UNCLASSIFIED	
+firebender	IDE_PANEL	https://docs.firebender.com
+fx	CLI	https://github.com/vercel-labs/fx
+goose	UNCLASSIFIED	
+inference-sh	UNCLASSIFIED	
+jazz	CLI	https://github.com/lvndry/jazz
+kimchi	CLI	https://docs.kimchi.dev/docs/kimchi-cli
+kode	CLI	https://github.com/shareAI-lab/kode
+loaf	CLI	https://github.com/veyzyn/loaf
+mcpjam	IDE_PANEL	https://mcpjam.com
+moxby	IDE_PANEL	https://moxby.com
+mux	IDE_PANEL	https://github.com/coder/mux
+openhands	IDE_PANEL	https://docs.openhands.dev/overview/introduction
+ona	IDE_PANEL	https://ona.com
+posit-assistant	UNCLASSIFIED	
+qoder-cn	IDE_PANEL	https://help.aliyun.com/en/lingma/qoder-cn/product-overview/what-is-qoder-cn
+replit	IDE_PANEL	https://docs.replit.com/replitai/skills
+reasonix	UNCLASSIFIED	
+sarvam-code	CLI	https://www.sarvam.ai/products/coding-agents
+tabnine-cli	CLI	https://docs.tabnine.com/main/getting-started/tabnine-cli
+terramind	IDE_PANEL	https://terramind.com
+tinycloud	UNCLASSIFIED	
+trae-cn	IDE_PANEL	https://docs.trae.cn/ide/what-is-trae
+zencoder	IDE_PANEL	https://zencoder.ai
+zenflow	IDE_PANEL	https://zencoder.ai/zenflow
+neovate	CLI	https://github.com/neovateai/neovate-code
+pochi	IDE_PANEL	https://docs.getpochi.com
+promptscript	UNCLASSIFIED	
+adal	CLI	https://github.com/SylphAI-Inc/adal-cli

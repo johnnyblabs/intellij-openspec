@@ -242,15 +242,17 @@ public class ManageAiToolsDialog extends DialogWrapper {
         nameLabel.setFont(nameLabel.getFont().deriveFont(Font.PLAIN, 13f));
         namePanel.add(nameLabel);
 
-        // Type badge
-        String typeText = tool.type() == AiToolDetectionService.ToolType.CLI ? "CLI" : "IDE";
-        JBLabel typeBadge = new JBLabel(typeText);
-        typeBadge.setFont(typeBadge.getFont().deriveFont(Font.PLAIN, 10f));
-        typeBadge.setForeground(JBColor.GRAY);
-        typeBadge.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(JBColor.border(), 1),
-                JBUI.Borders.empty(1, 4)));
-        namePanel.add(typeBadge);
+        // Type badge; an unclassified tool gets none.
+        String typeText = tool.type().badge();
+        if (typeText != null) {
+            JBLabel typeBadge = new JBLabel(typeText);
+            typeBadge.setFont(typeBadge.getFont().deriveFont(Font.PLAIN, 10f));
+            typeBadge.setForeground(JBColor.GRAY);
+            typeBadge.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(JBColor.border(), 1),
+                    JBUI.Borders.empty(1, 4)));
+            namePanel.add(typeBadge);
+        }
 
         row.add(namePanel, BorderLayout.CENTER);
 
