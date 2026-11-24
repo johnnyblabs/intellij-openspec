@@ -816,6 +816,15 @@ The capture walks the tree without following links, so each skill is recorded on
 
 `CliFlagTableContractTest` holds the plugin's command and flag table (`util/CliFlags`) to these captures. `CliArgsVersionMatrixTest` resolves every command line the plugin can build against each release, and checks it against that release's help.
 
+### `detect/builtin-add-*`: what Manage AI Tools' add without the CLI leaves
+
+These cases (1.17.0, 2.0.0, 2.1.0 and 2.1.1) record what the add leaves in a project, judged by the real CLI:
+- `builtin-add-cursor-beside-claude`: a set-up Claude project plus `.cursor/`, so both are detected.
+- `builtin-add-codex-list-on-empty`: the single-id list `codex` on an empty project, so Codex is detected.
+- `builtin-add-codex-folder-beside-claude` (2.x only): `.agents/skills/` alone beside Claude. Codex is **not** detected, which is why the add refuses Codex on a 2.x project.
+
+`BuiltInAddContractTest` holds the plugin's decision to these verdicts, and `OpenSpecTargetListContractTest` exempts them from its "list equals verdict" check, because Cursor is detected from its folder, not the list.
+
 ### `fingerprints/`: upstream's "released file" check
 
 On 2.x, upstream reads a shared folder's wording only when a skill file is exactly one a release generated. It hashes a normalized copy of the file and looks it up in `RELEASED_GENERATED_FINGERPRINTS`. The plugin ships that set as `src/main/resources/openspec/released-skill-fingerprints.txt` and ports the normalization. `fingerprints/vectors.json` (2.0.0 and 2.1.1) records, from upstream's own functions:

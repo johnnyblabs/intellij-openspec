@@ -278,7 +278,7 @@ public class ManageAiToolsDialog extends DialogWrapper {
                             com.johnnyblabs.openspec.util.CliCommands.init(tool.cliId()),
                             "Adding " + tool.name(), tool.name(), btn));
                 } else {
-                    btn.setToolTipText("Create tool directory and set as preferred (install CLI for skill generation)");
+                    btn.setToolTipText(addTooltip(project, tool));
                     btn.addActionListener(e -> {
                         addToolBuiltIn(tool);
                         btn.setText("Added");
@@ -455,39 +455,85 @@ public class ManageAiToolsDialog extends DialogWrapper {
     }
 
     private void addToolBuiltIn(ToolInfo tool) {
-        String basePath = project.getBasePath();
-        if (basePath == null) return;
-
         com.johnnyblabs.openspec.services.AiToolRegistry.AiTool entry =
                 com.johnnyblabs.openspec.services.AiToolRegistry.byName(tool.name());
-        String dirName = entry != null ? com.johnnyblabs.openspec.services.AiToolRegistry.builtInDir(entry) : null;
-        if (dirName == null) return;
-        String marker = com.johnnyblabs.openspec.services.AiToolRegistry.builtInMarker(entry);
+        if (entry == null) return;
+        com.johnnyblabs.openspec.services.AiToolRegistry.BuiltInAdd done = applyBuiltInAdd(project, entry, this);
+        if (done == null || done == com.johnnyblabs.openspec.services.AiToolRegistry.BuiltInAdd.NEEDS_CLI) return;
+        // syncRefresh() is legal only because this runs on the EDT (a button handler); never call it from runCliAction's
+        // background task.
+        VirtualFileManager.getInstance().syncRefresh();
+        setPreferredTool(tool.name());
+        loadTools();
+        OpenSpecNotifier.info(project, "AI Tools",
+                tool.name() + " directory created. Install the OpenSpec CLI to generate skills.");
+    }
 
+    /**
+     * Adds {@code tool} without the CLI as {@link com.johnnyblabs.openspec.services.AiToolRegistry#builtInAdd} allows:
+     * creates its folder, writes the single-id tool list only when the decision says so (never on a 2.x project, never
+     * over an existing list), or, when only the CLI can record the tool, writes nothing and says so. Returns the
+     * decision, or {@code null} when nothing could be done. EDT (a button handler): a handful of file checks.
+     */
+    @VisibleForTesting
+    static com.johnnyblabs.openspec.services.AiToolRegistry.@Nullable BuiltInAdd applyBuiltInAdd(
+            Project project, com.johnnyblabs.openspec.services.AiToolRegistry.AiTool entry, Object requestor) {
+        String basePath = project.getBasePath();
+        if (basePath == null) return null;
+        String dirName = com.johnnyblabs.openspec.services.AiToolRegistry.builtInDir(entry);
+        if (dirName == null) return null;
+        com.johnnyblabs.openspec.services.AiToolRegistry.BuiltInAdd decision =
+                com.johnnyblabs.openspec.services.AiToolRegistry.builtInAdd(entry, java.nio.file.Path.of(basePath));
+        if (decision == com.johnnyblabs.openspec.services.AiToolRegistry.BuiltInAdd.NEEDS_CLI) {
+            OpenSpecNotifier.warn(project, "AI Tools", builtInNeedsCliNotice(entry.name()));
+            return decision;
+        }
+        boolean writeList = decision == com.johnnyblabs.openspec.services.AiToolRegistry.BuiltInAdd.CREATE_DIR_AND_LIST
+                && com.johnnyblabs.openspec.services.AiToolRegistry.builtInMarker(entry) != null;
         try {
             com.intellij.openapi.vfs.VirtualFile baseDir =
                     com.intellij.openapi.vfs.LocalFileSystem.getInstance().findFileByPath(basePath);
             if (baseDir == null) {
                 OpenSpecNotifier.error(project, "AI Tools", "Project directory not found");
-                return;
+                return null;
             }
             com.intellij.openapi.application.WriteAction.run(() -> {
                 com.intellij.openapi.vfs.VirtualFile dir = com.intellij.openapi.vfs.VfsUtil.createDirectoryIfMissing(baseDir, dirName);
-                if (marker != null && dir != null && dir.findChild(".openspec-target") == null) {
-                    com.intellij.openapi.vfs.VfsUtil.saveText(dir.createChildData(this, ".openspec-target"), entry.id() + "\n");
+                if (writeList && dir != null && dir.findChild(".openspec-target") == null) {
+                    com.intellij.openapi.vfs.VfsUtil.saveText(dir.createChildData(requestor, ".openspec-target"), entry.id() + "\n");
                 }
             });
-            // syncRefresh() is legal only because this runs on the EDT (a button handler); never call it from runCliAction's
-            // background task.
-            VirtualFileManager.getInstance().syncRefresh();
-            setPreferredTool(tool.name());
-            loadTools();
-            OpenSpecNotifier.info(project, "AI Tools",
-                    tool.name() + " directory created. Install the OpenSpec CLI to generate skills.");
+            return decision;
         } catch (Exception ex) {
             OpenSpecNotifier.error(project, "AI Tools",
                     "Failed to create " + dirName + ": " + ex.getMessage());
+            return null;
         }
+    }
+
+    /** Why a tool can't be added without the CLI here: only the CLI records it in the project's tool list. */
+    @VisibleForTesting
+    static String builtInNeedsCliNotice(String toolName) {
+        return toolName + " can't be set up in this project without the OpenSpec CLI: the CLI records it in the "
+                + "project's list of AI tools (.agents/skills/.openspec-target). Install the OpenSpec CLI, then add "
+                + toolName + " again.";
+    }
+
+    /**
+     * The Add button's tooltip without the CLI. Only the two tools the tool list alone records need a disk check, so
+     * the other rows cost nothing.
+     */
+    @VisibleForTesting
+    static String addTooltip(Project project, ToolInfo tool) {
+        com.johnnyblabs.openspec.services.AiToolRegistry.AiTool entry =
+                com.johnnyblabs.openspec.services.AiToolRegistry.byName(tool.name());
+        String basePath = project.getBasePath();
+        if (entry != null && basePath != null && com.johnnyblabs.openspec.services.AiToolRegistry.builtInMarker(entry) != null
+                && com.johnnyblabs.openspec.services.AiToolRegistry.builtInAdd(entry, java.nio.file.Path.of(basePath))
+                == com.johnnyblabs.openspec.services.AiToolRegistry.BuiltInAdd.NEEDS_CLI) {
+            return "Install the OpenSpec CLI to add " + tool.name() + " to this project";
+        }
+        return "Create tool directory and set as preferred (install CLI for skill generation)";
     }
 
     private void setPreferredTool(String toolName) {

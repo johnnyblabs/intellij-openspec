@@ -95,6 +95,11 @@ CASES = {
     "agents-unmarked-generic": [("init", None, "agents"), ("rm", ".agents/skills/.openspec-target")],
     "agents-unmarked-codex-syntax": [("init", None, "codex"), ("rm", ".agents/skills/.openspec-target")],
     "agents-empty-dir": [("file", ".agents/.keep", "")],
+    # What Manage AI Tools' add without the CLI leaves, judged by the real CLI: a tool's own folder beside a set-up
+    # project, the single-id list on an empty project, and (2.x only) the shared folder alone, which detects nothing.
+    "builtin-add-cursor-beside-claude": [("init", None, "claude"), ("file", ".cursor/.keep", "")],
+    "builtin-add-codex-list-on-empty": [("file", ".agents/skills/.openspec-target", "codex\n")],
+    "builtin-add-codex-folder-beside-claude": [("init", None, "claude"), ("file", ".agents/skills/.keep", "")],
     # A shared folder a 1.17 release wrote, with no list: its skills are released wording, so 2.x infers the owner.
     "agents-unmarked-from-1.17": [("init", "1.17.0", "agents"), ("rm", ".agents/skills/.openspec-target")],
     "codex-unmarked-from-1.17": [("init", "1.17.0", "codex"), ("rm", ".agents/skills/.openspec-target")],
@@ -139,6 +144,9 @@ APPLIES = {
     "user-skill-kept": ("2.0.0", None),
     "skills-lock-agents": ("2.1.0", None),
     "agents-unmarked-from-1.17": ("2.0.0", None),
+    "builtin-add-cursor-beside-claude": ("1.17.0", None),
+    "builtin-add-codex-list-on-empty": ("1.17.0", None),
+    "builtin-add-codex-folder-beside-claude": ("2.0.0", None),
     "codex-unmarked-from-1.17": ("2.0.0", None),
 }
 

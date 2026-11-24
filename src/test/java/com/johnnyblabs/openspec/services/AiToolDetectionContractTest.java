@@ -35,8 +35,8 @@ class AiToolDetectionContractTest {
     static final Path CLI = Paths.get("src/test/resources/fixtures/cli");
 
     /** Each release's case count, so a lost case can't shrink the replay unnoticed. */
-    static final Map<String, Integer> CASE_COUNT = Map.of("1.14.3", 30, "1.16.1", 30, "1.17.0", 30,
-            "2.0.0", 35, "2.1.0", 37, "2.1.1", 37);
+    static final Map<String, Integer> CASE_COUNT = Map.of("1.14.3", 30, "1.16.1", 30, "1.17.0", 32,
+            "2.0.0", 38, "2.1.0", 40, "2.1.1", 40);
 
     @TempDir
     Path tmp;

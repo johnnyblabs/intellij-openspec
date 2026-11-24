@@ -341,6 +341,39 @@ public final class AiToolRegistry {
         return dir != null && sharesRoot(tool) && dir.equals(tool.skillsDir() + "/skills") ? dir + "/.openspec-target" : null;
     }
 
+    /** What adding a tool without the CLI may do in a project. */
+    public enum BuiltInAdd {
+        /** Create {@link #builtInDir}. */
+        CREATE_DIR,
+        /** Create {@link #builtInDir} and, when it's absent, the single-id {@link #builtInMarker} list (1.x only). */
+        CREATE_DIR_AND_LIST,
+        /** Write nothing: only the CLI can record this tool in this project's tool list. */
+        NEEDS_CLI
+    }
+
+    /**
+     * What adding {@code tool} without the CLI may do in {@code project}, decided from disk. Only a tool the list alone
+     * records (its {@link #builtInMarker} is non-null: Codex, the universal tool) is restricted. On a project whose files
+     * show a 2.x layout ({@link DetectionRules#fromDisk}) the list is the CLI's record of every tool set up, and 2.x counts
+     * nothing under {@code .agents} as such a tool's evidence; and where a list names another tool, the plugin, which
+     * never overwrites it, can't record this one. Either way the CLI is needed. Pure nio; call off the EDT or for a
+     * handful of file checks only.
+     */
+    public static @Nullable BuiltInAdd builtInAdd(AiTool tool, java.nio.file.Path project) {
+        if (builtInDir(tool) == null) return null;
+        if (builtInMarker(tool) == null) return BuiltInAdd.CREATE_DIR;
+        DetectionRules rules = DetectionRules.fromDisk(project);
+        if (rules.is2x()) return BuiltInAdd.NEEDS_CLI;
+        java.util.List<String> listed = SkillToolList.ids(SkillToolList.read(project));
+        if (!listed.isEmpty() && !listed.contains(tool.id())) return BuiltInAdd.NEEDS_CLI;
+        // Writing the list would hand the shared folder to this tool: refuse while another tool holds it (a 1.x tree
+        // that names its owner by its skills' wording, or Codex skills in its older .codex folder).
+        for (AiTool other : AiToolDetector.detect(project, null, rules)) {
+            if (!other.equals(tool) && Objects.equals(other.skillsDir(), tool.skillsDir())) return BuiltInAdd.NEEDS_CLI;
+        }
+        return BuiltInAdd.CREATE_DIR_AND_LIST;
+    }
+
     private static boolean sharesRoot(AiTool tool) {
         return TOOLS.stream().filter(t -> Objects.equals(t.skillsDir(), tool.skillsDir())).count() > 1;
     }

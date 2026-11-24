@@ -53,7 +53,12 @@ class OpenSpecTargetListContractTest {
                 tests.add(DynamicTest.dynamicTest(v + "/" + c.getFileName(), () -> {
                     List<String> ids = SkillToolList.ids(SkillToolList.parse(content));
                     if (is2x) {
-                        assertEquals(detected, ids.stream().sorted().toList(), "the listed tools are upstream's verdict");
+                        assertTrue(detected.containsAll(ids), "every listed tool is detected: " + ids + " vs " + detected);
+                        // A case made by init alone sets up exactly the tools it lists. The builtin-add-* cases also
+                        // hold a tool folder the plugin created without the CLI, detected from that folder, not the list.
+                        if (!c.getFileName().toString().startsWith("builtin-add-")) {
+                            assertEquals(detected, ids.stream().sorted().toList(), "the listed tools are upstream's verdict");
+                        }
                         // own-files marks a tool OpenSpec gave files of its own: on 2.x, its links (no commands).
                         Set<String> linked = linkedTools(v);
                         for (Entry e : SkillToolList.parse(content)) {
