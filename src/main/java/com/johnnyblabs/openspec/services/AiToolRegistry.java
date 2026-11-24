@@ -509,6 +509,17 @@ public final class AiToolRegistry {
         return BuiltInAdd.CREATE_DIR_AND_LIST;
     }
 
+    /**
+     * The tools on CLI 2.1 that share {@code tool}'s own project folder (Trae and Trae CN in {@code .trae}), in
+     * registry order, or an empty list when it shares it with none. Upstream's {@code agentsByProjectFolder}.
+     */
+    public static List<AiTool> folderGroup(AiTool tool) {
+        if (tool.skillsDir() == null || ".agents".equals(tool.skillsDir()) || !acceptedBy(tool, "2.1.0")) return List.of();
+        List<AiTool> group = TOOLS.stream()
+                .filter(t -> acceptedBy(t, "2.1.0") && tool.skillsDir().equals(t.skillsDir())).toList();
+        return group.size() > 1 ? group : List.of();
+    }
+
     /** Whether CLI 2.1 added the tool, from its bundled installer. */
     static boolean addedIn21(AiTool tool) {
         return CliVersion.atLeast(tool.sinceCli(), "2.1.0");

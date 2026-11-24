@@ -1,0 +1,22 @@
+{
+  "project": {
+    ".agents/skills/.openspec-target": "astrbot own-files\n",
+    ".agents/skills/openspec-apply-change/SKILL.md": "",
+    ".agents/skills/openspec-archive-change/SKILL.md": "",
+    ".agents/skills/openspec-explore/SKILL.md": "",
+    ".agents/skills/openspec-propose/SKILL.md": "",
+    ".agents/skills/openspec-sync-specs/SKILL.md": "",
+    ".agents/skills/openspec-update-change/SKILL.md": ""
+  },
+  "home": {},
+  "links": {
+    "project": {
+      "data/skills/openspec-apply-change": "../../.agents/skills/openspec-apply-change",
+      "data/skills/openspec-archive-change": "../../.agents/skills/openspec-archive-change",
+      "data/skills/openspec-explore": "../../.agents/skills/openspec-explore",
+      "data/skills/openspec-propose": "../../.agents/skills/openspec-propose",
+      "data/skills/openspec-sync-specs": "../../.agents/skills/openspec-sync-specs",
+      "data/skills/openspec-update-change": "../../.agents/skills/openspec-update-change"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "project": {
+    ".agents/skills/.openspec-target": "openclaw own-files\n",
+    ".agents/skills/openspec-apply-change/SKILL.md": "",
+    ".agents/skills/openspec-archive-change/SKILL.md": "",
+    ".agents/skills/openspec-explore/SKILL.md": "",
+    ".agents/skills/openspec-propose/SKILL.md": "",
+    ".agents/skills/openspec-sync-specs/SKILL.md": "",
+    ".agents/skills/openspec-update-change/SKILL.md": ""
+  },
+  "home": {},
+  "links": {
+    "project": {
+      "skills/openspec-apply-change": "../.agents/skills/openspec-apply-change",
+      "skills/openspec-archive-change": "../.agents/skills/openspec-archive-change",
+      "skills/openspec-explore": "../.agents/skills/openspec-explore",
+      "skills/openspec-propose": "../.agents/skills/openspec-propose",
+      "skills/openspec-sync-specs": "../.agents/skills/openspec-sync-specs",
+      "skills/openspec-update-change": "../.agents/skills/openspec-update-change"
+    }
+  }
+}

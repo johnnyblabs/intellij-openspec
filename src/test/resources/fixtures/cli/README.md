@@ -794,6 +794,12 @@ On 2.1.0 and later a plain `init --tools` installs skills for the whole machine.
 | `skill-spots/` | `CAPTURE_VERSION=<v> scripts/capture-skill-spot-verdicts.py` |
 | `skills-scope/`, `errors/init-home-global.*`, `errors/init-scope-project-no-tools.*`, `errors/init-no-git.*` (2.1.0) | `CAPTURE_VERSIONS=<v> scripts/capture-skills-scope.py` |
 
+### Configured tools and the tools 2.1 added
+
+Each `detect/<case>/` also has `configured.json`: what upstream's own `getConfiguredTools` (`dist/core/shared/tool-detection.js`) counts as set up there, which `ConfiguredToolsContractTest` holds the plugin's set-up status to on 2.1.x. The 2.1 dumps' `ai-tools.json` gain `agentsByProjectFolder`: the tools sharing an installer project folder (Trae and Trae CN, Qoder and Qoder CN, Zencoder and Zenflow), of which configured detection counts only the first when the tool list names none.
+
+Cases for 2.1.0 and later: `goose` (a link folder), `fx` (reads `.agents/skills`), `openclaw` (skills folder `.`), `astrbot` (`data`), `minimax-project` (MiniMax Code's project `.minimax`), and `trae`, `trae-cn`, `qoder`, `qoder-cn` each set up alone, plus `trae-unlisted` and `qoder-unlisted`, set up by 1.17.0, which writes no tool list. `amazon-q-from-1.17` (1.17.0 and later) is Amazon Q set up by 1.17.0: detected there, and by no 2.x release.
+
 ### Links in a detection layout
 
 From 2.0, a tool that doesn't read `.agents/skills/` gets one directory link per skill from its own folder into it (`.claude/skills/openspec-explore` → `../../.agents/skills/openspec-explore`). Git never holds a real link: `FixtureNoSymlinkHygieneTest` fails on a link on disk or a mode-`120000` entry in the index. `layout.json` records them as data, in a top-level map present only when a side has links:

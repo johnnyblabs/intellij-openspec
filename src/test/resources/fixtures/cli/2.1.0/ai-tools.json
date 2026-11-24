@@ -1171,5 +1171,19 @@
       "skills": ".agents/skills",
       "linkDir": ".adal/skills"
     }
+  },
+  "agentsByProjectFolder": {
+    ".qoder/skills": [
+      "qoder",
+      "qoder-cn"
+    ],
+    ".trae/skills": [
+      "trae",
+      "trae-cn"
+    ],
+    ".zencoder/skills": [
+      "zencoder",
+      "zenflow"
+    ]
   }
 }

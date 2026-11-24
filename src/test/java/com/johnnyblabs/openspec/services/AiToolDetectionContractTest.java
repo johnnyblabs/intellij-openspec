@@ -36,7 +36,7 @@ class AiToolDetectionContractTest {
 
     /** Each release's case count, so a lost case can't shrink the replay unnoticed. */
     static final Map<String, Integer> CASE_COUNT = Map.of("1.14.3", 30, "1.16.1", 30, "1.17.0", 33,
-            "2.0.0", 39, "2.1.0", 40, "2.1.1", 41);
+            "2.0.0", 39, "2.1.0", 52, "2.1.1", 52);
 
     @TempDir
     Path tmp;

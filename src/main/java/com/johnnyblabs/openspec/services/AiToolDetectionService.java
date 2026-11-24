@@ -198,6 +198,7 @@ public final class AiToolDetectionService {
 
     private ToolStatus statusOfDetected(AiToolRegistry.AiTool tool) {
         String basePath = project.getBasePath();
+        if (basePath != null && !countsInItsFolderGroup(Path.of(basePath), tool)) return ToolStatus.DETECTED;
         List<File> roots = new ArrayList<>();
         if (basePath != null && tool.skillsDir() != null) roots.add(new File(basePath, tool.skillsDir()));
         if (basePath != null) tool.legacySkillsDirs().forEach(d -> roots.add(new File(basePath, d)));
@@ -216,6 +217,20 @@ public final class AiToolDetectionService {
         // 2.x: a tool's skills are in the shared .agents/skills (it is listed there) or reached through its link.
         if (basePath != null && hasLocatedSkill(Path.of(basePath), tool)) return ToolStatus.CONFIGURED;
         return ToolStatus.DETECTED;
+    }
+
+    /**
+     * CLI 2.1's rule for tools sharing a project folder (Trae and Trae CN): when the tool list doesn't name the tool,
+     * it counts as set up only if no other tool of its group is listed and it is the group's first.
+     */
+    private boolean countsInItsFolderGroup(Path base, AiToolRegistry.AiTool tool) {
+        DetectionRules rules = rules(base);
+        if (rules != DetectionRules.V2_1 && rules != DetectionRules.V2_1_1) return true;
+        List<AiToolRegistry.AiTool> group = AiToolRegistry.folderGroup(tool);
+        if (group.isEmpty()) return true;
+        List<String> listed = SkillToolList.ids(SkillToolList.read(base));
+        if (listed.contains(tool.id())) return true;
+        return group.stream().noneMatch(t -> listed.contains(t.id())) && group.getFirst().equals(tool);
     }
 
     /** Whether {@link SkillLocator} finds any OpenSpec skill for {@code tool} in the project or the home directory. */

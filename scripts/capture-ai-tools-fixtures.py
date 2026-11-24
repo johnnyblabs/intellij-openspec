@@ -14,6 +14,8 @@ For the newest version it also records `openspec init --help` and a set of detec
     src/test/resources/fixtures/cli/<version>/init-help.txt
     src/test/resources/fixtures/cli/<version>/detect/<case>/layout.json    {"project": {path: content}, "home": {...}}
     src/test/resources/fixtures/cli/<version>/detect/<case>/detected.json  tool ids upstream detects
+    src/test/resources/fixtures/cli/<version>/detect/<case>/configured.json  tool ids upstream counts as set up
+                                                                         (getConfiguredTools)
 
 Each case is a project built by real `openspec init --tools ...` runs (some with an older CLI, for
 the directories tools used before) or by hand for edge cases, then passed to upstream's own
@@ -67,7 +69,15 @@ if (sp && sp.resolveSkillLinkDir && sp.usesSharedSkills) {
     linkDir: rel(sp.resolveSkillLinkDir('/P', t)),
   }]));
 }
+// 2.1+: tools sharing an installer project folder (Trae and Trae CN), which configured detection counts once.
+if (m.agentsByProjectFolder) {
+  out.agentsByProjectFolder = Object.fromEntries([...m.agentsByProjectFolder].filter(([, ids]) => ids.length > 1));
+}
 process.stdout.write(JSON.stringify(out, null, 2));
+"""
+CONFIGURED = """
+import(process.argv[1]).then(m => process.stdout.write(JSON.stringify(
+  m.getConfiguredTools(process.argv[2]).map(t => typeof t === 'string' ? t : t.value))));
 """
 DETECT = """
 import(process.argv[1]).then(m => process.stdout.write(JSON.stringify(
@@ -79,6 +89,20 @@ import(process.argv[1]).then(m => process.stdout.write(JSON.stringify(
 # tools) runs init so tools with a global skills directory write into the isolated HOME.
 CASES = {
     "claude": [("init", None, "claude")],
+    # 2.1's new tools: one with a link folder, one reading .agents/skills, the two with unusual folders, MiniMax Code
+    # in the project, and the regional variants sharing a folder, set up alone and (by 1.17, before the tool list)
+    # left unlisted.
+    "goose": [("init", None, "goose")],
+    "fx": [("init", None, "fx")],
+    "openclaw": [("init", None, "openclaw")],
+    "astrbot": [("init", None, "astrbot")],
+    "minimax-project": [("init", None, "minimax-code")],
+    "trae": [("init", None, "trae")],
+    "trae-cn": [("init", None, "trae-cn")],
+    "trae-unlisted": [("init", "1.17.0", "trae")],
+    "qoder": [("init", None, "qoder")],
+    "qoder-cn": [("init", None, "qoder-cn")],
+    "qoder-unlisted": [("init", "1.17.0", "qoder")],
     # Amazon Q set up by the last release that has it; 2.x retired it, and its detection never reports it.
     "amazon-q-from-1.17": [("init", "1.17.0", "amazon-q")],
     "devin-via-windsurf-id": [("init", None, "windsurf")],
@@ -139,6 +163,8 @@ CASES = {
 
 # Cases that only make sense on some versions: name -> (lowest, highest), inclusive; None = open.
 APPLIES = {
+    **{c: ("2.1.0", None) for c in ("goose", "fx", "openclaw", "astrbot", "minimax-project", "trae", "trae-cn",
+                                   "trae-unlisted", "qoder", "qoder-cn", "qoder-unlisted")},
     "amazon-q-from-1.17": ("1.17.0", None),
     "mixed-1.17-and-2x": ("2.0.0", None),
     "scope-project": ("2.1.0", None),
@@ -201,6 +227,7 @@ def recorded(path, full_text=False):
 def capture_detection(newest, out_dir):
     pkg = install(newest)
     detect_js = (pkg / "dist/core/available-tools.js").as_uri()
+    configured_js = (pkg / "dist/core/shared/index.js").as_uri()
     with tempfile.TemporaryDirectory() as tmp:
         for name, steps in CASES.items():
             if not applies(name, newest):
@@ -226,6 +253,9 @@ def capture_detection(newest, out_dir):
             detected = json.loads(subprocess.run(
                 ["node", "--input-type=module", "-e", DETECT, "--", detect_js, str(project)],
                 env=isolated_env(home), check=True, capture_output=True, text=True).stdout)
+            configured = json.loads(subprocess.run(
+                ["node", "--input-type=module", "-e", CONFIGURED, "--", configured_js, str(project)],
+                env=isolated_env(home), check=True, capture_output=True, text=True).stdout)
             # The openspec/ tree and the CLI's own XDG state say nothing about tools.
             content = (lambda p: recorded(p, full_text=True)) if name in FULL_TEXT else recorded
             project_files, project_links = snapshot(project, skip=("openspec",), content=content)
@@ -238,6 +268,7 @@ def capture_detection(newest, out_dir):
             # A machine-wide install links with absolute targets into HOME; keep them, under the fixture names.
             write_fixture(target / "layout.json", sanitize(json.dumps(layout, indent=2) + "\n", project, home))
             write_fixture(target / "detected.json", json.dumps(sorted(detected)) + "\n")
+            write_fixture(target / "configured.json", json.dumps(sorted(configured)) + "\n")
             print(f"  detect/{name}: {sorted(detected)}" + (f"  links: {sum(map(len, links.values()))}" if links else ""))
 
 

@@ -208,6 +208,24 @@ class AiToolRegistryContractTest {
         assertTrue(AiToolRegistry.acceptedBy(amazonQ, null), "with no CLI nothing is passed, so nothing is filtered");
     }
 
+    /** The tools sharing a project folder on 2.1 are the groups upstream's installer forms ({@code agentsByProjectFolder}). */
+    @TestFactory
+    Stream<DynamicTest> theFolderGroupsAreUpstreams() {
+        return Stream.of("2.1.0", "2.1.1").map(v -> DynamicTest.dynamicTest(v, () -> {
+            JsonObject groups = dump(v).getAsJsonObject("agentsByProjectFolder");
+            assertNotNull(groups, v + " dump has no agentsByProjectFolder");
+            Map<String, List<String>> upstream = new TreeMap<>();
+            for (String folder : groups.keySet()) upstream.put(folder, strings(groups, folder));
+            Map<String, List<String>> plugin = new TreeMap<>();
+            for (AiTool tool : AiToolRegistry.all()) {
+                List<AiTool> group = AiToolRegistry.folderGroup(tool);
+                if (!group.isEmpty()) plugin.put(tool.skillsDir() + "/skills", group.stream().map(AiTool::id).toList());
+            }
+            assertEquals(upstream, plugin);
+            assertEquals(3, plugin.size(), "sanity: Trae, Qoder and Zencoder");
+        }));
+    }
+
     /** Upstream against itself: each release's init help lists exactly its registry's ids. */
     @TestFactory
     Stream<DynamicTest> theCliHelpListsTheSameIds() {

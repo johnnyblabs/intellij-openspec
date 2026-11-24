@@ -18,7 +18,10 @@
   - both contracts check every 2.1.1 tool: an unknown tool now fails instead of being skipped, the invocation contract checks every captured row, and the link-folder contract compares upstream's and the plugin's tool sets both ways;
   - the invocation contract passes for the 38 new tools (all `/openspec-<skill>` in the capture);
   - the machine-marker contract from the skills-scope change finds every marker tool in the registry, and now fails on any it can't.
-- [ ] 2.4 Detection of the new tools and the regional-variant rule. Capture with `scripts/capture-ai-tools-fixtures.py` on 2.1.1: `init --tools` layouts for a tool with a link folder, a tool reading `.agents/skills`, OpenClaw (`.`), AstrBot (`data`) and MiniMax Code's project `.minimax`, plus Trae alone, Trae CN alone, and an unlisted `.trae` holding skills, and the same for Qoder. Implement the rule (design decision 8). Verify: `AiToolDetectionContractTest` replays each layout and the plugin's verdict equals 2.1.1's; a test that the registry's groups are exactly upstream's three pairs; a mutation dropping the rule turns the unlisted-`.trae` case red.
+- [x] 2.4 Detection of the new tools and the regional-variant rule. `scripts/capture-ai-tools-fixtures.py` now writes `configured.json` (upstream's `getConfiguredTools`) beside each `detected.json`, adds `agentsByProjectFolder` to the 2.1 dumps, and captures on 2.1.0 and 2.1.1: Goose (link folder), fx (`.agents/skills`), OpenClaw (`.`), AstrBot (`data`), MiniMax Code's project `.minimax`, Trae, Trae CN, Qoder and Qoder CN each alone, and an unlisted `.trae` and `.qoder` set up by 1.17.0 (no tool list). The rule (design decision 8) is in `AiToolDetectionService.statusOfDetected`, with groups from `AiToolRegistry.folderGroup`. Verify:
+  - `AiToolDetectionContractTest` replays each new layout and the plugin's detection equals each release's;
+  - `ConfiguredToolsContractTest` holds the plugin's set-up tools to `configured.json` for every 2.1.x case; three older divergences are pinned as known (a Codex recorded only by the list, and 1.6-era Kimi and Windsurf folders, which 2.1 no longer counts), and fail if they start matching;
+  - `theFolderGroupsAreUpstreams` equals the captured groups; dropping the rule turns all 12 regional cases red.
 
 ## 3. Wording, notes and the shared-folder line
 

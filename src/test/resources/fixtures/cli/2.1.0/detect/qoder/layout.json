@@ -1,0 +1,22 @@
+{
+  "project": {
+    ".agents/skills/.openspec-target": "qoder own-files\n",
+    ".agents/skills/openspec-apply-change/SKILL.md": "",
+    ".agents/skills/openspec-archive-change/SKILL.md": "",
+    ".agents/skills/openspec-explore/SKILL.md": "",
+    ".agents/skills/openspec-propose/SKILL.md": "",
+    ".agents/skills/openspec-sync-specs/SKILL.md": "",
+    ".agents/skills/openspec-update-change/SKILL.md": ""
+  },
+  "home": {},
+  "links": {
+    "project": {
+      ".qoder/skills/openspec-apply-change": "../../.agents/skills/openspec-apply-change",
+      ".qoder/skills/openspec-archive-change": "../../.agents/skills/openspec-archive-change",
+      ".qoder/skills/openspec-explore": "../../.agents/skills/openspec-explore",
+      ".qoder/skills/openspec-propose": "../../.agents/skills/openspec-propose",
+      ".qoder/skills/openspec-sync-specs": "../../.agents/skills/openspec-sync-specs",
+      ".qoder/skills/openspec-update-change": "../../.agents/skills/openspec-update-change"
+    }
+  }
+}
