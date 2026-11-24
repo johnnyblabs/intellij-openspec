@@ -29,23 +29,23 @@ class OpenSpecValidateStrictTest {
 
     @Test
     void cliArgs_appendsStrict_onlyWhenStrict() {
-        List<String> plain = Arrays.asList(OpenSpecValidateAction.cliArgs(ValidateTarget.wholeProject()));
+        List<String> plain = OpenSpecValidateAction.cliArgs(ValidateTarget.wholeProject()).requested();
         assertFalse(plain.contains("--strict"), "a non-strict run must NOT pass --strict");
         assertTrue(plain.contains("--all") && plain.contains("--json"));
 
-        List<String> strict = Arrays.asList(
-                OpenSpecValidateAction.cliArgs(ValidateTarget.wholeProject().withStrict()));
+        List<String> strict = OpenSpecValidateAction.cliArgs(ValidateTarget.wholeProject().withStrict()).requested();
         assertTrue(strict.contains("--strict"), "a strict run must pass --strict");
     }
 
     @Test
     void commandLine_echoesStrict_onlyWhenStrict() {
-        assertEquals("openspec validate --all",
+        // The echoed command is exactly what runs, --json included.
+        assertEquals("openspec validate --all --json",
                 OpenSpecValidateAction.commandLine(ValidateTarget.wholeProject()));
-        assertEquals("openspec validate --all --strict",
+        assertEquals("openspec validate --all --json --strict",
                 OpenSpecValidateAction.commandLine(ValidateTarget.wholeProject().withStrict()));
         // Single-item strict still appends the flag after the --type.
-        assertEquals("openspec validate demo --type spec --strict",
+        assertEquals("openspec validate demo --type spec --json --strict",
                 OpenSpecValidateAction.commandLine(ValidateTarget.spec("demo").withStrict()));
     }
 

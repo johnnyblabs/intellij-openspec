@@ -1,0 +1,9 @@
+Usage: openspec workspace relink [options] <name> <path>
+
+Update the local path for an existing workspace link
+
+Options:
+  --workspace <name>  Workspace name from known local workspace views
+  --json              Output as JSON
+  --no-interactive    Disable prompts
+  -h, --help          display help for command

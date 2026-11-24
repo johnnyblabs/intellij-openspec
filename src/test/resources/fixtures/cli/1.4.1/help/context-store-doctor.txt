@@ -1,0 +1,7 @@
+Usage: openspec context-store doctor [options] [id]
+
+Check local context-store registration and metadata
+
+Options:
+  --json      Output as JSON
+  -h, --help  display help for command

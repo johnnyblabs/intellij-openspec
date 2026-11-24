@@ -1990,13 +1990,8 @@ public class WorkflowActionPanel extends JPanel {
             public void run(@NotNull ProgressIndicator indicator) {
                 try {
                     com.johnnyblabs.openspec.util.CliRunner.CliResult result;
-                    if (schema != null && !schema.isEmpty()) {
-                        result = com.johnnyblabs.openspec.util.CliRunner.run(project,
-                                "new", "change", finalChangeName, "--schema", schema);
-                    } else {
-                        result = com.johnnyblabs.openspec.util.CliRunner.run(project,
-                                "new", "change", finalChangeName);
-                    }
+                    result = com.johnnyblabs.openspec.util.CliRunner.run(project,
+                            com.johnnyblabs.openspec.util.CliCommands.newChange(finalChangeName, schema));
 
                     if (!result.isSuccess()) {
                         ApplicationManager.getApplication().invokeLater(() -> {

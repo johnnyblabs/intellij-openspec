@@ -51,7 +51,7 @@ class StatusPassThroughContractTest {
         when(project.getService(ScaffoldingDetectionService.class)).thenReturn(detector);
         ArtifactOrchestrationService service = new ArtifactOrchestrationService(project);
         service.setStatusCliForTest((p, args) -> {
-            assertEquals(List.of("status", "--change", "c", "--json"), List.of(args));
+            assertEquals(List.of("status", "--change", "c", "--json"), args.requested());
             return new CliRunner.CliResult(0, captured, "");
         });
 

@@ -147,7 +147,7 @@ public class ChangeValidationLinePanelTest extends OpenSpecIntegrationTestBase {
         assertTrue(html, html.contains("openspec-validate:" + CHANGE));
         assertEquals("the pane runs exactly Validate's change-scoped command",
                 List.of(CHANGE_VALIDATE_CALL), calls("validate"));
-        assertEquals(String.join(" ", OpenSpecValidateAction.changeCliArgs(CHANGE)), CHANGE_VALIDATE_CALL);
+        assertEquals(String.join(" ", OpenSpecValidateAction.changeCliArgs(CHANGE).requested()), CHANGE_VALIDATE_CALL);
         assertEquals(1, calls("show").size());
 
         String again = showChange(panel, model, OpenSpecToolWindowPanel.PREVIEW_CHANGE_DELTAS_NAME);

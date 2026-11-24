@@ -68,7 +68,8 @@ public class FastForwardRequestPanelTest extends OpenSpecIntegrationTestBase {
                 .replace("/fixture/demo-project/openspec/changes/demo", changeDir.toString().replace('\\', '/'))
                 .replace("\"demo\"", "\"" + CHANGE + "\"");
         ArtifactOrchestrationService orchestration = getProject().getService(ArtifactOrchestrationService.class);
-        orchestration.setStatusCliForTest((p, args) -> {
+        orchestration.setStatusCliForTest((p, cliArgs) -> {
+            String[] args = cliArgs.requested().toArray(String[]::new);
             if (args.length > 0 && args[0].equals("status")) return new CliRunner.CliResult(0, status, "");
             if (args.length > 1 && args[0].equals("instructions") && args[1].equals("proposal")) {
                 return new CliRunner.CliResult(0, instructions, "");

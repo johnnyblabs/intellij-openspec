@@ -67,7 +67,7 @@ public final class ArtifactOrchestrationService {
      */
     /** Runs the OpenSpec CLI; a seam so tests can feed captured {@code status} and {@code instructions} output. */
     public interface StatusCli {
-        CliRunner.CliResult run(Project project, String... args) throws CliRunner.CliException;
+        CliRunner.CliResult run(Project project, com.johnnyblabs.openspec.util.CliArgs args) throws CliRunner.CliException;
     }
 
     private static final StatusCli REAL_STATUS_CLI = CliRunner::run;
@@ -91,7 +91,7 @@ public final class ArtifactOrchestrationService {
      */
     public ChangeArtifactDag getArtifactStatus(String changeName) {
         try {
-            CliRunner.CliResult result = statusCli.run(project, "status", "--change", changeName, "--json");
+            CliRunner.CliResult result = statusCli.run(project, com.johnnyblabs.openspec.util.CliCommands.status(changeName));
             switch (CliJson.read(result)) {
                 case CliJson.Ok ok -> {
                     ChangeArtifactDag dag = CliOutputParser.parseChangeStatus(ok.payload());
@@ -150,7 +150,7 @@ public final class ArtifactOrchestrationService {
      */
     public ArtifactInstruction getInstruction(String changeName, String artifactId) throws CliRunner.CliException {
         CliRunner.CliResult result = statusCli.run(project,
-                "instructions", artifactId, "--change", changeName, "--json");
+                com.johnnyblabs.openspec.util.CliCommands.instructions(artifactId, changeName));
         return switch (CliJson.read(result)) {
             case CliJson.Ok ok -> {
                 try {

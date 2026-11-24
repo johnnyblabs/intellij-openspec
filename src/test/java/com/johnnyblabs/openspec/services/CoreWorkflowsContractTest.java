@@ -1,15 +1,20 @@
 package com.johnnyblabs.openspec.services;
 
+
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.johnnyblabs.openspec.util.CliFixtures;
-import org.junit.jupiter.api.Test;
+import com.johnnyblabs.openspec.util.FixtureVersions;
+import org.junit.jupiter.api.DynamicTest;
+import org.junit.jupiter.api.TestFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -20,30 +25,37 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class CoreWorkflowsContractTest {
 
-    /** The plugin's target CLI; its {@code workflows.json} is the one the plugin must match. */
-    private static final String TARGET = CliFixtures.targetVersion();
+    /** Every release with a captured workflow set; a missing capture fails instead of shrinking the matrix. */
+    static final Set<String> FLOOR = Set.of("1.15.0", "1.16.0", "1.16.1", "1.17.0", "2.0.0", "2.1.0", "2.1.1");
 
-    private static JsonObject fixture() throws IOException {
-        try (InputStream in = CoreWorkflowsContractTest.class.getResourceAsStream("/fixtures/cli/" + TARGET + "/workflows.json")) {
-            assertNotNull(in, "missing fixture " + TARGET + "/workflows.json");
+    private static JsonObject fixture(String version) throws IOException {
+        try (InputStream in = CoreWorkflowsContractTest.class.getResourceAsStream("/fixtures/cli/" + version + "/workflows.json")) {
+            assertNotNull(in, "missing fixture " + version + "/workflows.json");
             return JsonParser.parseString(new String(in.readAllBytes(), StandardCharsets.UTF_8)).getAsJsonObject();
         }
     }
 
-    @Test
-    void theCoreSetForTheCapturedVersionIsUpstreams() throws IOException {
-        JsonObject fixture = fixture();
-        List<String> upstreamCore = new ArrayList<>();
-        for (var el : fixture.getAsJsonArray("core")) upstreamCore.add(el.getAsString());
-
-        List<String> pluginCore = List.copyOf(WorkflowProfileService.coreWorkflows(fixture.get("cliVersion").getAsString()));
-
-        assertEquals(upstreamCore, pluginCore);
+    static List<String> releases() {
+        List<String> found = FixtureVersions.versionsWith("workflows.json", FLOOR);
+        assertTrue(found.contains(CliFixtures.targetVersion()), "the target release is checked");
+        return found;
     }
 
-    @Test
-    void theFixtureWasCapturedFromTheTargetCli() throws IOException {
-        assertEquals(TARGET, fixture().get("cliVersion").getAsString(),
-                "workflows.json under " + TARGET + "/ must be a capture from that CLI; re-run scripts/capture-workflow-ids.py");
+    @TestFactory
+    Stream<DynamicTest> theCoreSetForEachCapturedReleaseIsUpstreams() {
+        return releases().stream().map(v -> DynamicTest.dynamicTest(v, () -> {
+            JsonObject fixture = fixture(v);
+            List<String> upstreamCore = new ArrayList<>();
+            for (var el : fixture.getAsJsonArray("core")) upstreamCore.add(el.getAsString());
+            List<String> pluginCore = List.copyOf(WorkflowProfileService.coreWorkflows(fixture.get("cliVersion").getAsString()));
+            assertEquals(upstreamCore, pluginCore, v);
+        }));
+    }
+
+    @TestFactory
+    Stream<DynamicTest> eachFixtureWasCapturedFromItsRelease() {
+        return releases().stream().map(v -> DynamicTest.dynamicTest(v, () ->
+                assertEquals(v, fixture(v).get("cliVersion").getAsString(),
+                        "workflows.json under " + v + "/ must be a capture from that CLI; re-run scripts/capture-workflow-ids.py")));
     }
 }

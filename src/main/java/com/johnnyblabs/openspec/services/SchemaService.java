@@ -12,6 +12,7 @@ import com.johnnyblabs.openspec.model.SchemaInfo;
 import com.johnnyblabs.openspec.model.SchemaResolution;
 import com.johnnyblabs.openspec.model.SchemaValidationReport;
 import com.johnnyblabs.openspec.util.CliJson;
+import com.johnnyblabs.openspec.util.CliCommands;
 import com.johnnyblabs.openspec.util.CliRunner;
 import com.johnnyblabs.openspec.util.CliVersion;
 import com.johnnyblabs.openspec.version.VersionSupport;
@@ -56,7 +57,7 @@ public final class SchemaService {
         }
 
         try {
-            CliRunner.CliResult result = CliRunner.run(project, "schemas", "--json");
+            CliRunner.CliResult result = CliRunner.run(project, CliCommands.schemas());
             // Only a readable list is cached; a failed or unreadable run is retried on the next call.
             if (!(CliJson.read(result) instanceof CliJson.Ok ok) || !ok.payload().isJsonArray()) {
                 LOG.warn("openspec schemas --json gave no readable list: " + result.stderr());
@@ -79,7 +80,7 @@ public final class SchemaService {
      */
     public String forkSchema(String source, String name) {
         try {
-            CliRunner.CliResult result = CliRunner.run(project, forkArgs(source, name).toArray(new String[0]));
+            CliRunner.CliResult result = CliRunner.run(project, CliCommands.schemaFork(source, name));
             if (!result.isSuccess()) {
                 LOG.warn("openspec schema fork failed: " + result.stderr());
                 return null;
@@ -102,7 +103,7 @@ public final class SchemaService {
     public String initSchema(String name, String description, List<String> artifacts) {
         try {
             CliRunner.CliResult result = CliRunner.run(project,
-                    initArgs(name, description, artifacts).toArray(new String[0]));
+                    CliCommands.schemaInit(name, description, artifacts));
             if (!result.isSuccess()) {
                 LOG.warn("openspec schema init failed: " + result.stderr());
                 return null;
@@ -113,29 +114,6 @@ public final class SchemaService {
             LOG.warn("Failed to init schema", e);
             return null;
         }
-    }
-
-    /** CLI arguments for {@code schema fork}; {@code --json} so the destination is read structurally. */
-    static List<String> forkArgs(String source, String name) {
-        return List.of("schema", "fork", source, name, "--json");
-    }
-
-    /**
-     * CLI arguments for {@code schema init}. {@code --no-default} is always passed: the plugin runs the CLI without
-     * a terminal, so it can't answer the CLI's "set as default?" question. {@code --description} is passed only when
-     * non-blank; {@code --artifacts} carries the selection as a comma list when there is one.
-     */
-    static List<String> initArgs(String name, String description, List<String> artifacts) {
-        List<String> args = new ArrayList<>(List.of("schema", "init", name, "--json", "--no-default"));
-        if (description != null && !description.isBlank()) {
-            args.add("--description");
-            args.add(description.trim());
-        }
-        if (artifacts != null && !artifacts.isEmpty()) {
-            args.add("--artifacts");
-            args.add(String.join(",", artifacts));
-        }
-        return args;
     }
 
     /**
@@ -182,7 +160,7 @@ public final class SchemaService {
      */
     public SchemaValidationReport validateSchema(String name) {
         try {
-            CliRunner.CliResult result = CliRunner.run(project, "schema", "validate", name, "--json");
+            CliRunner.CliResult result = CliRunner.run(project, CliCommands.schemaValidate(name));
             SchemaValidationReport report = parseSchemaValidation(result.stdout());
             if (report != null) {
                 return report;
@@ -220,7 +198,7 @@ public final class SchemaService {
             String name = info.name();
             if (name == null || name.isEmpty()) continue;
             try {
-                CliRunner.CliResult result = CliRunner.run(project, "schema", "which", name, "--json");
+                CliRunner.CliResult result = CliRunner.run(project, CliCommands.schemaWhich(name));
                 SchemaResolution resolution = parseSchemaResolution(result.stdout());
                 if (resolution != null) {
                     resolutions.put(name, resolution);
@@ -240,7 +218,7 @@ public final class SchemaService {
      */
     public Map<String, String> resolveTemplates(String name) {
         try {
-            CliRunner.CliResult result = CliRunner.run(project, "templates", "--schema", name, "--json");
+            CliRunner.CliResult result = CliRunner.run(project, CliCommands.templates(name));
             if (!result.isSuccess()) {
                 LOG.warn("openspec templates failed: " + result.stderr());
                 return null;

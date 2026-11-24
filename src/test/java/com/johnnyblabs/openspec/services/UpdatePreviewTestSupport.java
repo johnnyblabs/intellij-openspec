@@ -17,7 +17,7 @@ public final class UpdatePreviewTestSupport {
      */
     public static void answer(UpdatePreviewService service, CliRunner.CliResult dryRun, CliRunner.CliResult apply,
                               Predicate<String> decider) {
-        service.setSeamsForTest((project, env, args) -> args.length > 1 && "--dry-run".equals(args[1]) ? dryRun : apply,
+        service.setSeamsForTest((project, args) -> args.requested().contains("--dry-run") ? dryRun : apply,
                 model -> decider.test(model.summary()));
     }
 }

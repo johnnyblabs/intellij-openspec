@@ -160,6 +160,22 @@
     "templates": {
       "exit": 0,
       "file": "templates.txt"
+    },
+    "doctor": {
+      "exit": 0,
+      "file": "doctor.txt"
+    },
+    "workspace": {
+      "exit": 0,
+      "file": null
+    },
+    "context-store": {
+      "exit": 0,
+      "file": null
+    },
+    "initiative": {
+      "exit": 0,
+      "file": null
     }
   }
 }

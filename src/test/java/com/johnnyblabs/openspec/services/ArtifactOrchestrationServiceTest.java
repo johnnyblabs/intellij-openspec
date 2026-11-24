@@ -1,5 +1,7 @@
 package com.johnnyblabs.openspec.services;
 
+import static com.johnnyblabs.openspec.util.CliArgsMatchers.argv;
+
 import com.intellij.openapi.project.Project;
 import com.johnnyblabs.openspec.ai.AiApiException;
 import com.johnnyblabs.openspec.ai.DirectApiService;
@@ -80,7 +82,7 @@ class ArtifactOrchestrationServiceTest {
                     "");
 
             try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
-                cli.when(() -> CliRunner.run(eq(project), eq("status"), eq("--change"), eq("c"), eq("--json")))
+                cli.when(() -> CliRunner.run(eq(project), argv("status", "--change", "c", "--json")))
                         .thenReturn(cliResult);
 
                 ChangeArtifactDag result = service.getArtifactStatus("c");
@@ -99,7 +101,7 @@ class ArtifactOrchestrationServiceTest {
                     "");
 
             try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
-                cli.when(() -> CliRunner.run(eq(project), eq("status"), eq("--change"), eq("c"), eq("--json")))
+                cli.when(() -> CliRunner.run(eq(project), argv("status", "--change", "c", "--json")))
                         .thenReturn(cliResult);
 
                 // First call
@@ -109,7 +111,7 @@ class ArtifactOrchestrationServiceTest {
                 // Second call should re-invoke CLI
                 service.getArtifactStatus("c");
 
-                cli.verify(() -> CliRunner.run(eq(project), eq("status"), eq("--change"), eq("c"), eq("--json")),
+                cli.verify(() -> CliRunner.run(eq(project), argv("status", "--change", "c", "--json")),
                         times(2));
             }
         }
@@ -190,7 +192,7 @@ class ArtifactOrchestrationServiceTest {
             ));
 
             try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
-                cli.when(() -> CliRunner.run(eq(project), eq("status"), eq("--change"), eq("c"), eq("--json")))
+                cli.when(() -> CliRunner.run(eq(project), argv("status", "--change", "c", "--json")))
                         .thenReturn(new CliRunner.CliResult(0,
                                 "{\"changeName\":\"c\",\"isComplete\":false,\"artifacts\":[" +
                                 "{\"id\":\"proposal\",\"outputPath\":\"proposal.md\",\"status\":\"done\",\"missingDeps\":[]}," +
@@ -207,7 +209,7 @@ class ArtifactOrchestrationServiceTest {
         @Test
         void returnsNull_whenAllComplete() {
             try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
-                cli.when(() -> CliRunner.run(eq(project), eq("status"), eq("--change"), eq("c"), eq("--json")))
+                cli.when(() -> CliRunner.run(eq(project), argv("status", "--change", "c", "--json")))
                         .thenReturn(new CliRunner.CliResult(0,
                                 "{\"changeName\":\"c\",\"isComplete\":true,\"artifacts\":[" +
                                 "{\"id\":\"proposal\",\"outputPath\":\"proposal.md\",\"status\":\"done\",\"missingDeps\":[]}," +
@@ -222,7 +224,7 @@ class ArtifactOrchestrationServiceTest {
         @Test
         void returnsNull_whenAllBlocked() {
             try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
-                cli.when(() -> CliRunner.run(eq(project), eq("status"), eq("--change"), eq("c"), eq("--json")))
+                cli.when(() -> CliRunner.run(eq(project), argv("status", "--change", "c", "--json")))
                         .thenReturn(new CliRunner.CliResult(0,
                                 "{\"changeName\":\"c\",\"isComplete\":false,\"artifacts\":[" +
                                 "{\"id\":\"design\",\"outputPath\":\"design.md\",\"status\":\"blocked\",\"missingDeps\":[\"proposal\"]}," +
@@ -259,7 +261,7 @@ class ArtifactOrchestrationServiceTest {
             AtomicInteger callCount = new AtomicInteger(0);
 
             // Mock status calls — evolving DAG state
-            cli.when(() -> CliRunner.run(eq(project), eq("status"), eq("--change"), eq("c"), eq("--json")))
+            cli.when(() -> CliRunner.run(eq(project), argv("status", "--change", "c", "--json")))
                     .thenAnswer(inv -> {
                         int n = callCount.getAndIncrement();
                         String json = switch (n) {
@@ -302,11 +304,11 @@ class ArtifactOrchestrationServiceTest {
             ArtifactInstruction designInstr = new ArtifactInstruction("c", "design", changeDir.toString(), "design.md", "write design", null, List.of(), List.of());
             ArtifactInstruction tasksInstr = new ArtifactInstruction("c", "tasks", changeDir.toString(), "tasks.md", "write tasks", null, List.of(), List.of());
 
-            cli.when(() -> CliRunner.run(eq(project), eq("instructions"), eq("proposal"), eq("--change"), eq("c"), eq("--json")))
+            cli.when(() -> CliRunner.run(eq(project), argv("instructions", "proposal", "--change", "c", "--json")))
                     .thenReturn(new CliRunner.CliResult(0, "{\"changeName\":\"c\",\"artifactId\":\"proposal\",\"changeDir\":\"" + jsonEscapedPath(changeDir) + "\",\"outputPath\":\"proposal.md\",\"instruction\":\"write proposal\"}", ""));
-            cli.when(() -> CliRunner.run(eq(project), eq("instructions"), eq("design"), eq("--change"), eq("c"), eq("--json")))
+            cli.when(() -> CliRunner.run(eq(project), argv("instructions", "design", "--change", "c", "--json")))
                     .thenReturn(new CliRunner.CliResult(0, "{\"changeName\":\"c\",\"artifactId\":\"design\",\"changeDir\":\"" + jsonEscapedPath(changeDir) + "\",\"outputPath\":\"design.md\",\"instruction\":\"write design\"}", ""));
-            cli.when(() -> CliRunner.run(eq(project), eq("instructions"), eq("tasks"), eq("--change"), eq("c"), eq("--json")))
+            cli.when(() -> CliRunner.run(eq(project), argv("instructions", "tasks", "--change", "c", "--json")))
                     .thenReturn(new CliRunner.CliResult(0, "{\"changeName\":\"c\",\"artifactId\":\"tasks\",\"changeDir\":\"" + jsonEscapedPath(changeDir) + "\",\"outputPath\":\"tasks.md\",\"instruction\":\"write tasks\"}", ""));
         }
 
@@ -422,7 +424,7 @@ class ArtifactOrchestrationServiceTest {
             try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
 
                 // Two artifacts: proposal (ready), design (ready after proposal)
-                cli.when(() -> CliRunner.run(eq(project), eq("status"), eq("--change"), eq("c"), eq("--json")))
+                cli.when(() -> CliRunner.run(eq(project), argv("status", "--change", "c", "--json")))
                         .thenAnswer(inv -> {
                             int n = callCount.getAndIncrement();
                             String json = switch (n) {
@@ -440,9 +442,9 @@ class ArtifactOrchestrationServiceTest {
                             return new CliRunner.CliResult(0, json, "");
                         });
 
-                cli.when(() -> CliRunner.run(eq(project), eq("instructions"), eq("proposal"), eq("--change"), eq("c"), eq("--json")))
+                cli.when(() -> CliRunner.run(eq(project), argv("instructions", "proposal", "--change", "c", "--json")))
                         .thenReturn(new CliRunner.CliResult(0, "{\"changeName\":\"c\",\"artifactId\":\"proposal\",\"changeDir\":\"" + jsonEscapedPath(changeDir) + "\",\"outputPath\":\"proposal.md\",\"instruction\":\"x\"}", ""));
-                cli.when(() -> CliRunner.run(eq(project), eq("instructions"), eq("design"), eq("--change"), eq("c"), eq("--json")))
+                cli.when(() -> CliRunner.run(eq(project), argv("instructions", "design", "--change", "c", "--json")))
                         .thenReturn(new CliRunner.CliResult(0, "{\"changeName\":\"c\",\"artifactId\":\"design\",\"changeDir\":\"" + jsonEscapedPath(changeDir) + "\",\"outputPath\":\"design.md\",\"instruction\":\"x\"}", ""));
 
                 // First generate succeeds, second throws
@@ -492,7 +494,7 @@ class ArtifactOrchestrationServiceTest {
 
             try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
 
-                cli.when(() -> CliRunner.run(eq(project), eq("status"), eq("--change"), eq("c"), eq("--json")))
+                cli.when(() -> CliRunner.run(eq(project), argv("status", "--change", "c", "--json")))
                         .thenAnswer(inv -> {
                             int n = callCount.getAndIncrement();
                             String json = n <= 1
@@ -507,7 +509,7 @@ class ArtifactOrchestrationServiceTest {
                             return new CliRunner.CliResult(0, json, "");
                         });
 
-                cli.when(() -> CliRunner.run(eq(project), eq("instructions"), eq("proposal"), eq("--change"), eq("c"), eq("--json")))
+                cli.when(() -> CliRunner.run(eq(project), argv("instructions", "proposal", "--change", "c", "--json")))
                         .thenReturn(new CliRunner.CliResult(0, "{\"changeName\":\"c\",\"artifactId\":\"proposal\",\"changeDir\":\"" + jsonEscapedPath(changeDir) + "\",\"outputPath\":\"proposal.md\",\"instruction\":\"x\"}", ""));
 
                 when(apiService.generate(any())).thenReturn("content");

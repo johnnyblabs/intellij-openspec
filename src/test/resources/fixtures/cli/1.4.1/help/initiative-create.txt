@@ -1,0 +1,11 @@
+Usage: openspec initiative create [options] [id]
+
+Create an initiative in a context store
+
+Options:
+  --title <title>      Initiative title
+  --summary <summary>  Initiative summary
+  --store <id>         Context store id from the local context-store registry
+  --store-path <path>  Existing local context store root
+  --json               Output as JSON
+  -h, --help           display help for command

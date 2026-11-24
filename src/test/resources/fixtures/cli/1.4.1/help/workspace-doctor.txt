@@ -1,0 +1,9 @@
+Usage: openspec workspace doctor [options]
+
+Check what a workspace can resolve on this machine
+
+Options:
+  --workspace <name>  Workspace name from known local workspace views
+  --json              Output as JSON
+  --no-interactive    Disable prompts
+  -h, --help          display help for command

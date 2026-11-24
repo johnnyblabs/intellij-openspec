@@ -1,0 +1,9 @@
+Usage: openspec doctor [options]
+
+Report relationship health for the resolved OpenSpec root
+
+Options:
+  --store <id>  Store id to use as the OpenSpec root (a store is a standalone
+                OpenSpec repo you've registered)
+  --json        Output as JSON
+  -h, --help    display help for command

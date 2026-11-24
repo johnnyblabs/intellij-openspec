@@ -104,6 +104,11 @@ public final class ScaffoldingService {
         return initBuiltIn(basePath);
     }
 
+    /** {@code init --tools <ids>} for the detected tools, or {@code --tools none} when there are none. */
+    static com.johnnyblabs.openspec.util.CliArgs initArgs(List<String> toolIds) {
+        return com.johnnyblabs.openspec.util.CliCommands.init(toolIds.isEmpty() ? "none" : String.join(",", toolIds));
+    }
+
     private void initWithCli() throws CliRunner.CliException {
         AiToolDetectionService toolService = project.getService(AiToolDetectionService.class);
         if (toolService != null) {
@@ -111,9 +116,7 @@ public final class ScaffoldingService {
         }
 
         List<String> toolIds = toolService != null ? toolService.getDetectedCliToolIds() : List.of();
-        String toolsArg = toolIds.isEmpty() ? "none" : String.join(",", toolIds);
-
-        CliRunner.CliResult result = CliRunner.run(project, "init", "--tools", toolsArg);
+        CliRunner.CliResult result = CliRunner.run(project, initArgs(toolIds));
         if (!result.isSuccess()) {
             throw new CliRunner.CliException("openspec init exited with code " + result.exitCode()
                     + ": " + result.stderr());

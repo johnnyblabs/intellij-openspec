@@ -24,7 +24,7 @@ import org.jetbrains.annotations.NotNull;
  */
 public abstract class OpenSpecCliAction extends OpenSpecBaseAction {
 
-    protected abstract String[] getCliArgs();
+    protected abstract com.johnnyblabs.openspec.util.CliArgs getCliArgs();
 
     protected abstract String getCommandLabel();
 

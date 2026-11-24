@@ -19,31 +19,19 @@ public final class CliRunner {
     private CliRunner() {
     }
 
-    public static CliResult run(Project project, String... args) throws CliException {
+    /** Runs {@code args} against the installed CLI, with the project's timeout. */
+    public static CliResult run(Project project, CliArgs args) throws CliException {
         int timeoutMs = OpenSpecSettings.getInstance(project).getCliTimeoutSeconds() * 1000;
         return run(project, timeoutMs, args);
     }
 
-    public static CliResult run(Project project, int timeoutMs, String... args) throws CliException {
-        return run(project, timeoutMs, Map.of(), args);
-    }
-
-    /** Runs the CLI with {@code extraEnv} set on top of the plain-output environment. */
-    public static CliResult run(Project project, Map<String, String> extraEnv, String... args) throws CliException {
-        int timeoutMs = OpenSpecSettings.getInstance(project).getCliTimeoutSeconds() * 1000;
-        return run(project, timeoutMs, extraEnv, args);
-    }
-
-    private static CliResult run(Project project, int timeoutMs, Map<String, String> extraEnv, String... args)
-            throws CliException {
-        GeneralCommandLine cmd = buildCommandLine(resolveCliPath(project), project.getBasePath(), args);
-        cmd.getEnvironment().putAll(extraEnv);
-
-        // Apply login shell PATH so node-based CLI scripts can resolve their interpreter
-        CliDetectionService detection = project.getService(CliDetectionService.class);
-        if (detection != null) {
-            detection.applyLoginShellPath(cmd);
-        }
+    /**
+     * Runs {@code args} against the installed CLI. The invocation is first fitted to the detected release
+     * ({@link CliArgs#resolve}); one that release can't run is refused with {@link UnsupportedCliArgumentException}
+     * before any process starts.
+     */
+    public static CliResult run(Project project, int timeoutMs, CliArgs args) throws CliException {
+        GeneralCommandLine cmd = prepare(project.getService(CliDetectionService.class), project.getBasePath(), args);
 
         try {
             Process process = cmd.createProcess();
@@ -63,6 +51,41 @@ public final class CliRunner {
         } catch (Exception e) {
             throw new CliException("Failed to run OpenSpec CLI: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * The command line for {@code args} on the installed CLI: fitted to its release, with the extra environment from
+     * {@code args} on top of the plain-output one, and the login-shell PATH so a node-based CLI finds its interpreter.
+     * A refused invocation throws here, so no process is ever started for it.
+     */
+    static GeneralCommandLine prepare(@Nullable CliDetectionService detection, @Nullable String workDir, CliArgs args)
+            throws UnsupportedCliArgumentException {
+        CliArgs.Resolved resolved = resolveFor(detection, args);
+        GeneralCommandLine cmd = buildCommandLine(resolveCliPath(detection), workDir,
+                resolved.argv().toArray(String[]::new));
+        cmd.getEnvironment().putAll(args.env());
+        if (detection != null) {
+            detection.applyLoginShellPath(cmd);
+        }
+        return cmd;
+    }
+
+    private static final Object FIRST_DETECTION = new Object();
+
+    /**
+     * {@code args} fitted to the installed release. Until the first detection has finished the version is unknown,
+     * and an early run (a tool-window refresh at startup) would be fitted to the target release instead of, say, an
+     * installed 1.4; so the first run detects once, synchronously. Runs off the EDT, like every CLI run.
+     */
+    static CliArgs.Resolved resolveFor(@Nullable CliDetectionService detection, CliArgs args)
+            throws UnsupportedCliArgumentException {
+        if (detection != null && !detection.isDetectedOnce()) {
+            synchronized (FIRST_DETECTION) {
+                if (!detection.isDetectedOnce()) detection.detect();
+            }
+        }
+        String version = detection != null && detection.isAvailable() ? detection.getDetectedVersion() : null;
+        return args.resolve(version);
     }
 
     /**
@@ -108,8 +131,7 @@ public final class CliRunner {
         });
     }
 
-    private static String resolveCliPath(Project project) {
-        CliDetectionService detection = project.getService(CliDetectionService.class);
+    private static String resolveCliPath(@Nullable CliDetectionService detection) {
         if (detection != null && detection.isAvailable() && detection.getDetectedPath() != null) {
             return detection.getDetectedPath();
         }

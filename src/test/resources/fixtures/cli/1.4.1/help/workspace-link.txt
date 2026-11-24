@@ -1,0 +1,9 @@
+Usage: openspec workspace link [options] [nameOrPath] [path]
+
+Link an existing repo or folder to a workspace
+
+Options:
+  --workspace <name>  Workspace name from known local workspace views
+  --json              Output as JSON
+  --no-interactive    Disable prompts
+  -h, --help          display help for command

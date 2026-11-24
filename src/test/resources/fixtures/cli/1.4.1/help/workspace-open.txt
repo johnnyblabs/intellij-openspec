@@ -1,0 +1,20 @@
+Usage: openspec workspace open [options] [name]
+
+Open a workspace in an agent or VS Code editor
+
+Options:
+  --workspace <name>   Workspace name from known local workspace views
+  --initiative <id>    Open an initiative as a local workspace view
+  --store <id>         Context store id for --initiative
+  --store-path <path>  Existing local context store root for --initiative
+  --agent <tool>       Use an agent for this session: codex-cli, claude, or
+                       github-copilot
+  --editor             Open the workspace in VS Code editor mode
+  --prepare-only       Unsupported: preview surfaces belong to a future
+                       context/query command
+  --json               Output generated workspace view context as JSON after
+                       launch
+  --change <id>        Unsupported: change-scoped open belongs to future
+                       workspace change planning
+  --no-interactive     Disable prompts
+  -h, --help           display help for command

@@ -53,7 +53,7 @@ public final class ExploreContextService {
         /** The detected CLI version, or null when no CLI is available. */
         @Nullable String version();
 
-        CliRunner.CliResult run(String... args) throws CliRunner.CliException;
+        CliRunner.CliResult run(com.johnnyblabs.openspec.util.CliArgs args) throws CliRunner.CliException;
     }
 
     private final Project project;
@@ -70,7 +70,7 @@ public final class ExploreContextService {
             }
 
             @Override
-            public CliRunner.CliResult run(String... args) throws CliRunner.CliException {
+            public CliRunner.CliResult run(com.johnnyblabs.openspec.util.CliArgs args) throws CliRunner.CliException {
                 return CliRunner.run(project, args);
             }
         };
@@ -195,7 +195,7 @@ public final class ExploreContextService {
      * or answers for a store. Files outside the change directory are dropped.
      */
     private @Nullable List<Artifact> artifactsFromStatus(String changeName, Path changeDir) {
-        JsonElement payload = cliPayload("status", "--change", changeName, "--json");
+        JsonElement payload = cliPayload(com.johnnyblabs.openspec.util.CliCommands.status(changeName));
         if (payload == null) return null;
         ChangeArtifactDag dag;
         try {
@@ -253,19 +253,19 @@ public final class ExploreContextService {
      * The CLI's JSON payload for {@code args}, or null when there's no CLI or it gives no usable answer. Checks for
      * cancellation first, since each call is a subprocess.
      */
-    private @Nullable JsonElement cliPayload(String... args) {
+    private @Nullable JsonElement cliPayload(com.johnnyblabs.openspec.util.CliArgs args) {
         ProgressManager.checkCanceled();
         if (cli.version() == null) return null;
         try {
             return switch (CliJson.read(cli.run(args))) {
                 case CliJson.Ok ok -> ok.payload();
                 case CliJson.Failed failed -> {
-                    LOG.info("openspec " + String.join(" ", args) + " gave no usable answer: " + failed.describe());
+                    LOG.info(args.display() + " gave no usable answer: " + failed.describe());
                     yield null;
                 }
             };
         } catch (CliRunner.CliException | JsonParseException e) {
-            LOG.info("openspec " + String.join(" ", args) + " failed: " + e.getMessage());
+            LOG.info(args.display() + " failed: " + e.getMessage());
             return null;
         }
     }
@@ -331,7 +331,7 @@ public final class ExploreContextService {
      */
     private @Nullable List<String> capabilitiesFromCli() {
         if (!CliVersion.atLeast(cli.version(), LIST_SPECS_FLOOR)) return null;
-        JsonElement payload = cliPayload("list", "--specs", "--json");
+        JsonElement payload = cliPayload(com.johnnyblabs.openspec.util.CliCommands.listSpecs());
         if (payload == null || !payload.isJsonObject()) return null;
         JsonObject root = payload.getAsJsonObject();
         if (root.has("root") && root.get("root").isJsonObject()) {

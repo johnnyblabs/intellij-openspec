@@ -807,7 +807,12 @@ The capture walks the tree without following links, so each skill is recorded on
 
 ### `help/`: the flags each release accepts
 
-`help/<command>.txt` is `openspec <command> --help` and `help/<command>-<sub>.txt` the same for each subcommand the command lists, for the newest patch of every minor from 1.3 (1.3.1, 1.4.1, 1.5.0 … 1.17.0) and for 2.0.0, 2.1.0 and 2.1.1. `help/index.json` lists every command asked about, with its exit code and file, or `"file": null` when the release lacks the command. Releases before 1.5 answer an unknown command's `--help` with the top-level help and exit 0, so a help text counts only when its `Usage:` line names the command; 1.3.1 and 1.4.1 record `store`, `workset` and `context` as missing. `HelpSweepContractTest` keeps the record whole and pins one fact the plugin will gate on: `init --scope` exists from 2.1.0, not in 2.0.0 or 1.17.0.
+`help/<command>.txt` is `openspec <command> --help` and `help/<command>-<sub>.txt` the same for each subcommand the command lists, for the newest patch of every minor from 1.3 (1.3.1, 1.4.1, 1.5.0 … 1.17.0) and for 2.0.0, 2.1.0 and 2.1.1. `help/index.json` lists every command asked about, with its exit code and file, or `"file": null` when the release lacks the command. Releases before 1.5 answer an unknown command's `--help` with the top-level help and exit 0, so a help text counts only when its `Usage:` line names the command; 1.3.1 and 1.4.1 record `store`, `workset`, `context` and `doctor` as missing. The 1.4-only `workspace`, `context-store` and `initiative` commands are swept too, and they are captured only under 1.4.1. `HelpSweepContractTest` keeps the record whole. It also pins the facts the plugin gates on:
+- `init --scope` exists from 2.1.0, not in 2.0.0 or 1.17.0;
+- the coordination commands exist only in 1.4.x;
+- `doctor` exists from 1.5.0.
+
+`CliFlagTableContractTest` holds the plugin's command and flag table (`util/CliFlags`) to these captures. `CliArgsVersionMatrixTest` resolves every command line the plugin can build against each release, and checks it against that release's help.
 
 ### Contract tests across releases, and the gaps
 

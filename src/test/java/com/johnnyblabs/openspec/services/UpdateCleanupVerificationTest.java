@@ -50,7 +50,8 @@ public class UpdateCleanupVerificationTest extends BasePlatformTestCase {
         ServiceContainerUtil.replaceService(getProject(), UpdatePreviewService.class, preview, getTestRootDisposable());
         cleanup = getProject().getService(UpdateLegacyCleanupService.class);
         // The real-update path records and fails loudly, so a 1.15+ test can't take it unseen.
-        cleanup.setUpdateCliForTest((p, args) -> {
+        cleanup.setUpdateCliForTest((p, cliArgs) -> {
+            String[] args = cliArgs.requested().toArray(String[]::new);
             plainCalls.add(List.of(args));
             throw new AssertionError("verification ran openspec " + String.join(" ", args));
         });
@@ -96,7 +97,9 @@ public class UpdateCleanupVerificationTest extends BasePlatformTestCase {
 
     /** Answers the read-only runs by exact argv and records each call; anything else fails. */
     private void answer(Map<List<String>, Object> byArgs) {
-        preview.setSeamsForTest((project, env, args) -> {
+        preview.setSeamsForTest((project, cliArgs) -> {
+            String[] args = cliArgs.requested().toArray(String[]::new);
+            java.util.Map<String, String> env = cliArgs.env();
             List<String> argv = Arrays.asList(args);
             calls.add(new Call(argv, env));
             Object answer = byArgs.get(argv);
@@ -114,7 +117,7 @@ public class UpdateCleanupVerificationTest extends BasePlatformTestCase {
         assertFalse("verification must run a CLI command", calls.isEmpty());
         assertTrue("never a plain update: " + argvs(), calls.stream().allMatch(c -> c.args().contains("--dry-run")));
         assertTrue("every run is non-interactive",
-                calls.stream().allMatch(c -> c.env().equals(UpdatePreviewService.NON_INTERACTIVE)));
+                calls.stream().allMatch(c -> c.env().equals(java.util.Map.of("OPEN_SPEC_INTERACTIVE", "0"))));
         assertTrue("the real-update path must not run: " + plainCalls, plainCalls.isEmpty());
     }
 
@@ -184,10 +187,13 @@ public class UpdateCleanupVerificationTest extends BasePlatformTestCase {
 
     public void testBelow115TheVerificationStillReRunsUpdate() {
         CliDetectionTestSupport.fakeAvailable(detection, "1.14.3");
-        preview.setSeamsForTest((project, env, args) -> {
+        preview.setSeamsForTest((project, cliArgs) -> {
+            String[] args = cliArgs.requested().toArray(String[]::new);
+            java.util.Map<String, String> env = cliArgs.env();
             throw new AssertionError("no dry run below 1.15: " + Arrays.toString(args));
         }, model -> false);
-        cleanup.setUpdateCliForTest((p, args) -> {
+        cleanup.setUpdateCliForTest((p, cliArgs) -> {
+            String[] args = cliArgs.requested().toArray(String[]::new);
             plainCalls.add(List.of(args));
             return new CliRunner.CliResult(0, read("/fixtures/cli/update-clean.txt"), "");
         });

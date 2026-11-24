@@ -81,11 +81,11 @@ public final class ChangeService {
     }
 
     /** The first CLI version whose {@code archive --json} the plugin delegates to (1.4 has no {@code --json}). */
-    static final String CLI_ARCHIVE_FLOOR = "1.5.0";
+    public static final String CLI_ARCHIVE_FLOOR = "1.5.0";
 
     /** Runs the OpenSpec CLI; a seam so tests can feed captured output and check the arguments. */
     public interface ArchiveCli {
-        com.johnnyblabs.openspec.util.CliRunner.CliResult run(Project project, String... args)
+        com.johnnyblabs.openspec.util.CliRunner.CliResult run(Project project, com.johnnyblabs.openspec.util.CliArgs args)
                 throws com.johnnyblabs.openspec.util.CliRunner.CliException;
     }
 
@@ -119,11 +119,10 @@ public final class ChangeService {
     }
 
     private ArchiveJson.Outcome archiveWithCli(Change change, boolean syncSpecs) throws IOException {
-        List<String> args = new ArrayList<>(List.of("archive", change.getName(), "--yes", "--json"));
-        if (!syncSpecs) args.add("--skip-specs");
+        com.johnnyblabs.openspec.util.CliArgs args = com.johnnyblabs.openspec.util.CliCommands.archive(change.getName(), syncSpecs);
         com.johnnyblabs.openspec.util.CliRunner.CliResult result;
         try {
-            result = archiveCli.run(project, args.toArray(String[]::new));
+            result = archiveCli.run(project, args);
         } catch (com.johnnyblabs.openspec.util.CliRunner.CliException e) {
             throw new IOException("Could not run openspec archive: " + e.getMessage(), e);
         }

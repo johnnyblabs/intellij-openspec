@@ -356,7 +356,8 @@ public class ExploreDirectApiPanelTest extends BasePlatformTestCase {
             }
 
             @Override
-            public CliRunner.CliResult run(String... args) {
+            public CliRunner.CliResult run(com.johnnyblabs.openspec.util.CliArgs cliArgs) {
+                String[] args = cliArgs.requested().toArray(String[]::new);
                 onEdt.add(ApplicationManager.getApplication().isDispatchThread());
                 return new CliRunner.CliResult(1, "", "");
             }

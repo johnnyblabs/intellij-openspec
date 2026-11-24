@@ -1,0 +1,23 @@
+Usage: openspec workspace [options] [command]
+
+Set up and inspect coordination workspaces
+
+Options:
+  -h, --help                          display help for command
+
+Commands:
+  setup [options]                     Set up a workspace and link existing repos
+                                      or folders
+  list [options]                      List known OpenSpec workspaces
+  ls [options]                        List known OpenSpec workspaces
+  link [options] [nameOrPath] [path]  Link an existing repo or folder to a
+                                      workspace
+  relink [options] <name> <path>      Update the local path for an existing
+                                      workspace link
+  doctor [options]                    Check what a workspace can resolve on this
+                                      machine
+  update [options] [name]             Refresh workspace-local OpenSpec guidance
+                                      and agent skills
+  open [options] [name]               Open a workspace in an agent or VS Code
+                                      editor
+  help [command]                      display help for command

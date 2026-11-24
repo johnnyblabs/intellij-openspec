@@ -65,7 +65,7 @@ public final class WorkflowProfileSwitchService {
         }
 
         try {
-            CliRunner.CliResult result = CliRunner.run(project, "config", "profile", newProfile);
+            CliRunner.CliResult result = CliRunner.run(project, com.johnnyblabs.openspec.util.CliCommands.configProfile(newProfile));
             if (result.isSuccess()) {
                 settings.setProfile(newProfile);
                 if (wps != null) wps.refresh();
@@ -120,7 +120,7 @@ public final class WorkflowProfileSwitchService {
     void runUpdate() {
         ApplicationManager.getApplication().executeOnPooledThread(() -> {
             try {
-                CliRunner.CliResult result = CliRunner.run(project, "update");
+                CliRunner.CliResult result = CliRunner.run(project, com.johnnyblabs.openspec.util.CliCommands.update());
                 ApplicationManager.getApplication().invokeLater(() -> reportUpdate(result));
             } catch (CliRunner.CliException e) {
                 LOG.warn("openspec update failed", e);

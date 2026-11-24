@@ -32,7 +32,8 @@ from openspec_capture import cli, key, newest_patch_per_minor, published_version
 FIXTURES = REPO / "src/test/resources/fixtures/cli"
 # Every command the plugin runs (CliRunner callers), plus the top-level help.
 COMMANDS = ["openspec", "init", "update", "validate", "status", "instructions", "archive", "schema", "store",
-            "workset", "list", "show", "new", "config", "context", "schemas", "templates"]
+            "workset", "list", "show", "new", "config", "context", "schemas", "templates", "doctor",
+            "workspace", "context-store", "initiative"]
 
 
 def sweep_versions():

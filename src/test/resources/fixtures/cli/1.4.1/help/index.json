@@ -120,6 +120,90 @@
     "templates": {
       "exit": 0,
       "file": "templates.txt"
+    },
+    "doctor": {
+      "exit": 0,
+      "file": null
+    },
+    "workspace": {
+      "exit": 0,
+      "file": "workspace.txt"
+    },
+    "workspace setup": {
+      "exit": 0,
+      "file": "workspace-setup.txt"
+    },
+    "workspace list": {
+      "exit": 0,
+      "file": "workspace-list.txt"
+    },
+    "workspace ls": {
+      "exit": 0,
+      "file": "workspace-ls.txt"
+    },
+    "workspace link": {
+      "exit": 0,
+      "file": "workspace-link.txt"
+    },
+    "workspace relink": {
+      "exit": 0,
+      "file": "workspace-relink.txt"
+    },
+    "workspace doctor": {
+      "exit": 0,
+      "file": "workspace-doctor.txt"
+    },
+    "workspace update": {
+      "exit": 0,
+      "file": "workspace-update.txt"
+    },
+    "workspace open": {
+      "exit": 0,
+      "file": "workspace-open.txt"
+    },
+    "context-store": {
+      "exit": 0,
+      "file": "context-store.txt"
+    },
+    "context-store setup": {
+      "exit": 0,
+      "file": "context-store-setup.txt"
+    },
+    "context-store register": {
+      "exit": 0,
+      "file": "context-store-register.txt"
+    },
+    "context-store unregister": {
+      "exit": 0,
+      "file": "context-store-unregister.txt"
+    },
+    "context-store remove": {
+      "exit": 0,
+      "file": "context-store-remove.txt"
+    },
+    "context-store list": {
+      "exit": 0,
+      "file": "context-store-list.txt"
+    },
+    "context-store doctor": {
+      "exit": 0,
+      "file": "context-store-doctor.txt"
+    },
+    "initiative": {
+      "exit": 0,
+      "file": "initiative.txt"
+    },
+    "initiative create": {
+      "exit": 0,
+      "file": "initiative-create.txt"
+    },
+    "initiative show": {
+      "exit": 0,
+      "file": "initiative-show.txt"
+    },
+    "initiative list": {
+      "exit": 0,
+      "file": "initiative-list.txt"
     }
   }
 }

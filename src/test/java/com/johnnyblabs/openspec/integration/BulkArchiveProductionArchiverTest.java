@@ -66,7 +66,8 @@ public class BulkArchiveProductionArchiverTest extends OpenSpecIntegrationTestBa
                 "src/test/resources/fixtures/cli/archive-1.14.3/modified-ok/archive.json"));
         List<List<String>> calls = new java.util.ArrayList<>();
         List<Boolean> onUi = new java.util.ArrayList<>();
-        changes.setArchiveCliForTest((project, args) -> {
+        changes.setArchiveCliForTest((project, cliArgs) -> {
+            String[] args = cliArgs.requested().toArray(String[]::new);
             calls.add(List.of(args));
             onUi.add(ApplicationManager.getApplication().isDispatchThread());
             return new com.johnnyblabs.openspec.util.CliRunner.CliResult(0, captured, "");

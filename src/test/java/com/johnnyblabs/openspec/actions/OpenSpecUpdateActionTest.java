@@ -39,7 +39,7 @@ class OpenSpecUpdateActionTest {
 
         @Test
         void cliArgs_returnsUpdate() {
-            assertArrayEquals(new String[]{"update"}, action.getCliArgs());
+            assertEquals(java.util.List.of("update"), action.getCliArgs().requested());
         }
 
         @Test

@@ -7,6 +7,7 @@ import com.intellij.openapi.actionSystem.ActionManager;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.testFramework.fixtures.BasePlatformTestCase;
 import com.johnnyblabs.openspec.util.CliFixtures;
+import com.johnnyblabs.openspec.util.FixtureVersions;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -41,8 +42,17 @@ import java.util.regex.Pattern;
  */
 public class WorkflowParityContractTest extends BasePlatformTestCase {
 
-    /** The upstream set for the plugin's target CLI, so the fixture moves with every CLI bump. */
-    private static final String FIXTURE = "/fixtures/cli/" + CliFixtures.targetVersion() + "/workflows.json";
+    /**
+     * Every release with a captured upstream workflow set. The plugin serves each of them, so parity holds for each;
+     * a missing capture fails rather than shrinking the check.
+     */
+    static final Set<String> FLOOR = Set.of("1.15.0", "1.16.0", "1.16.1", "1.17.0", "2.0.0", "2.1.0", "2.1.1");
+
+    static List<String> releases() {
+        List<String> found = FixtureVersions.versionsWith("workflows.json", FLOOR);
+        assertTrue("the target release is checked", found.contains(CliFixtures.targetVersion()));
+        return found;
+    }
 
     /** Upstream workflows the plugin deliberately has no action gated on, each with why and where it's tracked. */
     static final Map<String, String> NOT_SURFACED = Map.of(
@@ -54,9 +64,10 @@ public class WorkflowParityContractTest extends BasePlatformTestCase {
     private static final Set<String> KNOWN_GATED = Set.of(
             "propose", "explore", "continue", "update", "apply", "ff", "archive", "bulk-archive", "verify");
 
-    private static List<String> upstream(String key) {
-        try (InputStream in = WorkflowParityContractTest.class.getResourceAsStream(FIXTURE)) {
-            assertNotNull("missing fixture " + FIXTURE, in);
+    private static List<String> upstream(String version, String key) {
+        String fixture = "/fixtures/cli/" + version + "/workflows.json";
+        try (InputStream in = WorkflowParityContractTest.class.getResourceAsStream(fixture)) {
+            assertNotNull("missing fixture " + fixture, in);
             JsonObject json = JsonParser.parseString(new String(in.readAllBytes(), StandardCharsets.UTF_8)).getAsJsonObject();
             List<String> ids = new ArrayList<>();
             for (var el : json.getAsJsonArray(key)) ids.add(el.getAsString());
@@ -89,8 +100,10 @@ public class WorkflowParityContractTest extends BasePlatformTestCase {
     public void testEveryUpstreamWorkflowIsGatedOrExplained() throws IOException {
         Set<String> gated = gatedActions().keySet();
         List<String> unmapped = new ArrayList<>();
-        for (String workflow : upstream("all")) {
-            if (!gated.contains(workflow) && !NOT_SURFACED.containsKey(workflow)) unmapped.add(workflow);
+        for (String v : releases()) {
+            for (String workflow : upstream(v, "all")) {
+                if (!gated.contains(workflow) && !NOT_SURFACED.containsKey(workflow)) unmapped.add(v + " " + workflow);
+            }
         }
         assertTrue("upstream workflows with no gated action and no NOT_SURFACED entry: " + unmapped
                 + ". Add an action gated on each (getWorkflowId), or a NOT_SURFACED entry saying why not.",
@@ -98,18 +111,23 @@ public class WorkflowParityContractTest extends BasePlatformTestCase {
     }
 
     public void testNoActionIsGatedOnAWorkflowUpstreamDoesNotHave() throws IOException {
-        Set<String> upstream = new LinkedHashSet<>(upstream("all"));
+        Map<String, List<String>> gated = gatedActions();
         Map<String, List<String>> unknown = new LinkedHashMap<>();
-        gatedActions().forEach((workflow, actions) -> {
-            if (!upstream.contains(workflow)) unknown.put(workflow, actions);
-        });
+        for (String v : releases()) {
+            Set<String> upstream = new LinkedHashSet<>(upstream(v, "all"));
+            gated.forEach((workflow, actions) -> {
+                if (!upstream.contains(workflow)) unknown.put(v + " " + workflow, actions);
+            });
+        }
         assertTrue("actions gated on workflow ids upstream doesn't have (misspelled or removed upstream): " + unknown,
                 unknown.isEmpty());
     }
 
     public void testNotSurfacedHasNoStaleEntries() throws IOException {
         Map<String, List<String>> gated = gatedActions();
-        Set<String> upstream = new LinkedHashSet<>(upstream("all"));
+        // An entry is stale once no captured release has the workflow.
+        Set<String> upstream = new LinkedHashSet<>();
+        for (String v : releases()) upstream.addAll(upstream(v, "all"));
         List<String> stale = new ArrayList<>();
         for (String workflow : NOT_SURFACED.keySet()) {
             if (gated.containsKey(workflow)) stale.add(workflow + " (now gated by " + gated.get(workflow) + ")");
@@ -119,9 +137,11 @@ public class WorkflowParityContractTest extends BasePlatformTestCase {
     }
 
     public void testTheFixtureIsUpstreamsShape() {
-        List<String> all = upstream("all");
-        List<String> core = upstream("core");
-        assertTrue("every core workflow is in the full set", all.containsAll(core));
-        assertEquals("no duplicate workflow ids", all.size(), new LinkedHashSet<>(all).size());
+        for (String v : releases()) {
+            List<String> all = upstream(v, "all");
+            List<String> core = upstream(v, "core");
+            assertTrue(v + ": every core workflow is in the full set", all.containsAll(core));
+            assertEquals(v + ": no duplicate workflow ids", all.size(), new LinkedHashSet<>(all).size());
+        }
     }
 }

@@ -365,7 +365,8 @@ class ExploreContextContractTest {
         }
 
         @Override
-        public CliRunner.CliResult run(String... args) throws CliRunner.CliException {
+        public CliRunner.CliResult run(com.johnnyblabs.openspec.util.CliArgs cliArgs) throws CliRunner.CliException {
+                String[] args = cliArgs.requested().toArray(String[]::new);
             String joined = String.join(" ", args);
             calls.add(joined);
             if (failing.contains(joined)) throw new CliRunner.CliException("simulated failure");

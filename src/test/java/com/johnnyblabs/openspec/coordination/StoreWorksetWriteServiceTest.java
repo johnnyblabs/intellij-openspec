@@ -1,5 +1,7 @@
 package com.johnnyblabs.openspec.coordination;
 
+import static com.johnnyblabs.openspec.util.CliArgsMatchers.argv;
+
 import com.intellij.openapi.project.Project;
 import com.johnnyblabs.openspec.coordination.CoordinationService.WriteResult;
 import com.johnnyblabs.openspec.services.CliDetectionService;
@@ -91,7 +93,7 @@ class StoreWorksetWriteServiceTest {
     private Diagnostic doctorAnswering(CliRunner.CliResult answer) {
         CoordinationService service = serviceWith("1.14.3", true);
         try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
-            cli.when(() -> CliRunner.run(eq(project), eq("doctor"), eq("--store"), eq("storea"), eq("--json")))
+            cli.when(() -> CliRunner.run(eq(project), argv("doctor", "--store", "storea", "--json")))
                     .thenReturn(answer);
             return service.storeDoctor("storea");
         }
@@ -111,7 +113,7 @@ class StoreWorksetWriteServiceTest {
     void storeDoctorTimeoutIsUnknownNotHealthy() {
         CoordinationService service = serviceWith("1.14.3", true);
         try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
-            cli.when(() -> CliRunner.run(eq(project), eq("doctor"), eq("--store"), eq("storea"), eq("--json")))
+            cli.when(() -> CliRunner.run(eq(project), argv("doctor", "--store", "storea", "--json")))
                     .thenThrow(new CliRunner.CliException("OpenSpec CLI command timed out after 30s"));
             Diagnostic top = service.storeDoctor("storea");
             assertNotNull(top, "a timed-out check used to return null, which the action shows as healthy");
@@ -217,16 +219,15 @@ class StoreWorksetWriteServiceTest {
         // rather than an NPE on a null result dereferenced before the verify runs.
         try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class,
                 invocation -> new CliRunner.CliResult(1, "{\"status\":[]}", ""))) {
-            cli.when(() -> CliRunner.run(eq(project), eq("store"), eq("register"), eq(path), eq("--json")))
+            cli.when(() -> CliRunner.run(eq(project), argv("store", "register", path, "--json")))
                     .thenReturn(probeResult);
 
             WriteResult r = service.registerStore(path);
 
             // The probe reaches the CLI with the exact no-`--yes` argv...
-            cli.verify(() -> CliRunner.run(eq(project), eq("store"), eq("register"), eq(path), eq("--json")));
+            cli.verify(() -> CliRunner.run(eq(project), argv("store", "register", path, "--json")));
             // ...and NEVER the `--yes` variant.
-            cli.verify(() -> CliRunner.run(eq(project), eq("store"), eq("register"), eq(path),
-                    eq("--yes"), eq("--json")), never());
+            cli.verify(() -> CliRunner.run(eq(project), argv("store", "register", path, "--yes", "--json")), never());
             // The parsed confirmation gate is surfaced (drives the panel's confirm dialog).
             assertFalse(r.success());
             assertTrue(r.identityConfirmationRequired(),
@@ -246,13 +247,11 @@ class StoreWorksetWriteServiceTest {
         // rather than an NPE on a null result dereferenced before the verify runs.
         try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class,
                 invocation -> new CliRunner.CliResult(1, "{\"status\":[]}", ""))) {
-            cli.when(() -> CliRunner.run(eq(project), eq("store"), eq("register"), eq(path),
-                    eq("--yes"), eq("--json"))).thenReturn(yesResult);
+            cli.when(() -> CliRunner.run(eq(project), argv("store", "register", path, "--yes", "--json"))).thenReturn(yesResult);
 
             WriteResult r = service.registerStore(path, true);
 
-            cli.verify(() -> CliRunner.run(eq(project), eq("store"), eq("register"), eq(path),
-                    eq("--yes"), eq("--json")));
+            cli.verify(() -> CliRunner.run(eq(project), argv("store", "register", path, "--yes", "--json")));
             assertTrue(r.success(), "the `--yes` retry registers the root");
             assertTrue(r.createdFiles().contains(".openspec-store/store.yaml"),
                     "the `--yes` retry creates the store-identity metadata");
@@ -273,16 +272,15 @@ class StoreWorksetWriteServiceTest {
         // rather than an NPE on a null result dereferenced before the verify runs.
         try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class,
                 invocation -> new CliRunner.CliResult(1, "{\"status\":[]}", ""))) {
-            cli.when(() -> CliRunner.run(eq(project), eq("store"), eq("register"), eq(path), eq("--json")))
+            cli.when(() -> CliRunner.run(eq(project), argv("store", "register", path, "--json")))
                     .thenReturn(probeResult);
 
             service.registerStore(path);
             service.registerStore(path, false);
 
-            cli.verify(() -> CliRunner.run(eq(project), eq("store"), eq("register"), eq(path), eq("--json")),
+            cli.verify(() -> CliRunner.run(eq(project), argv("store", "register", path, "--json")),
                     times(2));
-            cli.verify(() -> CliRunner.run(eq(project), eq("store"), eq("register"), eq(path),
-                    eq("--yes"), eq("--json")), never());
+            cli.verify(() -> CliRunner.run(eq(project), argv("store", "register", path, "--yes", "--json")), never());
         }
     }
 }

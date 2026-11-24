@@ -85,7 +85,9 @@ public class UpdatePreviewServiceTest extends BasePlatformTestCase {
 
     /** A CLI that answers the dry run, the apply and the forced dry run from the given results, recording each call. */
     private UpdatePreviewService.UpdateCli cli(CliRunner.CliResult dry, CliRunner.CliResult apply, CliRunner.CliResult forced) {
-        return (project, env, args) -> {
+        return (project, cliArgs) -> {
+            String[] args = cliArgs.requested().toArray(String[]::new);
+            java.util.Map<String, String> env = cliArgs.env();
             List<String> a = List.of(args);
             calls.add(new Call(a, Map.copyOf(env)));
             if (a.equals(DRY)) return dry;
@@ -163,7 +165,9 @@ public class UpdatePreviewServiceTest extends BasePlatformTestCase {
     }
 
     public void testACliThatCannotRunIsAFailure() {
-        service.setSeamsForTest((project, env, args) -> {
+        service.setSeamsForTest((project, cliArgs) -> {
+            String[] args = cliArgs.requested().toArray(String[]::new);
+            java.util.Map<String, String> env = cliArgs.env();
             calls.add(new Call(List.of(args), env));
             throw new CliRunner.CliException("OpenSpec CLI command timed out after 30s");
         }, NEVER);
@@ -197,7 +201,9 @@ public class UpdatePreviewServiceTest extends BasePlatformTestCase {
         assertEquals("applied", 1, finishedCount(cli(captured("windsurf-move"), OK, null), model -> true, applied));
         assertEquals(List.of(OK), applied);
 
-        UpdatePreviewService.UpdateCli applyCannotRun = (project, env, args) -> {
+        UpdatePreviewService.UpdateCli applyCannotRun = (project, cliArgs) -> {
+            String[] args = cliArgs.requested().toArray(String[]::new);
+            java.util.Map<String, String> env = cliArgs.env();
             if (List.of(args).equals(DRY)) return captured("windsurf-move");
             throw new CliRunner.CliException("OpenSpec CLI command timed out after 30s");
         };

@@ -27,8 +27,11 @@ OpenSpec setup is never touched. `src/test/resources/fixtures/cli/README.md` rec
 | `capture-update-dry-run-fixtures.py` | `update --dry-run --json` plans |
 | `capture-cli-generation.py` | Version, config list, init errors, known projects and the validation parity corpus, per release |
 | `capture-help-sweep.py` | `--help` for every command the plugin runs, across every supported release |
+| `install-cli-matrix.py` | Installs every swept release for the optional `./gradlew cliMatrix` gate (no capture) |
 
 CLI 2.1 and later need Node 22.20 or newer; capturing 2.1.0 also needs Git and network access.
+
+`./gradlew cliMatrix` is an optional local release gate. It runs every CLI command line the plugin can build against the real package of each release with a `help/` sweep, in an isolated HOME. It fails on an `unknown option` or `unknown command` error. Install the packages with `install-cli-matrix.py`, then run the gate with the same `OSP_CAPTURE_CACHE`. Without installed packages the gate is skipped. It isn't part of `./gradlew build`.
 
 ## Libraries
 

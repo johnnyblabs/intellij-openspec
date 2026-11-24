@@ -1,0 +1,8 @@
+Usage: openspec context-store register [options] [path]
+
+Register an existing local context store
+
+Options:
+  --id <id>   Context store id; defaults to metadata or folder name
+  --json      Output as JSON
+  -h, --help  display help for command

@@ -1,0 +1,11 @@
+Usage: openspec context-store setup [options] [id]
+
+Create and register a local context store
+
+Options:
+  --path <path>  Context store folder path; defaults to OpenSpec managed local
+                 data
+  --init-git     Initialize a Git repository in the context store
+  --no-init-git  Do not initialize a Git repository
+  --json         Output as JSON
+  -h, --help     display help for command

@@ -1,0 +1,7 @@
+Usage: openspec context-store list|ls [options]
+
+List locally registered context stores
+
+Options:
+  --json      Output as JSON
+  -h, --help  display help for command

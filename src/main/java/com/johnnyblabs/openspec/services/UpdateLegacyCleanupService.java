@@ -149,7 +149,7 @@ public final class UpdateLegacyCleanupService {
             return fromReadOnly(check);
         }
         try {
-            return classifyVerification(updateCli.run(project, "update"), null);
+            return classifyVerification(updateCli.run(project, com.johnnyblabs.openspec.util.CliCommands.update()), null);
         } catch (CliRunner.CliException e) {
             LOG.warn("Verification re-run failed", e);
             return classifyVerification(null, e);
@@ -166,7 +166,7 @@ public final class UpdateLegacyCleanupService {
 
     /** Runs {@code openspec update}; a seam so tests can feed the verification re-run captured output. */
     interface UpdateCli {
-        CliRunner.CliResult run(Project project, String... args) throws CliRunner.CliException;
+        CliRunner.CliResult run(Project project, com.johnnyblabs.openspec.util.CliArgs args) throws CliRunner.CliException;
     }
 
     private UpdateCli updateCli = CliRunner::run;

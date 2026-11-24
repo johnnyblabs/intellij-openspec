@@ -55,7 +55,8 @@ public class ArchiveDelegationTest extends OpenSpecIntegrationTestBase {
     private void cliAnswers(Path capture) throws Exception {
         String stdout = Files.readString(capture.resolve("archive.json"));
         int exit = Integer.parseInt(Files.readString(capture.resolve("exit.txt")).strip());
-        service().setArchiveCliForTest((project, args) -> {
+        service().setArchiveCliForTest((project, cliArgs) -> {
+            String[] args = cliArgs.requested().toArray(String[]::new);
             calls.add(List.of(args));
             onUiThread.add(ApplicationManager.getApplication().isDispatchThread());
             return new CliRunner.CliResult(exit, stdout, "");
@@ -63,7 +64,8 @@ public class ArchiveDelegationTest extends OpenSpecIntegrationTestBase {
     }
 
     private void cliMustNotRun() {
-        service().setArchiveCliForTest((project, args) -> {
+        service().setArchiveCliForTest((project, cliArgs) -> {
+            String[] args = cliArgs.requested().toArray(String[]::new);
             throw new AssertionError("the CLI must not run here: " + List.of(args));
         });
     }

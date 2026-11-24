@@ -32,8 +32,8 @@ public class OpenSpecCliActionCliMissingTest extends BasePlatformTestCase {
                 });
         OpenSpecCliAction action = new OpenSpecCliAction() {
             @Override
-            protected String[] getCliArgs() {
-                return new String[]{"foo"};
+            protected com.johnnyblabs.openspec.util.CliArgs getCliArgs() {
+                return com.johnnyblabs.openspec.util.CliCommands.list();
             }
 
             @Override

@@ -48,8 +48,8 @@ public class OpenSpecUpdateAction extends OpenSpecCliAction {
     }
 
     @Override
-    protected String[] getCliArgs() {
-        return new String[]{"update"};
+    protected com.johnnyblabs.openspec.util.CliArgs getCliArgs() {
+        return com.johnnyblabs.openspec.util.CliCommands.update();
     }
 
     @Override

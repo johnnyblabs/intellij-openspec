@@ -258,7 +258,7 @@ public class ManageAiToolsDialog extends DialogWrapper {
                 if (cliAvailable && tool.cliId() != null) {
                     btn.setToolTipText("Generate OpenSpec skills and commands for " + tool.name());
                     btn.addActionListener(e -> runCliAction(
-                            "init --tools " + tool.cliId(),
+                            com.johnnyblabs.openspec.util.CliCommands.init(tool.cliId()),
                             "Configuring " + tool.name(), tool.name(), btn));
                 } else {
                     btn.setToolTipText("Set as preferred tool (install CLI for full skill generation)");
@@ -275,7 +275,7 @@ public class ManageAiToolsDialog extends DialogWrapper {
                 if (cliAvailable && tool.cliId() != null) {
                     btn.setToolTipText("Add " + tool.name() + " to your project with OpenSpec skills");
                     btn.addActionListener(e -> runCliAction(
-                            "init --tools " + tool.cliId(),
+                            com.johnnyblabs.openspec.util.CliCommands.init(tool.cliId()),
                             "Adding " + tool.name(), tool.name(), btn));
                 } else {
                     btn.setToolTipText("Create tool directory and set as preferred (install CLI for skill generation)");
@@ -298,7 +298,7 @@ public class ManageAiToolsDialog extends DialogWrapper {
         com.johnnyblabs.openspec.services.UpdatePreviewService preview =
                 com.johnnyblabs.openspec.services.UpdatePreviewService.getInstance(project);
         if (preview == null || !preview.supportsPreview()) {
-            runCliAction("update", "Updating " + tool.name(), null, sourceButton);
+            runCliAction(com.johnnyblabs.openspec.util.CliCommands.update(), "Updating " + tool.name(), null, sourceButton);
             return;
         }
         String title = "Updating " + tool.name();
@@ -388,7 +388,7 @@ public class ManageAiToolsDialog extends DialogWrapper {
         return api != null && api.isConfigured();
     }
 
-    private void runCliAction(String command, String title, @Nullable String setUpTool, JButton sourceButton) {
+    private void runCliAction(com.johnnyblabs.openspec.util.CliArgs args, String title, @Nullable String setUpTool, JButton sourceButton) {
         sourceButton.setEnabled(false);
         sourceButton.setText("...");
 
@@ -397,7 +397,6 @@ public class ManageAiToolsDialog extends DialogWrapper {
             public void run(@NotNull ProgressIndicator indicator) {
                 Condition<?> expired = ignored -> isDisposed() || project.isDisposed();
                 try {
-                    String[] args = command.split("\\s+");
                     CliRunner.CliResult result = CliRunner.run(project, args);
                     if (result.isSuccess()) {
                         // The CLI wrote files outside the VFS. A synchronous refresh is illegal here (off the EDT),

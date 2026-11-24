@@ -87,6 +87,27 @@ class HelpSweepContractTest {
         assertTrue(index(CLI.resolve("2.1.1")).getAsJsonObject("commands").has("store register"));
     }
 
+    /**
+     * The coordination commands the plugin gates by release: {@code workspace}, {@code context-store} and
+     * {@code initiative} exist only in 1.4.x, and {@code doctor} from 1.5.0. Every sweep records each of them, with a
+     * help text exactly where the release has the command.
+     */
+    @TestFactory
+    Stream<DynamicTest> versionScopedCommandsAppearExactlyWhereTheReleaseHasThem() throws IOException {
+        return sweeps().stream().map(d -> DynamicTest.dynamicTest(d.getFileName().toString(), () -> {
+            String version = d.getFileName().toString();
+            JsonObject commands = index(d).getAsJsonObject("commands");
+            boolean onePointFour = version.startsWith("1.4.");
+            Map<String, Boolean> expected = Map.of("workspace", onePointFour, "context-store", onePointFour,
+                    "initiative", onePointFour, "doctor", FixtureVersions.compare(version, "1.5.0") >= 0);
+            for (Map.Entry<String, Boolean> e : expected.entrySet()) {
+                assertTrue(commands.has(e.getKey()), version + " index does not record " + e.getKey());
+                boolean captured = !commands.getAsJsonObject(e.getKey()).get("file").isJsonNull();
+                assertEquals(e.getValue(), captured, version + " " + e.getKey() + " help captured");
+            }
+        }));
+    }
+
     /** 2.1.0 is the first release whose init takes --scope: the record the scope flag is gated on. */
     @Test
     void scopeArrivesIn210() throws IOException {

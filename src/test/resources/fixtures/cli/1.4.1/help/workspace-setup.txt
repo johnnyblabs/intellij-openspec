@@ -1,0 +1,19 @@
+Usage: openspec workspace setup [options]
+
+Set up a workspace and link existing repos or folders
+
+Options:
+  --name <name>     Workspace name
+  --link <link>     Repo or folder link. Use <path> or <name>=<path>. (default:
+                    [])
+  --opener <id>     Preferred opener: codex-cli, claude, github-copilot, or
+                    editor
+  --tools <tools>   Install OpenSpec skills for agents. Use "all", "none", or a
+                    comma-separated list of: amazon-q, antigravity, auggie, bob,
+                    claude, cline, codex, forgecode, codebuddy, continue,
+                    costrict, crush, cursor, factory, gemini, github-copilot,
+                    iflow, junie, kilocode, kimi, kiro, lingma, vibe, opencode,
+                    pi, qoder, qwen, roocode, trae, windsurf
+  --json            Output as JSON
+  --no-interactive  Disable prompts
+  -h, --help        display help for command

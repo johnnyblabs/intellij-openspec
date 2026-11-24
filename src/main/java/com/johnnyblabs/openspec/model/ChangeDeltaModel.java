@@ -144,8 +144,8 @@ public final class ChangeDeltaModel {
      * show} noun form and the {@code --deltas-only}/{@code --requirements-only} flags are deliberately
      * NOT used (see the change's design). Read stdout only — stderr carries a spurious flag warning.
      */
-    public static String[] changeShowArgs(String name) {
-        return new String[] {"show", name, "--type", "change", "--json"};
+    public static com.johnnyblabs.openspec.util.CliArgs changeShowArgs(String name) {
+        return com.johnnyblabs.openspec.util.CliCommands.showChange(name);
     }
 
     /**

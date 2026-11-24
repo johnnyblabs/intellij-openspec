@@ -125,7 +125,7 @@ public final class WorkflowProfileService {
 
     private Snapshot resolve() {
         try {
-            CliRunner.CliResult result = CliRunner.run(project, "config", "list", "--json");
+            CliRunner.CliResult result = CliRunner.run(project, com.johnnyblabs.openspec.util.CliCommands.configList());
             if (CliJson.read(result) instanceof CliJson.Ok ok && ok.object() != null) {
                 return parseSnapshot(ok.object());
             }

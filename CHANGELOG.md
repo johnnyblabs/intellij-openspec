@@ -4,6 +4,11 @@
 
 ## Unreleased
 
+### Changed
+
+- Every OpenSpec CLI command the plugin runs is now fitted to the CLI version you have installed. If that version doesn't have a command or option the plugin needs, the plugin says which CLI version it needs instead of showing the CLI's "unknown option" error. Each command and option is checked against every supported CLI from 1.3 to 2.1.
+- The console line for Validate now shows the exact command that ran, including `--json`.
+
 ### Fixed
 
 - Closing the OpenSpec tool window, or a project, while the tree was still refreshing no longer reports an internal "Already disposed" error. A refresh that finishes after the tool window is gone is now dropped quietly.

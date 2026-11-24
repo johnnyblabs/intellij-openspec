@@ -130,6 +130,42 @@ Local-development disciplines:
 3. Append `<new>` to `ValidatorVerdictVersionStabilityTest.FLOOR` and to `CliVersionAtLeastTest`'s supported-versions value list (these are additive — do not remove older entries).
 4. Run `./gradlew build`. `TargetVersionSingleSourceTest` will red if step 1 was skipped (no corpus for the target) — that is the guard working.
 
+### Passing a CLI command or flag
+
+Every OpenSpec CLI command line the plugin runs is built in one place, so it can be checked against every supported release:
+
+- **`util/CliFlags`** records, for each command the plugin runs and each flag it passes, the release that introduced it and the release that dropped it, if any. It also records whether a flag takes a value.
+- **`util/CliCommands`** has one builder per invocation, such as `CliCommands.archive(change, syncSpecs)`. Each builder carries `@OfferedOn`, which names the floor constant its calling service already gates on.
+- **`CliRunner.run` accepts only the `CliArgs` a builder returns.** It fits the arguments to the detected release just before starting the process:
+  - an `optional` flag the release lacks is left out;
+  - a required flag or a missing command is refused with `UnsupportedCliArgumentException`, which names the release needed.
+
+To pass a new flag or run a new command:
+
+1. Add it to `CliFlags` with the release that introduced it.
+2. Add it to the matching builder in `CliCommands`, or add a new builder. Builder parameters are `String` (optionally `@Nullable`), `boolean` or `List<String>`, and builders read nothing but their parameters.
+3. Pin the new command line in `CliCommandsTest`.
+
+Four tests hold this together:
+
+| Test | What it checks |
+|------|----------------|
+| `CliFlagTableContractTest` | The table agrees with the `--help` captured from every supported release (`fixtures/cli/<version>/help/`), in both directions. |
+| `CliArgsVersionMatrixTest` | Calls every builder with sampled parameters and resolves it against every captured release. Inside the builder's `@OfferedOn` range, it must resolve, keep every flag, and emit only what that release's help lists. |
+| `CliFlagLiteralHygieneTest` | Fails on a flag written as a string literal anywhere outside the catalog and the table. |
+| `CliCommandsTest` | Pins each builder's exact command line. |
+
+A new command needs its `--help` captured first: add it to `scripts/capture-help-sweep.py` and re-sweep.
+
+**Before a release**, run the optional real-CLI gate. It runs every builder against the real package of each swept release:
+
+```bash
+scripts/install-cli-matrix.py
+OSP_CAPTURE_CACHE=<the same cache> ./gradlew cliMatrix
+```
+
+It isn't part of `check`. CLI 2.1 and later need Node 22.20 or newer.
+
 ## Pull Requests
 
 1. Fork the repo and create a branch from `main`

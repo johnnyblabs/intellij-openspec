@@ -1,5 +1,8 @@
 package com.johnnyblabs.openspec.services;
 
+import static com.johnnyblabs.openspec.util.CliArgsMatchers.argv;
+import static org.mockito.ArgumentMatchers.eq;
+
 import com.intellij.openapi.project.Project;
 import com.johnnyblabs.openspec.util.CliRunner;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,7 +44,7 @@ class WorkflowProfileServiceTest {
             // Real 1.14.3 `config list --json` after `config set profile custom` + `config set workflows [...]`.
             String json = fixture("1.14.3/errors/config-list-custom.stdout");
             try (MockedStatic<CliRunner> cliStatic = mockStatic(CliRunner.class)) {
-                cliStatic.when(() -> CliRunner.run(project, "config", "list", "--json"))
+                cliStatic.when(() -> CliRunner.run(eq(project), argv("config", "list", "--json")))
                         .thenReturn(new CliRunner.CliResult(0, json, ""));
 
                 assertTrue(service.isWorkflowEnabled("propose"));
@@ -59,7 +62,7 @@ class WorkflowProfileServiceTest {
             String json = fixture("1.14.3/errors/config-list-default.stdout");
             assertFalse(json.contains("workflows"), "capture precondition: no workflows key");
             try (MockedStatic<CliRunner> cliStatic = mockStatic(CliRunner.class)) {
-                cliStatic.when(() -> CliRunner.run(project, "config", "list", "--json"))
+                cliStatic.when(() -> CliRunner.run(eq(project), argv("config", "list", "--json")))
                         .thenReturn(new CliRunner.CliResult(0, json, ""));
 
                 for (String id : WorkflowProfileService.CURRENT_CORE) {
@@ -75,7 +78,7 @@ class WorkflowProfileServiceTest {
         void textBeforeTheConfigJsonIsTolerated() {
             String json = fixture("1.14.3/errors/config-list-custom.stdout");
             try (MockedStatic<CliRunner> cliStatic = mockStatic(CliRunner.class)) {
-                cliStatic.when(() -> CliRunner.run(project, "config", "list", "--json"))
+                cliStatic.when(() -> CliRunner.run(eq(project), argv("config", "list", "--json")))
                         .thenReturn(new CliRunner.CliResult(0, "Note: printed first\n" + json, ""));
                 assertTrue(service.isWorkflowEnabled("verify"), "used to fail to parse and fall back to core");
             }
@@ -88,7 +91,7 @@ class WorkflowProfileServiceTest {
         @Test
         void fallsToCoreDefaults_whenCliThrowsException() {
             try (MockedStatic<CliRunner> cliStatic = mockStatic(CliRunner.class)) {
-                cliStatic.when(() -> CliRunner.run(project, "config", "list", "--json"))
+                cliStatic.when(() -> CliRunner.run(eq(project), argv("config", "list", "--json")))
                         .thenThrow(new CliRunner.CliException("CLI not found"));
 
                 // No CLI: the current core set, six workflows including update
@@ -106,7 +109,7 @@ class WorkflowProfileServiceTest {
         @Test
         void fallsToCoreDefaults_whenCliReturnsNonZeroExit() {
             try (MockedStatic<CliRunner> cliStatic = mockStatic(CliRunner.class)) {
-                cliStatic.when(() -> CliRunner.run(project, "config", "list", "--json"))
+                cliStatic.when(() -> CliRunner.run(eq(project), argv("config", "list", "--json")))
                         .thenReturn(new CliRunner.CliResult(1, "", "error"));
 
                 assertTrue(service.isWorkflowEnabled("propose"));
@@ -118,7 +121,7 @@ class WorkflowProfileServiceTest {
         @Test
         void fallsToCoreDefaults_whenJsonIsMalformed() {
             try (MockedStatic<CliRunner> cliStatic = mockStatic(CliRunner.class)) {
-                cliStatic.when(() -> CliRunner.run(project, "config", "list", "--json"))
+                cliStatic.when(() -> CliRunner.run(eq(project), argv("config", "list", "--json")))
                         .thenReturn(new CliRunner.CliResult(0, "not json at all", ""));
 
                 assertTrue(service.isWorkflowEnabled("propose"));
@@ -133,7 +136,7 @@ class WorkflowProfileServiceTest {
                     { "profile": "core" }
                     """;
             try (MockedStatic<CliRunner> cliStatic = mockStatic(CliRunner.class)) {
-                cliStatic.when(() -> CliRunner.run(project, "config", "list", "--json"))
+                cliStatic.when(() -> CliRunner.run(eq(project), argv("config", "list", "--json")))
                         .thenReturn(new CliRunner.CliResult(0, json, ""));
 
                 assertTrue(service.isWorkflowEnabled("propose"));
@@ -148,7 +151,7 @@ class WorkflowProfileServiceTest {
                     { "profile": "core", "workflows": [] }
                     """;
             try (MockedStatic<CliRunner> cliStatic = mockStatic(CliRunner.class)) {
-                cliStatic.when(() -> CliRunner.run(project, "config", "list", "--json"))
+                cliStatic.when(() -> CliRunner.run(eq(project), argv("config", "list", "--json")))
                         .thenReturn(new CliRunner.CliResult(0, json, ""));
 
                 assertTrue(service.isWorkflowEnabled("propose"));
@@ -167,7 +170,7 @@ class WorkflowProfileServiceTest {
                     { "profile": "custom", "workflows": ["propose"] }
                     """;
             try (MockedStatic<CliRunner> cliStatic = mockStatic(CliRunner.class)) {
-                cliStatic.when(() -> CliRunner.run(project, "config", "list", "--json"))
+                cliStatic.when(() -> CliRunner.run(eq(project), argv("config", "list", "--json")))
                         .thenReturn(new CliRunner.CliResult(0, json, ""));
 
                 assertEquals("custom", service.getActiveProfileName());
@@ -177,7 +180,7 @@ class WorkflowProfileServiceTest {
         @Test
         void returnsCoreFallback_whenCliUnavailable() {
             try (MockedStatic<CliRunner> cliStatic = mockStatic(CliRunner.class)) {
-                cliStatic.when(() -> CliRunner.run(project, "config", "list", "--json"))
+                cliStatic.when(() -> CliRunner.run(eq(project), argv("config", "list", "--json")))
                         .thenThrow(new CliRunner.CliException("CLI not found"));
 
                 assertEquals("core", service.getActiveProfileName());
@@ -190,7 +193,7 @@ class WorkflowProfileServiceTest {
                     { "workflows": ["propose"] }
                     """;
             try (MockedStatic<CliRunner> cliStatic = mockStatic(CliRunner.class)) {
-                cliStatic.when(() -> CliRunner.run(project, "config", "list", "--json"))
+                cliStatic.when(() -> CliRunner.run(eq(project), argv("config", "list", "--json")))
                         .thenReturn(new CliRunner.CliResult(0, json, ""));
 
                 assertEquals("core", service.getActiveProfileName());
@@ -210,7 +213,7 @@ class WorkflowProfileServiceTest {
                     }
                     """;
             try (MockedStatic<CliRunner> cliStatic = mockStatic(CliRunner.class)) {
-                cliStatic.when(() -> CliRunner.run(project, "config", "list", "--json"))
+                cliStatic.when(() -> CliRunner.run(eq(project), argv("config", "list", "--json")))
                         .thenReturn(new CliRunner.CliResult(0, json, ""));
 
                 Set<String> workflows = service.getActiveWorkflows();
@@ -221,7 +224,7 @@ class WorkflowProfileServiceTest {
         @Test
         void returnsCoreDefaults_whenCliUnavailable() {
             try (MockedStatic<CliRunner> cliStatic = mockStatic(CliRunner.class)) {
-                cliStatic.when(() -> CliRunner.run(project, "config", "list", "--json"))
+                cliStatic.when(() -> CliRunner.run(eq(project), argv("config", "list", "--json")))
                         .thenThrow(new CliRunner.CliException("CLI not found"));
 
                 Set<String> workflows = service.getActiveWorkflows();
@@ -241,7 +244,7 @@ class WorkflowProfileServiceTest {
                 String coreJson = """
                         { "profile": "core", "workflows": ["propose", "explore", "apply", "sync", "archive"] }
                         """;
-                cliStatic.when(() -> CliRunner.run(project, "config", "list", "--json"))
+                cliStatic.when(() -> CliRunner.run(eq(project), argv("config", "list", "--json")))
                         .thenReturn(new CliRunner.CliResult(0, coreJson, ""));
 
                 assertFalse(service.isWorkflowEnabled("ff"));
@@ -249,7 +252,7 @@ class WorkflowProfileServiceTest {
                 String customJson = """
                         { "profile": "custom", "workflows": ["propose", "explore", "apply", "sync", "archive", "ff", "continue"] }
                         """;
-                cliStatic.when(() -> CliRunner.run(project, "config", "list", "--json"))
+                cliStatic.when(() -> CliRunner.run(eq(project), argv("config", "list", "--json")))
                         .thenReturn(new CliRunner.CliResult(0, customJson, ""));
 
                 service.refresh();
@@ -270,7 +273,7 @@ class WorkflowProfileServiceTest {
                 String json = """
                         { "profile": "core", "workflows": ["propose", "explore", "apply", "sync", "archive"] }
                         """;
-                cliStatic.when(() -> CliRunner.run(project, "config", "list", "--json"))
+                cliStatic.when(() -> CliRunner.run(eq(project), argv("config", "list", "--json")))
                         .thenReturn(new CliRunner.CliResult(0, json, ""));
 
                 // Trigger lazy init; not a "change"
@@ -287,7 +290,7 @@ class WorkflowProfileServiceTest {
                 String json = """
                         { "profile": "core", "workflows": ["propose", "explore", "apply", "sync", "archive"] }
                         """;
-                cliStatic.when(() -> CliRunner.run(project, "config", "list", "--json"))
+                cliStatic.when(() -> CliRunner.run(eq(project), argv("config", "list", "--json")))
                         .thenReturn(new CliRunner.CliResult(0, json, ""));
 
                 service.getActiveWorkflows(); // lazy init
@@ -303,7 +306,7 @@ class WorkflowProfileServiceTest {
                 String coreJson = """
                         { "profile": "core", "workflows": ["propose", "explore", "apply", "sync", "archive"] }
                         """;
-                cliStatic.when(() -> CliRunner.run(project, "config", "list", "--json"))
+                cliStatic.when(() -> CliRunner.run(eq(project), argv("config", "list", "--json")))
                         .thenReturn(new CliRunner.CliResult(0, coreJson, ""));
 
                 service.getActiveWorkflows(); // lazy init populates previous
@@ -311,7 +314,7 @@ class WorkflowProfileServiceTest {
                 String customJson = """
                         { "profile": "custom", "workflows": ["propose", "explore", "apply", "sync", "archive", "ff"] }
                         """;
-                cliStatic.when(() -> CliRunner.run(project, "config", "list", "--json"))
+                cliStatic.when(() -> CliRunner.run(eq(project), argv("config", "list", "--json")))
                         .thenReturn(new CliRunner.CliResult(0, customJson, ""));
 
                 service.refresh();
@@ -329,7 +332,7 @@ class WorkflowProfileServiceTest {
         void coreConfigResolvesToTheCoreSet() {
             String json = fixture("1.7.0/config-list.json");
             try (MockedStatic<CliRunner> cliStatic = mockStatic(CliRunner.class)) {
-                cliStatic.when(() -> CliRunner.run(project, "config", "list", "--json"))
+                cliStatic.when(() -> CliRunner.run(eq(project), argv("config", "list", "--json")))
                         .thenReturn(new CliRunner.CliResult(0, json, ""));
 
                 assertEquals("core", service.getActiveProfileName());
@@ -348,7 +351,7 @@ class WorkflowProfileServiceTest {
             // `workflows`, so the profile parses and the workflow set is the current core set.
             String json = fixture("1.7.0/config-validation/global-config-defaultstore.json");
             try (MockedStatic<CliRunner> cliStatic = mockStatic(CliRunner.class)) {
-                cliStatic.when(() -> CliRunner.run(project, "config", "list", "--json"))
+                cliStatic.when(() -> CliRunner.run(eq(project), argv("config", "list", "--json")))
                         .thenReturn(new CliRunner.CliResult(0, json, ""));
 
                 assertEquals("core", service.getActiveProfileName());
@@ -375,7 +378,7 @@ class WorkflowProfileServiceTest {
             when(project.getService(CliDetectionService.class)).thenReturn(detection);
             String json = fixture("1.15.0/config-list/" + name + ".json");
             try (MockedStatic<CliRunner> cliStatic = mockStatic(CliRunner.class)) {
-                cliStatic.when(() -> CliRunner.run(project, "config", "list", "--json"))
+                cliStatic.when(() -> CliRunner.run(eq(project), argv("config", "list", "--json")))
                         .thenReturn(new CliRunner.CliResult(0, json, ""));
                 return service.getActiveWorkflows();
             }

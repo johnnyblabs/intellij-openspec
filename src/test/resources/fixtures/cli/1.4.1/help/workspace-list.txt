@@ -1,0 +1,7 @@
+Usage: openspec workspace list [options]
+
+List known OpenSpec workspaces
+
+Options:
+  --json      Output as JSON
+  -h, --help  display help for command

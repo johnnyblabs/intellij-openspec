@@ -1,0 +1,9 @@
+Usage: openspec initiative list|ls [options]
+
+List initiatives across registered context stores
+
+Options:
+  --store <id>         Context store id from the local context-store registry
+  --store-path <path>  Existing local context store root
+  --json               Output as JSON
+  -h, --help           display help for command

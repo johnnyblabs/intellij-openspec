@@ -9,6 +9,8 @@ import com.intellij.openapi.components.Service;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.johnnyblabs.openspec.services.CliDetectionService;
+import com.johnnyblabs.openspec.util.CliArgs;
+import com.johnnyblabs.openspec.util.CliCommands;
 import com.johnnyblabs.openspec.util.CliRunner;
 import com.johnnyblabs.openspec.util.CliVersion;
 import org.jetbrains.annotations.Nullable;
@@ -160,7 +162,7 @@ public final class CoordinationService {
 
     public List<WorkspaceEntry> resolveWorkspaces() {
         if (cliCoordinationAvailable()) {
-            String json = runListJson("workspace", "list");
+            String json = runListJson(CliCommands.workspaceList());
             if (json != null) {
                 try {
                     return parseWorkspaces(json);
@@ -227,7 +229,7 @@ public final class CoordinationService {
 
     public List<ContextStoreEntry> resolveContextStores() {
         if (cliCoordinationAvailable()) {
-            String json = runListJson("context-store", "list");
+            String json = runListJson(CliCommands.contextStoreList());
             if (json != null) {
                 try {
                     return parseContextStores(json);
@@ -299,7 +301,7 @@ public final class CoordinationService {
      */
     public List<StoreEntry> resolveStores() {
         if (cliStoreAvailable()) {
-            String json = runListJson("store", "list");
+            String json = runListJson(CliCommands.storeList());
             if (json != null) {
                 try {
                     return parseStores(json);
@@ -391,7 +393,7 @@ public final class CoordinationService {
     public StoreEntry fetchStoreDoctor(StoreEntry entry) {
         if (!cliStoreAvailable() || entry.id() == null) return entry;
         try {
-            CliRunner.CliResult r = CliRunner.run(project, "store", "doctor", entry.id(), "--json");
+            CliRunner.CliResult r = CliRunner.run(project, CliCommands.storeDoctor(entry.id()));
             if (!r.isSuccess()) return entry;
             for (StoreEntry parsed : parseStoreDoctor(r.stdout())) {
                 if (entry.id().equals(parsed.id())) {
@@ -413,7 +415,7 @@ public final class CoordinationService {
      */
     public List<WorksetEntry> resolveWorksets() {
         if (cliStoreAvailable()) {
-            String json = runListJson("workset", "list");
+            String json = runListJson(CliCommands.worksetList());
             if (json != null) {
                 try {
                     return parseWorksets(json);
@@ -539,7 +541,7 @@ public final class CoordinationService {
 
     public List<InitiativeEntry> resolveInitiatives() {
         if (cliCoordinationAvailable()) {
-            String json = runListJson("initiative", "list");
+            String json = runListJson(CliCommands.initiativeList());
             if (json != null) {
                 try {
                     return parseInitiatives(json);
@@ -628,7 +630,7 @@ public final class CoordinationService {
     public ContextStoreEntry fetchContextStoreDoctor(ContextStoreEntry entry) {
         if (!cliCoordinationAvailable() || entry.id() == null) return entry;
         try {
-            CliRunner.CliResult r = CliRunner.run(project, "context-store", "doctor", entry.id(), "--json");
+            CliRunner.CliResult r = CliRunner.run(project, CliCommands.contextStoreDoctor(entry.id()));
             if (!r.isSuccess()) return entry;
             JsonObject root = GSON.fromJson(CliJson.extractJsonPayload(r.stdout()), JsonObject.class);
             JsonArray stores = arrayOf(root, "context_stores", "stores");
@@ -730,7 +732,7 @@ public final class CoordinationService {
     /** Creates and registers a store: {@code store setup <id> --path <path> --json}. Off-EDT. */
     public WriteResult setupStore(String id, String path) {
         return runStoreWrite(false, "Created store '" + id + "'.",
-                "store", "setup", id, "--path", path, "--json");
+                CliCommands.storeSetup(id, path));
     }
 
     /**
@@ -758,11 +760,7 @@ public final class CoordinationService {
      * removals already use, adapted to this non-destructive metadata creation.
      */
     public WriteResult registerStore(String path, boolean confirmIdentity) {
-        return confirmIdentity
-                ? runStoreWrite(false, "Registered store.",
-                        "store", "register", path, "--yes", "--json")
-                : runStoreWrite(false, "Registered store.",
-                        "store", "register", path, "--json");
+        return runStoreWrite(false, "Registered store.", CliCommands.storeRegister(path, confirmIdentity));
     }
 
     /**
@@ -771,7 +769,7 @@ public final class CoordinationService {
      */
     public WriteResult unregisterStore(String id) {
         return runStoreWrite(false, "Unregistered store '" + id + "'.",
-                "store", "unregister", id, "--json");
+                CliCommands.storeUnregister(id));
     }
 
     /**
@@ -783,7 +781,7 @@ public final class CoordinationService {
      */
     public WriteResult removeStore(String id) {
         return runStoreWrite(true, "Removed store '" + id + "' and deleted its local files.",
-                "store", "remove", id, "--yes", "--json");
+                CliCommands.storeRemove(id));
     }
 
     /**
@@ -791,16 +789,11 @@ public final class CoordinationService {
      * One {@code --member} argument per row; the first is the primary. Off-EDT.
      */
     public WriteResult createWorkset(String name, List<WorksetEntry.Member> members) {
-        List<String> args = new ArrayList<>();
-        args.add("workset");
-        args.add("create");
-        args.add(name);
+        List<String> pairs = new ArrayList<>();
         for (WorksetEntry.Member m : members) {
-            args.add("--member");
-            args.add(m.name() + "=" + m.path());
+            pairs.add(m.name() + "=" + m.path());
         }
-        args.add("--json");
-        return runStoreWrite(false, "Created workset '" + name + "'.", args.toArray(new String[0]));
+        return runStoreWrite(false, "Created workset '" + name + "'.", CliCommands.worksetCreate(name, pairs));
     }
 
     /**
@@ -810,7 +803,7 @@ public final class CoordinationService {
      */
     public WriteResult removeWorkset(String name) {
         return runStoreWrite(false, "Removed workset '" + name + "'.",
-                "workset", "remove", name, "--yes", "--json");
+                CliCommands.worksetRemove(name));
     }
 
     /**
@@ -838,7 +831,7 @@ public final class CoordinationService {
     public Diagnostic storeDoctor(String id) {
         if (!cliStoreAvailable()) return null;
         try {
-            CliRunner.CliResult r = CliRunner.run(project, "doctor", "--store", id, "--json");
+            CliRunner.CliResult r = CliRunner.run(project, CliCommands.doctorStore(id));
             return switch (CliJson.read(r)) {
                 // An envelope's own status is the diagnosis (CLI 1.14.3 answers a store whose root is gone with a
                 // top-level unhealthy_store_root error and exit 1).
@@ -859,7 +852,7 @@ public final class CoordinationService {
      * &gt;= 1.5.0), shells out off the EDT, and parses the uniform result envelope. Below the bar it
      * short-circuits with {@link WriteResult#gated()} and never launches a process.
      */
-    private WriteResult runStoreWrite(boolean destructive, String successMessage, String... args) {
+    private WriteResult runStoreWrite(boolean destructive, String successMessage, CliArgs args) {
         if (!cliStoreAvailable()) {
             return WriteResult.gated();
         }
@@ -985,7 +978,7 @@ public final class CoordinationService {
             return WriteResult.fail(COORDINATION_WRITE_GUIDANCE);
         }
         try {
-            CliRunner.CliResult r = CliRunner.run(project, "initiative", "create", id, "--title", title);
+            CliRunner.CliResult r = CliRunner.run(project, CliCommands.initiativeCreate(id, title));
             if (!r.isSuccess()) {
                 return WriteResult.fail(stderrOrStdout(r));
             }
@@ -1008,9 +1001,7 @@ public final class CoordinationService {
             return WriteResult.fail(COORDINATION_WRITE_GUIDANCE);
         }
         try {
-            CliRunner.CliResult r = (id == null || id.isBlank())
-                    ? CliRunner.run(project, "context-store", "setup")
-                    : CliRunner.run(project, "context-store", "setup", id);
+            CliRunner.CliResult r = CliRunner.run(project, CliCommands.contextStoreSetup(id));
             return r.isSuccess()
                     ? WriteResult.ok("Set up context store.", null)
                     : WriteResult.fail(stderrOrStdout(r));
@@ -1031,8 +1022,7 @@ public final class CoordinationService {
             return WriteResult.fail(COORDINATION_WRITE_GUIDANCE);
         }
         try {
-            CliRunner.CliResult r = CliRunner.run(project,
-                    "workspace", "setup", "--name", name, "--no-interactive");
+            CliRunner.CliResult r = CliRunner.run(project, CliCommands.workspaceSetup(name));
             return r.isSuccess()
                     ? WriteResult.ok("Set up workspace '" + name + "'.", null)
                     : WriteResult.fail(stderrOrStdout(r));
@@ -1071,17 +1061,17 @@ public final class CoordinationService {
     // ---- helpers -------------------------------------------------------------
 
     @Nullable
-    private String runListJson(String command, String sub) {
+    private String runListJson(CliArgs args) {
         try {
-            CliRunner.CliResult r = CliRunner.run(project, command, sub, "--json");
+            CliRunner.CliResult r = CliRunner.run(project, args);
             if (r.isSuccess()) {
                 return r.stdout();
             }
-            LOG.warn("openspec " + command + " " + sub + " --json failed: " + r.stderr());
+            LOG.warn(args.display() + " failed: " + r.stderr());
         } catch (Exception e) {
             // Any failure (CLI error, missing service, unexpected runtime error) degrades to the
             // on-disk fallback rather than throwing into the caller — the read surface is beta-guarded.
-            LOG.warn("openspec " + command + " " + sub + " --json errored", e);
+            LOG.warn(args.display() + " errored", e);
         }
         return null;
     }

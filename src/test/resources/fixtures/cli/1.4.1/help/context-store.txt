@@ -1,0 +1,17 @@
+Usage: openspec context-store [options] [command]
+
+Set up and inspect local context stores
+
+Options:
+  -h, --help                 display help for command
+
+Commands:
+  setup [options] [id]       Create and register a local context store
+  register [options] [path]  Register an existing local context store
+  unregister [options] <id>  Forget a local context-store registration without
+                             deleting files
+  remove [options] <id>      Forget a local context-store registration and
+                             delete its local folder
+  list|ls [options]          List locally registered context stores
+  doctor [options] [id]      Check local context-store registration and metadata
+  help [command]             display help for command

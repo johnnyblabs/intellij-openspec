@@ -131,9 +131,7 @@ class ChangeDeltasContractTest {
 
     @Test
     void changeShowArgsAreTheExactContract() {
-        assertArrayEquals(
-                new String[] {"show", "my-change", "--type", "change", "--json"},
-                ChangeDeltaModel.changeShowArgs("my-change"),
+        assertEquals(java.util.List.of("show", "my-change", "--type", "change", "--json"), ChangeDeltaModel.changeShowArgs("my-change").requested(),
                 "argv must be the verb form with --type change --json (no deltas-only/requirements-only)");
     }
 

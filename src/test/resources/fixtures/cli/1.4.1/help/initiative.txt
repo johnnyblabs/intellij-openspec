@@ -1,0 +1,12 @@
+Usage: openspec initiative [options] [command]
+
+Create and list coordinated initiatives
+
+Options:
+  -h, --help             display help for command
+
+Commands:
+  create [options] [id]  Create an initiative in a context store
+  show [options] <id>    Show where an initiative lives and how to read it
+  list|ls [options]      List initiatives across registered context stores
+  help [command]         display help for command

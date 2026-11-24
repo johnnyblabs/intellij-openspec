@@ -50,7 +50,7 @@ public class CliRunnerTimeoutTest extends BasePlatformTestCase {
 
     private CliRunner.CliException runExpectingFailure() {
         try {
-            CliRunner.run(getProject(), "show", "x", "--json");
+            CliRunner.run(getProject(), CliCommands.showChange("x"));
         } catch (CliRunner.CliException e) {
             return e;
         }

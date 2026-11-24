@@ -60,7 +60,7 @@ public class OpenSpecValidateAction extends OpenSpecBaseAction {
     }
 
     /** The CLI arguments Validate uses for one change, which the Change Deltas pane runs for its line. */
-    public static String[] changeCliArgs(String changeName) {
+    public static com.johnnyblabs.openspec.util.CliArgs changeCliArgs(String changeName) {
         return cliArgs(ValidateTarget.change(changeName));
     }
 
@@ -240,31 +240,17 @@ public class OpenSpecValidateAction extends OpenSpecBaseAction {
     }
 
     /** CLI argument vector for the target's validate invocation. Package-private for tests. */
-    static String[] cliArgs(ValidateTarget target) {
-        List<String> args = new ArrayList<>();
-        args.add("validate");
-        if (target.isWholeProject()) {
-            args.add("--all");
-        } else {
-            args.add(target.id());
-            args.add("--type");
-            args.add(target.cliType());
-        }
-        args.add("--json");
+    static com.johnnyblabs.openspec.util.CliArgs cliArgs(ValidateTarget target) {
         // Per-run strict maps to the CLI's own --strict (warnings count as failures). The verdict is
         // then read from each item's `valid` field, which the CLI computes under --strict.
-        if (target.strict()) {
-            args.add("--strict");
-        }
-        return args.toArray(new String[0]);
+        return target.isWholeProject()
+                ? com.johnnyblabs.openspec.util.CliCommands.validateAll(target.strict())
+                : com.johnnyblabs.openspec.util.CliCommands.validateItem(target.id(), target.cliType(), target.strict());
     }
 
-    /** The command string echoed to the console, mirroring {@link #cliArgs}. Package-private for tests. */
+    /** The command string echoed to the console: exactly what {@link #cliArgs} runs. Package-private for tests. */
     static String commandLine(ValidateTarget target) {
-        String base = target.isWholeProject()
-                ? "openspec validate --all"
-                : "openspec validate " + target.id() + " --type " + target.cliType();
-        return target.strict() ? base + " --strict" : base;
+        return cliArgs(target).display();
     }
 
     /** Human label for the scoped target, used in the task title and console/notification text. */

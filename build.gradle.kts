@@ -101,7 +101,8 @@ dependencies {
 }
 
 tasks.test {
-    useJUnitPlatform()
+    // The real-CLI matrix needs installed CLI packages and minutes per release; it runs only as cliMatrix.
+    useJUnitPlatform { excludeTags("cli-matrix") }
     javaLauncher = javaToolchains.launcherFor {
         languageVersion = JavaLanguageVersion.of(21)
     }
@@ -118,6 +119,28 @@ tasks.test {
         exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
     }
     finalizedBy(tasks.jacocoTestReport)
+}
+
+// Optional local release gate, not part of `check`: runs every invocation the plugin can make (CliCommands)
+// against the real CLI package of each swept release, in an isolated HOME, and fails on "unknown option" or
+// "unknown command". Install the packages first: scripts/install-cli-matrix.py, then
+// OSP_CAPTURE_CACHE=<cache> ./gradlew cliMatrix. Without installed packages every release is skipped.
+val cliMatrix by tasks.registering(Test::class) {
+    description = "Runs every CLI invocation against the real CLI package of each supported release."
+    group = "verification"
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    useJUnitPlatform { includeTags("cli-matrix") }
+    // Plain JUnit, outside the IDE test framework: load only the matrix class, not every platform test.
+    include("**/CliMatrixRealCliTest*")
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+    testLogging {
+        events("failed", "skipped")
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+    }
+    outputs.upToDateWhen { false }
 }
 
 tasks.jacocoTestReport {

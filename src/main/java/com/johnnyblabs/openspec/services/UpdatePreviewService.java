@@ -45,14 +45,11 @@ public final class UpdatePreviewService {
     /** The first CLI with {@code update --dry-run --json}. A CLI-capability gate, not the config-format axis. */
     public static final String DRY_RUN_FLOOR = "1.15.0";
 
-    /** Makes the CLI take the non-interactive path the dry run plans, even if a runner ever gives it a terminal. */
-    static final Map<String, String> NON_INTERACTIVE = Map.of("OPEN_SPEC_INTERACTIVE", "0");
-
     /** Where the preview was opened from. */
     public enum Origin {ACTION, PROFILE_SWITCH, MANAGE_TOOLS}
 
     interface UpdateCli {
-        CliRunner.CliResult run(Project project, Map<String, String> env, String... args) throws CliRunner.CliException;
+        CliRunner.CliResult run(Project project, com.johnnyblabs.openspec.util.CliArgs args) throws CliRunner.CliException;
     }
 
     /** Shows the preview on the EDT and answers whether the user applied it. */
@@ -113,7 +110,7 @@ public final class UpdatePreviewService {
                                 Runnable onFinished) {
         ModalityState modality = ModalityState.current();
         background.run("Previewing openspec update", () -> {
-            UpdatePlanParser.Result result = dryRun("update", "--dry-run", "--json");
+            UpdatePlanParser.Result result = dryRun(false);
             ui.run(modality, () -> decide(result, focusTool, onApplied, onFinished, modality));
         });
     }
@@ -122,7 +119,7 @@ public final class UpdatePreviewService {
                         Consumer<CliRunner.CliResult> onApplied, Runnable onFinished, ModalityState modality) {
         if (result instanceof UpdatePlanParser.Failed failed) {
             LOG.info("Update preview failed: " + failed.message());
-            reportFailure("openspec update --dry-run --json", "The update preview failed: " + failed.message());
+            reportFailure(com.johnnyblabs.openspec.util.CliCommands.updatePlan(false).display(), "The update preview failed: " + failed.message());
             onFinished.run();
             return;
         }
@@ -145,7 +142,7 @@ public final class UpdatePreviewService {
         background.run("Running openspec update", () -> {
             CliRunner.CliResult applied;
             try {
-                applied = cli.run(project, NON_INTERACTIVE, "update");
+                applied = cli.run(project, com.johnnyblabs.openspec.util.CliCommands.updateWithoutPrompts());
             } catch (CliRunner.CliException e) {
                 LOG.info("openspec update could not run: " + e.getMessage());
                 ui.run(modality, () -> {
@@ -212,7 +209,7 @@ public final class UpdatePreviewService {
 
     /** Reads the pending legacy files from {@code update --dry-run --force --json}, which writes nothing. Off the EDT. */
     LegacyPending pendingLegacyFiles() {
-        UpdatePlanParser.Result forced = dryRun("update", "--dry-run", "--force", "--json");
+        UpdatePlanParser.Result forced = dryRun(true);
         if (forced instanceof UpdatePlanParser.Failed failed) {
             return new LegacyPending(List.of(), failed.message());
         }
@@ -239,7 +236,7 @@ public final class UpdatePreviewService {
      * {@code --dry-run}. Call off the EDT.
      */
     CleanupCheck verifyCleanupReadOnly() {
-        UpdatePlanParser.Result result = dryRun("update", "--dry-run", "--json");
+        UpdatePlanParser.Result result = dryRun(false);
         if (result instanceof UpdatePlanParser.Failed failed) {
             return CleanupCheck.unverified(failed.message());
         }
@@ -254,9 +251,9 @@ public final class UpdatePreviewService {
         return new CleanupCheck(pending.files(), true, false, null);
     }
 
-    private UpdatePlanParser.Result dryRun(String... args) {
+    private UpdatePlanParser.Result dryRun(boolean force) {
         try {
-            return UpdatePlanParser.parse(cli.run(project, NON_INTERACTIVE, args));
+            return UpdatePlanParser.parse(cli.run(project, com.johnnyblabs.openspec.util.CliCommands.updatePlan(force)));
         } catch (CliRunner.CliException e) {
             return new UpdatePlanParser.Failed(e.getMessage() == null ? "the OpenSpec CLI could not be run" : e.getMessage());
         }

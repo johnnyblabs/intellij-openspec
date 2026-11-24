@@ -1,0 +1,16 @@
+Usage: openspec workspace update [options] [name]
+
+Refresh workspace-local OpenSpec guidance and agent skills
+
+Options:
+  --workspace <name>  Workspace name from known local workspace views
+  --tools <tools>     Select agents for workspace skills. Use "all", "none", or
+                      a comma-separated list of: amazon-q, antigravity, auggie,
+                      bob, claude, cline, codex, forgecode, codebuddy, continue,
+                      costrict, crush, cursor, factory, gemini, github-copilot,
+                      iflow, junie, kilocode, kimi, kiro, lingma, vibe,
+                      opencode, pi, qoder, qwen, roocode, trae, windsurf. Global
+                      profile selects workflows; --tools selects agents.
+  --json              Output as JSON
+  --no-interactive    Disable prompts
+  -h, --help          display help for command

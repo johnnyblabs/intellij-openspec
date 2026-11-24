@@ -66,7 +66,8 @@ public class ExploreContextCancelTest extends BasePlatformTestCase {
             }
 
             @Override
-            public CliRunner.CliResult run(String... args) {
+            public CliRunner.CliResult run(com.johnnyblabs.openspec.util.CliArgs cliArgs) {
+                String[] args = cliArgs.requested().toArray(String[]::new);
                 calls.add(String.join(" ", args));
                 return new CliRunner.CliResult(1, "", "");
             }
@@ -100,7 +101,8 @@ public class ExploreContextCancelTest extends BasePlatformTestCase {
             }
 
             @Override
-            public CliRunner.CliResult run(String... args) {
+            public CliRunner.CliResult run(com.johnnyblabs.openspec.util.CliArgs cliArgs) {
+                String[] args = cliArgs.requested().toArray(String[]::new);
                 calls.add(String.join(" ", args));
                 indicator.cancel(); // the user cancels while the first call runs
                 return new CliRunner.CliResult(1, "", "");

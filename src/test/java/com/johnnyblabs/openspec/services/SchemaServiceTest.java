@@ -1,5 +1,7 @@
 package com.johnnyblabs.openspec.services;
 
+import static com.johnnyblabs.openspec.util.CliArgsMatchers.argv;
+
 import com.intellij.openapi.project.Project;
 import com.johnnyblabs.openspec.model.SchemaInfo;
 import com.johnnyblabs.openspec.util.CliRunner;
@@ -101,7 +103,7 @@ class SchemaServiceTest {
                     "");
 
             try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
-                cli.when(() -> CliRunner.run(eq(project), eq("schemas"), eq("--json")))
+                cli.when(() -> CliRunner.run(eq(project), argv("schemas", "--json")))
                         .thenReturn(cliResult);
 
                 List<SchemaInfo> schemas = service.listSchemas();
@@ -120,7 +122,7 @@ class SchemaServiceTest {
 
             try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
                 // Exit 0 with a truncated cut of the real list: the path that used to cache an empty list.
-                cli.when(() -> CliRunner.run(eq(project), eq("schemas"), eq("--json")))
+                cli.when(() -> CliRunner.run(eq(project), argv("schemas", "--json")))
                         .thenReturn(new CliRunner.CliResult(0, com.johnnyblabs.openspec.util.CliFixtures.truncated(captured), ""))
                         .thenReturn(new CliRunner.CliResult(0, captured, ""));
 
@@ -206,7 +208,7 @@ class SchemaServiceTest {
             for (String gen : GENERATIONS) {
                 String captured = fixture(gen + "/schema-commands/schema-fork.json");
                 try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
-                    cli.when(() -> CliRunner.run(eq(project), eq("schema"), eq("fork"), eq("spec-driven"), eq("my-fork"), eq("--json")))
+                    cli.when(() -> CliRunner.run(eq(project), argv("schema", "fork", "spec-driven", "my-fork", "--json")))
                             .thenReturn(new CliRunner.CliResult(0, captured, ""));
 
                     String path = service.forkSchema("spec-driven", "my-fork");
@@ -220,7 +222,7 @@ class SchemaServiceTest {
         @Test
         void returnsNull_onFailure() {
             try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
-                cli.when(() -> CliRunner.run(eq(project), eq("schema"), eq("fork"), eq("spec-driven"), eq("bad"), eq("--json")))
+                cli.when(() -> CliRunner.run(eq(project), argv("schema", "fork", "spec-driven", "bad", "--json")))
                         .thenReturn(new CliRunner.CliResult(1, "", "Schema not found"));
 
                 assertNull(service.forkSchema("spec-driven", "bad"));
@@ -246,9 +248,9 @@ class SchemaServiceTest {
             String fork = fixture("1.14.3/schema-commands/schema-fork.json").replace("/fixture", root);
             String init = fixture("1.14.3/schema-commands/schema-init.json").replace("/fixture", root);
             try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
-                cli.when(() -> CliRunner.run(eq(project), eq("schema"), eq("fork"), eq("spec-driven"), eq("my-fork"), eq("--json")))
+                cli.when(() -> CliRunner.run(eq(project), argv("schema", "fork", "spec-driven", "my-fork", "--json")))
                         .thenReturn(new CliRunner.CliResult(0, fork, ""));
-                cli.when(() -> CliRunner.run(eq(project), eq("schema"), eq("init"), eq("my-new"), eq("--json"), eq("--no-default")))
+                cli.when(() -> CliRunner.run(eq(project), argv("schema", "init", "my-new", "--json", "--no-default")))
                         .thenReturn(new CliRunner.CliResult(0, init, ""));
 
                 assertEquals(forkYaml, java.nio.file.Path.of(service.forkSchema("spec-driven", "my-fork")));
@@ -265,9 +267,7 @@ class SchemaServiceTest {
             for (String gen : GENERATIONS) {
                 String captured = fixture(gen + "/schema-commands/schema-init-desc-artifacts.json");
                 try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
-                    cli.when(() -> CliRunner.run(eq(project), eq("schema"), eq("init"), eq("my-new2"), eq("--json"),
-                                    eq("--no-default"), eq("--description"), eq("A custom flow"), eq("--artifacts"),
-                                    eq("proposal,tasks")))
+                    cli.when(() -> CliRunner.run(eq(project), argv("schema", "init", "my-new2", "--json", "--no-default", "--description", "A custom flow", "--artifacts", "proposal,tasks")))
                             .thenReturn(new CliRunner.CliResult(0, captured, ""));
 
                     String path = service.initSchema("my-new2", "A custom flow", List.of("proposal", "tasks"));
@@ -280,7 +280,7 @@ class SchemaServiceTest {
         @Test
         void returnsNull_onFailure() {
             try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
-                cli.when(() -> CliRunner.run(eq(project), eq("schema"), eq("init"), eq("bad"), eq("--json"), eq("--no-default")))
+                cli.when(() -> CliRunner.run(eq(project), argv("schema", "init", "bad", "--json", "--no-default")))
                         .thenReturn(new CliRunner.CliResult(1, "", "Init failed"));
 
                 assertNull(service.initSchema("bad", "", List.of()));
@@ -295,21 +295,21 @@ class SchemaServiceTest {
         void initArgsCarryTheDescriptionAndArtifactsAndNeverPrompt() {
             assertEquals(List.of("schema", "init", "flow", "--json", "--no-default",
                             "--description", "My flow", "--artifacts", "proposal,specs,tasks"),
-                    SchemaService.initArgs("flow", "  My flow  ", List.of("proposal", "specs", "tasks")));
+                    com.johnnyblabs.openspec.util.CliCommands.schemaInit("flow", "  My flow  ", List.of("proposal", "specs", "tasks")).requested());
         }
 
         @Test
         void initArgsOmitABlankDescriptionAndAnEmptySelection() {
             assertEquals(List.of("schema", "init", "flow", "--json", "--no-default"),
-                    SchemaService.initArgs("flow", "   ", List.of()));
+                    com.johnnyblabs.openspec.util.CliCommands.schemaInit("flow", "   ", List.of()).requested());
             assertEquals(List.of("schema", "init", "flow", "--json", "--no-default"),
-                    SchemaService.initArgs("flow", null, null));
+                    com.johnnyblabs.openspec.util.CliCommands.schemaInit("flow", null, null).requested());
         }
 
         @Test
         void forkArgsAskForJson() {
             assertEquals(List.of("schema", "fork", "spec-driven", "mine", "--json"),
-                    SchemaService.forkArgs("spec-driven", "mine"));
+                    com.johnnyblabs.openspec.util.CliCommands.schemaFork("spec-driven", "mine").requested());
         }
 
         @Test
@@ -363,7 +363,7 @@ class SchemaServiceTest {
                     "");
 
             try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
-                cli.when(() -> CliRunner.run(eq(project), eq("schemas"), eq("--json")))
+                cli.when(() -> CliRunner.run(eq(project), argv("schemas", "--json")))
                         .thenReturn(cliResult);
 
                 // First call
@@ -372,7 +372,7 @@ class SchemaServiceTest {
                 service.listSchemas();
 
                 // CLI should only be called once
-                cli.verify(() -> CliRunner.run(eq(project), eq("schemas"), eq("--json")), times(1));
+                cli.verify(() -> CliRunner.run(eq(project), argv("schemas", "--json")), times(1));
             }
         }
 
@@ -387,9 +387,9 @@ class SchemaServiceTest {
                     "");
 
             try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
-                cli.when(() -> CliRunner.run(eq(project), eq("schemas"), eq("--json")))
+                cli.when(() -> CliRunner.run(eq(project), argv("schemas", "--json")))
                         .thenReturn(listResult);
-                cli.when(() -> CliRunner.run(eq(project), eq("schema"), eq("fork"), eq("spec-driven"), eq("my-fork"), eq("--json")))
+                cli.when(() -> CliRunner.run(eq(project), argv("schema", "fork", "spec-driven", "my-fork", "--json")))
                         .thenReturn(new CliRunner.CliResult(0, fixture("1.14.3/schema-commands/schema-fork.json"), ""));
 
                 // First call — populates cache
@@ -399,7 +399,7 @@ class SchemaServiceTest {
                 // Third call — should re-invoke CLI
                 service.listSchemas();
 
-                cli.verify(() -> CliRunner.run(eq(project), eq("schemas"), eq("--json")), times(2));
+                cli.verify(() -> CliRunner.run(eq(project), argv("schemas", "--json")), times(2));
             }
         }
 
@@ -414,9 +414,9 @@ class SchemaServiceTest {
                     "");
 
             try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
-                cli.when(() -> CliRunner.run(eq(project), eq("schemas"), eq("--json")))
+                cli.when(() -> CliRunner.run(eq(project), argv("schemas", "--json")))
                         .thenReturn(listResult);
-                cli.when(() -> CliRunner.run(eq(project), eq("schema"), eq("init"), eq("new-schema"), eq("--json"), eq("--no-default")))
+                cli.when(() -> CliRunner.run(eq(project), argv("schema", "init", "new-schema", "--json", "--no-default")))
                         .thenReturn(new CliRunner.CliResult(0, fixture("1.14.3/schema-commands/schema-init.json"), ""));
 
                 // First call — populates cache
@@ -426,7 +426,7 @@ class SchemaServiceTest {
                 // Third call — should re-invoke CLI
                 service.listSchemas();
 
-                cli.verify(() -> CliRunner.run(eq(project), eq("schemas"), eq("--json")), times(2));
+                cli.verify(() -> CliRunner.run(eq(project), argv("schemas", "--json")), times(2));
             }
         }
 
@@ -439,14 +439,14 @@ class SchemaServiceTest {
             CliRunner.CliResult listResult = new CliRunner.CliResult(0, "[]", "");
 
             try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
-                cli.when(() -> CliRunner.run(eq(project), eq("schemas"), eq("--json")))
+                cli.when(() -> CliRunner.run(eq(project), argv("schemas", "--json")))
                         .thenReturn(listResult);
 
                 service.listSchemas();
                 service.clearCache();
                 service.listSchemas();
 
-                cli.verify(() -> CliRunner.run(eq(project), eq("schemas"), eq("--json")), times(2));
+                cli.verify(() -> CliRunner.run(eq(project), argv("schemas", "--json")), times(2));
             }
         }
     }
@@ -568,7 +568,7 @@ class SchemaServiceTest {
                     "{\"name\":\"workspace-planning\",\"description\":\"\",\"source\":\"package\",\"artifacts\":[]}" +
                     "]";
             try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
-                cli.when(() -> CliRunner.run(eq(project), eq("schemas"), eq("--json")))
+                cli.when(() -> CliRunner.run(eq(project), argv("schemas", "--json")))
                         .thenReturn(new CliRunner.CliResult(0, json, ""));
 
                 java.util.Set<String> known = service.getKnownSchemaNames();
@@ -591,7 +591,7 @@ class SchemaServiceTest {
                     "{\"name\":\"my-team-flow\",\"description\":\"Forked\",\"source\":\"project\",\"artifacts\":[]}" +
                     "]";
             try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
-                cli.when(() -> CliRunner.run(eq(project), eq("schemas"), eq("--json")))
+                cli.when(() -> CliRunner.run(eq(project), argv("schemas", "--json")))
                         .thenReturn(new CliRunner.CliResult(0, json, ""));
 
                 java.util.Set<String> known = service.getKnownSchemaNames();
@@ -611,7 +611,7 @@ class SchemaServiceTest {
             when(cliDetection.getDetectedVersion()).thenReturn("1.4.0");
 
             try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
-                cli.when(() -> CliRunner.run(eq(project), eq("schemas"), eq("--json")))
+                cli.when(() -> CliRunner.run(eq(project), argv("schemas", "--json")))
                         .thenReturn(new CliRunner.CliResult(0, "[]", ""));
 
                 java.util.Set<String> known = service.getKnownSchemaNames();

@@ -1,5 +1,8 @@
 package com.johnnyblabs.openspec.services;
 
+import static com.johnnyblabs.openspec.util.CliArgsMatchers.argv;
+import static org.mockito.ArgumentMatchers.eq;
+
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
 import com.johnnyblabs.openspec.settings.OpenSpecSettings;
@@ -48,7 +51,7 @@ class WorkflowProfileSwitchServiceTest {
             try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class);
                  MockedStatic<OpenSpecSettings> settingsStatic = mockStatic(OpenSpecSettings.class)) {
                 settingsStatic.when(() -> OpenSpecSettings.getInstance(project)).thenReturn(settings);
-                cli.when(() -> CliRunner.run(project, "config", "profile", "custom"))
+                cli.when(() -> CliRunner.run(eq(project), argv("config", "profile", "custom")))
                         .thenReturn(new CliRunner.CliResult(0, "ok", ""));
 
                 WorkflowProfileSwitchService.SwitchResult result = service.switchProfile("custom");
@@ -68,7 +71,7 @@ class WorkflowProfileSwitchServiceTest {
                  MockedStatic<OpenSpecSettings> settingsStatic = mockStatic(OpenSpecSettings.class);
                  MockedStatic<OpenSpecNotifier> notifier = mockStatic(OpenSpecNotifier.class)) {
                 settingsStatic.when(() -> OpenSpecSettings.getInstance(project)).thenReturn(settings);
-                cli.when(() -> CliRunner.run(project, "config", "profile", "bogus"))
+                cli.when(() -> CliRunner.run(eq(project), argv("config", "profile", "bogus")))
                         .thenReturn(new CliRunner.CliResult(1, "", "Unknown profile"));
 
                 WorkflowProfileSwitchService.SwitchResult result = service.switchProfile("bogus");
@@ -89,7 +92,7 @@ class WorkflowProfileSwitchServiceTest {
                  MockedStatic<OpenSpecSettings> settingsStatic = mockStatic(OpenSpecSettings.class);
                  MockedStatic<OpenSpecNotifier> notifier = mockStatic(OpenSpecNotifier.class)) {
                 settingsStatic.when(() -> OpenSpecSettings.getInstance(project)).thenReturn(settings);
-                cli.when(() -> CliRunner.run(project, "config", "profile", "custom"))
+                cli.when(() -> CliRunner.run(eq(project), argv("config", "profile", "custom")))
                         .thenThrow(new CliRunner.CliException("CLI crashed"));
 
                 WorkflowProfileSwitchService.SwitchResult result = service.switchProfile("custom");

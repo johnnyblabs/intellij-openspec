@@ -33,7 +33,7 @@ class CliRunnerTest {
             String source = java.nio.file.Files.readString(java.nio.file.Path.of(
                     "src/main/java/com/johnnyblabs/openspec/util/CliRunner.java"));
             assertEquals(1, source.split("new GeneralCommandLine", -1).length - 1);
-            assertTrue(source.contains("buildCommandLine(resolveCliPath(project)"));
+            assertTrue(source.contains("buildCommandLine(resolveCliPath(detection)"));
             assertTrue(source.contains("return capturedResult(process.exitValue()"), "run() strips colour on capture");
         }
 

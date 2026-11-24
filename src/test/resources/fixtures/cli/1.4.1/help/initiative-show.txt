@@ -1,0 +1,9 @@
+Usage: openspec initiative show [options] <id>
+
+Show where an initiative lives and how to read it
+
+Options:
+  --store <id>         Context store id from the local context-store registry
+  --store-path <path>  Existing local context store root
+  --json               Output as JSON
+  -h, --help           display help for command

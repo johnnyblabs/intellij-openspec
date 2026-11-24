@@ -31,8 +31,8 @@ import java.util.List;
 public class OpenSpecListAction extends OpenSpecCliAction {
 
     @Override
-    protected String[] getCliArgs() {
-        return new String[]{"list"};
+    protected com.johnnyblabs.openspec.util.CliArgs getCliArgs() {
+        return com.johnnyblabs.openspec.util.CliCommands.list();
     }
 
     @Override

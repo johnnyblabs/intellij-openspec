@@ -36,7 +36,8 @@ final class PanelStatusTestSupport {
                                    Function<String, String> instructions) {
         String status = fixture("1.7.0/status-complete.json").replace("\"demo-change\"", "\"" + changeName + "\"");
         ArtifactOrchestrationService orchestration = project.getService(ArtifactOrchestrationService.class);
-        orchestration.setStatusCliForTest((p, args) -> {
+        orchestration.setStatusCliForTest((p, cliArgs) -> {
+            String[] args = cliArgs.requested().toArray(String[]::new);
             if (args.length > 0 && args[0].equals("status")) return new CliRunner.CliResult(0, status, "");
             if (args.length > 1 && args[0].equals("instructions")) {
                 String json = instructions.apply(args[1]);
