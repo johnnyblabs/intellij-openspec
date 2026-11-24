@@ -98,6 +98,36 @@ public class ConfigValidationInspectionTest extends OpenSpecIntegrationTestBase 
     }
 
     /** Overwrite the fixture's openspec/config.yaml and return its PsiFile (parented under openspec/). */
+    // ---- skillsScope (CLI 2.1+), against the captured configs and warning ----
+
+    private ProblemDescriptor[] check(String content) throws Exception {
+        return new ConfigValidationInspection().checkFile(writeOpenspecConfig(content),
+                InspectionManager.getInstance(getProject()), false);
+    }
+
+    public void testAnInvalidSkillsScopeIsWarnedAboutWithTheCliText() throws Exception {
+        for (String v : new String[] {"2.1.0", "2.1.1"}) {
+            String warning = fixture(v + "/skills-scope/team-warning.stderr").strip();
+            ProblemDescriptor[] problems = check(fixture(v + "/skills-scope/config-team.yaml"));
+            assertEquals(v, 1, problems.length);
+            assertEquals(v, warning, problems[0].getDescriptionTemplate());
+            assertEquals(v, ProblemHighlightType.WARNING, problems[0].getHighlightType());
+            assertEquals(v + ": highlighted on the skillsScope line (the third)", 2, problems[0].getLineNumber());
+        }
+    }
+
+    public void testAnEmptySkillsScopeIsWarnedAboutAsUpstreamDoes() throws Exception {
+        assertEquals(1, check("schema: spec-driven\nskillsScope:\n").length);
+    }
+
+    public void testValidOrMissingSkillsScopeIsClean() throws Exception {
+        for (String v : new String[] {"2.1.0", "2.1.1"}) {
+            assertEquals(v, 0, check(fixture(v + "/skills-scope/remembered-config.yaml")).length);
+        }
+        assertEquals(0, check("schema: spec-driven\nskillsScope: global\n").length);
+        assertEquals(0, check("schema: spec-driven\n").length);
+    }
+
     private PsiFile writeOpenspecConfig(String content) throws Exception {
         VirtualFile vf = myFixture.findFileInTempDir("openspec/config.yaml");
         assertNotNull("openspec/config.yaml should exist in the test project", vf);

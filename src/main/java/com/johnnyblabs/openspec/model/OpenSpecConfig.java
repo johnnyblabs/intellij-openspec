@@ -1,5 +1,6 @@
 package com.johnnyblabs.openspec.model;
 
+import org.jetbrains.annotations.Nullable;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -10,6 +11,22 @@ public class OpenSpecConfig {
     private Map<String, String> profile;
     private String context;
     private Map<String, String> rules;
+    private @Nullable SkillsScope skillsScope;
+
+    /**
+     * The team's recorded skills scope ({@code skillsScope:}, CLI 2.1+). Only {@code openspec update} writes it, when a
+     * team keeps project skills; the plugin reads it and never writes it, so there is no setter.
+     */
+    public enum SkillsScope {
+        PROJECT, GLOBAL;
+
+        /** {@code project} or {@code global}, as 2.1 accepts them; anything else is no recorded choice. */
+        static @Nullable SkillsScope parse(@Nullable Object value) {
+            if ("project".equals(value)) return PROJECT;
+            if ("global".equals(value)) return GLOBAL;
+            return null;
+        }
+    }
 
     public OpenSpecConfig() {
     }
@@ -27,6 +44,9 @@ public class OpenSpecConfig {
 
         Object contextVal = map.get("context");
         if (contextVal instanceof String s) config.setContext(s);
+
+        // 2.1 warns about any other value and keeps the rest of the config, so this never fails the load.
+        config.skillsScope = SkillsScope.parse(map.get("skillsScope"));
 
         Object profileVal = map.get("profile");
         if (profileVal instanceof Map<?, ?> m) {
@@ -83,6 +103,11 @@ public class OpenSpecConfig {
 
     public void setContext(String context) {
         this.context = context;
+    }
+
+    /** The recorded skills scope, or {@code null} when the config records none (or an invalid one). */
+    public @Nullable SkillsScope getSkillsScope() {
+        return skillsScope;
     }
 
     public Map<String, String> getRules() {

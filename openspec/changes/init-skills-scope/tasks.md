@@ -27,10 +27,10 @@
 
 ## 3. Reading `skillsScope`
 
-- [ ] 3.1 `OpenSpecConfig` reads `skillsScope` (`project` or `global`); any other value leaves it empty, and the config still loads. Verify: `CliConfigToleranceContractTest` parses the captured `config.yaml` (project), a config without the key, and `team` (no recorded choice; schema and context still read).
-- [ ] 3.2 `ConfigValidationInspection` flags any other `skillsScope` value as a WARNING with the captured 2.1 text, and nothing for `project`, `global` or a missing key. Nothing in the plugin writes the key. Verify:
+- [x] 3.1 `OpenSpecConfig` reads `skillsScope` (`project` or `global`); any other value leaves it empty, and the config still loads. Verify: `SkillsScopeConfigContractTest` loads, through `ConfigService.load`, the captured `remembered-config.yaml` (project), a config without the key, and the captured `team` config (no recorded choice; schema and context still read).
+- [x] 3.2 `ConfigValidationInspection` flags any other `skillsScope` value (an empty one included, as upstream does) as a WARNING with the captured 2.1 text, and nothing for `project`, `global` or a missing key. Nothing in the plugin writes the key. Verify:
   - `ConfigValidationInspectionTest` cases, with the message compared to the captured warning;
-  - a source check that no production code writes `skillsScope`, and that the built-in init's config has only `schema:`.
+  - a source check in `SkillsScopeConfigContractTest` (with a positive control) that no production code writes `skillsScope`, and that the built-in init's config has only `schema:`.
 
 ## 4. Scope per project and the scope line
 

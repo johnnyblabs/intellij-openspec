@@ -32,8 +32,9 @@ public class ConfigValidationInspection extends LocalInspectionTool {
         List<ProblemDescriptor> problems = new ArrayList<>();
 
         // YAML syntax validation — applies to both config.yaml and .openspec.yaml
+        Object parsed;
         try {
-            new Yaml(new LoaderOptions()).load(text);
+            parsed = new Yaml(new LoaderOptions()).load(text);
         } catch (MarkedYAMLException e) {
             String problem = e.getProblem() != null ? e.getProblem() : "invalid YAML syntax";
             String location = "";
@@ -81,6 +82,16 @@ public class ConfigValidationInspection extends LocalInspectionTool {
                             isOnTheFly));
                 }
             }
+            // skillsScope (CLI 2.1+): any value but project or global, an empty one included, is what upstream's
+            // config reader warns about. It ignores the value and still applies the rest of the config.
+            if (parsed instanceof java.util.Map<?, ?> map && map.containsKey("skillsScope")
+                    && !"project".equals(map.get("skillsScope")) && !"global".equals(map.get("skillsScope"))) {
+                PsiElement element = findNonEmptyElement(file, keyOffset(text, "skillsScope"));
+                if (element != null) {
+                    problems.add(manager.createProblemDescriptor(element, INVALID_SKILLS_SCOPE,
+                            (LocalQuickFix) null, ProblemHighlightType.WARNING, isOnTheFly));
+                }
+            }
             // No `profile:` nag: `profile` is the GLOBAL workflow profile (`openspec config profile`),
             // never a project config.yaml field, and it's absent from a clean `openspec init` config and
             // from upstream's Zod schema. Nagging for it warned on a CLI-clean file (and implied an
@@ -89,6 +100,15 @@ public class ConfigValidationInspection extends LocalInspectionTool {
         }
 
         return problems.toArray(ProblemDescriptor.EMPTY_ARRAY);
+    }
+
+    /** CLI 2.1's own warning for an invalid {@code skillsScope}, word for word. */
+    static final String INVALID_SKILLS_SCOPE = "Invalid 'skillsScope' field in config (must be \"project\" or \"global\")";
+
+    /** Where a top-level {@code key:} starts, or 0 when it can't be found on a line of its own. */
+    private static int keyOffset(String text, String key) {
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("(?m)^" + key + "\\s*:").matcher(text);
+        return m.find() ? m.start() : 0;
     }
 
     private static PsiElement findNonEmptyElement(PsiFile file, int offset) {
