@@ -2,7 +2,7 @@
 
 ## 1. Corpus and captures
 
-- [ ] 1.1 Author the 2.x parity corpus under `src/test/resources/fixtures/cli/2.1.1/parity-corpus-2x/` (design decision 6).
+- [x] 1.1 Author the 2.x parity corpus under `src/test/resources/fixtures/cli/2.1.1/parity-corpus-2x/` (design decision 6).
   - The cases are listed in design decision 6:
     - step forms, one scenario per form;
     - the length bodies: 500, 501, two lines, a comment, metadata only, and an ADDED over 500;
@@ -10,7 +10,7 @@
     - front matter and its lookalikes;
     - inline fence and unspaced header;
     - a short and a long `base`.
-  - Extend `scripts/capture-cli-generation.py` to write `validate-parity-corpus-2x.json` and `validate-parity-corpus-2x-strict.json` on 1.14.0, 1.14.3, 1.15.0, 1.16.1, 1.17.0, 2.0.0, 2.1.0 and 2.1.1. It installs each release into the scratch prefix, and the captures are sanitized as its other captures are. Document them in `fixtures/cli/README.md`.
+  - Capture with a dedicated `scripts/capture-validator-parity-2x.py` (rather than `scripts/capture-cli-generation.py`, which would also write its other families for releases it never captured). It writes `validate-parity-corpus-2x.json` and `validate-parity-corpus-2x-strict.json` on 1.14.0, 1.14.3, 1.15.0, 1.16.1, 1.17.0, 2.0.0, 2.1.0 and 2.1.1. It installs each release into the scratch prefix, and the captures are sanitized as its other captures are. Document them in `fixtures/cli/README.md`.
   - Verify: the captures reproduce the design's facts:
     - the length items warn from 1.14.1, with 500 passing and 501 warning;
     - the step items warn from 1.16.1, with each form counting or not as the design says;
@@ -18,7 +18,7 @@
     - `frontmatter-delta` warns until 2.1.0 and not on 2.1.1, while each lookalike still warns on 2.1.1;
     - `unspaced-header` is invalid everywhere, and `inline-fence` valid everywhere;
     - `DocumentationHygieneTest` passes.
-- [ ] 1.2 Capture `openspec instructions apply --change <c> --json` on 2.0.0 and 2.1.1 over a `tasks.md` with a wrapped task, a hard line break (`\`), a task followed by a note bullet, and an unwrapped task, into `<v>/instructions/instructions-apply-wrapped.json`. Verify: the capture's descriptions are joined and its counts equal the checkbox count.
+- [x] 1.2 Capture `openspec instructions apply --change <c> --json` on 2.0.0 and 2.1.1 over a `tasks.md` with a wrapped task, a hard line break (`\`), a task followed by a note bullet, and an unwrapped task, into `<v>/instructions/instructions-apply-wrapped.json`. Verify: the capture's descriptions are joined and its counts equal the checkbox count.
 
 ## 2. The release followed
 

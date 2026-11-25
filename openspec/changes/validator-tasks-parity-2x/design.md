@@ -28,7 +28,7 @@ What each release's source says:
 - **Requirement text** (`extractRequirementText`, wrapping `extractRequirementBody`), the measure every length rule uses:
   - the lines after the header up to the first `#`–`######` heading, not only the first scenario;
   - blank and fenced lines dropped, each line trimmed, joined with `\n`;
-  - `**Key**:` metadata lines dropped unless they are the whole body;
+  - `**Key**:` metadata lines dropped unless they are the whole body (a body that is only a metadata line is measured, and warns: `len-metadata-only`);
   - HTML comments counted.
 
   Two 250-character lines measure 501 and warn. A 600-character body made of one metadata line doesn't warn.
@@ -127,9 +127,9 @@ The existing 1.6.0 corpus and the 1.8 oracle stay, with that test following 1.8.
 - a MODIFIED growth delta against a short base requirement, one against a long base, and a renamed-then-modified one;
 - `frontmatter-delta`, `frontmatter-bom-crlf`, `frontmatter-comment-title`, and the non-front-matter lookalikes `indented-dashes`, `thematic-break`, `heading-before-close` and `unclosed`.
 
-`scripts/capture-cli-generation.py` captures `validate-parity-corpus-2x{,-strict}.json` on 1.14.0, 1.14.3, 1.15.0, 1.16.1, 1.17.0, 2.0.0, 2.1.0 and 2.1.1. 1.14.0 and 1.14.3 pin the too-long rule's start.
+`scripts/capture-validator-parity-2x.py` captures `validate-parity-corpus-2x{,-strict}.json` on 1.14.0, 1.14.3, 1.15.0, 1.16.1, 1.17.0, 2.0.0, 2.1.0 and 2.1.1. 1.14.0 and 1.14.3 pin the too-long rule's start.
 
-A new `ValidatorVerdictReleaseParityTest` validates the corpus with the built-in validator following each captured release, and requires every item's verdict to equal that release's, in both modes. The one exception is a pinned list of items the release fails under `--strict` on a warning the plugin leaves to the CLI: the front-matter and lookalike deltas below 2.1.1, through the "text above the first `##`" warning. For those the plugin's strict verdict must be the laxer `valid`, and the list must match exactly, so it can neither grow nor shrink silently.
+A new `ValidatorVerdictReleaseParityTest` validates the corpus with the built-in validator following each captured release, and requires every item's verdict to equal that release's, in both modes. The one exception is a pinned list of items the release fails under `--strict` on a warning the plugin leaves to the CLI, the "text above the first `##`" warning: the front-matter deltas from 1.14.3 until 2.1.0, and the lookalike deltas from 1.14.3 on every release. For those the plugin's strict verdict must be the laxer `valid`, and the list must match exactly, so it can neither grow nor shrink silently.
 
 ### 7. Wrapped task lines: a count contract, no code
 

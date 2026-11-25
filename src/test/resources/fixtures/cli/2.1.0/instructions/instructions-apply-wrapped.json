@@ -1,0 +1,62 @@
+{
+  "changeName": "wrapped",
+  "changeDir": "/fixture/demo-project/openspec/changes/wrapped",
+  "schemaName": "spec-driven",
+  "contextFiles": {
+    "proposal": [
+      "/fixture/demo-project/openspec/changes/wrapped/proposal.md"
+    ],
+    "tasks": [
+      "/fixture/demo-project/openspec/changes/wrapped/tasks.md"
+    ]
+  },
+  "progress": {
+    "total": 4,
+    "complete": 1,
+    "remaining": 3
+  },
+  "tasks": [
+    {
+      "id": "1",
+      "description": "1.1 A task whose text wraps onto a second line",
+      "done": false,
+      "sourcePath": "/fixture/demo-project/openspec/changes/wrapped/tasks.md",
+      "line": 3
+    },
+    {
+      "id": "2",
+      "description": "1.2 A task that ends with a hard break and continues after it",
+      "done": true,
+      "sourcePath": "/fixture/demo-project/openspec/changes/wrapped/tasks.md",
+      "line": 5
+    },
+    {
+      "id": "3",
+      "description": "1.3 A task followed by a note",
+      "done": false,
+      "sourcePath": "/fixture/demo-project/openspec/changes/wrapped/tasks.md",
+      "line": 7
+    },
+    {
+      "id": "4",
+      "description": "1.4 A plain task",
+      "done": false,
+      "sourcePath": "/fixture/demo-project/openspec/changes/wrapped/tasks.md",
+      "line": 9
+    }
+  ],
+  "taskTrackingConfigured": true,
+  "state": "ready",
+  "missingPrerequisites": [
+    "specs",
+    "design"
+  ],
+  "warnings": [
+    "This change has no delta specs and does not declare `skip_specs: true`, so `openspec validate wrapped` fails on it. Write the delta specs before implementing (`openspec instructions specs --change wrapped`), or add `skip_specs: true` to /fixture/demo-project/openspec/changes/wrapped/.openspec.yaml if this change really changes no specified behavior."
+  ],
+  "instruction": "Read context files, work through pending tasks, mark complete as you go.\nPause if you hit blockers or need clarification.",
+  "root": {
+    "path": "/fixture/demo-project",
+    "source": "nearest"
+  }
+}

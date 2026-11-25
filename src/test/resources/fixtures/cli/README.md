@@ -954,3 +954,24 @@ What each release does, from these captures:
 | Edited command file | kept, left out of the plan; `Kept N command file(s) that do(es) not match what OpenSpec generated (likely edited):` and the indented paths | same |
 
 The `after-2.0.0-kept` seed is checked against the committed `2.0.0/update-migration/edited/after.json`, and a re-run reproduces every file. The reports of edited or left prompt files in the home folder print only after the legacy-cleanup flow, which a non-interactive run doesn't reach, so they have no capture.
+
+## `2.1.1/parity-corpus-2x/` and `<version>/validate-parity-corpus-2x{,-strict}.json`: the rules releases added after 1.13
+
+From `scripts/capture-validator-parity-2x.py`, on 1.14.0, 1.14.3, 1.15.0, 1.16.1, 1.17.0, 2.0.0, 2.1.0 and 2.1.1. The corpus is committed once under `2.1.1/parity-corpus-2x/` and copied into a project set up by `init --tools none`, so its root reads `/fixture/parity-corpus-2x`. `ValidatorVerdictReleaseParityTest` holds the built-in validator, following each release, to that release's verdicts.
+
+Each spec or change isolates one rule, so its verdict names the rule:
+
+| Items | Rule | Strict-failing from |
+|---|---|---|
+| `len-501`, `len-two-lines` (two 250-character lines joined by a newline), `len-comment` (an HTML comment counts), `len-metadata-only` (a body that is only a `**Note**:` line counts), `added-long`, `base-long`; `len-500` passes | requirement text over 500 characters | 1.14.3 (1.14.0 has no length rule) |
+| `step-missing-when`, `step-lowercase-prose`, `step-and-only`, `step-fenced`, `step-header-only`, `step-lower-label` (`#### scenario:`), `step-delta` (an ADDED delta); `step-bold-lower`, `step-underscore`, `step-colon-inside`, `step-bare-upper`, `step-and-with-when`, `step-html-comment` and `step-under-h5` pass | a scenario needs a trigger and an outcome | 1.16.1 |
+| `grow-short`, `grow-rename` (renamed, then modified under the new name); `grow-equal` passes | a MODIFIED requirement that grows past 500 | 2.1.1 |
+| `fm-delta`, `fm-bom-crlf`, `fm-comment-title` | delta front matter: "text above the first `##`" until 2.1.0, accepted on 2.1.1 | 1.14.3 until 2.1.0 |
+| `fm-indented`, `fm-thematic`, `fm-heading-before-close`, `fm-unclosed` | not front matter, so "text above the first `##`" on every release | 1.14.3 |
+| `unspaced-header` | invalid on every release (default and strict) | always |
+| `inline-fence`, `base-short`, `base-rename` | valid everywhere | never |
+
+1.14.0 passes every item under `--strict` except `unspaced-header`: it has neither length rule nor the "text above the first `##`" warning. The plugin leaves the "text above" warning to the CLI, so on the front-matter items it is laxer by design, and the release-parity test pins exactly those items.
+
+`<version>/instructions/instructions-apply-wrapped.json` (2.0.0, 2.1.0, 2.1.1) is `instructions apply --json` over a `tasks.md` with a wrapped task, a hard line break, a task followed by a note bullet and a plain task. The descriptions are joined (the note bullet is not), and the counts are the checkbox counts (4 tasks, 1 done).
+
