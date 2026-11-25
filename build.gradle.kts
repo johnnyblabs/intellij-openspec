@@ -272,6 +272,9 @@ tasks.jacocoTestReport {
 // folders) plus lookup, home-directory and VFS-refresh tests; the changes merged since the last raise added theirs.
 // Measured 0.7239/0.7045/0.6188; floors held ~0.01 below (a large step measured locally; LINE/BRANCH keep the
 // documented runner wobble headroom).
+// RAISED 2026-11-25 (store-root-resolver): 0.714/0.694/0.608 → 0.753/0.736/0.648. The pure root resolver, contract-
+// tested against six releases' captures, plus the platform store tests; the 2.x changes merged since the last raise
+// added theirs. Measured 0.7630/0.7466/0.6582; floors held ~0.01 below.
 tasks.jacocoTestCoverageVerification {
     dependsOn(tasks.test)
     // Match the report: instrumented classes + the test JVM's execution data.
@@ -286,21 +289,21 @@ tasks.jacocoTestCoverageVerification {
             limit {
                 counter = "INSTRUCTION"
                 value = "COVEREDRATIO"
-                minimum = "0.714".toBigDecimal()
+                minimum = "0.753".toBigDecimal()
             }
         }
         rule {
             limit {
                 counter = "LINE"
                 value = "COVEREDRATIO"
-                minimum = "0.694".toBigDecimal()
+                minimum = "0.736".toBigDecimal()
             }
         }
         rule {
             limit {
                 counter = "BRANCH"
                 value = "COVEREDRATIO"
-                minimum = "0.608".toBigDecimal()
+                minimum = "0.648".toBigDecimal()
             }
         }
     }

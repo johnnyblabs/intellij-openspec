@@ -77,10 +77,10 @@
 
 ## 5. Verification and docs
 
-- [ ] 5.1 `./gradlew build` and `./gradlew verifyPlugin` (new `LocalFileSystem` watch and refresh references).
+- [x] 5.1 `./gradlew build` and `./gradlew verifyPlugin` (new `LocalFileSystem` watch and refresh references).
 - [ ] 5.2 runIde check in IDEA and one non-IDEA IDE:
   - a store project shows the store's tree;
   - an external change appears;
   - inspections fire on a store spec.
 - [x] 5.3 CHANGELOG (Unreleased) and `docs/feature-reference.md`. Note that WSL-hosted stores are unsupported.
-- [ ] 5.4 `openspec validate --all --strict` on the branch.
+- [x] 5.4 `openspec validate --all --strict` on the branch.
