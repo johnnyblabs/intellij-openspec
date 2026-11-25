@@ -3,7 +3,7 @@
 
 `openspec init`'s "getting started" hint (core/init.js, startHintLines) decides what a user types for each workflow.
 It isn't exported, but its pieces are. So this loads the installed CLI package's dist modules by absolute path with
-node and applies the same rules to each workflow's canonical `/opsx:<id>` (today `explore` and `update`):
+node and applies the same rules to each workflow's canonical `/opsx:<id>` (today `explore`, `update` and `propose`):
 
     tool gets commands  -> getTransformerForTool(id, delivery, resolveCommandSurfaceCapability(id),
                                                  resolveCommandInvocation(id))
@@ -40,7 +40,7 @@ const {AI_TOOLS} = await import(D + '/core/config.js');
 const cs = await import(D + '/core/command-surface.js');
 const cr = await import(D + '/utils/command-references.js');
 const {CommandAdapterRegistry} = await import(D + '/core/command-generation/index.js');
-const WORKFLOWS = {explore: 'openspec-explore', update: 'openspec-update-change'};
+const WORKFLOWS = {explore: 'openspec-explore', update: 'openspec-update-change', propose: 'openspec-propose'};
 const rows = [];
 for (const [w, skill] of Object.entries(WORKFLOWS))
 for (const t of AI_TOOLS.filter(t => t.skillsDir)) {
@@ -71,7 +71,7 @@ const {AI_TOOLS} = await import(D + '/core/config.js');
 const cs = await import(D + '/core/command-surface.js');
 const cr = await import(D + '/utils/command-references.js');
 const sp = await import(D + '/core/shared/skill-paths.js');
-const WORKFLOWS = {explore: 'openspec-explore', update: 'openspec-update-change'};
+const WORKFLOWS = {explore: 'openspec-explore', update: 'openspec-update-change', propose: 'openspec-propose'};
 const rel = p => p === undefined ? null : p.slice('/P/'.length).split('\\').join('/');
 const rows = [];
 for (const [w, skill] of Object.entries(WORKFLOWS))

@@ -2,7 +2,7 @@
 
 ## 1. Contract fixtures for the propose workflow
 
-- [ ] 1.1 Add `propose: 'openspec-propose'` to both workflow maps in `scripts/capture-workflow-invocations.py` (1.x and 2.x), and re-capture `workflow-invocations.json` for every captured release, 1.15.0 through 2.1.1, from the cached CLI packages (`OPENSPEC_BIN`), never npx.
+- [x] 1.1 Add `propose: 'openspec-propose'` to both workflow maps in `scripts/capture-workflow-invocations.py` (1.x and 2.x), and re-capture `workflow-invocations.json` for every captured release, 1.15.0 through 2.1.1, from the cached CLI packages (`OPENSPEC_BIN`), never npx.
   - Verify: each fixture's diff only adds propose rows.
   - Verify: on 2.0.0 and later, every propose row is skills-only, at `.agents/skills/openspec-propose/SKILL.md`, with upstream's invocation (`/openspec-propose`, Codex `$openspec-propose`, Kimi `/skill:openspec-propose`, words for the plain-words tools).
 - [ ] 1.2 Add `WorkflowInvocation.PROPOSE` and `PROPOSE_SKILL`, and extend `WorkflowInvocationContractTest` so every captured propose row resolves to its captured invocation and paths: its workflow list (`List.of("explore", "update")`) gains `propose`, and the handoff test gains a propose case.
