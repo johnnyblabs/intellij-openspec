@@ -55,8 +55,9 @@ public final class OpenSpecRootResolver implements Disposable {
      * One resolution. {@code openspecDir} is the root's {@code openspec/} directory when it resolved and the file
      * system has it.
      */
-    public record Snapshot(Kind kind, RootResolution resolution, @Nullable VirtualFile openspecDir) {
-        static final Snapshot PENDING = new Snapshot(Kind.PENDING, RootResolution.none(), null);
+    public record Snapshot(Kind kind, RootResolution resolution, @Nullable VirtualFile openspecDir,
+                           boolean outsideProject) {
+        static final Snapshot PENDING = new Snapshot(Kind.PENDING, RootResolution.none(), null, false);
 
         public boolean pending() {
             return kind == Kind.PENDING;
@@ -114,7 +115,7 @@ public final class OpenSpecRootResolver implements Disposable {
             if (scheduled.compareAndSet(false, true)) invalidate();
         } else if (s.openspecDir() != null && !s.openspecDir().isValid()) {
             if (staleQueued.compareAndSet(false, true)) invalidate();
-            return new Snapshot(s.kind(), s.resolution(), null);
+            return new Snapshot(s.kind(), s.resolution(), null, s.outsideProject());
         }
         return s;
     }
@@ -169,7 +170,10 @@ public final class OpenSpecRootResolver implements Disposable {
         lfs.refreshAndFindFileByNioFile(globalConfig);
         updateWatches(lfs, base, openspecDir, registry, globalConfig);
 
-        Snapshot next = new Snapshot(resolution.resolved() ? Kind.RESOLVED : Kind.NONE, resolution, dir);
+        // Decided here, off the UI thread: it canonicalizes the project path, which reads the disk, and editor hooks
+        // ask for every file.
+        boolean outside = resolution.resolved() && !RootProvenance.isLocal(resolution, start);
+        Snapshot next = new Snapshot(resolution.resolved() ? Kind.RESOLVED : Kind.NONE, resolution, dir, outside);
         Snapshot old = snapshot;
         snapshot = next;
         boolean live;
@@ -180,8 +184,13 @@ public final class OpenSpecRootResolver implements Disposable {
         if (!same(old, next) && live && !project.isDisposed()) {
             project.getMessageBus().syncPublisher(TOPIC).rootChanged(next);
             notifyIgnoredPointer(old, next);
-            // Open store files gain or lose their banner with the root.
-            com.intellij.ui.EditorNotifications.getInstance(project).updateAllNotifications();
+            // Open store files gain or lose their banner with the root. On the UI thread: on 2024.2 in tests the
+            // update runs on the caller's thread and requires the EDT.
+            com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater(() -> {
+                if (!project.isDisposed()) {
+                    com.intellij.ui.EditorNotifications.getInstance(project).updateAllNotifications();
+                }
+            }, com.intellij.openapi.application.ModalityState.any());
         }
         return next;
     }

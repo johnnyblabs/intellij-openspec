@@ -5,7 +5,6 @@ import com.intellij.openapi.vfs.VfsUtilCore;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.Nullable;
 
-import java.nio.file.Path;
 
 /**
  * Whether a file belongs to a resolved OpenSpec root that lies outside the project (a store, or a parent folder's
@@ -25,9 +24,7 @@ public final class OutsideRoot {
         if (resolver == null) return null;
         OpenSpecRootResolver.Snapshot snapshot = resolver.current();
         VirtualFile dir = snapshot.openspecDir();
-        if (dir == null || !dir.isValid()) return null;
-        Path base = project.getBasePath() == null ? null : Path.of(project.getBasePath());
-        if (RootProvenance.isLocal(snapshot.resolution(), base)) return null;
+        if (!snapshot.outsideProject() || dir == null || !dir.isValid()) return null;
         return VfsUtilCore.isAncestor(dir, file, false) ? snapshot.resolution() : null;
     }
 }
