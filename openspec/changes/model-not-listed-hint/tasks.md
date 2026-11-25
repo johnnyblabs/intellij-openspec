@@ -32,13 +32,22 @@
 ## 3. Docs and finish
 
 - [x] 3.1 Update the CHANGELOG (`## Unreleased`) and the Direct API section of `docs/feature-reference.md`. Verify: `DocumentationHygieneTest`, and the vendor-neutral grep.
-- [ ] 3.2 Final checks:
+- [x] 3.2 Final checks:
   - `./gradlew build`;
   - `./gradlew verifyPlugin`;
   - `openspec validate --all --strict`;
   - the full `uiSmoke` under `caffeinate -dimsu`;
   - test-engineer AUDIT and intellij-code-reviewer on the diff, with findings fixed or recorded.
   - Verify: all pass, and the outcome is recorded here.
+  - Outcome, on the final code:
+    - `./gradlew build` passed, including the coverage floor;
+    - `verifyPlugin` reported all 6 target IDEs compatible, with no deprecated API in this change;
+    - `uiSmoke` passed 16 of 16;
+    - `openspec validate --all --strict` passed 39 of 39.
+  - Review findings, all fixed:
+    - code review: the hint now wraps instead of widening the dialog; a discarded late fetch leaves a newer Test's result line alone; the saved-key placeholder no longer counts as a key edit; a page marker of an unexpected type counts as a partial list instead of failing Test; the hint is the model field's accessible description;
+    - test audit: a partial page is now tested end to end through Test; OpenAI Organization and Project edits, a `models/` prefix in Settings, and setup isolation are covered; a README table row is fixed.
+  - The 9 mutations added after the reviews each turn a test red.
 
 ## Workflow follow-up
 
