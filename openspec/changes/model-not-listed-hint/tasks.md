@@ -3,7 +3,7 @@
 ## 1. The check
 
 - [x] 1.0 Capture the live Gemini model list (one `GET v1beta/models?pageSize=1000`, the key read from the environment and never written) into `fixtures/ai/gemini/live/models-list.json`, and document it in `fixtures/ai/README.md`. Verify: the file holds `gemini-flash-latest` and `gemini-2.5-pro`, and no `nextPageToken`.
-- [ ] 1.1 Report completeness from `listModels` (Gemini's `nextPageToken`, Anthropic's `has_more`), and add `AiModelOptions.notListed(provider, model, fetched, fetchOk, complete)` (design decision 1).
+- [x] 1.1 Report completeness from `listModels` (Gemini's `nextPageToken`, Anthropic's `has_more`), and add `AiModelOptions.notListed(provider, model, fetched, fetchOk, complete)` (design decision 1).
   - Verify with plain tests over the captured lists, parsed by each provider's real parser (the OpenAI fixture is doc-sourced, with placeholder ids, so its case only checks membership mechanics):
     - a model from each list is listed;
     - `gemini-flash-latest` is listed in the live Gemini list;

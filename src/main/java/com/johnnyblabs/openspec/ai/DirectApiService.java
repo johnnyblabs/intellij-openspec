@@ -586,6 +586,26 @@ public final class DirectApiService {
     }
 
     /**
+     * Whether a list-models response holds the whole list: false when Gemini sends a non-blank
+     * {@code nextPageToken} or Anthropic sends {@code has_more: true}. OpenAI documents no pagination, so its list is
+     * always whole. Extracted for contract-testing against the captured responses.
+     */
+    static boolean pageComplete(AiProvider provider, String body) {
+        JsonObject root = JsonParser.parseString(body).getAsJsonObject();
+        return switch (provider) {
+            case GEMINI -> {
+                var token = root.get("nextPageToken");
+                yield token == null || token.isJsonNull() || token.getAsString().isBlank();
+            }
+            case CLAUDE -> {
+                var more = root.get("has_more");
+                yield more == null || more.isJsonNull() || !more.getAsBoolean();
+            }
+            case OPENAI, NONE -> true;
+        };
+    }
+
+    /**
      * Fetches the account's available models for the given provider using the configured key — a free
      * {@code GET}, no token cost, which doubles as key validation. Blocking (network I/O) — call off
      * the EDT. Non-200 throws {@link AiApiException} via {@link #buildApiError}. Callers treat any
@@ -593,6 +613,23 @@ public final class DirectApiService {
      * are the provider-specific settings to send (Settings passes the unsaved form values).
      */
     public java.util.List<String> listModels(AiProvider provider, String apiKey, ProviderRequestSettings requestSettings)
+            throws AiApiException {
+        return listModelPage(provider, apiKey, requestSettings).ids();
+    }
+
+    /**
+     * A fetched model list and whether the provider returned all of it in one page. A partial page can't prove a
+     * model is missing, so the Settings hint judges only a complete one.
+     */
+    public record ModelList(java.util.List<String> ids, boolean complete) {
+    }
+
+    /**
+     * {@link #listModels}, plus whether the response was the whole list: Gemini's {@code nextPageToken} and
+     * Anthropic's {@code has_more} mark a partial page. OpenAI documents no pagination. Blocking, as
+     * {@link #listModels}.
+     */
+    public ModelList listModelPage(AiProvider provider, String apiKey, ProviderRequestSettings requestSettings)
             throws AiApiException {
         if (provider == null || provider == AiProvider.NONE) {
             throw new AiApiException("No AI provider selected");
@@ -616,7 +653,7 @@ public final class DirectApiService {
             // Warm the per-session cache so the tool-window model selector and the Settings "Test"
             // share one fetch per provider per session (in-memory only — never persisted across sessions).
             discoveredModels.put(provider, java.util.List.copyOf(models));
-            return models;
+            return new ModelList(models, pageComplete(provider, response.body()));
         } catch (AiApiException e) {
             throw e;
         } catch (Exception e) {

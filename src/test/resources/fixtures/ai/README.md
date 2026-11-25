@@ -31,7 +31,7 @@ nesting and the read paths above) is what the contract tests assert; the exact t
 from these files, so refreshing a fixture to a newer documented example is safe as long as the shape
 is preserved.
 
-**Derived variants (no official example exists).** Neither provider publishes an example of an empty reply. The OpenAI null-content, refusal and token-limit cases, and the Gemini thought-part, missing-content and blocked-prompt cases, are built inside `DirectApiResponseContractTest` from the documented fixtures above. Each one changes only fields the provider's reference defines (OpenAI's nullable `content` and `refusal`, the `finish_reason` enum; Gemini's `Part.thought`, `FinishReason` and `promptFeedback.blockReason`). Replace them with live captures when keys are available.
+**Derived variants (no official example exists).** Neither provider publishes an example of an empty reply. The OpenAI null-content, refusal and token-limit cases, and the Gemini thought-part, missing-content and blocked-prompt cases, are built inside `DirectApiResponseContractTest` from the documented fixtures above. Each one changes only fields the provider's reference defines (OpenAI's nullable `content` and `refusal`, the `finish_reason` enum; Gemini's `Part.thought`, `FinishReason` and `promptFeedback.blockReason`). Replace them with live captures when keys are available. `AiModelNotListedTest` likewise derives a partial model-list page by adding the documented page marker (Gemini's `nextPageToken`, Anthropic's `has_more: true`) to a captured list in-test.
 
 
 ## `gemini/store/` — where the `store` field goes

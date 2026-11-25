@@ -53,4 +53,40 @@ public final class AiModelOptions {
         }
         return new Resolution(options, selection);
     }
+
+    /** A dated snapshot suffix, as Anthropic lists models before the 4.6 generation ({@code -20250929}). */
+    private static final java.util.regex.Pattern CLAUDE_SNAPSHOT = java.util.regex.Pattern.compile("-\\d{8}");
+
+    /**
+     * Whether the provider's own model list says the model is no longer offered to this key: true only for a
+     * successful, complete, non-empty fetch that doesn't hold the model. A {@code models/} prefix is ignored, since
+     * the plugin's Gemini ids carry none. For Claude, an alias counts as listed when a dated snapshot of it is
+     * ({@code claude-sonnet-4-5} by {@code claude-sonnet-4-5-20250929}), because Anthropic lists those models only
+     * by their dated id. The static fallback list is never passed here.
+     */
+    public static boolean notListed(AiProvider provider, String model, List<String> fetched, boolean fetchOk,
+                                    boolean complete) {
+        if (!fetchOk || !complete || fetched == null || fetched.isEmpty() || model == null) {
+            return false;
+        }
+        String id = stripModelsPrefix(model.trim());
+        if (id.isEmpty()) {
+            return false;
+        }
+        for (String listed : fetched) {
+            String candidate = stripModelsPrefix(listed);
+            if (candidate.equals(id)) {
+                return false;
+            }
+            if (provider == AiProvider.CLAUDE && candidate.startsWith(id)
+                    && CLAUDE_SNAPSHOT.matcher(candidate.substring(id.length())).matches()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static String stripModelsPrefix(String id) {
+        return id.startsWith("models/") ? id.substring("models/".length()) : id;
+    }
 }
