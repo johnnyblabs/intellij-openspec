@@ -11,6 +11,12 @@
 
 ### Fixed
 
+- **Without the CLI, Validate now gives your OpenSpec release's verdict.** The built-in validator follows the CLI you have, or the release the plugin targets when none is installed, and applies each rule from the release that introduced it:
+  - requirements over 500 characters are a warning from 1.14.1;
+  - a scenario with no WHEN/GIVEN step or no THEN step is a warning from 1.16.0, in deltas as well as specs (before, an info hint on specs only);
+  - a MODIFIED requirement that grows past 500 characters is a warning, and a delta spec may start with YAML front matter, from 2.1.1.
+
+  **Validate (Strict)** fails on exactly the warnings your release fails on. Sync Specs never copies a delta's front matter into a main spec. A scenario written `#### scenario:` now counts as a scenario, as it does for OpenSpec.
 - **Moving a project to OpenSpec 2 is explained, and your own skill edits are protected.** On a project set up by OpenSpec 1.x, the first `openspec update` with CLI 2.x replaces every tool's skill copies with one shared copy in `.agents/skills`, links each tool folder to it, and removes the `/opsx` command files. The update preview now says so, groups those changes, and shows each link as a link. CLI 2.1 deletes or overwrites a skill file you edited, or a file you put beside a skill, without warning and keeps no copy. The preview now names each such file and keeps **Apply** disabled until you tick **I've backed up these files**. After the update, a notification lists the files OpenSpec kept or left in place, with a way to open them. A project still set up by 1.x is told once, at startup, that **Update** migrates it. The preview also highlights notes that reach beyond the project: skills refreshed or removed for the whole machine.
 - **An update that fails on OpenSpec CLI 2.1.0 because Git or the network is missing says so.** CLI 2.1.1 installs skills offline.
 - **No OpenSpec CLI command started from the IDE can wait for an answer.** Every run is non-interactive with its input closed, including on CLI 2.1, whose `update` can ask questions in a terminal. The terminal handoff in the legacy cleanup says what 2.1 may ask there.

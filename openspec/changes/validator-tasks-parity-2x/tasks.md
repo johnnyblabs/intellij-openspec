@@ -83,7 +83,7 @@
 
 ## 5. Docs and finish
 
-- [ ] 5.1 Update the docs:
+- [x] 5.1 Update the docs:
   - CHANGELOG `## Unreleased`: the step check, the growth check and delta front matter, following your CLI's release;
   - `docs/feature-reference.md`: validation, including that the built-in validator follows the detected or target CLI release;
   - `docs/openspec-support.md`, where it describes validation parity for 1.16 and 2.x.
