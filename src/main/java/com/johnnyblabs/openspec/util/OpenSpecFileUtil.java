@@ -32,6 +32,8 @@ public final class OpenSpecFileUtil {
      * resolution is pending or when the project has no root.
      */
     public static VirtualFile getOpenSpecRoot(Project project) {
+        // No IDE running (plain unit tests): there is no file system to ask. Path callers then use <project>/openspec.
+        if (com.intellij.openapi.application.ApplicationManager.getApplication() == null) return null;
         VirtualFile local = findLocalPlanningRoot(project);
         if (local != null) return local;
         if (project.isDisposed()) return null;
