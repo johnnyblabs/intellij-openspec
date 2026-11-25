@@ -110,6 +110,7 @@ public class ProposeRunPanelTest extends OpenSpecIntegrationTestBase {
     @Override
     protected void tearDown() throws Exception {
         try {
+            WorkflowActionPanel.setNewChangeCliForTest(null);
             if (workflowPanel != null) workflowPanel.disposeForTest();
             long end = System.currentTimeMillis() + 1_500;
             while (System.currentTimeMillis() < end) {
@@ -155,15 +156,36 @@ public class ProposeRunPanelTest extends OpenSpecIntegrationTestBase {
     }
 
     public void testFastForwardNeedsTheCliAndCreatesNothingWithoutIt() throws Exception {
-        List<String> errors = new ArrayList<>();
+        List<String> errors = new java.util.concurrent.CopyOnWriteArrayList<>();
         AtomicInteger created = new AtomicInteger();
+        WorkflowActionPanel.setNewChangeCliForTest((project, args) -> {
+            throw new CliRunner.CliException("OpenSpec CLI not found");
+        });
         workflowPanel.proposeAndGenerate("ff-without-cli", REQUEST, null, false, errors::add, created::incrementAndGet, null);
         waitFor(() -> !errors.isEmpty());
+        assertTrue(errors.toString(), errors.get(0).contains("OpenSpec CLI not found"));
 
         assertEquals(0, created.get());
         VirtualFile changes = OpenSpecFileUtil.getChangesDir(getProject());
         assertNull(changes == null ? null : changes.findChild("ff-without-cli"));
         assertTrue(generated.isEmpty());
+    }
+
+    public void testWithTheCliItRunsNewChangeWithTheSchemaThenStartsTheRun() throws Exception {
+        CliDetectionTestSupport.fakeAvailable(getProject().getService(CliDetectionService.class), "2.1.1");
+        List<List<String>> runs = new java.util.concurrent.CopyOnWriteArrayList<>();
+        WorkflowActionPanel.setNewChangeCliForTest((project, args) -> {
+            runs.add(args.requested());
+            return new CliRunner.CliResult(0, "", "");
+        });
+        AtomicInteger created = new AtomicInteger();
+        workflowPanel.proposeAndGenerate(CHANGE, REQUEST, "with-retro", true, e -> fail(e), created::incrementAndGet, null);
+        waitFor(() -> created.get() == 1);
+
+        assertEquals(1, runs.size());
+        assertTrue(runs.get(0).toString(), runs.get(0).containsAll(List.of("new", "change", CHANGE, "--schema", "with-retro")));
+        assertFalse("never --description, which writes a README", runs.get(0).contains("--description"));
+        waitFor(() -> !generated.isEmpty());
     }
 
     // --- helpers ---

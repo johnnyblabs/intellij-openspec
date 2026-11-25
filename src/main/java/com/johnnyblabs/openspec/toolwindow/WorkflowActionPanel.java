@@ -2050,7 +2050,7 @@ public class WorkflowActionPanel extends JPanel {
             public void run(@NotNull ProgressIndicator indicator) {
                 try {
                     // Never --description or --goal: --description writes a README.md, which is no schema artifact.
-                    com.johnnyblabs.openspec.util.CliRunner.CliResult result = com.johnnyblabs.openspec.util.CliRunner.run(
+                    com.johnnyblabs.openspec.util.CliRunner.CliResult result = newChangeCli.run(
                             project, com.johnnyblabs.openspec.util.CliCommands.newChange(changeName, schema));
                     if (!result.isSuccess()) {
                         ApplicationManager.getApplication().invokeLater(() -> onError.accept("Error: " + result.stderr()),
@@ -2081,6 +2081,20 @@ public class WorkflowActionPanel extends JPanel {
             ApplicationManager.getApplication().invokeLater(() -> onGenerateAll(changeName, description, true, afterGenerated),
                     ModalityState.defaultModalityState(), project.getDisposed());
         });
+    }
+
+    /** Runs the CLI's {@code new change}; tests replace it, on any thread. */
+    interface NewChangeCli {
+        com.johnnyblabs.openspec.util.CliRunner.CliResult run(Project project, com.johnnyblabs.openspec.util.CliArgs args)
+                throws com.johnnyblabs.openspec.util.CliRunner.CliException;
+    }
+
+    private static final NewChangeCli REAL_NEW_CHANGE_CLI = com.johnnyblabs.openspec.util.CliRunner::run;
+    private static volatile NewChangeCli newChangeCli = REAL_NEW_CHANGE_CLI;
+
+    @org.jetbrains.annotations.TestOnly
+    static void setNewChangeCliForTest(@Nullable NewChangeCli cli) {
+        newChangeCli = cli == null ? REAL_NEW_CHANGE_CLI : cli;
     }
 
     /** Refreshes {@code changes/<name>} in the VFS after the CLI created it outside the IDE. Call off the EDT. */
