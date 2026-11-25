@@ -88,14 +88,24 @@
   - run doc-fidelity on the marketplace page.
   - Outcome: the feature reference, the three getting-started guides, the support page, the comparison matrix, the marketplace getting-started page and the CHANGELOG are updated; `DocumentationHygieneTest` passes. The README names no individual action today, so New Change goes in with the tracked README refresh, which rewrites that page.
 - [x] 6.2 Update `WorkflowParityContractTest`'s class comment: drop the v0.17.0 Propose exception and record that Propose now matches upstream `propose`.
-- [ ] 6.3 Add UI smoke journeys for the Propose dialog: with Direct API it shows the mode line, the name and the schema field; in clipboard mode it shows the description only and its mode line. Existing journeys and the screenshot tour don't drive the old dialog (checked); confirm the Setup Wizard's "Create your first change" path still opens Propose.
-- [ ] 6.4 Final checks, with the outcome recorded here:
+- [x] 6.3 Add UI smoke journeys for the Propose dialog: with Direct API it shows the mode line, the name and the schema field; in clipboard mode it shows the description only and its mode line. Existing journeys and the screenshot tour don't drive the old dialog (checked); confirm the Setup Wizard's "Create your first change" path still opens Propose.
+- [x] 6.4 Final checks, with the outcome recorded here:
   - `./gradlew build`;
   - `./gradlew verifyPlugin`;
   - `openspec validate --all --strict`;
   - the full `uiSmoke` under `caffeinate -dimsu`;
   - the workflow ↔ UI parity audit (openspec-guru plus plugin-ui-specialist) for Propose, New Change and Fast-Forward;
   - test-engineer AUDIT and intellij-code-reviewer on the diff, with findings fixed or recorded.
+  - Outcome, on the final code:
+    - `./gradlew build` passed, including the coverage floor;
+    - `verifyPlugin` reported all 6 target IDEs compatible;
+    - `uiSmoke` passed 18 of 18, with the two new Propose journeys (two earlier runs failed across unrelated journeys whose dialogs never opened, an environment fault; the run on the same code later passed in full);
+    - `openspec validate --all --strict` passed.
+  - The parity audit found Propose, New Change and Continue matching upstream in every delivery mode, and one gap: Fast-Forward with clipboard or editor tab did upstream `new` plus one `continue`. It was fixed in this change (group 5a).
+  - Code review fixes: Propose from Getting Started reaches a workflow panel; a run names its own change; late callbacks stop on a released panel; a run finishes while the tool window is hidden; the CLI version is read once per resolve and `refresh` is synchronized; New Change refreshes the folder the CLI wrote; creating a change is one undoable command.
+  - Test audit fixes: panel-level tests of the apply-ready stop, the "Ready to apply" status and what follows the run, against the captured past-apply status; the real create-and-generate path with and without the CLI, through a test CLI; New Change's CLI path (`--schema` passed, never `--description`); the "What's next" notice once; "new change leaves only `.openspec.yaml`" checked against a capture of the real CLI; a barrier instead of a fixed wait in the re-gating test.
+  - Not covered by a test: the Getting Started fallback in `withPanel` (it needs a registered tool window in the Getting Started state), recorded here.
+  - Mutations: 46 run across the groups and the fixes; every one turned a test red.
 - [x] 6.5 Record a follow-up tracker entry for an `onboard` action (custom profiles).
 
 ## Workflow follow-up
