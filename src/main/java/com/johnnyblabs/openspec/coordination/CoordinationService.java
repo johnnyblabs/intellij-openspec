@@ -368,7 +368,7 @@ public final class CoordinationService {
         return result;
     }
 
-    static List<StoreEntry> readStoresFromDisk(CoordinationPaths paths) {
+    public static List<StoreEntry> readStoresFromDisk(CoordinationPaths paths) {
         List<StoreEntry> result = new ArrayList<>();
         Map<String, Object> registry = readYamlMap(paths.storeRegistryFile());
         if (registry == null) return result;

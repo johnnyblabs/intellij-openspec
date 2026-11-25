@@ -1,0 +1,292 @@
+[
+  {
+    "name": "declared",
+    "cwd": "app",
+    "phase": "stores",
+    "default_store": false,
+    "context": {
+      "root": {
+        "path": "<W>/stores/demo",
+        "source": "declared",
+        "store_id": "demo",
+        "role": "openspec_root"
+      },
+      "members": [],
+      "status": []
+    },
+    "stderr": "",
+    "exit": 0
+  },
+  {
+    "name": "declared-from-subdir",
+    "cwd": "app/src/deep",
+    "phase": "stores",
+    "default_store": false,
+    "context": {
+      "root": {
+        "path": "<W>/stores/demo",
+        "source": "declared",
+        "store_id": "demo",
+        "role": "openspec_root"
+      },
+      "members": [],
+      "status": []
+    },
+    "stderr": "",
+    "exit": 0
+  },
+  {
+    "name": "nearest",
+    "cwd": "plain",
+    "phase": "stores",
+    "default_store": false,
+    "context": {
+      "root": {
+        "path": "<W>/plain",
+        "source": "nearest",
+        "role": "openspec_root"
+      },
+      "members": [],
+      "status": []
+    },
+    "stderr": "",
+    "exit": 0
+  },
+  {
+    "name": "nearest-ancestor",
+    "cwd": "plain/sub/deep",
+    "phase": "stores",
+    "default_store": false,
+    "context": {
+      "root": {
+        "path": "<W>/plain",
+        "source": "nearest",
+        "role": "openspec_root"
+      },
+      "members": [],
+      "status": []
+    },
+    "stderr": "",
+    "exit": 0
+  },
+  {
+    "name": "nearest-ignores-pointer",
+    "cwd": "realapp",
+    "phase": "stores",
+    "default_store": false,
+    "context": {
+      "root": {
+        "path": "<W>/realapp",
+        "source": "nearest",
+        "role": "openspec_root"
+      },
+      "members": [],
+      "status": []
+    },
+    "stderr": "Warning: <W>/realapp/openspec/config.yaml declares store 'demo', but this directory is a real OpenSpec root; the declaration is ignored.",
+    "exit": 0
+  },
+  {
+    "name": "unknown-store",
+    "cwd": "ghost",
+    "phase": "stores",
+    "default_store": false,
+    "context": {
+      "root": null,
+      "members": [],
+      "status": [
+        {
+          "severity": "error",
+          "code": "unknown_store",
+          "message": "Declared in <W>/ghost/openspec/config.yaml: Unknown store 'ghost'. Registered stores: demo.",
+          "target": "store.id",
+          "fix": "Register the store (openspec store register <path> --id ghost) or edit <W>/ghost/openspec/config.yaml to name a registered store."
+        }
+      ]
+    },
+    "stderr": "",
+    "exit": 1
+  },
+  {
+    "name": "malformed-pointer",
+    "cwd": "bad",
+    "phase": "stores",
+    "default_store": false,
+    "context": {
+      "root": null,
+      "members": [],
+      "status": [
+        {
+          "severity": "error",
+          "code": "invalid_store_pointer",
+          "message": "Invalid store declaration in <W>/bad/openspec/config.yaml: the store key must be a single store id string.",
+          "target": "store.pointer",
+          "fix": "Edit <W>/bad/openspec/config.yaml so the store key is a registered store id, or remove it."
+        }
+      ]
+    },
+    "stderr": "",
+    "exit": 1
+  },
+  {
+    "name": "no-root-stores-registered",
+    "cwd": "noroot",
+    "phase": "stores",
+    "default_store": false,
+    "context": {
+      "root": null,
+      "members": [],
+      "status": [
+        {
+          "severity": "error",
+          "code": "no_root_with_registered_stores",
+          "message": "No OpenSpec root found in the current directory or its ancestors. Registered stores: demo. Pass --store <id> to use one, or run openspec init to create a local root.",
+          "target": "openspec.root",
+          "fix": "Rerun with --store <id> (registered: demo) or run openspec init."
+        }
+      ]
+    },
+    "stderr": "",
+    "exit": 1
+  },
+  {
+    "name": "empty-openspec-dir",
+    "cwd": "emptyspec",
+    "phase": "stores",
+    "default_store": false,
+    "context": {
+      "root": null,
+      "members": [],
+      "status": [
+        {
+          "severity": "error",
+          "code": "no_root_with_registered_stores",
+          "message": "No OpenSpec root found in the current directory or its ancestors. Registered stores: demo. Pass --store <id> to use one, or run openspec init to create a local root.",
+          "target": "openspec.root",
+          "fix": "Rerun with --store <id> (registered: demo) or run openspec init."
+        }
+      ]
+    },
+    "stderr": "",
+    "exit": 1
+  },
+  {
+    "name": "global-default",
+    "cwd": "noroot",
+    "phase": "default",
+    "default_store": true,
+    "context": {
+      "root": null,
+      "members": [],
+      "status": [
+        {
+          "severity": "error",
+          "code": "no_root_with_registered_stores",
+          "message": "No OpenSpec root found in the current directory or its ancestors. Registered stores: demo. Pass --store <id> to use one, or run openspec init to create a local root.",
+          "target": "openspec.root",
+          "fix": "Rerun with --store <id> (registered: demo) or run openspec init."
+        }
+      ]
+    },
+    "stderr": "",
+    "exit": 1
+  },
+  {
+    "name": "global-default-empty-openspec-dir",
+    "cwd": "emptyspec",
+    "phase": "default",
+    "default_store": true,
+    "context": {
+      "root": null,
+      "members": [],
+      "status": [
+        {
+          "severity": "error",
+          "code": "no_root_with_registered_stores",
+          "message": "No OpenSpec root found in the current directory or its ancestors. Registered stores: demo. Pass --store <id> to use one, or run openspec init to create a local root.",
+          "target": "openspec.root",
+          "fix": "Rerun with --store <id> (registered: demo) or run openspec init."
+        }
+      ]
+    },
+    "stderr": "",
+    "exit": 1
+  },
+  {
+    "name": "global-default-loses-to-nearest",
+    "cwd": "plain",
+    "phase": "default",
+    "default_store": true,
+    "context": {
+      "root": {
+        "path": "<W>/plain",
+        "source": "nearest",
+        "role": "openspec_root"
+      },
+      "members": [],
+      "status": []
+    },
+    "stderr": "",
+    "exit": 0
+  },
+  {
+    "name": "global-default-loses-to-pointer",
+    "cwd": "app",
+    "phase": "default",
+    "default_store": true,
+    "context": {
+      "root": {
+        "path": "<W>/stores/demo",
+        "source": "declared",
+        "store_id": "demo",
+        "role": "openspec_root"
+      },
+      "members": [],
+      "status": []
+    },
+    "stderr": "",
+    "exit": 0
+  },
+  {
+    "name": "identity-mismatch",
+    "cwd": "impostorapp",
+    "phase": "broken",
+    "default_store": false,
+    "context": {
+      "root": null,
+      "members": [],
+      "status": [
+        {
+          "severity": "error",
+          "code": "store_identity_mismatch",
+          "message": "Declared in <W>/impostorapp/openspec/config.yaml: Store 'impostor' metadata id 'demo' does not match its registered id. Run openspec store doctor impostor to inspect it.",
+          "target": "store.metadata",
+          "fix": "Run openspec store doctor impostor to inspect it."
+        }
+      ]
+    },
+    "stderr": "",
+    "exit": 1
+  },
+  {
+    "name": "unhealthy-store",
+    "cwd": "sickapp",
+    "phase": "broken",
+    "default_store": false,
+    "context": {
+      "root": null,
+      "members": [],
+      "status": [
+        {
+          "severity": "error",
+          "code": "unhealthy_store_root",
+          "message": "Declared in <W>/sickapp/openspec/config.yaml: Store 'sick' does not have a healthy OpenSpec root at <W>/stores/sick: Missing openspec/ directory. Run openspec store doctor sick to inspect it.",
+          "target": "openspec.root",
+          "fix": "Run openspec store doctor sick to inspect it."
+        }
+      ]
+    },
+    "stderr": "",
+    "exit": 1
+  }
+]

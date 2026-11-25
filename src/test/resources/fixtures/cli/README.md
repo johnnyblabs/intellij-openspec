@@ -801,6 +801,7 @@ On 2.1.0 and later a plain `init --tools` installs skills for the whole machine.
 | `fingerprints/vectors.json`, and `src/main/resources/openspec/released-skill-fingerprints.txt` | `CAPTURE_VERSION=<v> scripts/capture-released-fingerprints.py` (`--vectors-only` leaves the resource alone) |
 | `skill-spots/` | `CAPTURE_VERSION=<v> scripts/capture-skill-spot-verdicts.py` |
 | `skills-scope/`, `errors/init-home-global.*`, `errors/init-scope-project-no-tools.*`, `errors/init-no-git.*` (2.1.0) | `CAPTURE_VERSIONS=<v> scripts/capture-skills-scope.py` |
+| `store-root/` | `CAPTURE_VERSIONS=<v>,... scripts/capture-store-root.py` |
 
 ### Configured tools and the tools 2.1 added
 
@@ -987,4 +988,15 @@ Each spec or change isolates one rule, so its verdict names the rule:
 1.14.0 passes every item under `--strict` except `unspaced-header`: it has neither length rule nor the "not carried into the main spec" warnings. The plugin leaves those warnings to the CLI, so on the front-matter items it is laxer by design, and the release-parity test pins exactly those items.
 
 `<version>/instructions/instructions-apply-wrapped.json` (2.0.0, 2.1.0, 2.1.1) is `instructions apply --json` over a `tasks.md` with a wrapped task, a hard line break, a task followed by a note bullet and a plain task. The descriptions are joined (the note bullet is not), and the counts are the checkbox counts (4 tasks, 1 done).
+
+## `<version>/store-root/`: how the CLI resolves the OpenSpec root
+
+From `scripts/capture-store-root.py`, on 1.5.0, 1.7.0, 1.15.0, 2.0.0, 2.1.0 and 2.1.1. Stores and `store:` pointers arrived in 1.5.0 and the global `defaultStore` in 1.7.0; upstream's resolver is unchanged from 1.16.0 on.
+
+One scratch world holds every layout. The CLI sets up the healthy store `demo` itself with `store setup`. The broken entries (`impostor`, whose metadata names `demo`, and `sick`, with no `openspec/`) are appended to the registry by hand, because the CLI won't register them. Each scenario runs `context --json` from its directory.
+
+- **`world.json`** holds every directory and file relative to `<W>`, the XDG directories the CLI used, and per phase (`stores`, `default`, `broken`) the registry and global config exactly as the CLI wrote them. On 1.5.0, `config set defaultStore` is refused as an unknown key, so it is written with `--allow-unknown`. That records that 1.5.0 ignores it.
+- **`scenarios.json`** holds `{name, cwd, phase, default_store, context, stderr, exit}`.
+
+`StoreRootContractTest` rebuilds the world in a temp directory for each scenario and holds `RootResolver` to the CLI's root path, source, store id and problem code, following that release. `no_openspec_root` and `no_root_with_registered_stores` count as "not set up", since the plugin offers init instead.
 
