@@ -1773,20 +1773,14 @@ public class WorkflowActionPanel extends JPanel {
             }
         });
         card.add(exploreLink);
-
-        DirectApiService apiService = project.getService(DirectApiService.class);
-        if (apiService != null && apiService.isConfigured()) {
-            JBLabel orLabel = new JBLabel(" or ");
-            orLabel.setForeground(JBColor.GRAY);
-            card.add(orLabel);
-
-            com.intellij.ui.HyperlinkLabel ffLink = new com.intellij.ui.HyperlinkLabel("Fast-Forward");
-            ffLink.setToolTipText("Create a change and generate all artifacts in one step");
-            ffLink.addHyperlinkListener(ev -> activateFfInput());
-            card.add(ffLink);
-        }
-
+        // No Fast-Forward here: Propose already creates the change and generates its artifacts, and ff isn't in the
+        // core profile. Fast-Forward stays reachable through its menu and toolbar action.
         return card;
+    }
+
+    /** A freshly built "no changes" card, for tests. */
+    JPanel noChangesCardForTest() {
+        return buildNoChangesCard();
     }
 
     private final JBLabel statusErrorLabel = new JBLabel();

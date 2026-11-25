@@ -152,8 +152,8 @@ public class GettingStartedPanel extends JPanel implements Disposable {
                 add(createCard(
                         "Create your first change",
                         "A change is a scoped unit of work — one feature, fix, or improvement. " +
-                        "Give it a name, describe why it's needed, and OpenSpec will help you " +
-                        "generate design docs, specs, and tasks. Keep it focused: one change per feature.",
+                        "Describe what you want to build, and Propose creates the change with every artifact " +
+                        "needed before you implement. Keep it focused: one change per feature.",
                         createProposeButton()
                 ), gbc);
                 gbc.gridy++;

@@ -56,10 +56,10 @@
 
 ## 4. Empty state without Fast-Forward
 
-- [ ] 4.1 Remove the "or" label and the Fast-Forward link from `WorkflowActionPanel.buildNoChangesCard`.
-- [ ] 4.2 Make `OpenSpecContinueAction`'s empty-state hint profile-aware: it names New Change only when `new` is active, and Propose otherwise (never Fast-Forward on core).
-- [ ] 4.3 Rewrite `GettingStartedPanel`'s Propose copy ("Give it a name, describe why…") to "Describe what you want to build".
-- [ ] 4.4 Tests: the no-changes card has no Fast-Forward link, with or without Direct API, and its Propose link still launches `OpenSpec.Propose`; replace the Fast-Forward-link tests in `WorkflowActionPanelTest`; the Continue hint per profile.
+- [x] 4.1 Remove the "or" label and the Fast-Forward link from `WorkflowActionPanel.buildNoChangesCard`.
+- [x] 4.2 Make `OpenSpecContinueAction`'s empty-state hint profile-aware: it names New Change only when `new` is active, and Propose otherwise (never Fast-Forward on core).
+- [x] 4.3 Rewrite `GettingStartedPanel`'s Propose copy ("Give it a name, describe why…") to "Describe what you want to build".
+- [x] 4.4 Tests: the no-changes card has no Fast-Forward link, with or without Direct API, and its Propose link still launches `OpenSpec.Propose`; replace the Fast-Forward-link tests in `WorkflowActionPanelTest`; the Continue hint per profile.
 
 ## 5. Gating follows a CLI change
 

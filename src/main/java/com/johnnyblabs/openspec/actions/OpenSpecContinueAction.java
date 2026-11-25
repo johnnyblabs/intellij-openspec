@@ -48,13 +48,23 @@ public class OpenSpecContinueAction extends OpenSpecBaseAction {
         ChangeService changeService = project.getService(ChangeService.class);
         List<Change> activeChanges = changeService.getActiveChanges();
         if (activeChanges.isEmpty()) {
-            OpenSpecNotifier.warn(project, "No active changes",
-                    "Create a change first with Propose or Fast-Forward.");
+            OpenSpecNotifier.warn(project, "No active changes", noChangeHint(project));
             return;
         }
 
         ChangePicker.pick(activeChanges.stream().map(Change::getName).toList(), e.getDataContext(), TITLE,
                 name -> continueChange(project, name));
+    }
+
+    /**
+     * What to do when there is no change to continue: Propose, and New Change too when the profile has {@code new}.
+     * Never Fast-Forward, which the core profile doesn't have.
+     */
+    static String noChangeHint(Project project) {
+        com.johnnyblabs.openspec.services.WorkflowProfileService profile =
+                project.getService(com.johnnyblabs.openspec.services.WorkflowProfileService.class);
+        boolean hasNew = profile != null && profile.isWorkflowEnabled("new");
+        return hasNew ? "Create a change first with Propose or New Change." : "Create a change first with Propose.";
     }
 
     /** Continues {@code changeName} in the active delivery mode. Call on the EDT. */

@@ -470,34 +470,6 @@ class WorkflowActionPanelTest {
         assertEquals("Archive (complete all artifacts and tasks first)", tooltip);
     }
 
-    // --- FF link visibility based on Direct API ---
-
-    @Test
-    void ffLink_visible_whenDirectApiConfigured() {
-        boolean apiConfigured = true;
-        JPanel card = new JPanel();
-        card.add(new JLabel("No changes yet."));
-        card.add(new JLabel("Propose a change")); // hyperlink stand-in
-        if (apiConfigured) {
-            card.add(new JLabel(" or "));
-            card.add(new JLabel("Fast-Forward"));
-        }
-        assertEquals(4, card.getComponentCount(), "Card should have 4 components with FF link");
-    }
-
-    @Test
-    void ffLink_hidden_whenDirectApiNotConfigured() {
-        boolean apiConfigured = false;
-        JPanel card = new JPanel();
-        card.add(new JLabel("No changes yet."));
-        card.add(new JLabel("Propose a change")); // hyperlink stand-in
-        if (apiConfigured) {
-            card.add(new JLabel(" or "));
-            card.add(new JLabel("Fast-Forward"));
-        }
-        assertEquals(2, card.getComponentCount(), "Card should have 2 components without FF link");
-    }
-
     @Test
     void activateFfInput_blockedWithoutDirectApi_showsMessage() {
         boolean apiConfigured = false;

@@ -171,6 +171,25 @@ public class FastForwardRequestPanelTest extends OpenSpecIntegrationTestBase {
         assertNull("nothing was copied for the clipboard", workflowPanel.lastPromptForTest());
     }
 
+    public void testTheEmptyCardOffersProposeAndNeverFastForward() {
+        for (boolean configured : new boolean[]{true, false}) {
+            when(getProject().getService(DirectApiService.class).isConfigured()).thenReturn(configured);
+            java.util.List<String> texts = new java.util.ArrayList<>();
+            collectTexts(workflowPanel.noChangesCardForTest(), texts);
+            assertTrue(texts.toString(), texts.contains("Propose a change"));
+            assertTrue(texts.toString(), texts.contains("Explore an idea first"));
+            assertTrue("Direct API " + configured + ": " + texts, texts.stream().noneMatch(t -> t.contains("Fast-Forward")));
+        }
+    }
+
+    private static void collectTexts(java.awt.Component c, java.util.List<String> out) {
+        if (c instanceof javax.swing.JLabel l && l.getText() != null) out.add(l.getText());
+        if (c instanceof com.intellij.ui.HyperlinkLabel h) out.add(h.getText());
+        if (c instanceof java.awt.Container container) {
+            for (java.awt.Component child : container.getComponents()) collectTexts(child, out);
+        }
+    }
+
     public void testALaterGenerationDoesNotCarryTheRequest() throws Exception {
         workflowPanel.setDeliveryModeForTest(DeliveryMode.CLIPBOARD);
         workflowPanel.startFastForwardGeneration(CHANGE, REQUEST);
