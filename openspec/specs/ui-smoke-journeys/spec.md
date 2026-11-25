@@ -60,7 +60,7 @@ The project SHALL maintain a small suite of automated UI smoke journeys that dri
 
 #### Scenario: Store-root journey (a project pointing at a store)
 - **WHEN** the smoke suite, on a host CLI at 1.5+ with isolated OpenSpec data and config directories, sets up a store with the real CLI and opens a project whose config holds only a pointer to it
-- **THEN** it SHALL assert the Browse tree lists the store's change, that a change created in the store outside the IDE appears when the user returns to the IDE (the platform's window-activation sync, not the plugin's Refresh), that a pointer to an unregistered store makes the tree say the store can't be used, and that fixing the pointer brings the store's change back; on a host CLI below 1.5 the journey SHALL be skipped, not failed
+- **THEN** it SHALL assert the Browse tree lists the store's change under a root labelled with the store and its source, that opening a store file shows the store banner, that a change created in the store outside the IDE appears when the user returns to the IDE (the platform's window-activation sync, not the plugin's Refresh), that a pointer to an unregistered store makes the tree say the store can't be used, and that fixing the pointer brings the store's change back; on a host CLI below 1.5 the journey SHALL be skipped, not failed
 
 #### Scenario: Store-spec inspection journey
 - **WHEN** the smoke suite, on a host CLI at 1.5+, opens a spec that lives in a store outside the project and whose requirement has no RFC 2119 keyword
