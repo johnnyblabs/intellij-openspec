@@ -29,7 +29,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
-from openspec_capture import cli, isolated_env, assert_sanitized  # noqa: E402
+from openspec_capture import cli, integrity, isolated_env, assert_sanitized  # noqa: E402
 
 DEFAULT_VERSIONS = "1.5.0,1.7.0,1.15.0,2.0.0,2.1.0,2.1.1"
 
@@ -108,7 +108,22 @@ class World:
         self.scenarios.append({"name": name, "cwd": cwd, "phase": phase, "default_store": default_store,
                                "context": parsed, "stderr": self.san(r.stderr).strip(), "exit": r.returncode})
 
+    def write_global_config(self, text):
+        self.global_config.parent.mkdir(parents=True, exist_ok=True)
+        self.global_config.write_text(text)
+
+    def append_registry(self, entries):
+        """Hand-written entries the CLI won't register itself: (id, path)."""
+        self.registry.write_text(self.registry.read_text().rstrip("\n") + "\n" + "".join(
+            f"  {sid}:\n    backend:\n      type: git\n      local_path: {path}\n" for sid, path in entries))
+
     def build(self):
+        # Phase "empty": a pointer with no store registered at all.
+        self.write("lonely/openspec/config.yaml", "store: demo\n")
+        phase = "empty"
+        self.snapshot_phase(phase)
+        self.context("pointer-no-stores-registered", "lonely", phase)
+
         # Phase "stores": one healthy registered store, written by the CLI itself.
         self.run(self.w, "store", "setup", "demo", "--path", str(self.w / "stores" / "demo"), "--no-init-git",
                  "--json", check=True)
@@ -126,6 +141,10 @@ class World:
         self.mkdir("bare")
         self.mkdir("emptyspec/openspec")
         self.mkdir("noroot")
+        self.write("ymlapp/openspec/config.yml", "store: demo\n")
+        self.write("emptykey/openspec/config.yaml", "store:\n")
+        self.write("badyaml/openspec/config.yaml", "store: [demo\n")
+        self.write("badid/openspec/config.yaml", "store: Demo_X\n")
 
         phase = "stores"
         self.snapshot_phase(phase)
@@ -138,6 +157,10 @@ class World:
         self.context("malformed-pointer", "bad", phase)
         self.context("no-root-stores-registered", "noroot", phase)
         self.context("empty-openspec-dir", "emptyspec", phase)
+        self.context("pointer-in-config-yml", "ymlapp", phase)
+        self.context("empty-store-key", "emptykey", phase)
+        self.context("unparseable-config", "badyaml", phase)
+        self.context("invalid-store-id", "badid", phase)
 
         # Phase "default": the global default store. 1.5.0 rejects the key, so it is written with --allow-unknown
         # there, to record that the release ignores it.
@@ -152,20 +175,42 @@ class World:
         self.context("global-default-loses-to-pointer", "app", phase, default_store=True)
         self.run(self.w, "config", "unset", "defaultStore", check=True)
 
+        # Phase "stale-default": a default naming no registered store. Written by hand, as a removed store leaves it.
+        self.write_global_config('{"featureFlags": {}, "defaultStore": "ghost"}\n')
+        phase = "stale-default"
+        self.snapshot_phase(phase)
+        self.context("stale-default-store", "noroot", phase, default_store=True)
+
+        # Phase "empty-default": an empty default counts as unset.
+        self.write_global_config('{"featureFlags": {}, "defaultStore": ""}\n')
+        phase = "empty-default"
+        self.snapshot_phase(phase)
+        self.context("empty-default-store", "noroot", phase, default_store=True)
+        self.global_config.unlink()
+
         # Phase "broken": registry entries the CLI must refuse. Written by hand (the CLI won't register them).
         self.write("stores/impostor/.openspec-store/store.yaml", "version: 1\nid: demo\n")
         self.write("stores/impostor/openspec/config.yaml", "schema: spec-driven\n")
         self.mkdir("stores/impostor/openspec/specs")
         self.write("stores/sick/.openspec-store/store.yaml", "version: 1\nid: sick\n")
-        self.registry.write_text(self.registry.read_text().rstrip("\n") + "\n" + "".join(
-            f"  {sid}:\n    backend:\n      type: git\n      local_path: {self.w / 'stores' / d}\n"
-            for sid, d in (("impostor", "impostor"), ("sick", "sick"))))
-        self.write("impostorapp/openspec/config.yaml", "store: impostor\n")
-        self.write("sickapp/openspec/config.yaml", "store: sick\n")
+        for name, metadata in (("garbled", "id: [unclosed\n"), ("noversion", "id: noversion\n"),
+                               ("extrakey", "version: 1\nid: extrakey\ncolour: blue\n")):
+            self.write(f"stores/{name}/.openspec-store/store.yaml", metadata)
+            self.write(f"stores/{name}/openspec/config.yaml", "schema: spec-driven\n")
+        self.write("stores/plainfile", "not a directory\n")
+        self.append_registry([(sid, self.w / "stores" / d) for sid, d in (
+            ("impostor", "impostor"), ("sick", "sick"), ("garbled", "garbled"), ("noversion", "noversion"),
+            ("extrakey", "extrakey"), ("filestore", "plainfile"))])
+        for sid in ("impostor", "sick", "garbled", "noversion", "extrakey", "filestore"):
+            self.write(f"{sid}app/openspec/config.yaml", f"store: {sid}\n")
         phase = "broken"
         self.snapshot_phase(phase)
         self.context("identity-mismatch", "impostorapp", phase)
         self.context("unhealthy-store", "sickapp", phase)
+        self.context("unparseable-store-metadata", "garbledapp", phase)
+        self.context("store-metadata-without-version", "noversionapp", phase)
+        self.context("store-metadata-with-unknown-key", "extrakeyapp", phase)
+        self.context("store-root-is-a-file", "filestoreapp", phase)
 
     def tree(self):
         dirs, files = [], {}
@@ -181,7 +226,8 @@ class World:
     def write_fixtures(self):
         out = REPO / "src/test/resources/fixtures/cli" / self.version / "store-root"
         dirs, files = self.tree()
-        world = {"version": self.version, "xdg": {"config": self.rel(self.config_dir), "data": self.rel(self.data_dir)},
+        cli_version = self.run(self.w, "--version", check=True).stdout.strip()
+        world = {"version": self.version, "cli_version": cli_version, "integrity": integrity(self.version), "xdg": {"config": self.rel(self.config_dir), "data": self.rel(self.data_dir)},
                  "dirs": dirs, "files": files, "phases": self.phases}
         for name, data in (("world.json", world), ("scenarios.json", self.scenarios)):
             text = json.dumps(data, indent=2, sort_keys=False) + "\n"

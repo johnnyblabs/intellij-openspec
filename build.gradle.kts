@@ -118,6 +118,14 @@ tasks.test {
         events("failed")
         exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
     }
+    // The OpenSpec CLI's machine-wide files (store registry, global config with defaultStore) are read by the root
+    // resolver. Point them at empty build folders so a developer's own stores never reach a test.
+    val machine = layout.buildDirectory.dir("test-machine").get().asFile
+    environment("XDG_CONFIG_HOME", machine.resolve("config").path)
+    environment("XDG_DATA_HOME", machine.resolve("data").path)
+    environment("XDG_STATE_HOME", machine.resolve("state").path)
+    environment("APPDATA", machine.resolve("AppData/Roaming").path)
+    environment("LOCALAPPDATA", machine.resolve("AppData/Local").path)
     finalizedBy(tasks.jacocoTestReport)
 }
 

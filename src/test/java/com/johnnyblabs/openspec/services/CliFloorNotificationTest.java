@@ -33,6 +33,7 @@ class CliFloorNotificationTest {
     @Mock CliDetectionService cliDetection;
     @Mock AiToolDetectionService aiDetection;
     @Mock OpenSpecSettings settings;
+    @Mock com.johnnyblabs.openspec.root.OpenSpecRootResolver rootResolver;
     @Mock Continuation<? super Unit> continuation;
 
     private OpenSpecProjectService.StartupDetection startup() {
@@ -40,6 +41,7 @@ class CliFloorNotificationTest {
     }
 
     private void wireServices() {
+        when(project.getService(com.johnnyblabs.openspec.root.OpenSpecRootResolver.class)).thenReturn(rootResolver);
         when(project.getService(CliDetectionService.class)).thenReturn(cliDetection);
         when(project.getService(AiToolDetectionService.class)).thenReturn(aiDetection);
         // StartupDetection also runs the one-time strict-removal migration check; default it to no-op.
@@ -52,10 +54,14 @@ class CliFloorNotificationTest {
         try (MockedStatic<OpenSpecFileUtil> file = mockStatic(OpenSpecFileUtil.class);
              MockedStatic<OpenSpecNotifier> notif = mockStatic(OpenSpecNotifier.class)) {
             file.when(() -> OpenSpecFileUtil.isOpenSpecProject(project)).thenReturn(false);
+            when(project.getService(com.johnnyblabs.openspec.root.OpenSpecRootResolver.class)).thenReturn(rootResolver);
 
             startup().execute(project, continuation);
 
             notif.verifyNoInteractions();
+            // The root is resolved before asking whether this is an OpenSpec project: a store-backed root is
+            // only known once the resolver has read the disk.
+            verify(rootResolver).resolveNow();
         }
     }
 

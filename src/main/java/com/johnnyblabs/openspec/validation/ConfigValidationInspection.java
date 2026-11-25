@@ -66,7 +66,8 @@ public class ConfigValidationInspection extends LocalInspectionTool {
 
         // Field-level validation — only for config.yaml
         if (isConfig) {
-            if (!text.contains("schema:")) {
+            // A pointer-only config hands planning to a store, whose own config sets the schema.
+            if (!text.contains("schema:") && !declaresStore(text)) {
                 PsiElement element = findNonEmptyElement(file, 0);
                 if (element != null) {
                     // INFORMATION, not WARNING: `openspec validate` is clean on a missing schema
@@ -118,5 +119,15 @@ public class ConfigValidationInspection extends LocalInspectionTool {
             element = element.getParent();
         }
         return element;
+    }
+
+    /** Whether the config has a top-level {@code store:} key, which hands planning to that store. */
+    static boolean declaresStore(String text) {
+        try {
+            Object loaded = new org.yaml.snakeyaml.Yaml().load(text);
+            return loaded instanceof java.util.Map<?, ?> map && map.containsKey("store");
+        } catch (RuntimeException e) {
+            return false;
+        }
     }
 }

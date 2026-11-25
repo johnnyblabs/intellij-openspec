@@ -109,7 +109,7 @@ public final class ArchiveReadinessService {
         for (DeltaSpecOperation op : operations) {
             if (op.type() == DeltaSpecOperation.OperationType.MODIFIED) {
                 // Verify the target capability has a main spec
-                String specPath = project.getBasePath() + "/openspec/specs/"
+                String specPath = com.johnnyblabs.openspec.util.OpenSpecFileUtil.openspecPath(project) + "/specs/"
                         + op.capabilityName() + "/spec.md";
                 File specFile = new File(specPath);
                 if (!specFile.exists()) {

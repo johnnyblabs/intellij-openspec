@@ -138,7 +138,7 @@ public final class ArtifactOrchestrationService {
             if (artifact.status() != ArtifactStatus.DONE) continue;
             String outputPath = artifact.outputPath();
             if (outputPath == null || outputPath.contains("*")) continue;
-            if (detector.isScaffolding(basePath + "/openspec/changes/" + changeName + "/" + outputPath)) {
+            if (detector.isScaffolding(com.johnnyblabs.openspec.util.OpenSpecFileUtil.openspecPath(project) + "/changes/" + changeName + "/" + outputPath)) {
                 ids.add(artifact.id());
             }
         }

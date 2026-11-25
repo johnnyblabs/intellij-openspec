@@ -29,6 +29,8 @@ public class OpenSpecRefreshAction extends OpenSpecBaseAction {
         // The workflow panel's refresh asks `openspec status`, which reads the files on disk: save the user's edits
         // first, or a just-edited .openspec.yaml or artifact shows its old state until the IDE's autosave runs.
         com.intellij.openapi.fileEditor.FileDocumentManager.getInstance().saveAllDocuments();
+        // Re-resolve the root too: a store edited outside the IDE, or one on a drive that can't be watched.
+        com.johnnyblabs.openspec.root.OpenSpecRootResolver.getInstance(project).invalidate();
 
         // Find the Browse tab (first content, or any content that is an OpenSpecToolWindowPanel)
         for (Content content : toolWindow.getContentManager().getContents()) {

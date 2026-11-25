@@ -88,10 +88,10 @@ public class OpenSpecNewChangeAction extends OpenSpecBaseAction implements DumbA
                     error = result.isSuccess() ? null : result.stderr();
                     if (error == null) {
                         // The CLI wrote outside the VFS: refresh the folder so the tree and panel find the change.
-                        String base = project.getBasePath();
-                        if (base != null) {
+                        java.nio.file.Path openspec = com.johnnyblabs.openspec.util.OpenSpecFileUtil.openspecNioPath(project);
+                        if (openspec != null) {
                             com.intellij.openapi.vfs.LocalFileSystem.getInstance().refreshAndFindFileByNioFile(
-                                    java.nio.file.Path.of(base, "openspec", "changes", changeName));
+                                    openspec.resolve("changes").resolve(changeName));
                         }
                     }
                 } catch (CliRunner.CliException ex) {

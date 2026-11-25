@@ -38,6 +38,16 @@ The tab presents at one of three tiers:
 - **Initiatives** show a lifecycle status badge (`exploring` / `active` / `complete` / `archived`). Each initiative's artifacts — `initiative.yaml`, `requirements.md`, `design.md`, `decisions.md`, `questions.md`, `tasks.md` — open in the editor (double-click; an uncreated artifact reports that it does not exist yet).
 - **Actions** (Full tier): **New Initiative**, **Set Up Context Store**, **Set Up Workspace** delegate to the CLI and refresh the listing on success; CLI errors are surfaced. These actions are **version-gated to the `[1.4.0, 1.5.0)` window and self-retiring** — CLI 1.5.0 removed the underlying `initiative` / `context-store` / `workspace` commands, so upgrading to a 1.5 CLI automatically retires them (the tab switches to the store/workset model below).
 
+### Projects whose specs live in a store
+
+The plugin finds the OpenSpec root the way the OpenSpec CLI does, so every surface (the tree, changes, Validate, Sync Specs, archive, the workflow panel, Explore, inspections) works on the same files the CLI works on:
+
+1. The nearest `openspec/` folder, in the project or a parent folder, that has `specs/` or `changes/` or a config file.
+2. If that folder holds only a config with a `store:` line (CLI 1.5+), the registered store it names. A `store:` line next to `specs/` or `changes/` is ignored, as the CLI ignores it.
+3. Otherwise, the machine-wide `defaultStore` from the CLI's global config (CLI 1.7+).
+
+A store is used only when it is registered, its `.openspec-store/store.yaml` names the same id, and it has a healthy `openspec/` folder. Otherwise the tool window shows the CLI's reason and fix. The resolution reads the project config, the CLI's global config (`$XDG_CONFIG_HOME/openspec/config.json`, `~/.config/openspec/config.json`, or `%APPDATA%\openspec\config.json`) and the store registry, so it works without the CLI. It runs in the background and re-runs when any of those files changes, and on Refresh. A store outside the project is watched for changes. Initialize still creates the project's own `openspec/`. Stores in WSL aren't supported yet.
+
 ### Stores & Worksets (OpenSpec 1.5)
 
 OpenSpec CLI **1.5.0** replaced the 1.4 coordination model with **stores** and **worksets**:

@@ -51,10 +51,10 @@ public final class VerificationService {
      */
     public VerificationReport verify(String changeName) {
         VerificationReport report = new VerificationReport(changeName);
-        String basePath = project.getBasePath();
-        if (basePath == null) return report;
+        Path openspec = com.johnnyblabs.openspec.util.OpenSpecFileUtil.openspecNioPath(project);
+        if (openspec == null) return report;
 
-        Path changeDir = Path.of(basePath, "openspec", "changes", changeName);
+        Path changeDir = openspec.resolve("changes").resolve(changeName);
         if (!Files.isDirectory(changeDir)) {
             report.addFinding(new VerificationFinding(Severity.CRITICAL, Dimension.COMPLETENESS,
                     "Change directory not found: " + changeDir));

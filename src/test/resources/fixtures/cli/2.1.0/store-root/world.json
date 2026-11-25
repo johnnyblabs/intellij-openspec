@@ -1,5 +1,7 @@
 {
   "version": "2.1.0",
+  "cli_version": "2.1.0",
+  "integrity": "sha512-3mVVOU97QmRsqQQYl0Jb7XvIwWES+Jh6nMbGy1tJiQvKVVI1lD7M0PTB2gH2f/ayX4SEoVJGiLKL51Z1pkTHqw==",
   "xdg": {
     "config": "home/.config",
     "data": "home/.local/share"
@@ -11,14 +13,30 @@
     "app/src/deep",
     "bad",
     "bad/openspec",
+    "badid",
+    "badid/openspec",
+    "badyaml",
+    "badyaml/openspec",
     "bare",
+    "emptykey",
+    "emptykey/openspec",
     "emptyspec",
     "emptyspec/openspec",
+    "extrakeyapp",
+    "extrakeyapp/openspec",
+    "filestoreapp",
+    "filestoreapp/openspec",
+    "garbledapp",
+    "garbledapp/openspec",
     "ghost",
     "ghost/openspec",
     "impostorapp",
     "impostorapp/openspec",
+    "lonely",
+    "lonely/openspec",
     "noroot",
+    "noversionapp",
+    "noversionapp/openspec",
     "plain",
     "plain/openspec",
     "plain/openspec/changes",
@@ -37,31 +55,62 @@
     "stores/demo/openspec/changes/archive",
     "stores/demo/openspec/specs",
     "stores/demo/openspec/specs/cap-a",
+    "stores/extrakey",
+    "stores/extrakey/.openspec-store",
+    "stores/extrakey/openspec",
+    "stores/garbled",
+    "stores/garbled/.openspec-store",
+    "stores/garbled/openspec",
     "stores/impostor",
     "stores/impostor/.openspec-store",
     "stores/impostor/openspec",
     "stores/impostor/openspec/specs",
+    "stores/noversion",
+    "stores/noversion/.openspec-store",
+    "stores/noversion/openspec",
     "stores/sick",
-    "stores/sick/.openspec-store"
+    "stores/sick/.openspec-store",
+    "ymlapp",
+    "ymlapp/openspec"
   ],
   "files": {
     "app/openspec/config.yaml": "schema: spec-driven\nstore: demo\n",
     "bad/openspec/config.yaml": "store: [a, b]\n",
+    "badid/openspec/config.yaml": "store: Demo_X\n",
+    "badyaml/openspec/config.yaml": "store: [demo\n",
+    "emptykey/openspec/config.yaml": "store:\n",
+    "extrakeyapp/openspec/config.yaml": "store: extrakey\n",
+    "filestoreapp/openspec/config.yaml": "store: filestore\n",
+    "garbledapp/openspec/config.yaml": "store: garbled\n",
     "ghost/openspec/config.yaml": "store: ghost\n",
     "impostorapp/openspec/config.yaml": "store: impostor\n",
+    "lonely/openspec/config.yaml": "store: demo\n",
+    "noversionapp/openspec/config.yaml": "store: noversion\n",
     "plain/openspec/config.yaml": "schema: spec-driven\n",
     "realapp/openspec/config.yaml": "schema: spec-driven\nstore: demo\n",
     "sickapp/openspec/config.yaml": "store: sick\n",
+    "stores/plainfile": "not a directory\n",
     "stores/demo/.openspec-store/store.yaml": "version: 1\nid: demo\n",
     "stores/demo/openspec/config.yaml": "schema: spec-driven\n\n# Project context (optional)\n# Add only constraints that should guide OpenSpec artifacts and workflows.\n# Include constraints an agent cannot infer by reading the code.\n# Keep general project documentation and discoverable codebase facts out.\n# Example:\n#   context: |\n#     Designs and tasks must cover Windows, macOS, and Linux\n#     Write all artifacts in Spanish\n\n# Per-artifact rules (optional)\n# Add custom rules for specific artifacts.\n# Example:\n#   rules:\n#     proposal:\n#       - Keep proposals under 500 words\n#       - Always state what is out of scope\n#     tasks:\n#       - Break tasks into chunks of max 2 hours\n\n# Per-operation guidance (optional)\n# Add advisory guidance for how apply and archive work should be conducted.\n# This is separate from artifact rules above.\n# Example:\n#   operations:\n#     apply:\n#       guidance:\n#         - Keep test summaries concise\n#     archive:\n#       guidance:\n#         - Summarize the archive outcome before finishing\n",
     "stores/demo/openspec/changes/archive/.gitkeep": "",
     "stores/demo/openspec/specs/.gitkeep": "",
     "stores/demo/openspec/specs/cap-a/spec.md": "# cap-a Specification\n\n## Purpose\nDemo capability held in a store.\n\n## Requirements\n### Requirement: Demo behaviour\nThe system SHALL do the demo thing.\n\n#### Scenario: Demo works\n- **WHEN** the demo runs\n- **THEN** it succeeds\n",
+    "stores/extrakey/.openspec-store/store.yaml": "version: 1\nid: extrakey\ncolour: blue\n",
+    "stores/extrakey/openspec/config.yaml": "schema: spec-driven\n",
+    "stores/garbled/.openspec-store/store.yaml": "id: [unclosed\n",
+    "stores/garbled/openspec/config.yaml": "schema: spec-driven\n",
     "stores/impostor/.openspec-store/store.yaml": "version: 1\nid: demo\n",
     "stores/impostor/openspec/config.yaml": "schema: spec-driven\n",
-    "stores/sick/.openspec-store/store.yaml": "version: 1\nid: sick\n"
+    "stores/noversion/.openspec-store/store.yaml": "id: noversion\n",
+    "stores/noversion/openspec/config.yaml": "schema: spec-driven\n",
+    "stores/sick/.openspec-store/store.yaml": "version: 1\nid: sick\n",
+    "ymlapp/openspec/config.yml": "store: demo\n"
   },
   "phases": {
+    "empty": {
+      "registry": null,
+      "global_config": null
+    },
     "stores": {
       "registry": "version: 1\nstores:\n  demo:\n    backend:\n      type: git\n      local_path: <W>/stores/demo\n",
       "global_config": null
@@ -70,9 +119,17 @@
       "registry": "version: 1\nstores:\n  demo:\n    backend:\n      type: git\n      local_path: <W>/stores/demo\n",
       "global_config": "{\n  \"featureFlags\": {},\n  \"profile\": \"core\",\n  \"defaultStore\": \"demo\"\n}\n"
     },
+    "stale-default": {
+      "registry": "version: 1\nstores:\n  demo:\n    backend:\n      type: git\n      local_path: <W>/stores/demo\n",
+      "global_config": "{\"featureFlags\": {}, \"defaultStore\": \"ghost\"}\n"
+    },
+    "empty-default": {
+      "registry": "version: 1\nstores:\n  demo:\n    backend:\n      type: git\n      local_path: <W>/stores/demo\n",
+      "global_config": "{\"featureFlags\": {}, \"defaultStore\": \"\"}\n"
+    },
     "broken": {
-      "registry": "version: 1\nstores:\n  demo:\n    backend:\n      type: git\n      local_path: <W>/stores/demo\n  impostor:\n    backend:\n      type: git\n      local_path: <W>/stores/impostor\n  sick:\n    backend:\n      type: git\n      local_path: <W>/stores/sick\n",
-      "global_config": "{\n  \"featureFlags\": {},\n  \"profile\": \"core\"\n}\n"
+      "registry": "version: 1\nstores:\n  demo:\n    backend:\n      type: git\n      local_path: <W>/stores/demo\n  impostor:\n    backend:\n      type: git\n      local_path: <W>/stores/impostor\n  sick:\n    backend:\n      type: git\n      local_path: <W>/stores/sick\n  garbled:\n    backend:\n      type: git\n      local_path: <W>/stores/garbled\n  noversion:\n    backend:\n      type: git\n      local_path: <W>/stores/noversion\n  extrakey:\n    backend:\n      type: git\n      local_path: <W>/stores/extrakey\n  filestore:\n    backend:\n      type: git\n      local_path: <W>/stores/plainfile\n",
+      "global_config": null
     }
   }
 }

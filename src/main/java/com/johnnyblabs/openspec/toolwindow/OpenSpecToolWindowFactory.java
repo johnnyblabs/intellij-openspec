@@ -78,8 +78,8 @@ public class OpenSpecToolWindowFactory implements ToolWindowFactory, DumbAware {
         // leaked) on the initialized path; construct the panel only when it's actually shown.
         GettingStartedPanel.State state = GettingStartedPanel.detectState(project);
 
-        if (state == GettingStartedPanel.State.NOT_INITIALIZED) {
-            // Project has no openspec/ directory — show Getting Started only
+        if (state == GettingStartedPanel.State.NOT_INITIALIZED || state == GettingStartedPanel.State.RESOLVING) {
+            // Project has no openspec/ directory (or its root is still resolving) — show Getting Started only
             createGettingStartedContent(project, toolWindow, new GettingStartedPanel(project, toolWindow));
         } else {
             // Project is initialized — always show the tree view so users can
@@ -90,7 +90,8 @@ public class OpenSpecToolWindowFactory implements ToolWindowFactory, DumbAware {
         // Re-detect CLI when the tool window is shown (throttled). Also runs a D3 fallback
         // profile refresh so any drift from a manual CLI switch or terminal customize
         // handshake the user dismissed without confirming is picked up on next focus.
-        project.getMessageBus().connect().subscribe(ToolWindowManagerListener.TOPIC, new ToolWindowManagerListener() {
+        // Owned by the tool window, so it is released with it (and on unload) instead of piling up per content build.
+        project.getMessageBus().connect(toolWindow.getDisposable()).subscribe(ToolWindowManagerListener.TOPIC, new ToolWindowManagerListener() {
             @Override
             public void toolWindowShown(@NotNull ToolWindow tw) {
                 if (!"OpenSpec".equals(tw.getId())) return;
@@ -120,7 +121,7 @@ public class OpenSpecToolWindowFactory implements ToolWindowFactory, DumbAware {
                         createNormalContent(project, toolWindow);
                     }
                 });
-            } else {
+            } else if (state != GettingStartedPanel.State.RESOLVING) {
                 settings.setSetupCompleted(true);
             }
         }

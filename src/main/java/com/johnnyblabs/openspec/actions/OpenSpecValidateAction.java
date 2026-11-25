@@ -140,8 +140,8 @@ public class OpenSpecValidateAction extends OpenSpecBaseAction {
     public static ValidationResult configErrorResult(Project project, CliOutputParser.CliConfigErrorException error) {
         // Built from the base path rather than a VFS lookup: this runs in a background task, and the path only
         // feeds the issue (and its console link), which the console resolves on its own.
-        String base = project.getBasePath();
-        return error.toResult((base != null ? base + "/" : "") + "openspec/config.yaml");
+        String openspec = com.johnnyblabs.openspec.util.OpenSpecFileUtil.openspecPath(project);
+        return error.toResult((openspec != null ? openspec : "openspec") + "/config.yaml");
     }
 
     /**

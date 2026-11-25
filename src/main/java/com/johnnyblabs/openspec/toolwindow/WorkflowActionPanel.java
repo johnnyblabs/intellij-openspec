@@ -1198,7 +1198,7 @@ public class WorkflowActionPanel extends JPanel {
         if (outputPath.contains("*")) {
             outputPath = "";
         }
-        String filePath = basePath + "/openspec/changes/" + activeChangeName + "/" + outputPath;
+        String filePath = com.johnnyblabs.openspec.util.OpenSpecFileUtil.openspecPath(project) + "/changes/" + activeChangeName + "/" + outputPath;
         VirtualFile file = LocalFileSystem.getInstance().refreshAndFindFileByPath(filePath);
         if (file != null) {
             new OpenFileDescriptor(project, file).navigate(true);
@@ -1514,7 +1514,7 @@ public class WorkflowActionPanel extends JPanel {
 
     private void showApplyState(ChangeArtifactDag dag) {
         String changeName = activeChangeName;
-        String changeDir = project.getBasePath() + "/openspec/changes/" + changeName;
+        String changeDir = com.johnnyblabs.openspec.util.OpenSpecFileUtil.openspecPath(project) + "/changes/" + changeName;
 
         ApplicationManager.getApplication().executeOnPooledThread(() -> {
             String tasksContent = null;
@@ -1566,7 +1566,7 @@ public class WorkflowActionPanel extends JPanel {
     private void onApplyTasks() {
         if (activeChangeName == null) return;
         String changeName = activeChangeName;
-        String changeDir = project.getBasePath() + "/openspec/changes/" + changeName;
+        String changeDir = com.johnnyblabs.openspec.util.OpenSpecFileUtil.openspecPath(project) + "/changes/" + changeName;
 
         // Capture UI state on EDT before dispatching to background thread
         DeliveryMode mode = getSelectedDeliveryMode();
@@ -1821,10 +1821,10 @@ public class WorkflowActionPanel extends JPanel {
     }
 
     private @Nullable VirtualFile statusErrorMetadataFile() {
-        String base = project.getBasePath();
-        if (base == null || statusErrorChange == null) return null;
+        String openspec = com.johnnyblabs.openspec.util.OpenSpecFileUtil.openspecPath(project);
+        if (openspec == null || statusErrorChange == null) return null;
         return com.intellij.openapi.vfs.LocalFileSystem.getInstance()
-                .findFileByPath(base + "/openspec/changes/" + statusErrorChange + "/.openspec.yaml");
+                .findFileByPath(openspec + "/changes/" + statusErrorChange + "/.openspec.yaml");
     }
 
     /** Shows why the CLI rejected the selected change. EDT. */
@@ -2099,9 +2099,9 @@ public class WorkflowActionPanel extends JPanel {
 
     /** Refreshes {@code changes/<name>} in the VFS after the CLI created it outside the IDE. Call off the EDT. */
     private void refreshChangeDirInVfs(String changeName) {
-        String base = project.getBasePath();
-        if (base == null) return;
-        java.nio.file.Path dir = java.nio.file.Path.of(base, "openspec", "changes", changeName);
+        java.nio.file.Path openspec = com.johnnyblabs.openspec.util.OpenSpecFileUtil.openspecNioPath(project);
+        if (openspec == null) return;
+        java.nio.file.Path dir = openspec.resolve("changes").resolve(changeName);
         com.intellij.openapi.vfs.LocalFileSystem.getInstance().refreshAndFindFileByNioFile(dir);
     }
 

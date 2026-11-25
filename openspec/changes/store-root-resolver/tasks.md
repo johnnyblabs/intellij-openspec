@@ -20,17 +20,17 @@
   - the store checks with the CLI's problem codes;
   - the pointer-ignored warning;
   - release gates of 1.5.0 for the pointer and 1.7.0 for the default store, against `ValidationRelease.followed` (design D1–D3).
-- [ ] 2.3 Add the snapshot service, the `OpenSpecRoot` value object and the `OpenSpecRootListener` topic. Resolution runs on a debounced pooled `Alarm`, refreshes outside any read action, and warms up from the startup activity (D4).
-- [ ] 2.4 Watching and invalidation: watch roots swapped and released, the resolver's own `BulkFileListener`, and `invalidate()` from Refresh and the `CoordinationService` store writes (D6).
+- [x] 2.3 Add the snapshot service, the `OpenSpecRoot` value object and the `OpenSpecRootListener` topic. Resolution runs on a debounced pooled `Alarm`, refreshes outside any read action, and warms up from the startup activity (D4).
+- [x] 2.4 Watching and invalidation: watch roots swapped and released, the resolver's own `BulkFileListener`, and `invalidate()` from Refresh and the `CoordinationService` store writes (D6).
 
 ## 3. Surfaces
 
-- [ ] 3.1 `OpenSpecFileUtil` delegates to the snapshot. Remove the refresh fallbacks, and make `isUnderOpenSpec` ancestor-based (D5).
-- [ ] 3.2 Tool window and Getting Started:
+- [x] 3.1 `OpenSpecFileUtil` delegates to the snapshot. Remove the refresh fallbacks, and make `isUnderOpenSpec` ancestor-based (D5).
+- [x] 3.2 Tool window and Getting Started:
   - show a resolving state while `PENDING`;
   - rebuild on `rootChanged`;
   - show the problem's message and fix as the empty state.
-- [ ] 3.3 Move the hand-built paths onto `OpenSpecRoot`:
+- [x] 3.3 Move the hand-built paths onto `OpenSpecRoot`:
   - workflow panel and `ArtifactFileWatcher`;
   - new-change action;
   - `ExploreContextService`;
@@ -44,30 +44,30 @@
   - the icon provider, the validate-from-project-view action, `ConfigValidationInspection`, `ValidationConsoleFormatter` and the remaining display strings (root-relative).
 
   `ScaffoldingService` keeps the local anchor.
-- [ ] 3.4 `DeltaSpecInspection` reads the main spec through the cached snapshot only.
-- [ ] 3.5 `ConfigValidationInspection` skips its missing-`schema` nudge on a pointer-only config (D5).
+- [x] 3.4 `DeltaSpecInspection` reads the main spec through the cached snapshot only.
+- [x] 3.5 `ConfigValidationInspection` skips its missing-`schema` nudge on a pointer-only config (D5).
 
 ## 4. Tests
 
-- [ ] 4.1 `StoreRootContractTest` replays every captured layout on every captured release. It must match the CLI's path, source, store id and problem code, and on 1.5.0 the global default must not resolve.
-- [ ] 4.2 Resolver unit tests on real temp directories:
+- [x] 4.1 `StoreRootContractTest` replays every captured layout on every captured release. It must match the CLI's path, source, store id and problem code, and on 1.5.0 the global default must not resolve.
+- [x] 4.2 Resolver unit tests on real temp directories:
   - pointer, default store and bare directory;
   - an ancestor root, and a module content root found when the base directory has none;
   - each problem code, including the ones the captures can't reach (`no_registered_stores`, an unreadable metadata file, a store root that is a file);
   - a symlinked store path;
   - no CLI follows the target release.
-- [ ] 4.3 Surface tests in a store project:
+- [x] 4.3 Surface tests in a store project:
   - the tree and changes list show the store;
   - built-in validation reads the store;
   - Sync Specs writes under `<store>/openspec/specs`;
   - init writes locally;
   - a project without a store reads unchanged paths.
-- [ ] 4.4 Threading and invalidation tests:
+- [x] 4.4 Threading and invalidation tests:
   - `snapshot()` does no I/O (fails on a disk read or refresh);
   - adding a pointer re-resolves;
   - the old watch is released on a root change.
-- [ ] 4.5 `OpenSpecRootLiteralHygieneTest` with its allow-list (D8).
-- [ ] 4.6 Mutations, each turning a test red:
+- [x] 4.5 `OpenSpecRootLiteralHygieneTest` with its allow-list (D8).
+- [x] 4.6 Mutations, each turning a test red:
   - the pointer is honored over a planning shape;
   - the default store is honored before 1.7.0;
   - the identity check is skipped;
@@ -82,5 +82,5 @@
   - a store project shows the store's tree;
   - an external change appears;
   - inspections fire on a store spec.
-- [ ] 5.3 CHANGELOG (Unreleased) and `docs/feature-reference.md`. Note that WSL-hosted stores are unsupported.
+- [x] 5.3 CHANGELOG (Unreleased) and `docs/feature-reference.md`. Note that WSL-hosted stores are unsupported.
 - [ ] 5.4 `openspec validate --all --strict` on the branch.

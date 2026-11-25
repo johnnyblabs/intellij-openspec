@@ -168,10 +168,10 @@ public final class ExploreContextService {
     }
 
     private void appendChangeArtifacts(String changeName, StringBuilder context) {
-        String basePath = project.getBasePath();
-        if (basePath == null) return;
+        Path openspec = com.johnnyblabs.openspec.util.OpenSpecFileUtil.openspecNioPath(project);
+        if (openspec == null) return;
 
-        Path changeDir = Path.of(basePath, "openspec", "changes", changeName);
+        Path changeDir = openspec.resolve("changes").resolve(changeName);
         List<Artifact> artifacts = artifactsFromStatus(changeName, changeDir);
         if (artifacts == null) artifacts = artifactsFromWalk(changeDir);
 
@@ -297,10 +297,10 @@ public final class ExploreContextService {
     private static final Pattern NEXT_HEADER_PATTERN = Pattern.compile("^#{2,3} ", Pattern.MULTILINE);
 
     private void appendSpecsDomains(StringBuilder context) {
-        String basePath = project.getBasePath();
-        if (basePath == null) return;
+        Path openspec = com.johnnyblabs.openspec.util.OpenSpecFileUtil.openspecNioPath(project);
+        if (openspec == null) return;
 
-        Path specsDir = Path.of(basePath, "openspec", "specs");
+        Path specsDir = openspec.resolve("specs");
         if (!Files.isDirectory(specsDir)) return;
 
         List<String> ids = capabilitiesFromCli();

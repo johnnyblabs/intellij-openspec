@@ -32,7 +32,7 @@ public record RootResolution(@Nullable Path root, @Nullable Source source, @Null
     }
 
     /** A reason a store root can't be used, with the CLI's diagnostic code. */
-    public record Problem(String code, String message, String fix) {
+    public record Problem(String code, String message, @Nullable String fix) {
     }
 
     static RootResolution none() {

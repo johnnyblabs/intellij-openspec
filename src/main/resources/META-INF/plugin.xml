@@ -29,6 +29,7 @@
 
         <!-- Services -->
         <projectService serviceImplementation="com.johnnyblabs.openspec.services.OpenSpecProjectService"/>
+        <projectService serviceImplementation="com.johnnyblabs.openspec.root.OpenSpecRootResolver"/>
         <projectService serviceImplementation="com.johnnyblabs.openspec.services.ConfigService"/>
         <projectService serviceImplementation="com.johnnyblabs.openspec.services.SpecParsingService"/>
         <projectService serviceImplementation="com.johnnyblabs.openspec.services.UpdatePreviewService"/>

@@ -130,8 +130,19 @@ public class OpenSpecConsolePanel extends JPanel implements Disposable {
      * a {@code null} file so the caller degrades to plain text. Package-visible for tests.
      */
     static ResolvedLocation resolveLocation(Project project, String filePath, int oneBasedLine) {
-        return new ResolvedLocation(resolveFile(filePath, project == null ? null : project.getBasePath()),
+        return new ResolvedLocation(resolveFile(filePath, project == null ? null : baseFor(project, filePath)),
                 toZeroBasedLine(oneBasedLine));
+    }
+
+    /**
+     * What a relative path is relative to: an {@code openspec/}-relative path to the directory holding the resolved
+     * {@code openspec/} (a store's, when the project points at one), anything else to the project.
+     */
+    private static String baseFor(Project project, String filePath) {
+        String openspec = filePath != null && filePath.startsWith("openspec/")
+                ? com.johnnyblabs.openspec.util.OpenSpecFileUtil.openspecPath(project) : null;
+        return openspec != null && openspec.contains("/")
+                ? openspec.substring(0, openspec.lastIndexOf('/')) : project.getBasePath();
     }
 
     /**

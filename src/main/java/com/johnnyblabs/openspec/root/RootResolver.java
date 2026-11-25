@@ -132,6 +132,8 @@ public final class RootResolver {
 
     private static RootResolution resolveStore(String id, RootResolution.Source source, Inputs inputs,
                                                @Nullable Path declaredIn) {
+        RootResolution.Problem idProblem = storeIdProblem(id);
+        if (idProblem != null) return RootResolution.problem(origin(idProblem, id, declaredIn));
         List<StoreEntry> entries = CoordinationService.readStoresFromDisk(inputs.dataPaths());
         StoreEntry entry = entries.stream().filter(e -> id.equals(e.id())).findFirst().orElse(null);
         if (entry == null || entry.root() == null) {
@@ -139,11 +141,17 @@ public final class RootResolver {
             String message = none ? "Unknown store '" + id + "'. No stores are registered."
                     : "Unknown store '" + id + "'. Registered stores: "
                     + entries.stream().map(StoreEntry::id).collect(Collectors.joining(", ")) + ".";
-            String fix = declaredIn != null
-                    ? "Register the store (openspec store register <path> --id " + id + ") or edit " + declaredIn
-                    + " to name a registered store."
-                    : "Register the store (openspec store register <path> --id " + id
-                    + ") or clear the stale global default (openspec config unset defaultStore).";
+            // Formatted, so the CLI's own wording is a message, not an argument being built. Upstream reshapes the fix
+            // for a declared pointer only for an unknown store, and for the global default for both codes.
+            String register = String.format("Register the store (openspec store register <path> --id %s)", id);
+            String fix;
+            if (declaredIn == null) {
+                fix = register + " or clear the stale global default (openspec config unset defaultStore).";
+            } else if (none) {
+                fix = String.format("Run openspec store setup %s or openspec store register <path> first.", id);
+            } else {
+                fix = register + " or edit " + declaredIn + " to name a registered store.";
+            }
             return RootResolution.problem(origin(new RootResolution.Problem(
                     none ? "no_registered_stores" : "unknown_store", message, fix), id, declaredIn));
         }
@@ -153,6 +161,11 @@ public final class RootResolver {
         } catch (InvalidPathException e) {
             return RootResolution.problem(origin(unhealthy(id, entry.root(), "Store root is not a valid path."),
                     id, declaredIn));
+        }
+        if (Files.exists(storeRoot) && !Files.isDirectory(storeRoot)) {
+            // Upstream fails reading the metadata through a file and reports the raw error, with no origin prefix.
+            return RootResolution.problem(new RootResolution.Problem("context_failed",
+                    "ENOTDIR: not a directory, open '" + storeRoot.resolve(STORE_METADATA) + "'", null));
         }
         RootResolution.Problem problem = inspectStore(id, storeRoot);
         if (problem != null) {
@@ -167,7 +180,28 @@ public final class RootResolver {
         return new RootResolution.Problem(p.code(), prefix + p.message(), p.fix());
     }
 
-    /** Identity first, then root health, as upstream's {@code inspectRegisteredStore} orders them. */
+    static final String KEBAB_ID_FIX = "Use kebab-case with lowercase letters, numbers, and single hyphen separators.";
+    private static final java.util.regex.Pattern KEBAB_ID = java.util.regex.Pattern.compile("^[a-z0-9]+(?:-[a-z0-9]+)*$");
+
+    /** Upstream's {@code validateStoreId}: a folder-style name first, then kebab-case. */
+    static @Nullable RootResolution.Problem storeIdProblem(String id) {
+        String problem;
+        if (id.isEmpty()) problem = "Store id must not be empty";
+        else if (id.equals(".") || id.equals("..")) problem = "Store id must not be '" + id + "'";
+        else if (id.contains("/") || id.contains("\\")) problem = "Store id must not contain path separators";
+        else if (!KEBAB_ID.matcher(id).matches()) {
+            problem = "Store id must be kebab-case with lowercase letters, numbers, and single hyphen separators";
+        } else {
+            return null;
+        }
+        return new RootResolution.Problem("invalid_store_id", problem, KEBAB_ID_FIX);
+    }
+
+    /**
+     * Identity first, then root health, as upstream's {@code inspectRegisteredStore} orders them. The metadata must
+     * match upstream's strict schema ({@code version: 1}, a string {@code id}, an optional non-empty {@code remote},
+     * nothing else) and carry a valid id.
+     */
     static @Nullable RootResolution.Problem inspectStore(String id, Path storeRoot) {
         Path metadata = storeRoot.resolve(STORE_METADATA);
         if (!Files.isRegularFile(metadata)) {
@@ -175,7 +209,17 @@ public final class RootResolver {
                     "Store '" + id + "' is missing identity metadata at " + metadata + ". " + doctorFix(id),
                     doctorFix(id));
         }
-        String actual = readMetadataId(metadata);
+        Object raw;
+        try {
+            raw = new Yaml().load(Files.readString(metadata));
+        } catch (Exception e) {
+            return invalidMetadata(String.valueOf(e.getMessage()));
+        }
+        String schema = metadataSchemaProblem(raw);
+        if (schema != null) return invalidMetadata(schema);
+        String actual = String.valueOf(((Map<?, ?>) raw).get("id"));
+        RootResolution.Problem idProblem = storeIdProblem(actual);
+        if (idProblem != null) return idProblem;
         if (!id.equals(actual)) {
             return new RootResolution.Problem("store_identity_mismatch",
                     "Store '" + id + "' metadata id '" + actual + "' does not match its registered id. " + doctorFix(id),
@@ -183,6 +227,28 @@ public final class RootResolver {
         }
         String health = healthProblem(storeRoot);
         return health == null ? null : unhealthy(id, storeRoot.toString(), health);
+    }
+
+    private static RootResolution.Problem invalidMetadata(String detail) {
+        return new RootResolution.Problem("invalid_store_metadata", "Invalid store metadata state: " + detail,
+                "Repair .openspec-store/store.yaml.");
+    }
+
+    /** The first way {@code raw} breaks upstream's metadata schema, in its wording; {@code null} when it fits. */
+    static @Nullable String metadataSchemaProblem(@Nullable Object raw) {
+        if (!(raw instanceof Map<?, ?> map)) return "root: Invalid input: expected object";
+        for (Object key : map.keySet()) {
+            if (!"version".equals(key) && !"id".equals(key) && !"remote".equals(key)) {
+                return "root: Unrecognized key: \"" + key + "\"";
+            }
+        }
+        if (!Integer.valueOf(1).equals(map.get("version"))) return "version: Invalid input: expected 1";
+        if (!(map.get("id") instanceof String)) return "id: Invalid input: expected string";
+        Object remote = map.get("remote");
+        if (remote != null && (!(remote instanceof String r) || r.isEmpty())) {
+            return "remote: Invalid input: expected a non-empty string";
+        }
+        return null;
     }
 
     private static RootResolution.Problem unhealthy(String id, String root, String detail) {
@@ -213,17 +279,7 @@ public final class RootResolver {
     }
 
     private static String doctorFix(String id) {
-        return "Run openspec store doctor " + id + " for details.";
-    }
-
-    private static @Nullable String readMetadataId(Path metadata) {
-        try {
-            Object loaded = new Yaml().load(Files.readString(metadata));
-            if (loaded instanceof Map<?, ?> map && map.get("id") != null) return String.valueOf(map.get("id"));
-        } catch (Exception e) {
-            // An unreadable metadata file is an identity mismatch, reported with a null id.
-        }
-        return null;
+        return "Run openspec store doctor " + id + " to inspect it.";
     }
 
     // ---- Pointer and global config --------------------------------------------------------------------------------

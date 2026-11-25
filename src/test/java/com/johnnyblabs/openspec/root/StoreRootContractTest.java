@@ -58,6 +58,15 @@ class StoreRootContractTest {
     }
 
     @Test
+    void eachCaptureIsFromTheReleaseItIsFiledUnder() throws IOException {
+        for (String version : versions()) {
+            JsonObject world = json(FixtureVersions.CLI.resolve(version).resolve(WORLD)).getAsJsonObject();
+            assertEquals(version, world.get("cli_version").getAsString(), "openspec --version of the " + version + " capture");
+            assertTrue(world.get("integrity").getAsString().startsWith("sha512-"), version);
+        }
+    }
+
+    @Test
     void theReleaseBeforeTheDefaultStoreReallyHadOneSet() throws IOException {
         // Without this the 1.5.0 "default store ignored" scenario would pass even if 1.5.0 honored the key.
         JsonObject world = json(FixtureVersions.CLI.resolve("1.5.0").resolve(WORLD)).getAsJsonObject();
@@ -98,12 +107,35 @@ class StoreRootContractTest {
             if (NOT_SET_UP.contains(code)) {
                 assertNull(actual.problem(), "the CLI's " + code + " is 'not set up' to the plugin");
             } else {
+                JsonObject status = context.getAsJsonArray("status").get(0).getAsJsonObject();
                 assertNotNull(actual.problem(), "expected problem " + code);
                 assertEquals(code, actual.problem().code(), "problem code");
+                // The message and fix are what the tool window shows, so they must read as the CLI's.
+                String message = norm(status.get("message").getAsString().replace("<W>", w.toString()));
+                if (PARSER_DETAIL.contains(code)) {
+                    // The detail after the prefix comes from upstream's YAML and schema libraries.
+                    String prefix = message.substring(0, message.indexOf(PARSER_PREFIX) + PARSER_PREFIX.length());
+                    assertTrue(norm(actual.problem().message()).startsWith(prefix), actual.problem().message());
+                } else {
+                    assertEquals(message, norm(actual.problem().message()), "problem message");
+                }
+                JsonElement fix = status.get("fix");
+                assertEquals(fix == null || fix.isJsonNull() ? null : norm(fix.getAsString().replace("<W>", w.toString())),
+                        actual.problem().fix() == null ? null : norm(actual.problem().fix()), "problem fix");
             }
         }
-        boolean warned = scenario.get("stderr").getAsString().contains("the declaration is ignored");
-        assertEquals(warned, actual.warning() != null, "pointer-ignored warning");
+        String stderr = scenario.get("stderr").getAsString();
+        String expectedWarning = stderr.contains("the declaration is ignored") ? norm(stderr.replace("<W>", w.toString())) : null;
+        assertEquals(expectedWarning, actual.warning() == null ? null : norm(actual.warning()), "pointer-ignored warning");
+    }
+
+    /** Codes whose message ends in a parser's own words; compared up to {@link #PARSER_PREFIX}. */
+    private static final List<String> PARSER_DETAIL = List.of("invalid_store_metadata");
+    private static final String PARSER_PREFIX = "Invalid store metadata state: ";
+
+    /** Separators as the fixtures write them, so a Windows path compares equal. */
+    private static String norm(String s) {
+        return s.replace('\\', '/');
     }
 
     /** Recreates the captured world under {@code w}, with the registry and global config of {@code phase}. */

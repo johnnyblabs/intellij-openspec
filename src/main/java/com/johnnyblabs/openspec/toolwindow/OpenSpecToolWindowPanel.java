@@ -997,6 +997,15 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
             }
         });
 
+        // The root moved (a store pointer added or removed, a store re-registered): rebuild the tree from the new one.
+        project.getMessageBus().connect(this).subscribe(
+                com.johnnyblabs.openspec.root.OpenSpecRootResolver.TOPIC,
+                (com.johnnyblabs.openspec.root.OpenSpecRootResolver.Listener) snapshot -> {
+                    cacheEpoch++;
+                    changeDeltasCache.clear();
+                    debouncedRefresh();
+                });
+
         // AI config changed at runtime (Settings applied / Setup Wizard finished): re-offer or
         // withdraw the Direct API delivery option immediately, without waiting for an unrelated
         // refresh. Connected via connect(this) so the subscription is released on panel dispose.

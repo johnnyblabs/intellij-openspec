@@ -483,9 +483,10 @@ public final class BuiltInValidator {
 
         VirtualFile configFile = OpenSpecFileUtil.getConfigFile(project);
         // Also try direct lookup if VFS missed it
-        if (configFile == null && project.getBasePath() != null) {
+        String openspec = com.johnnyblabs.openspec.util.OpenSpecFileUtil.openspecPath(project);
+        if (configFile == null && openspec != null) {
             configFile = com.intellij.openapi.vfs.LocalFileSystem.getInstance()
-                    .refreshAndFindFileByPath(project.getBasePath() + "/openspec/config.yaml");
+                    .refreshAndFindFileByPath(openspec + "/config.yaml");
             if (configFile != null && config == null) {
                 // Retry loading
                 configService.reload();

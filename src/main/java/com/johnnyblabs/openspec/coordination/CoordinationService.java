@@ -862,8 +862,13 @@ public final class CoordinationService {
         } catch (CliRunner.CliException e) {
             // Never leak stderr / the raw exception detail to the user surface.
             LOG.warn("store/workset write failed", e);
-            return WriteResult.fail("The OpenSpec CLI command could not be run.");
+        } finally {
+            // A store set up, registered or removed can change which root this project resolves to.
+            com.johnnyblabs.openspec.root.OpenSpecRootResolver resolver =
+                    com.johnnyblabs.openspec.root.OpenSpecRootResolver.getInstance(project);
+            if (resolver != null) resolver.invalidate();
         }
+        return WriteResult.fail("The OpenSpec CLI command could not be run.");
     }
 
     /**

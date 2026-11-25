@@ -75,6 +75,16 @@ public class ConfigValidationInspectionTest extends OpenSpecIntegrationTestBase 
                 ProblemHighlightType.INFORMATION, problems[0].getHighlightType());
     }
 
+    public void testAPointerOnlyConfigIsNotNudgedForASchema() throws Exception {
+        // The project's planning lives in the store it names; the store's own config sets the schema.
+        PsiFile file = writeOpenspecConfig("store: demo\n");
+
+        ProblemDescriptor[] problems = new ConfigValidationInspection().checkFile(file,
+                InspectionManager.getInstance(getProject()), false);
+
+        assertEquals("no schema nudge on a pointer-only config", 0, problems.length);
+    }
+
     public void testOperationsAndRulesConfigProducesNoProblems() throws Exception {
         // A real 1.7 config.yaml with `operations` (apply/archive guidance) and list-shaped `rules`
         // — optional keys the CLI accepts (validate clean) and the plugin's reader ignores. The

@@ -25,6 +25,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -48,6 +50,27 @@ class StoreWorksetWriteServiceTest {
         lenient().when(detection.isAvailable()).thenReturn(available);
         lenient().when(detection.getDetectedVersion()).thenReturn(version);
         return service;
+    }
+
+    // ---- A store write re-resolves the project's OpenSpec root -----------------
+
+    @Test
+    void aStoreWriteReResolvesTheRootWhetherItSucceedsOrNot() {
+        CoordinationService service = serviceWith("1.10.0", true);
+        com.johnnyblabs.openspec.root.OpenSpecRootResolver resolver =
+                mock(com.johnnyblabs.openspec.root.OpenSpecRootResolver.class);
+        when(project.getService(com.johnnyblabs.openspec.root.OpenSpecRootResolver.class)).thenReturn(resolver);
+        try (MockedStatic<CliRunner> cli = mockStatic(CliRunner.class)) {
+            cli.when(() -> CliRunner.run(eq(project), argv("store", "unregister", "demo", "--json")))
+                    .thenReturn(new CliRunner.CliResult(0, "{\"status\":[]}", ""));
+            cli.when(() -> CliRunner.run(eq(project), argv("store", "remove", "demo", "--yes", "--json")))
+                    .thenThrow(new CliRunner.CliException("boom"));
+
+            assertTrue(service.unregisterStore("demo").success());
+            assertFalse(service.removeStore("demo").success(), "a failed run still reports failure");
+        }
+        // Registering or removing a store can change which store a pointer or the default store resolves to.
+        verify(resolver, times(2)).invalidate();
     }
 
     // ---- T.2: gated below the 1.5.0 floor, no shell-out ---------------------

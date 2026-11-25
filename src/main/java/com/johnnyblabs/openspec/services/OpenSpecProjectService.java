@@ -60,6 +60,11 @@ public final class OpenSpecProjectService {
         @Nullable
         @Override
         public Object execute(@NotNull Project project, @NotNull Continuation<? super Unit> continuation) {
+            // Resolve the root first (this activity runs off the EDT): a store-backed or ancestor root is known only
+            // once the resolver has read the disk, and everything below asks whether this is an OpenSpec project.
+            com.johnnyblabs.openspec.root.OpenSpecRootResolver resolver =
+                    com.johnnyblabs.openspec.root.OpenSpecRootResolver.getInstance(project);
+            if (resolver != null) resolver.resolveNow();
             if (!OpenSpecFileUtil.isOpenSpecProject(project)) {
                 return Unit.INSTANCE;
             }

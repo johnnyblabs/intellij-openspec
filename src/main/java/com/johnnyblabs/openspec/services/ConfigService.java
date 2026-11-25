@@ -77,8 +77,9 @@ public final class ConfigService {
         VirtualFile configFile = OpenSpecFileUtil.getConfigFile(project);
 
         // If VFS hasn't indexed yet, try direct filesystem access
-        if (configFile == null && project.getBasePath() != null) {
-            String configPath = project.getBasePath() + "/openspec/config.yaml";
+        String openspec = com.johnnyblabs.openspec.util.OpenSpecFileUtil.openspecPath(project);
+        if (configFile == null && openspec != null) {
+            String configPath = openspec + "/config.yaml";
             configFile = LocalFileSystem.getInstance().refreshAndFindFileByPath(configPath);
         }
 

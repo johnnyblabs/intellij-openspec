@@ -142,7 +142,7 @@ public final class SpecSyncService {
         // Final VFS refresh
         VfsUtil.markDirtyAndRefresh(false, true, true,
                 LocalFileSystem.getInstance().findFileByPath(
-                        project.getBasePath() + "/openspec/specs"));
+                        com.johnnyblabs.openspec.util.OpenSpecFileUtil.openspecPath(project) + "/specs"));
 
         return postMergeWarnings;
     }
@@ -225,7 +225,7 @@ public final class SpecSyncService {
     }
 
     private String getMainSpecPath(String capabilityName) {
-        return project.getBasePath() + "/openspec/specs/" + capabilityName + "/spec.md";
+        return com.johnnyblabs.openspec.util.OpenSpecFileUtil.openspecPath(project) + "/specs/" + capabilityName + "/spec.md";
     }
 
     /**

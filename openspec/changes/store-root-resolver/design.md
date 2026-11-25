@@ -120,7 +120,9 @@ It also covers an identity mismatch and an unhealthy store, appended to the regi
 
 The output is `world.json` (every directory and file, the XDG directories, and per phase the registry and global config as the CLI wrote them) and `scenarios.json`. Paths are sanitized to `<W>`. Fixtures go under `src/test/resources/fixtures/cli/<ver>/store-root/` for 1.5.0, 1.7.0, 1.15.0, 2.0.0, 2.1.0 and 2.1.1. On 1.5.0 the default store is written with `--allow-unknown`, so that release's capture really holds one and shows it ignored.
 
-`StoreRootContractTest` recreates each layout and resolves it with the fixture's release as the followed release. It asserts the same path, source, store id and problem code as the CLI. On 1.5.0 the global-default layout must resolve to no root.
+`StoreRootContractTest` recreates each layout and resolves it with the fixture's release as the followed release. It asserts the CLI's path, source, store id, problem code, message and fix, and the pointer-ignored warning, word for word. The one exception is the YAML or schema detail inside `invalid_store_metadata`, which comes from upstream's parser libraries; there it compares up to that detail. On 1.5.0 the global-default layouts must resolve to no root. Each capture records `openspec --version` and the npm integrity, and the test checks the version matches the folder.
+
+The layouts also cover the cases a store pointer can go wrong in: no store registered, an invalid store id, a `config.yml` pointer, an empty `store:` key, unparseable YAML, a stale or empty default store, store metadata that is unparseable, lacks `version: 1` or has an unknown key, and a registered path that is a file. The Gradle test task points the CLI's machine-wide folders at empty build folders, so a developer's own stores never reach a test.
 
 ### D8. Hygiene test
 
