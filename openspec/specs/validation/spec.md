@@ -56,6 +56,10 @@ When the CLI is available and `validate` completes with parseable output, its re
 - **AND** under `--strict`, every generation's valid-set SHALL be a subset of the strict anchor's (the 1.6.0 default map, which `--strict` reproduced on every generation through 1.13)
 - **AND** a generation that relaxes a verdict beyond the anchor SHALL surface as a parity failure that prompts advancing the anchor
 
+#### Scenario: Release-gated rules sit outside the anchor guard
+- **WHEN** the shared verdict-parity corpus is compared with the laxest anchor generation
+- **THEN** the built-in validator SHALL follow the anchor release for that comparison, so rules a later release introduced do not apply there, and those rules SHALL instead be held to each release's own captured verdicts (see "The built-in validator follows a CLI release")
+
 ### Requirement: Config validation
 
 The plugin SHALL validate `openspec/config.yaml` for structural correctness, applying only rules that mirror upstream's contract. Config validation SHALL be display-only and non-failing: it SHALL NOT emit ERROR-severity issues or fail any verdict. The file SHALL be optional, and it SHALL check only the `schema`, `context` and `rules` fields upstream defines.
@@ -214,8 +218,8 @@ The plugin SHALL validate main specs for structural completeness: requirement bl
 - **THEN** the validator SHALL report the `spec-scenario-required` ERROR, applying CLI 1.6 fence-aware scenario counting
 
 #### Scenario: Scenario missing WHEN or THEN is informational only
-- **WHEN** a `#### Scenario:` block is missing a `WHEN` clause, a `THEN` clause, or both
-- **THEN** the validator SHALL report an INFO with code `spec-scenario-clauses` and the file's verdict SHALL be unaffected, because the CLI performs no clause-structure validation
+- **WHEN** the built-in validator follows a release below 1.16.0 and a `#### Scenario:` block is missing a `WHEN` clause, a `THEN` clause, or both
+- **THEN** the validator SHALL report an INFO with code `spec-scenario-clauses` and the file's verdict SHALL be unaffected, because those releases perform no clause-structure validation
 
 #### Scenario: Verdict parity with the 1.6 CLI on demoted main-spec rules
 - **WHEN** a main spec that the captured real 1.6.0 CLI reports `valid` (e.g. one that is untitled, or has a clauseless scenario, but no ERROR-class problem) is validated by the built-in validator in default mode
@@ -240,8 +244,8 @@ The plugin SHALL validate main specs for structural completeness: requirement bl
 #### Scenario: Title and clause severities
 - **WHEN** a main spec has no `# Title` heading
 - **THEN** that SHALL be a WARNING (`spec-title-required`)
-- **WHEN** a scenario lacks a `WHEN` or `THEN` clause
-- **THEN** that SHALL be an INFO (`spec-scenario-clauses`)
+- **WHEN** a scenario lacks a `WHEN` or `THEN` clause and the release followed is below 1.16.0
+- **THEN** that SHALL be an INFO (`spec-scenario-clauses`); from 1.16.0 the step check applies instead
 
 #### Scenario: RFC keyword severity follows the body
 - **WHEN** a requirement body has prose but no whole-word `SHALL` or `MUST`
@@ -280,7 +284,7 @@ Strict validation SHALL be a per-invocation choice, mirroring `validate --strict
 
 #### Scenario: CLI-absent strict flips the verdict on warnings
 - **WHEN** a strict run executes with the CLI absent and the built-in fallback produces a result whose only issues are WARNINGs
-- **THEN** the verdict SHALL flip to FAILED only if at least one WARNING is in the CLI-mirroring strict-warning set (a warning the real CLI also emits and fails on under `--strict`) — currently the missing-`SHALL`/`MUST` warning (`spec-rfc-keywords`/`spec-rfc-keyword-in-header`); a fallback whose WARNINGs are each either a plugin-invented lint the CLI never emits (`spec-title-required`, `change-artifact-missing`, `change-schema-incompatible`, `delta-removed-fields`) or a condition the CLI reports as an ERROR rather than a warning (`delta-spec-sections`) SHALL PASS, because the plugin MUST NOT be more restrictive than the CLI
+- **THEN** the verdict SHALL flip to FAILED only if at least one WARNING is in the CLI-mirroring strict-warning set for the release followed (a warning that release also emits and fails on under `--strict`) — the missing-`SHALL`/`MUST` warning (`spec-rfc-keywords`/`spec-rfc-keyword-in-header`) on every release, the too-long warning (`spec-requirement-too-long`) from 1.14.1, the scenario step warning (`spec-scenario-steps`) from 1.16.0, and the MODIFIED growth warning (`delta-modified-too-long`) from 2.1.1; a fallback whose WARNINGs are each either a plugin-invented lint the CLI never emits (`spec-title-required`, `change-artifact-missing`, `change-schema-incompatible`, `delta-removed-fields`) or a condition the CLI reports as an ERROR rather than a warning (`delta-spec-sections`) SHALL PASS, because the plugin MUST NOT be more restrictive than the CLI
 - **AND** when a flip does occur, the warning issues SHALL remain labeled WARNING (not re-severity-ed), and the result SHALL disclose that strict counted the warnings as failures
 
 #### Scenario: Missing-keyword warning flips a strict fallback verdict
@@ -301,7 +305,7 @@ Strict validation SHALL be a per-invocation choice, mirroring `validate --strict
 
 #### Scenario: Built-in fallback under strict
 - **WHEN** the CLI is absent and a strict run is requested
-- **THEN** the fallback SHALL fail on any ERROR, and on a WARNING only when it is in the CLI-mirroring strict set: the missing-`SHALL`/`MUST` warnings (`spec-rfc-keywords`, `spec-rfc-keyword-in-header`)
+- **THEN** the fallback SHALL fail on any ERROR, and on a WARNING only when it is in the CLI-mirroring strict set for the release followed: the missing-`SHALL`/`MUST` warnings (`spec-rfc-keywords`, `spec-rfc-keyword-in-header`), `spec-requirement-too-long` from 1.14.1, `spec-scenario-steps` from 1.16.0, and `delta-modified-too-long` from 2.1.1
 - **AND** every other built-in non-config WARNING SHALL NOT fail the strict verdict, and config guidance SHALL stay non-failing
 
 #### Scenario: Strict run output
@@ -609,3 +613,107 @@ When the CLI is available and `validate --json` answers with a configuration err
 #### Scenario: Other error responses still fall back
 - **WHEN** the CLI answers with any other item-less error response, such as the captured `invalid_item` or `no_openspec_root` response
 - **THEN** the plugin SHALL use the built-in validator's result as the verdict, as before
+
+### Requirement: The built-in validator follows a CLI release
+
+The built-in validator SHALL apply each rule a CLI release introduced only when it follows that release or a later one. It SHALL follow the detected CLI's version, the plugin's target release when no CLI is detected, and no release-gated rule when the detected version can't be read. Its verdicts SHALL match each captured release's on the release-parity corpus, except where it is knowingly laxer.
+
+#### Scenario: A detected CLI decides the rules
+- **WHEN** CLI 1.15.0 is detected and its validate run fails, so the built-in validator answers
+- **THEN** the validator SHALL apply 1.15.0's rules, without the 1.16 step check or the 2.1.1 growth check
+
+#### Scenario: No CLI follows the target release
+- **WHEN** no CLI is detected
+- **THEN** the validator SHALL follow the plugin's target release
+
+#### Scenario: An unreadable version applies no gated rule
+- **WHEN** a CLI is detected but its version can't be read as a release number
+- **THEN** the validator SHALL apply none of the release-gated rules
+
+#### Scenario: Verdicts match each captured release
+- **WHEN** the built-in validator, following a captured release, validates the release-parity corpus in default and in strict mode
+- **THEN** its verdict for every item SHALL equal that release's `valid` flag, except the documented items where the release fails a warning the plugin leaves to the CLI, on which the plugin SHALL pass
+
+### Requirement: Long requirements are flagged from CLI 1.14.1
+
+From release 1.14.1, a main-spec requirement or an ADDED delta requirement whose requirement text is over 500 characters SHALL be a WARNING with code `spec-requirement-too-long`, which fails a strict run. The text SHALL be measured as the CLI measures it: body lines up to the first heading, without blank, fenced or metadata-only lines, trimmed and joined by newlines.
+
+#### Scenario: A long main-spec requirement
+- **WHEN** a main-spec requirement's text is 501 characters and the release followed is 1.14.1 or later
+- **THEN** the validator SHALL report a `spec-requirement-too-long` WARNING, the default verdict SHALL pass, and a strict run SHALL fail
+
+#### Scenario: Exactly at the limit
+- **WHEN** the text is exactly 500 characters
+- **THEN** the validator SHALL NOT report it
+
+#### Scenario: A long ADDED requirement
+- **WHEN** an ADDED delta requirement's text is over 500 characters
+- **THEN** the validator SHALL report a `spec-requirement-too-long` WARNING for that delta
+
+#### Scenario: An older release
+- **WHEN** the release followed is below 1.14.1
+- **THEN** the validator SHALL NOT report the too-long warning
+
+### Requirement: Scenarios need a trigger and an outcome from CLI 1.16
+
+From release 1.16.0, a `Scenario:`-labeled level-4 block (label in any case) with a body but no trigger (WHEN or GIVEN) or no outcome (THEN) SHALL be a WARNING `spec-scenario-steps`, in main specs and ADDED and MODIFIED deltas. A keyword SHALL count when bolded in any case or as a bare uppercase word on a body line. The header and fenced lines SHALL NOT count; `AND` adds nothing by itself.
+
+#### Scenario: Missing trigger in a main spec
+- **WHEN** a main-spec scenario has `- **THEN** y` but no WHEN or GIVEN step, and the release followed is 1.16.0 or later
+- **THEN** the validator SHALL report a `spec-scenario-steps` WARNING, the default verdict SHALL pass, and a strict run SHALL fail
+
+#### Scenario: Missing outcome in an ADDED delta
+- **WHEN** an ADDED delta requirement's scenario has `- **GIVEN** x` but no THEN step
+- **THEN** the validator SHALL report a `spec-scenario-steps` WARNING for that delta
+
+#### Scenario: How a step is written
+- **WHEN** a scenario's lines read `- **Given:** x`, `- __when__ y`, `- THEN z`, `- **AND** WHEN a` or `<!-- THEN -->`
+- **THEN** each SHALL supply its keyword, while a lowercase bare `when`, an `AND` line with no keyword, a keyword in the scenario header and a keyword inside a fenced block SHALL NOT
+
+#### Scenario: A scenario header with no body
+- **WHEN** a scenario header has no body under it
+- **THEN** the step check SHALL NOT report it, because that header already fails on its own
+
+#### Scenario: Removed and renamed requirements
+- **WHEN** a delta has REMOVED or RENAMED requirements
+- **THEN** the step check SHALL NOT apply to them
+
+### Requirement: A MODIFIED requirement that grows too long is flagged from CLI 2.1.1
+
+From release 2.1.1, a MODIFIED requirement whose text is over 500 characters and longer than the main spec's current text SHALL be a WARNING `delta-modified-too-long`, failing a strict run. The current text SHALL be that of the main-spec requirement of that name, or of the one it was renamed from, following rename chains. With no such requirement, or no main spec, there SHALL be no check.
+
+#### Scenario: A short requirement grows past the limit
+- **WHEN** a MODIFIED delta replaces a short main-spec requirement with text over 500 characters, and the release followed is 2.1.1
+- **THEN** the validator SHALL report a `delta-modified-too-long` WARNING, the default verdict SHALL pass, and a strict run SHALL fail
+
+#### Scenario: An older release
+- **WHEN** the same delta is validated following 2.1.0 or earlier
+- **THEN** the validator SHALL NOT report the growth warning
+
+#### Scenario: Already long in the main spec
+- **WHEN** the main spec's requirement text is already at least as long as the MODIFIED text
+- **THEN** the validator SHALL NOT report the growth warning
+
+#### Scenario: A renamed requirement
+- **WHEN** a delta renames a short main-spec requirement and MODIFIES it under the new name with text over 500 characters
+- **THEN** the validator SHALL compare against the renamed-from requirement and report the growth warning
+
+### Requirement: Delta front matter is left with the change from CLI 2.1.1
+
+From release 2.1.1, a front-matter block at the start of a delta spec SHALL be ignored by the built-in validator. It is front matter only when line 1 is exactly `---`, its first non-comment line looks like a key, and it closes with `---` before any `##` heading or requirement header. The plugin's own merge SHALL never carry front matter into a main spec, from a delta or the main spec.
+
+#### Scenario: A delta that starts with front matter
+- **WHEN** a delta spec starts with `---`, `owner: team-a`, `---`, followed by valid delta sections, and the release followed is 2.1.1
+- **THEN** the built-in validator SHALL report no issue for the front matter, and the change SHALL validate as it would without it
+
+#### Scenario: Not front matter
+- **WHEN** a delta spec starts with ` ---` (indented), or with `---` followed by prose with no key, by a `##` heading before the next `---`, or by no closing `---`
+- **THEN** the block SHALL NOT be treated as front matter
+
+#### Scenario: A byte-order mark or CRLF line endings
+- **WHEN** the delta starts with a byte-order mark or uses CRLF line endings
+- **THEN** the block SHALL be recognized as it would be without them
+
+#### Scenario: Merging a delta with front matter
+- **WHEN** the plugin's own merge applies a delta that starts with front matter, or writes to a main spec that starts with it
+- **THEN** the merged main spec SHALL NOT receive the delta's front-matter lines, and the main spec's own Purpose SHALL be read past its front matter
