@@ -98,7 +98,7 @@
 
 ## 5. The one-time migration notice
 
-- [ ] 5.1 Add the startup notice (design decision 8). It checks off the UI thread after detection, and offers Update…, which calls `previewAndApply` with origin `ACTION`. Showing it records it for the project in `PropertiesComponent`.
+- [ ] 5.1 Add the startup notice (design decision 8). It checks off the UI thread after detection, from the existing startup activity, and offers Update…, which runs the registered Update OpenSpec… action. Showing it records it for the project in `PropertiesComponent`.
   - Verify with a light test over the captured layouts:
     - `update-migration/{unedited,edited,nested-commands}/before.json` with CLI 2.0.0 and 2.1.1 shows it once;
     - a second check doesn't show it again;

@@ -79,6 +79,8 @@ public final class OpenSpecProjectService {
                     if (!CliVersion.atLeast(version, "1.3.0")) {
                         OpenSpecNotifier.cliBelowFloor(project, version != null ? version : "unknown");
                     }
+                    // A 1.x layout on a 2.x CLI: say once that Update migrates the project to OpenSpec 2.
+                    MigrationNoticeStartup.notifyOnce(project, version);
                 }
             }
 

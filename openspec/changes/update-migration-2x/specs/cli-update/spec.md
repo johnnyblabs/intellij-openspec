@@ -83,14 +83,14 @@ After an applied `openspec update`, the plugin SHALL read the run's text output 
 
 ### Requirement: A 1.x project is told once to migrate
 
-When the detected CLI is 2.0.0 or later and an OpenSpec project holds a skill copy that a 1.x release generated, unedited and not a link, in a tool folder other than `.agents`, the plugin SHALL notify once per project that Update migrates it to OpenSpec 2. The notice SHALL offer an action that opens the update preview, and SHALL NOT be shown again for that project.
+When the detected CLI is 2.0.0 or later and an OpenSpec project holds a skill copy that a 1.x release generated, unedited, not a link and with nothing of the user's beside it, in a tool folder other than `.agents`, the plugin SHALL notify once per project that Update migrates it to OpenSpec 2. The notice SHALL offer an action that opens the update preview, and SHALL NOT be shown again for that project.
 
 #### Scenario: 1.x project with a 2.x CLI
 - **WHEN** a project set up by CLI 1.17.0 opens with CLI 2.1.1 detected
 - **THEN** the plugin SHALL show the migration notice, and its Update action SHALL open the update preview
 
 #### Scenario: Already migrated
-- **WHEN** a 2.x update has replaced the project's tool-folder copies, including one where CLI 2.0.0 kept edited copies
+- **WHEN** a 2.x update has replaced the project's tool-folder copies, including one where CLI 2.0.0 kept edited copies or a skill folder holding the user's notes
 - **THEN** the plugin SHALL NOT show the migration notice
 
 #### Scenario: 1.x CLI

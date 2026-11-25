@@ -144,12 +144,12 @@ After an applied update with any entry, the plugin shows one notification listin
 
 ### 8. One-time migration notice
 
-The notice runs at project open, off the UI thread, after CLI detection. It shows when all of these hold:
+The notice runs from the existing startup activity (`OpenSpecProjectService.StartupDetection`, a `ProjectActivity`, already registered), right after its first CLI detection, off the UI thread. No new extension point or listener is added. It shows when all of these hold:
 - the detected CLI is 2.0.0 or later;
 - the project is an OpenSpec project;
-- the project holds a file a 2.x update replaces and that a 1.x release generated: a released (fingerprint-matching) `SKILL.md` that is not a link, under a tool folder's `skills/openspec-*/` other than `.agents`.
+- the project holds a file a 2.x update replaces and that a 1.x release generated: a released (fingerprint-matching) `SKILL.md` that is not a link, alone in its `skills/openspec-*/` folder apart from OS junk, in a tool folder (current, former or legacy) other than `.agents`. A folder holding the user's notes is the user's in upstream's own reading (`copy-beside-notes`), and 2.0.0 keeps it whole after migrating, so it doesn't count.
 
-The notice reads "This project was set up by OpenSpec 1.x. Run Update to migrate it to OpenSpec 2." Its **Update…** action opens the preview (`UpdatePreviewService.previewAndApply`, origin `ACTION`). Showing the notice records it for the project in `PropertiesComponent`, so it appears once per project.
+The notice reads "This project was set up by OpenSpec 1.x. Run Update to migrate it to OpenSpec 2." Its **Update…** button runs the registered Update OpenSpec… action through `ActionLauncher.notificationAction`, so it does exactly what the menu does (the preview on CLI 1.15+, the console output, the cleanup flow). Showing the notice records it for the project in `PropertiesComponent`, so it appears once per project.
 
 - **Why released files rather than the marker:** 1.x writes the marker too. Files 2.0.0 kept as edited are not released, so a project 2.0.0 migrated doesn't trigger the notice. Any 2.x update removes the released copies, so the notice can't reappear after a migration.
 - **A project with only a shared folder** (Codex, say) has nothing to migrate but its shared copies, which a 2.x update refreshes like any update. No notice.
