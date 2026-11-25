@@ -464,6 +464,82 @@ class WorkflowProfileServiceTest {
         }
     }
 
+    /**
+     * Re-gating on a CLI change: the active workflows are re-resolved only when detection reports a different CLI than
+     * the one they were resolved for. Config captures are the real 1.14.3 {@code config list --json} outputs.
+     */
+    @Nested
+    class FollowsACliChange {
+
+        @Mock CliDetectionService detection;
+
+        private void cli(boolean available, String version) {
+            lenient().when(project.getService(CliDetectionService.class)).thenReturn(detection);
+            lenient().when(detection.isAvailable()).thenReturn(available);
+            lenient().when(detection.getDetectedVersion()).thenReturn(version);
+        }
+
+        @Test
+        void anUpgradeAcrossTheCoreBoundaryAddsUpdate() {
+            String json = fixture("1.14.3/errors/config-list-default.stdout");
+            try (MockedStatic<CliRunner> cliStatic = mockStatic(CliRunner.class)) {
+                cliStatic.when(() -> CliRunner.run(eq(project), argv("config", "list", "--json")))
+                        .thenReturn(new CliRunner.CliResult(0, json, ""));
+                cli(true, "1.5.0");
+                assertFalse(service.isWorkflowEnabled("update"), "sanity: 1.5's core set has no update");
+                assertFalse(service.needsRefreshFor(true, "1.5.0"), "the same CLI again");
+
+                cli(true, "1.6.0");
+                assertTrue(service.needsRefreshFor(true, "1.6.0"));
+                service.refresh();
+                assertTrue(service.isWorkflowEnabled("update"), "1.6's core set adds update");
+                assertFalse(service.needsRefreshFor(true, "1.6.0"), "recorded the version it resolved for");
+            }
+        }
+
+        @Test
+        void nothingToRefreshBeforeTheFirstResolve() {
+            assertFalse(service.needsRefreshFor(true, "1.6.0"));
+        }
+
+        @Test
+        void theCliDisappearingFallsBackToTheCurrentCoreSet() {
+            String json = fixture("1.14.3/errors/config-list-default.stdout");
+            try (MockedStatic<CliRunner> cliStatic = mockStatic(CliRunner.class)) {
+                cliStatic.when(() -> CliRunner.run(eq(project), argv("config", "list", "--json")))
+                        .thenReturn(new CliRunner.CliResult(0, json, ""));
+                cli(true, "1.5.0");
+                assertFalse(service.isWorkflowEnabled("update"), "sanity");
+
+                cliStatic.when(() -> CliRunner.run(eq(project), argv("config", "list", "--json")))
+                        .thenThrow(new CliRunner.CliException("not found"));
+                cli(false, null);
+                assertTrue(service.needsRefreshFor(false, null), "the CLI went away");
+                service.refresh();
+                assertEquals(WorkflowProfileService.CURRENT_CORE, service.getActiveWorkflows());
+                assertFalse(service.needsRefreshFor(false, null));
+            }
+        }
+
+        @Test
+        void theCliAppearingSwitchesToTheStoredCustomList() {
+            try (MockedStatic<CliRunner> cliStatic = mockStatic(CliRunner.class)) {
+                cliStatic.when(() -> CliRunner.run(eq(project), argv("config", "list", "--json")))
+                        .thenThrow(new CliRunner.CliException("not found"));
+                cli(false, null);
+                assertTrue(service.isWorkflowEnabled("sync"), "sanity: the core fallback has sync");
+
+                cliStatic.when(() -> CliRunner.run(eq(project), argv("config", "list", "--json")))
+                        .thenReturn(new CliRunner.CliResult(0, fixture("1.14.3/errors/config-list-custom.stdout"), ""));
+                cli(true, "1.14.3");
+                assertTrue(service.needsRefreshFor(true, "1.14.3"));
+                service.refresh();
+                assertEquals("custom", service.getActiveProfileName());
+                assertTrue(service.isWorkflowEnabled("verify"), "from the stored custom list");
+            }
+        }
+    }
+
     private static String fixture(String name) {
         String path = "/fixtures/cli/" + name;
         try (java.io.InputStream is = WorkflowProfileServiceTest.class.getResourceAsStream(path)) {

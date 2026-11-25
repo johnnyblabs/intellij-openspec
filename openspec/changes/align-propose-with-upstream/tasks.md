@@ -63,9 +63,9 @@
 
 ## 5. Gating follows a CLI change
 
-- [ ] 5.1 Record in `WorkflowProfileService` the CLI version (or none) its active workflows were resolved for, and add `onCliDetected(available, version)`, which refreshes on a pooled thread only when that value differs.
-- [ ] 5.2 Register a `<projectListeners>` listener on `CliDetectionService.TOPIC` that calls `onCliDetected`.
-- [ ] 5.3 Tests:
+- [x] 5.1 Record in `WorkflowProfileService` the CLI version (or none) its active workflows were resolved for, and add `onCliDetected(available, version)`, which refreshes on a pooled thread only when that value differs.
+- [x] 5.2 Register a `<projectListeners>` listener on `CliDetectionService.TOPIC` that calls `onCliDetected`.
+- [x] 5.3 Tests:
   - on core, 1.5.0 → 1.6.0 adds `update` and enables an `update`-gated action;
   - the same version doesn't refresh;
   - CLI removed resolves to the current core set;

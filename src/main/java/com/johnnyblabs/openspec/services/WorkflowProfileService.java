@@ -48,6 +48,12 @@ public final class WorkflowProfileService {
     private volatile Set<String> activeWorkflows;
     private volatile String activeProfileName;
     private volatile boolean hasChangedSinceLastRefresh;
+    /** The CLI version the active workflows were resolved for, or {@code null} when no CLI was available. */
+    private volatile @Nullable String resolvedForCli;
+    /** Test seam: answers {@code config list --json} in place of the CLI, on any thread. */
+    private volatile java.util.function.@Nullable Supplier<CliRunner.CliResult> configListForTest;
+    /** What runs on the EDT after a re-resolve: updates the profile widget and re-checks toolbar actions. */
+    private volatile java.util.function.Consumer<Project> afterCliRefresh = WorkflowProfileService::updateGatingUi;
 
     public WorkflowProfileService(Project project) {
         this.project = project;
@@ -107,6 +113,46 @@ public final class WorkflowProfileService {
     }
 
     /**
+     * Whether a detection that reports {@code available} and {@code version} calls for re-resolving the active
+     * workflows: true when they were resolved for a different CLI (another version, or the CLI appearing or
+     * disappearing). False before the first resolve, which reads the detected version itself.
+     */
+    boolean needsRefreshFor(boolean available, @Nullable String version) {
+        if (activeWorkflows == null) return false;
+        return !java.util.Objects.equals(available ? version : null, resolvedForCli);
+    }
+
+    /**
+     * Called for every CLI detection ({@link CliDetectionService#TOPIC}, from the detecting thread). When the CLI
+     * changed since the active workflows were resolved, re-resolves them on a pooled thread, because resolving may
+     * run the CLI, then updates the profile widget and asks toolbars to re-check their actions.
+     */
+    public void onCliDetected(boolean available, @Nullable String version) {
+        if (!needsRefreshFor(available, version)) return;
+        var app = com.intellij.openapi.application.ApplicationManager.getApplication();
+        app.executeOnPooledThread(() -> {
+            if (project.isDisposed() || !needsRefreshFor(available, version)) return;
+            refresh();
+            app.invokeLater(() -> afterCliRefresh.accept(project),
+                    com.intellij.openapi.application.ModalityState.any(), project.getDisposed());
+        });
+    }
+
+    private static void updateGatingUi(Project project) {
+        var bar = com.intellij.openapi.wm.WindowManager.getInstance().getStatusBar(project);
+        if (bar != null) bar.updateWidget(com.johnnyblabs.openspec.statusbar.OpenSpecProfileStatusBarWidget.ID);
+        com.intellij.ide.ActivityTracker.getInstance().inc();
+    }
+
+    void setConfigListForTest(java.util.function.@Nullable Supplier<CliRunner.CliResult> configList) {
+        this.configListForTest = configList;
+    }
+
+    void setAfterCliRefreshForTest(java.util.function.Consumer<Project> after) {
+        this.afterCliRefresh = after;
+    }
+
+    /**
      * Returns true if the most recent {@link #refresh()} call resolved a workflows
      * set that differs from the previously cached set. Always false on initial load
      * (lazy init or first refresh with no prior state).
@@ -125,7 +171,18 @@ public final class WorkflowProfileService {
 
     private Snapshot resolve() {
         try {
-            CliRunner.CliResult result = CliRunner.run(project, com.johnnyblabs.openspec.util.CliCommands.configList());
+            return resolveFromCli();
+        } finally {
+            CliDetectionService detection = project.getService(CliDetectionService.class);
+            resolvedForCli = detection != null && detection.isAvailable() ? detection.getDetectedVersion() : null;
+        }
+    }
+
+    private Snapshot resolveFromCli() {
+        try {
+            var seam = configListForTest;
+            CliRunner.CliResult result = seam != null ? seam.get()
+                    : CliRunner.run(project, com.johnnyblabs.openspec.util.CliCommands.configList());
             if (CliJson.read(result) instanceof CliJson.Ok ok && ok.object() != null) {
                 return parseSnapshot(ok.object());
             }

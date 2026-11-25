@@ -15,6 +15,12 @@
          copying the command to the clipboard. -->
     <depends optional="true" config-file="openspec-terminal.xml">org.jetbrains.plugins.terminal</depends>
 
+    <projectListeners>
+        <!-- Re-gates workflow actions when the detected OpenSpec CLI changes during a session. -->
+        <listener class="com.johnnyblabs.openspec.services.CliProfileRegate"
+                  topic="com.johnnyblabs.openspec.services.CliDetectionService$Listener"/>
+    </projectListeners>
+
     <extensions defaultExtensionNs="com.intellij">
         <!-- Search Everywhere: content search over spec requirement bodies + scenario text
              (re-homes the reach the retired Browse-tree content-search field provided). -->
