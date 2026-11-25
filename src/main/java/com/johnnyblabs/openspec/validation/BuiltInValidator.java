@@ -38,6 +38,9 @@ public final class BuiltInValidator {
     // SHOULD/MAY never satisfied `openspec validate`; accepting them made the plugin laxer
     // than the client it wraps. "SHALL NOT" still satisfies via the SHALL word match.
     private static final Pattern RFC_KEYWORD_PATTERN = Pattern.compile("\\b(SHALL|MUST)\\b");
+    /** A level-2 section heading, where a requirement block ends. */
+    private static final Pattern NEXT_SECTION = Pattern.compile("^##(?!#)", Pattern.MULTILINE);
+
     /** A scenario header. The label matches in any case, as OpenSpec matches it ({@code #### scenario:} counts). */
     private static final Pattern SCENARIO_PATTERN = Pattern.compile("^#{4} (?i:Scenario):.+", Pattern.MULTILINE);
     private static final Pattern CLAUSE_PATTERN = Pattern.compile("^-\\s+\\*{0,2}(GIVEN|WHEN|THEN|AND)\\*{0,2}\\b", Pattern.MULTILINE);
@@ -53,9 +56,29 @@ public final class BuiltInValidator {
     private volatile @org.jetbrains.annotations.Nullable String releaseForTest;
     private volatile boolean releasePinned;
 
+    /** The release a run in progress on this thread follows ({@link #following}), so every file sees the same one. */
+    private final ThreadLocal<String[]> runRelease = new ThreadLocal<>();
+
     /** The CLI release whose rules this validator follows (see {@link ValidationRelease}). */
     public @org.jetbrains.annotations.Nullable String release() {
+        String[] inRun = runRelease.get();
+        if (inRun != null) return inRun[0];
         return releasePinned ? releaseForTest : ValidationRelease.followed(project);
+    }
+
+    /**
+     * Runs {@code validation} following {@code release} for every file it reads on this thread, so one run applies one
+     * release's rules even if CLI detection finishes meanwhile. The caller passes the same release to the strict flip.
+     */
+    public <T> T following(@org.jetbrains.annotations.Nullable String release, java.util.function.Supplier<T> validation) {
+        String[] previous = runRelease.get();
+        runRelease.set(new String[]{release});
+        try {
+            return validation.get();
+        } finally {
+            if (previous == null) runRelease.remove();
+            else runRelease.set(previous);
+        }
     }
 
     /** Follows {@code release} (which may be {@code null}: no release-gated rule) until cleared. */
@@ -191,7 +214,10 @@ public final class BuiltInValidator {
             // Find the content between this requirement and the next requirement or end
             int nextReq = findNextRequirement(content, reqMatcher.end());
             String reqContent = content.substring(reqMatcher.end(), nextReq);
-            String reqRaw = rawContent.substring(reqStart, nextReq);
+            // The block OpenSpec reads ends at the next requirement or the next `##` section, whichever comes first.
+            Matcher nextSection = NEXT_SECTION.matcher(content);
+            int blockEnd = nextSection.find(reqMatcher.end()) ? Math.min(nextReq, nextSection.start()) : nextReq;
+            String reqRaw = rawContent.substring(reqStart, blockEnd);
             checkLength(reqRaw, reqHeader, path, reqLine, release, issues, "Requirement");
 
             if (!RFC_KEYWORD_PATTERN.matcher(reqContent).find()) {

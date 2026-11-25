@@ -84,8 +84,7 @@ public class OpenSpecValidateAction extends OpenSpecBaseAction {
                             () -> CliRunner.run(project, cliArgs(target)));
                 } else {
                     // No CLI available — the built-in validator is the full fallback verdict.
-                    finalResult = applyStrictFallbackVerdict(
-                            builtInValidate(project, validator, target), target.strict(), validator.release());
+                    finalResult = followedFallback(project, validator, target);
                 }
 
                 ValidationResult result = finalResult;
@@ -119,9 +118,18 @@ public class OpenSpecValidateAction extends OpenSpecBaseAction {
         } catch (Exception ex) {
             // CLI failed to run or rejected the run — fall back to the full built-in validator, never a
             // blind pass. Apply the per-run strict verdict flip to the fallback.
-            return applyStrictFallbackVerdict(builtInValidate(project, validator, target), target.strict(),
-                    validator.release());
+            return followedFallback(project, validator, target);
         }
+    }
+
+    /**
+     * The built-in fallback verdict, with the release it follows read once: the same release decides which rules the run
+     * applies and which of their warnings fail it under strict.
+     */
+    private static ValidationResult followedFallback(Project project, BuiltInValidator validator, ValidateTarget target) {
+        String release = validator.release();
+        ValidationResult result = validator.following(release, () -> builtInValidate(project, validator, target));
+        return applyStrictFallbackVerdict(result, target.strict(), release);
     }
 
     /**

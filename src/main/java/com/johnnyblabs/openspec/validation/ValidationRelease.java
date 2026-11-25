@@ -24,11 +24,16 @@ public final class ValidationRelease {
     private ValidationRelease() {
     }
 
-    /** The release followed in {@code project}. */
+    /** The release followed in {@code project}. Cheap: reads the detection snapshot and a cached target. */
     public static @Nullable String followed(Project project) {
         CliDetectionService detection = project.getService(CliDetectionService.class);
         if (detection != null && detection.isAvailable()) return detection.getDetectedVersion();
-        return PluginVersions.targetCliVersion();
+        return Target.VERSION;
+    }
+
+    /** The plugin's target release, read once from the build's properties. */
+    private static final class Target {
+        static final String VERSION = PluginVersions.targetCliVersion();
     }
 
     /** Whether {@code release} has a rule introduced in {@code since}. */

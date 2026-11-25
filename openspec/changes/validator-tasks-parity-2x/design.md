@@ -49,7 +49,7 @@ The plugin today:
 - **`BuiltInValidator`** reports a missing WHEN or THEN as INFO `spec-scenario-clauses`, on main specs only, and doesn't count GIVEN. Its `SCENARIO_PATTERN` is case-sensitive. It has no length or front-matter rule, and nothing in it depends on a CLI release. Its parity test holds it to the 1.8 captures, the laxest generation. `BuiltInValidatorRulesTest` and `BuiltInValidatorTest` assert the INFO hint with no CLI.
 - **`SpecMerge`** is reached with a CLI present too: **Sync Specs** (`OpenSpecSyncAction`) calls `computeSync`/`applySync`. The plugin's own archive merge runs only without a CLI or below 1.5.
 - **`OpenSpecValidateAction.CLI_MIRRORING_STRICT_WARNINGS`** is a fixed set: `spec-rfc-keywords` and `spec-rfc-keyword-in-header`.
-- **`SpecFormatInspection` and `DeltaSpecInspection`** show the validator's issues in the editor.
+- **`SpecFormatInspection` and `DeltaSpecInspection`** use only the validator's fence masking, not its rules, so the new warnings appear in Validate's results, not as editor highlights.
 - **`TaskLines`** counts tasks, and nothing in the plugin reads a task's text: `ApplyPromptBuilder` inserts `tasks.md` whole.
 
 ## Goals / Non-Goals
@@ -141,7 +141,6 @@ A capture of `openspec instructions apply --change <c> --json` (2.0.0 and 2.1.1)
 - **[A requirement-text port measuring differently]** Every length rule would sit one side or the other of upstream's. → The corpus has bodies at 500 and 501 characters, a two-line body, a comment and a metadata-only body, judged by the real CLIs.
 - **[The too-long rule reverses the 1.14 choice]** At 1.14 the plugin left this strict-only warning to the CLI. → This change ports two other strict-only warnings, so leaving one out would be inconsistent, and the per-release test needs it to require equality.
 - **[Upstream false negative]** A bare uppercase `WHEN` in prose satisfies the step check, so some step-less scenarios pass. → The plugin mirrors it: never stricter. It is recorded internally.
-- **[Editor noise]** The step warning now appears in the editor on 1.16+ projects where it was INFO. → It matches what the CLI prints for the same file.
 
 ## Migration Plan
 

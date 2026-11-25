@@ -11,7 +11,14 @@
           "message": "ADDED \"Added long\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
         }
       ],
-      "durationMs": 20
+      "durationMs": 32
+    },
+    {
+      "id": "base-chain",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 2
     },
     {
       "id": "base-long",
@@ -31,7 +38,7 @@
       "type": "spec",
       "valid": true,
       "issues": [],
-      "durationMs": 1
+      "durationMs": 0
     },
     {
       "id": "base-short",
@@ -52,7 +59,7 @@
           "message": "Text above the first \"## \" section is not carried into the main spec by archive. Move it into a requirement, or into proposal.md or design.md."
         }
       ],
-      "durationMs": 20
+      "durationMs": 37
     },
     {
       "id": "fm-comment-only",
@@ -66,7 +73,7 @@
           "message": "Text above the first \"## \" section is not carried into the main spec by archive. Move it into a requirement, or into proposal.md or design.md."
         }
       ],
-      "durationMs": 21
+      "durationMs": 33
     },
     {
       "id": "fm-comment-title",
@@ -80,7 +87,7 @@
           "message": "Text above the first \"## \" section is not carried into the main spec by archive. Move it into a requirement, or into proposal.md or design.md."
         }
       ],
-      "durationMs": 19
+      "durationMs": 34
     },
     {
       "id": "fm-delta",
@@ -94,7 +101,7 @@
           "message": "Text above the first \"## \" section is not carried into the main spec by archive. Move it into a requirement, or into proposal.md or design.md."
         }
       ],
-      "durationMs": 21
+      "durationMs": 33
     },
     {
       "id": "fm-empty",
@@ -108,7 +115,7 @@
           "message": "Text above the first \"## \" section is not carried into the main spec by archive. Move it into a requirement, or into proposal.md or design.md."
         }
       ],
-      "durationMs": 20
+      "durationMs": 34
     },
     {
       "id": "fm-heading-before-close",
@@ -128,7 +135,7 @@
           "message": "Section \"## Notes\" is not carried into the main spec by archive. Move it into a requirement, or into proposal.md or design.md."
         }
       ],
-      "durationMs": 13
+      "durationMs": 32
     },
     {
       "id": "fm-indented",
@@ -142,7 +149,7 @@
           "message": "Text above the first \"## \" section is not carried into the main spec by archive. Move it into a requirement, or into proposal.md or design.md."
         }
       ],
-      "durationMs": 11
+      "durationMs": 36
     },
     {
       "id": "fm-quoted-key",
@@ -156,7 +163,7 @@
           "message": "Text above the first \"## \" section is not carried into the main spec by archive. Move it into a requirement, or into proposal.md or design.md."
         }
       ],
-      "durationMs": 11
+      "durationMs": 35
     },
     {
       "id": "fm-thematic",
@@ -170,7 +177,7 @@
           "message": "Text above the first \"## \" section is not carried into the main spec by archive. Move it into a requirement, or into proposal.md or design.md."
         }
       ],
-      "durationMs": 11
+      "durationMs": 35
     },
     {
       "id": "fm-unclosed",
@@ -184,14 +191,21 @@
           "message": "Text above the first \"## \" section is not carried into the main spec by archive. Move it into a requirement, or into proposal.md or design.md."
         }
       ],
-      "durationMs": 10
+      "durationMs": 24
+    },
+    {
+      "id": "grow-chain",
+      "type": "change",
+      "valid": true,
+      "issues": [],
+      "durationMs": 35
     },
     {
       "id": "grow-equal",
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 13
+      "durationMs": 73
     },
     {
       "id": "grow-no-main",
@@ -204,21 +218,21 @@
           "message": "Archive would refuse this delta: no-such-capability: target spec does not exist; only ADDED requirements are allowed for new specs. MODIFIED and RENAMED operations require an existing spec."
         }
       ],
-      "durationMs": 8
+      "durationMs": 17
     },
     {
       "id": "grow-rename",
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 15
+      "durationMs": 30
     },
     {
       "id": "grow-short",
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 15
+      "durationMs": 58
     },
     {
       "id": "inline-fence",
@@ -232,7 +246,7 @@
       "type": "spec",
       "valid": true,
       "issues": [],
-      "durationMs": 0
+      "durationMs": 1
     },
     {
       "id": "len-501",
@@ -258,7 +272,7 @@
           "message": "Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
         }
       ],
-      "durationMs": 0
+      "durationMs": 1
     },
     {
       "id": "len-h5-break",
@@ -285,7 +299,7 @@
       "type": "spec",
       "valid": true,
       "issues": [],
-      "durationMs": 1
+      "durationMs": 0
     },
     {
       "id": "len-two-lines",
@@ -298,6 +312,13 @@
           "message": "Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
         }
       ],
+      "durationMs": 1
+    },
+    {
+      "id": "step-after-section",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
       "durationMs": 0
     },
     {
@@ -305,7 +326,7 @@
       "type": "spec",
       "valid": true,
       "issues": [],
-      "durationMs": 0
+      "durationMs": 1
     },
     {
       "id": "step-and-with-when",
@@ -319,7 +340,7 @@
       "type": "spec",
       "valid": true,
       "issues": [],
-      "durationMs": 0
+      "durationMs": 1
     },
     {
       "id": "step-bodiless",
@@ -333,21 +354,21 @@
       "type": "spec",
       "valid": true,
       "issues": [],
-      "durationMs": 0
+      "durationMs": 1
     },
     {
       "id": "step-colon-inside",
       "type": "spec",
       "valid": true,
       "issues": [],
-      "durationMs": 0
+      "durationMs": 1
     },
     {
       "id": "step-delta",
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 12
+      "durationMs": 8
     },
     {
       "id": "step-fenced",
@@ -368,7 +389,7 @@
       "type": "spec",
       "valid": true,
       "issues": [],
-      "durationMs": 0
+      "durationMs": 1
     },
     {
       "id": "step-lower-label",
@@ -382,7 +403,7 @@
       "type": "spec",
       "valid": true,
       "issues": [],
-      "durationMs": 0
+      "durationMs": 1
     },
     {
       "id": "step-missing-when",
@@ -396,21 +417,21 @@
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 14
+      "durationMs": 67
     },
     {
       "id": "step-removed",
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 13
+      "durationMs": 66
     },
     {
       "id": "step-under-h5",
       "type": "spec",
       "valid": true,
       "issues": [],
-      "durationMs": 0
+      "durationMs": 1
     },
     {
       "id": "step-underscore",
@@ -447,19 +468,19 @@
   ],
   "summary": {
     "totals": {
-      "items": 45,
-      "passed": 44,
+      "items": 48,
+      "passed": 47,
       "failed": 1
     },
     "byType": {
       "change": {
-        "items": 18,
-        "passed": 18,
+        "items": 19,
+        "passed": 19,
         "failed": 0
       },
       "spec": {
-        "items": 27,
-        "passed": 26,
+        "items": 29,
+        "passed": 28,
         "failed": 1
       }
     }

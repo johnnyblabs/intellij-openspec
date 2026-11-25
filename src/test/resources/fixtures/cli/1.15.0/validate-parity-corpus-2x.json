@@ -11,7 +11,14 @@
           "message": "ADDED \"Added long\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
         }
       ],
-      "durationMs": 18
+      "durationMs": 17
+    },
+    {
+      "id": "base-chain",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 2
     },
     {
       "id": "base-long",
@@ -24,7 +31,7 @@
           "message": "Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
         }
       ],
-      "durationMs": 2
+      "durationMs": 1
     },
     {
       "id": "base-rename",
@@ -52,7 +59,7 @@
           "message": "Text above the first \"## \" section is not carried into the main spec by archive. Move it into a requirement, or into proposal.md or design.md."
         }
       ],
-      "durationMs": 20
+      "durationMs": 16
     },
     {
       "id": "fm-comment-only",
@@ -66,7 +73,7 @@
           "message": "Text above the first \"## \" section is not carried into the main spec by archive. Move it into a requirement, or into proposal.md or design.md."
         }
       ],
-      "durationMs": 18
+      "durationMs": 22
     },
     {
       "id": "fm-comment-title",
@@ -80,7 +87,7 @@
           "message": "Text above the first \"## \" section is not carried into the main spec by archive. Move it into a requirement, or into proposal.md or design.md."
         }
       ],
-      "durationMs": 18
+      "durationMs": 22
     },
     {
       "id": "fm-delta",
@@ -94,7 +101,7 @@
           "message": "Text above the first \"## \" section is not carried into the main spec by archive. Move it into a requirement, or into proposal.md or design.md."
         }
       ],
-      "durationMs": 22
+      "durationMs": 21
     },
     {
       "id": "fm-empty",
@@ -108,7 +115,7 @@
           "message": "Text above the first \"## \" section is not carried into the main spec by archive. Move it into a requirement, or into proposal.md or design.md."
         }
       ],
-      "durationMs": 21
+      "durationMs": 19
     },
     {
       "id": "fm-heading-before-close",
@@ -128,7 +135,7 @@
           "message": "Section \"## Notes\" is not carried into the main spec by archive. Move it into a requirement, or into proposal.md or design.md."
         }
       ],
-      "durationMs": 11
+      "durationMs": 14
     },
     {
       "id": "fm-indented",
@@ -142,7 +149,7 @@
           "message": "Text above the first \"## \" section is not carried into the main spec by archive. Move it into a requirement, or into proposal.md or design.md."
         }
       ],
-      "durationMs": 11
+      "durationMs": 14
     },
     {
       "id": "fm-quoted-key",
@@ -156,7 +163,7 @@
           "message": "Text above the first \"## \" section is not carried into the main spec by archive. Move it into a requirement, or into proposal.md or design.md."
         }
       ],
-      "durationMs": 12
+      "durationMs": 11
     },
     {
       "id": "fm-thematic",
@@ -170,7 +177,7 @@
           "message": "Text above the first \"## \" section is not carried into the main spec by archive. Move it into a requirement, or into proposal.md or design.md."
         }
       ],
-      "durationMs": 11
+      "durationMs": 12
     },
     {
       "id": "fm-unclosed",
@@ -184,14 +191,21 @@
           "message": "Text above the first \"## \" section is not carried into the main spec by archive. Move it into a requirement, or into proposal.md or design.md."
         }
       ],
-      "durationMs": 11
+      "durationMs": 12
+    },
+    {
+      "id": "grow-chain",
+      "type": "change",
+      "valid": true,
+      "issues": [],
+      "durationMs": 14
     },
     {
       "id": "grow-equal",
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 12
+      "durationMs": 18
     },
     {
       "id": "grow-no-main",
@@ -211,21 +225,21 @@
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 18
+      "durationMs": 17
     },
     {
       "id": "grow-short",
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 17
+      "durationMs": 16
     },
     {
       "id": "inline-fence",
       "type": "spec",
       "valid": true,
       "issues": [],
-      "durationMs": 1
+      "durationMs": 0
     },
     {
       "id": "len-500",
@@ -301,6 +315,13 @@
       "durationMs": 0
     },
     {
+      "id": "step-after-section",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 0
+    },
+    {
       "id": "step-and-only",
       "type": "spec",
       "valid": true,
@@ -326,7 +347,7 @@
       "type": "spec",
       "valid": true,
       "issues": [],
-      "durationMs": 0
+      "durationMs": 1
     },
     {
       "id": "step-bold-lower",
@@ -347,7 +368,7 @@
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 14
+      "durationMs": 7
     },
     {
       "id": "step-fenced",
@@ -361,7 +382,7 @@
       "type": "spec",
       "valid": true,
       "issues": [],
-      "durationMs": 1
+      "durationMs": 0
     },
     {
       "id": "step-html-comment",
@@ -396,14 +417,14 @@
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 16
+      "durationMs": 15
     },
     {
       "id": "step-removed",
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 15
+      "durationMs": 13
     },
     {
       "id": "step-under-h5",
@@ -447,19 +468,19 @@
   ],
   "summary": {
     "totals": {
-      "items": 45,
-      "passed": 44,
+      "items": 48,
+      "passed": 47,
       "failed": 1
     },
     "byType": {
       "change": {
-        "items": 18,
-        "passed": 18,
+        "items": 19,
+        "passed": 19,
         "failed": 0
       },
       "spec": {
-        "items": 27,
-        "passed": 26,
+        "items": 29,
+        "passed": 28,
         "failed": 1
       }
     }

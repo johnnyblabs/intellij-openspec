@@ -43,4 +43,22 @@ public class ValidationReleaseTest extends BasePlatformTestCase {
         validator.clearReleaseForTest();
         assertEquals("2.1.1", validator.release());
     }
+
+    /** One run follows one release: inside {@code following}, every read sees it, whatever detection says meanwhile. */
+    public void testARunFollowsTheReleaseItStartedWith() {
+        CliDetectionTestSupport.fakeAvailable(detection, "2.1.1");
+        BuiltInValidator validator = getProject().getService(BuiltInValidator.class);
+        validator.clearReleaseForTest();
+        String seen = validator.following("1.15.0", () -> {
+            CliDetectionTestSupport.fakeAvailable(detection, "2.0.0");
+            return validator.release();
+        });
+        assertEquals("1.15.0", seen);
+        assertEquals("after the run, the detected release again", "2.0.0", validator.release());
+        assertEquals("a nested run restores the outer one", "1.16.0",
+                validator.following("1.16.0", () -> {
+                    validator.following("2.1.1", validator::release);
+                    return validator.release();
+                }));
+    }
 }

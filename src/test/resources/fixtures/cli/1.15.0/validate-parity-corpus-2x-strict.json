@@ -14,6 +14,13 @@
       "durationMs": 16
     },
     {
+      "id": "base-chain",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 2
+    },
+    {
       "id": "base-long",
       "type": "spec",
       "valid": false,
@@ -24,14 +31,14 @@
           "message": "Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
         }
       ],
-      "durationMs": 1
+      "durationMs": 0
     },
     {
       "id": "base-rename",
       "type": "spec",
       "valid": true,
       "issues": [],
-      "durationMs": 1
+      "durationMs": 0
     },
     {
       "id": "base-short",
@@ -52,7 +59,7 @@
           "message": "Text above the first \"## \" section is not carried into the main spec by archive. Move it into a requirement, or into proposal.md or design.md."
         }
       ],
-      "durationMs": 21
+      "durationMs": 18
     },
     {
       "id": "fm-comment-only",
@@ -66,7 +73,7 @@
           "message": "Text above the first \"## \" section is not carried into the main spec by archive. Move it into a requirement, or into proposal.md or design.md."
         }
       ],
-      "durationMs": 18
+      "durationMs": 19
     },
     {
       "id": "fm-comment-title",
@@ -80,7 +87,7 @@
           "message": "Text above the first \"## \" section is not carried into the main spec by archive. Move it into a requirement, or into proposal.md or design.md."
         }
       ],
-      "durationMs": 19
+      "durationMs": 20
     },
     {
       "id": "fm-delta",
@@ -142,7 +149,7 @@
           "message": "Text above the first \"## \" section is not carried into the main spec by archive. Move it into a requirement, or into proposal.md or design.md."
         }
       ],
-      "durationMs": 11
+      "durationMs": 10
     },
     {
       "id": "fm-quoted-key",
@@ -170,7 +177,7 @@
           "message": "Text above the first \"## \" section is not carried into the main spec by archive. Move it into a requirement, or into proposal.md or design.md."
         }
       ],
-      "durationMs": 10
+      "durationMs": 11
     },
     {
       "id": "fm-unclosed",
@@ -187,11 +194,18 @@
       "durationMs": 10
     },
     {
+      "id": "grow-chain",
+      "type": "change",
+      "valid": true,
+      "issues": [],
+      "durationMs": 12
+    },
+    {
       "id": "grow-equal",
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 13
+      "durationMs": 19
     },
     {
       "id": "grow-no-main",
@@ -204,7 +218,7 @@
           "message": "Archive would refuse this delta: no-such-capability: target spec does not exist; only ADDED requirements are allowed for new specs. MODIFIED and RENAMED operations require an existing spec."
         }
       ],
-      "durationMs": 15
+      "durationMs": 10
     },
     {
       "id": "grow-rename",
@@ -218,14 +232,14 @@
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 16
+      "durationMs": 15
     },
     {
       "id": "inline-fence",
       "type": "spec",
       "valid": true,
       "issues": [],
-      "durationMs": 0
+      "durationMs": 1
     },
     {
       "id": "len-500",
@@ -301,6 +315,13 @@
       "durationMs": 0
     },
     {
+      "id": "step-after-section",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 0
+    },
+    {
       "id": "step-and-only",
       "type": "spec",
       "valid": true,
@@ -326,7 +347,7 @@
       "type": "spec",
       "valid": true,
       "issues": [],
-      "durationMs": 1
+      "durationMs": 0
     },
     {
       "id": "step-bold-lower",
@@ -347,7 +368,7 @@
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 8
+      "durationMs": 7
     },
     {
       "id": "step-fenced",
@@ -361,7 +382,7 @@
       "type": "spec",
       "valid": true,
       "issues": [],
-      "durationMs": 0
+      "durationMs": 1
     },
     {
       "id": "step-html-comment",
@@ -396,14 +417,14 @@
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 17
+      "durationMs": 16
     },
     {
       "id": "step-removed",
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 14
+      "durationMs": 12
     },
     {
       "id": "step-under-h5",
@@ -447,19 +468,19 @@
   ],
   "summary": {
     "totals": {
-      "items": 45,
-      "passed": 28,
+      "items": 48,
+      "passed": 31,
       "failed": 17
     },
     "byType": {
       "change": {
-        "items": 18,
-        "passed": 7,
+        "items": 19,
+        "passed": 8,
         "failed": 11
       },
       "spec": {
-        "items": 27,
-        "passed": 21,
+        "items": 29,
+        "passed": 23,
         "failed": 6
       }
     }

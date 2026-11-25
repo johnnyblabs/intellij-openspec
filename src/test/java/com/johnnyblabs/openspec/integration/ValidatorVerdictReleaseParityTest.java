@@ -145,7 +145,8 @@ public class ValidatorVerdictReleaseParityTest extends OpenSpecIntegrationTestBa
     private static Set<String> expectedLaxer() {
         Set<String> expected = new TreeSet<>();
         for (String release : RELEASES) {
-            if (com.johnnyblabs.openspec.util.CliVersion.atLeast(release, "1.14.2")) {
+            // The not-carried warnings arrived in 1.14.2; 1.14.3 is the first captured release that has them.
+            if (com.johnnyblabs.openspec.util.CliVersion.atLeast(release, "1.14.3")) {
                 for (String id : LOOKALIKES) expected.add(release + " " + id);
                 if (!com.johnnyblabs.openspec.util.CliVersion.atLeast(release, "2.1.1")) {
                     for (String id : FRONT_MATTER) expected.add(release + " " + id);

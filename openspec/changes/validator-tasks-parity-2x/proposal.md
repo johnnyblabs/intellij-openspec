@@ -69,7 +69,6 @@ None.
   - `BuiltInValidator`: the too-long, step and growth checks, and front matter.
   - `OpenSpecValidateAction`: a release-aware strict-failing set.
   - `SpecMerge`: front matter stays with the change.
-  - The editor inspections (`SpecFormatInspection`, `DeltaSpecInspection`) show the new warnings, gated the same way.
 - **Tests and fixtures:**
   - a release-parity corpus captured on 1.15.0, 1.16.1, 1.17.0, 2.0.0, 2.1.0 and 2.1.1, with `scripts/capture-cli-generation.py` extended to capture it;
   - a per-release verdict-parity test; the existing 1.8-anchor test keeps its corpus and now follows 1.8.0 explicitly;

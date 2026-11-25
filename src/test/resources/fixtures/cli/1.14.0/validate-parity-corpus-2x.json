@@ -5,7 +5,14 @@
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 18
+      "durationMs": 19
+    },
+    {
+      "id": "base-chain",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 2
     },
     {
       "id": "base-long",
@@ -18,14 +25,14 @@
           "message": "Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
         }
       ],
-      "durationMs": 2
+      "durationMs": 0
     },
     {
       "id": "base-rename",
       "type": "spec",
       "valid": true,
       "issues": [],
-      "durationMs": 1
+      "durationMs": 0
     },
     {
       "id": "base-short",
@@ -60,28 +67,28 @@
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 19
+      "durationMs": 21
     },
     {
       "id": "fm-empty",
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 20
+      "durationMs": 21
     },
     {
       "id": "fm-heading-before-close",
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 10
+      "durationMs": 11
     },
     {
       "id": "fm-indented",
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 9
+      "durationMs": 13
     },
     {
       "id": "fm-quoted-key",
@@ -95,21 +102,28 @@
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 9
+      "durationMs": 13
     },
     {
       "id": "fm-unclosed",
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 11
+      "durationMs": 10
+    },
+    {
+      "id": "grow-chain",
+      "type": "change",
+      "valid": true,
+      "issues": [],
+      "durationMs": 14
     },
     {
       "id": "grow-equal",
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 12
+      "durationMs": 16
     },
     {
       "id": "grow-no-main",
@@ -136,7 +150,7 @@
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 17
+      "durationMs": 15
     },
     {
       "id": "inline-fence",
@@ -150,7 +164,7 @@
       "type": "spec",
       "valid": true,
       "issues": [],
-      "durationMs": 0
+      "durationMs": 1
     },
     {
       "id": "len-501",
@@ -219,6 +233,13 @@
       "durationMs": 0
     },
     {
+      "id": "step-after-section",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 0
+    },
+    {
       "id": "step-and-only",
       "type": "spec",
       "valid": true,
@@ -265,21 +286,21 @@
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 12
+      "durationMs": 7
     },
     {
       "id": "step-fenced",
       "type": "spec",
       "valid": true,
       "issues": [],
-      "durationMs": 1
+      "durationMs": 0
     },
     {
       "id": "step-header-only",
       "type": "spec",
       "valid": true,
       "issues": [],
-      "durationMs": 0
+      "durationMs": 1
     },
     {
       "id": "step-html-comment",
@@ -314,14 +335,14 @@
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 16
+      "durationMs": 14
     },
     {
       "id": "step-removed",
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 14
+      "durationMs": 11
     },
     {
       "id": "step-under-h5",
@@ -365,19 +386,19 @@
   ],
   "summary": {
     "totals": {
-      "items": 45,
-      "passed": 44,
+      "items": 48,
+      "passed": 47,
       "failed": 1
     },
     "byType": {
       "change": {
-        "items": 18,
-        "passed": 18,
+        "items": 19,
+        "passed": 19,
         "failed": 0
       },
       "spec": {
-        "items": 27,
-        "passed": 26,
+        "items": 29,
+        "passed": 28,
         "failed": 1
       }
     }

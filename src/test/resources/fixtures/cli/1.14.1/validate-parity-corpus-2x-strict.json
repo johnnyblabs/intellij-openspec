@@ -14,6 +14,13 @@
       "durationMs": 16
     },
     {
+      "id": "base-chain",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 1
+    },
+    {
       "id": "base-long",
       "type": "spec",
       "valid": false,
@@ -31,7 +38,7 @@
       "type": "spec",
       "valid": true,
       "issues": [],
-      "durationMs": 1
+      "durationMs": 0
     },
     {
       "id": "base-short",
@@ -45,21 +52,21 @@
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 18
+      "durationMs": 19
     },
     {
       "id": "fm-comment-only",
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 17
+      "durationMs": 18
     },
     {
       "id": "fm-comment-title",
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 18
+      "durationMs": 17
     },
     {
       "id": "fm-delta",
@@ -73,14 +80,14 @@
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 19
+      "durationMs": 18
     },
     {
       "id": "fm-heading-before-close",
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 9
+      "durationMs": 10
     },
     {
       "id": "fm-indented",
@@ -94,28 +101,35 @@
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 11
+      "durationMs": 8
     },
     {
       "id": "fm-thematic",
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 7
+      "durationMs": 11
     },
     {
       "id": "fm-unclosed",
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 10
+      "durationMs": 9
+    },
+    {
+      "id": "grow-chain",
+      "type": "change",
+      "valid": true,
+      "issues": [],
+      "durationMs": 12
     },
     {
       "id": "grow-equal",
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 12
+      "durationMs": 17
     },
     {
       "id": "grow-no-main",
@@ -135,7 +149,7 @@
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 17
+      "durationMs": 16
     },
     {
       "id": "grow-short",
@@ -222,6 +236,13 @@
           "message": "Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
         }
       ],
+      "durationMs": 1
+    },
+    {
+      "id": "step-after-section",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
       "durationMs": 0
     },
     {
@@ -236,7 +257,7 @@
       "type": "spec",
       "valid": true,
       "issues": [],
-      "durationMs": 1
+      "durationMs": 0
     },
     {
       "id": "step-bare-upper",
@@ -271,7 +292,7 @@
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 12
+      "durationMs": 7
     },
     {
       "id": "step-fenced",
@@ -327,7 +348,7 @@
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 13
+      "durationMs": 10
     },
     {
       "id": "step-under-h5",
@@ -366,24 +387,24 @@
           "message": "Requirement must have at least one scenario. Scenarios must use level-4 headers. Convert bullet lists into:\n#### Scenario: Short name\n- **WHEN** ...\n- **THEN** ...\n- **AND** ..."
         }
       ],
-      "durationMs": 0
+      "durationMs": 1
     }
   ],
   "summary": {
     "totals": {
-      "items": 45,
-      "passed": 38,
+      "items": 48,
+      "passed": 41,
       "failed": 7
     },
     "byType": {
       "change": {
-        "items": 18,
-        "passed": 17,
+        "items": 19,
+        "passed": 18,
         "failed": 1
       },
       "spec": {
-        "items": 27,
-        "passed": 21,
+        "items": 29,
+        "passed": 23,
         "failed": 6
       }
     }

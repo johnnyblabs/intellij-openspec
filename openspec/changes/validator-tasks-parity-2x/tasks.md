@@ -95,6 +95,17 @@
   - a full `uiSmoke` under `caffeinate -dimsu`;
   - test-engineer AUDIT and intellij-code-reviewer on the diff, with each finding fixed or recorded here.
   - Verify: all pass, and the outcome is recorded.
+  - Review outcome:
+    - intellij-code-reviewer: no errors; two warnings, both fixed. The target release is read once and cached, not from the jar for every file; and a run follows one release snapshot (`BuiltInValidator.following`) for its rules and its strict flip, so detection finishing mid-run can't split them.
+    - test-engineer AUDIT: pass with nits, fixed as follows:
+      - the step and length checks read a requirement only up to the next `##` section, as OpenSpec does (new corpus item `step-after-section`);
+      - the new issues' lines are asserted (`ReleaseGatedIssuesTest`);
+      - the action's fallback passes its release to the strict flip, tested end to end;
+      - rename chains are captured (`grow-chain`);
+      - the exceptions boundary is the first captured release, 1.14.3;
+      - the design no longer says the editor inspections show these warnings (they use only fence masking).
+    - Left as is: the renamed-away growth skip is unit-tested only, because the CLI rejects that delta with its own error, which is out of scope; plugin issues on paths outside corpus items aren't asserted, because the shared test project adds its own.
+    - Every mutation named here was run and turned its test red.
 
 ## Workflow follow-up
 

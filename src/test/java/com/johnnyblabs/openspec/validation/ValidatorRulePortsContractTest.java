@@ -45,11 +45,14 @@ class ValidatorRulePortsContractTest {
         return false;
     }
 
-    /** The one requirement block of a corpus main spec (header line included). */
+    /** The one requirement block of a corpus main spec (header line included, up to the next section). */
     static String block(String spec) throws IOException {
         String text = Files.readString(CORPUS.resolve("specs").resolve(spec).resolve("spec.md"));
         int at = text.indexOf("### Requirement:");
-        return text.substring(at);
+        // The block ends at the next `##` section, as OpenSpec reads it.
+        java.util.regex.Matcher next = java.util.regex.Pattern.compile("(?m)^##(?!#)").matcher(text);
+        int end = next.find(at) ? next.start() : text.length();
+        return text.substring(at, end);
     }
 
     // --- the requirement-text measure ---

@@ -11,7 +11,14 @@
           "message": "ADDED \"Added long\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
         }
       ],
-      "durationMs": 24
+      "durationMs": 19
+    },
+    {
+      "id": "base-chain",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 1
     },
     {
       "id": "base-long",
@@ -24,7 +31,7 @@
           "message": "Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
         }
       ],
-      "durationMs": 2
+      "durationMs": 1
     },
     {
       "id": "base-rename",
@@ -45,7 +52,7 @@
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 25
+      "durationMs": 20
     },
     {
       "id": "fm-comment-only",
@@ -59,28 +66,28 @@
           "message": "Text above the first \"## \" section is not carried into the main spec by archive. Move it into a requirement, or into proposal.md or design.md."
         }
       ],
-      "durationMs": 24
+      "durationMs": 21
     },
     {
       "id": "fm-comment-title",
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 26
+      "durationMs": 22
     },
     {
       "id": "fm-delta",
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 25
+      "durationMs": 23
     },
     {
       "id": "fm-empty",
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 25
+      "durationMs": 21
     },
     {
       "id": "fm-heading-before-close",
@@ -100,7 +107,7 @@
           "message": "Section \"## Notes\" is not carried into the main spec by archive. Move it into a requirement, or into proposal.md or design.md."
         }
       ],
-      "durationMs": 11
+      "durationMs": 12
     },
     {
       "id": "fm-indented",
@@ -114,7 +121,7 @@
           "message": "Text above the first \"## \" section is not carried into the main spec by archive. Move it into a requirement, or into proposal.md or design.md."
         }
       ],
-      "durationMs": 10
+      "durationMs": 12
     },
     {
       "id": "fm-quoted-key",
@@ -135,7 +142,7 @@
           "message": "Text above the first \"## \" section is not carried into the main spec by archive. Move it into a requirement, or into proposal.md or design.md."
         }
       ],
-      "durationMs": 12
+      "durationMs": 11
     },
     {
       "id": "fm-unclosed",
@@ -152,11 +159,24 @@
       "durationMs": 11
     },
     {
+      "id": "grow-chain",
+      "type": "change",
+      "valid": true,
+      "issues": [
+        {
+          "level": "WARNING",
+          "path": "base-chain/spec.md",
+          "message": "MODIFIED \"Third name\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        }
+      ],
+      "durationMs": 13
+    },
+    {
       "id": "grow-equal",
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 14
+      "durationMs": 16
     },
     {
       "id": "grow-no-main",
@@ -169,7 +189,7 @@
           "message": "Archive would refuse this delta: no-such-capability: target spec does not exist; only ADDED requirements are allowed for new specs. MODIFIED and RENAMED operations require an existing spec."
         }
       ],
-      "durationMs": 16
+      "durationMs": 7
     },
     {
       "id": "grow-rename",
@@ -182,7 +202,7 @@
           "message": "MODIFIED \"New name\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
         }
       ],
-      "durationMs": 18
+      "durationMs": 15
     },
     {
       "id": "grow-short",
@@ -222,7 +242,7 @@
           "message": "Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
         }
       ],
-      "durationMs": 1
+      "durationMs": 0
     },
     {
       "id": "len-comment",
@@ -262,7 +282,7 @@
       "type": "spec",
       "valid": true,
       "issues": [],
-      "durationMs": 0
+      "durationMs": 1
     },
     {
       "id": "len-two-lines",
@@ -275,6 +295,13 @@
           "message": "Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
         }
       ],
+      "durationMs": 0
+    },
+    {
+      "id": "step-after-section",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
       "durationMs": 0
     },
     {
@@ -382,7 +409,7 @@
           "message": "Requirement \"Steps\": scenario \"lower label\" is missing a WHEN/GIVEN step. A scenario needs a trigger and an outcome, e.g. \"- **WHEN** an invoice is voided\" and \"- **THEN** a credit note is issued\"."
         }
       ],
-      "durationMs": 1
+      "durationMs": 0
     },
     {
       "id": "step-lowercase-prose",
@@ -421,14 +448,14 @@
           "message": "MODIFIED \"Short\": scenario \"ok\" is missing a THEN step. A scenario needs a trigger and an outcome, e.g. \"- **WHEN** an invoice is voided\" and \"- **THEN** a credit note is issued\"."
         }
       ],
-      "durationMs": 17
+      "durationMs": 14
     },
     {
       "id": "step-removed",
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 15
+      "durationMs": 12
     },
     {
       "id": "step-under-h5",
@@ -467,24 +494,24 @@
           "message": "Requirement must have at least one scenario. Scenarios must use level-4 headers. Convert bullet lists into:\n#### Scenario: Short name\n- **WHEN** ...\n- **THEN** ...\n- **AND** ..."
         }
       ],
-      "durationMs": 0
+      "durationMs": 1
     }
   ],
   "summary": {
     "totals": {
-      "items": 45,
-      "passed": 44,
+      "items": 48,
+      "passed": 47,
       "failed": 1
     },
     "byType": {
       "change": {
-        "items": 18,
-        "passed": 18,
+        "items": 19,
+        "passed": 19,
         "failed": 0
       },
       "spec": {
-        "items": 27,
-        "passed": 26,
+        "items": 29,
+        "passed": 28,
         "failed": 1
       }
     }
