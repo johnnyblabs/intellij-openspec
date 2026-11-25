@@ -1,0 +1,36 @@
+{
+  "items": [
+    {
+      "id": "c1",
+      "type": "change",
+      "valid": false,
+      "issues": [
+        {
+          "level": "ERROR",
+          "path": "demo/spec.md",
+          "message": "MODIFIED \"Works\" omits scenario(s) the current spec still has: \"It works\". The modified block has 1 scenario; the current spec has 1 scenario. It adds 1 scenario not in the current spec: \"Renamed scenario\". Copy the omitted scenarios into the MODIFIED block (a MODIFIED requirement replaces the whole block, so archive refuses to drop them)."
+        }
+      ],
+      "durationMs": 9
+    }
+  ],
+  "summary": {
+    "totals": {
+      "items": 1,
+      "passed": 0,
+      "failed": 1
+    },
+    "byType": {
+      "change": {
+        "items": 1,
+        "passed": 0,
+        "failed": 1
+      }
+    }
+  },
+  "version": "1.0",
+  "root": {
+    "path": "/fixture",
+    "source": "nearest"
+  }
+}

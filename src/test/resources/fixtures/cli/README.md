@@ -626,6 +626,13 @@ Per capability, `<cap>/main-before.md` and `<cap>/delta.md` are the inputs and `
 
 ## `archive-1.5.0/` and `archive-1.4.1/` — the floor for delegating archives to the CLI
 
+`archive-2.1.0/` and `archive-2.1.1/` hold every case, captured with `CAPTURE_VERSION=<v> scripts/capture-archive-fixtures.py`, which installs that release into the shared scratch cache (`scripts/lib`), never a pinned `npx`. `ArchiveMergeContractTest` replays 1.14.3, 2.1.0 and 2.1.1, each merged as that release merges. Three cases were added to all three, to prove 2.1.1's changes on both sides:
+- `new-cap-purpose-bom`: a delta starting with a byte-order mark. Only 2.1.1 reads its Purpose; earlier releases write the placeholder.
+- `new-cap-purpose-front-matter`: a delta whose front matter holds a `<!--` and a fence. 2.1.1 leaves the front matter with the change, with a warning, and carries the Purpose. 1.14.3 and 2.1.0 refuse it ("Delta parsing found no operations"), because the unclosed comment hides the delta's sections.
+- `main-front-matter-purpose`: a main spec whose front matter holds a `<!--`, and a delta with another Purpose. Only 2.1.1 sees the existing Purpose and warns that the delta's is ignored.
+
+2.1.1 also writes a blank line after a new spec's `## Purpose`; earlier releases don't.
+
 `archive-1.5.0/` holds a subset of the archive cases captured from CLI 1.5.0 (`OPENSPEC_BIN="npx -y @fission-ai/openspec@1.5.0" CAPTURE_CASES=… scripts/capture-archive-fixtures.py`). Its `archive --json` shapes match 1.14.3. Its rules are older, which is the point of delegating: `scenario-drop` archives, and `removed-gone` is refused. In human mode a refusal still exits 0 (`exit-human.txt`), while `--json` exits 1, so the plugin always uses `--json`. `skip-specs-ok` (also in 1.14.3) is `--skip-specs`: no `totals`, `specsUpdated: false`, main spec untouched.
 
 `archive-1.4.1/unknown-json/` is 1.4.1 rejecting the flag: `error: unknown option '--json'`, exit 1, empty stdout (`npx`'s npm notice lines removed from `stderr.txt`). It is the real "non-zero exit with no JSON" case for the parser.

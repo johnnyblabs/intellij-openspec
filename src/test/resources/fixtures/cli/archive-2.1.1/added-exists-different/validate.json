@@ -1,0 +1,36 @@
+{
+  "items": [
+    {
+      "id": "c1",
+      "type": "change",
+      "valid": true,
+      "issues": [
+        {
+          "level": "INFO",
+          "path": "demo/spec.md",
+          "message": "Archive would refuse this delta: demo ADDED failed for header \"### Requirement: Works\" - already exists"
+        }
+      ],
+      "durationMs": 12
+    }
+  ],
+  "summary": {
+    "totals": {
+      "items": 1,
+      "passed": 1,
+      "failed": 0
+    },
+    "byType": {
+      "change": {
+        "items": 1,
+        "passed": 1,
+        "failed": 0
+      }
+    }
+  },
+  "version": "1.0",
+  "root": {
+    "path": "/fixture",
+    "source": "nearest"
+  }
+}

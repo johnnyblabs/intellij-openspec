@@ -17,20 +17,44 @@ import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Contract test: the plugin's merge against real {@code openspec archive} runs captured from CLI 1.14.3
- * ({@code fixtures/cli/archive-1.14.3/}, re-captured by {@code scripts/capture-archive-fixtures.py}).
- * For every case the plugin must write the main spec byte for byte as upstream did, or refuse with upstream's message,
- * and report the same warnings. Each case also runs with CRLF input.
+ * Contract test: the plugin's merge against real {@code openspec archive} runs captured from CLI 1.14.3, 2.1.0 and
+ * 2.1.1 ({@code fixtures/cli/archive-<version>/}, re-captured by {@code scripts/capture-archive-fixtures.py}), each
+ * merged as that release merges. For every case the plugin must write the main spec byte for byte as upstream did, or
+ * refuse with upstream's message, and report the same warnings. Each case also runs with CRLF input.
  */
 class ArchiveMergeContractTest {
 
-    private static final Path ROOT = Paths.get("src/test/resources/fixtures/cli/archive-1.14.3");
+    private static final Path CLI = Paths.get("src/test/resources/fixtures/cli");
+
+    /** The captured releases (not the 1.4.1/1.5.0 delegation-floor captures, which have another shape). */
+    static final List<String> RELEASES = List.of("1.14.3", "2.1.0", "2.1.1");
+
+    /** Cases each release must hold, so a partial re-capture can't quietly shrink the replay. */
+    static final List<String> REQUIRED = List.of("new-cap", "new-cap-purpose", "new-cap-short-purpose",
+            "new-cap-purpose-bom", "new-cap-purpose-front-matter", "delta-purpose-existing", "modified-ok");
+
+    private static Path root(String release) {
+        return CLI.resolve("archive-" + release);
+    }
 
     /** Every captured case except runs with extra flags (e.g. --skip-specs), whose merge isn't the default archive's. */
-    static Stream<String> cases() throws IOException {
-        try (Stream<Path> dirs = Files.list(ROOT)) {
-            return dirs.filter(Files::isDirectory).filter(p -> !Files.exists(p.resolve("args.txt")))
-                    .map(p -> p.getFileName().toString()).sorted().toList().stream();
+    static Stream<org.junit.jupiter.params.provider.Arguments> cases() throws IOException {
+        List<org.junit.jupiter.params.provider.Arguments> all = new ArrayList<>();
+        for (String release : RELEASES) {
+            try (Stream<Path> dirs = Files.list(root(release))) {
+                dirs.filter(Files::isDirectory).filter(p -> !Files.exists(p.resolve("args.txt")))
+                        .map(p -> p.getFileName().toString()).sorted()
+                        .forEach(c -> all.add(org.junit.jupiter.params.provider.Arguments.of(release, c)));
+            }
+        }
+        return all.stream();
+    }
+
+    @org.junit.jupiter.api.Test
+    void everyReleaseHoldsTheRequiredCasesAndSaysWhichReleaseItIs() throws IOException {
+        for (String release : RELEASES) {
+            assertEquals(release, Files.readString(root(release).resolve("version.txt")).strip(), "archive-" + release);
+            for (String c : REQUIRED) assertTrue(Files.isDirectory(root(release).resolve(c)), release + "/" + c);
         }
     }
 
@@ -44,8 +68,8 @@ class ArchiveMergeContractTest {
         }
     }
 
-    private static Merged merge(String name, boolean crlf) throws IOException {
-        Path dir = ROOT.resolve(name);
+    private static Merged merge(String release, String name, boolean crlf) throws IOException {
+        Path dir = root(release).resolve(name);
         String change = Files.readString(dir.resolve("change.txt")).strip();
         Map<String, SpecMerge.Result> byCap = new TreeMap<>();
         Map<String, String> expected = new TreeMap<>();
@@ -55,7 +79,7 @@ class ArchiveMergeContractTest {
                 Path before = cap.resolve("main-before.md");
                 String main = Files.exists(before) ? read(before, crlf) : null;
                 String capName = cap.getFileName().toString();
-                byCap.put(capName, SpecMerge.merge(capName, change, delta, main, "/fixture/openspec/specs/" + capName + "/spec.md"));
+                byCap.put(capName, SpecMerge.merge(capName, change, delta, main, "/fixture/openspec/specs/" + capName + "/spec.md", release));
                 Path after = cap.resolve("main-after.md");
                 if (Files.exists(after)) expected.put(capName, lf(Files.readString(after)));
             }
@@ -74,9 +98,9 @@ class ArchiveMergeContractTest {
     }
 
     /** The archive run's JSON: the no-validate run when validation refused, since that carries the merge's own wording. */
-    private static JsonObject archiveJson(String name) throws IOException {
-        Path novalidate = ROOT.resolve(name).resolve("archive-novalidate.json");
-        Path json = Files.exists(novalidate) ? novalidate : ROOT.resolve(name).resolve("archive.json");
+    private static JsonObject archiveJson(String release, String name) throws IOException {
+        Path novalidate = root(release).resolve(name).resolve("archive-novalidate.json");
+        Path json = Files.exists(novalidate) ? novalidate : root(release).resolve(name).resolve("archive.json");
         return JsonParser.parseString(Files.readString(json)).getAsJsonObject();
     }
 
@@ -85,15 +109,15 @@ class ArchiveMergeContractTest {
         return status.isEmpty() ? Optional.empty() : Optional.of(status.get(0).getAsJsonObject());
     }
 
-    @ParameterizedTest(name = "{0}")
+    @ParameterizedTest(name = "{0}/{1}")
     @MethodSource("cases")
-    void mergesOrRefusesLikeTheCli(String name) throws IOException {
-        JsonObject json = archiveJson(name);
+    void mergesOrRefusesLikeTheCli(String release, String name) throws IOException {
+        JsonObject json = archiveJson(release, name);
         Optional<JsonObject> status = status(json);
         boolean mergeRefused = status.isPresent() && "archive_spec_update_failed".equals(status.get().get("code").getAsString());
 
         for (boolean crlf : new boolean[]{false, true}) {
-            Merged merged = merge(name, crlf);
+            Merged merged = merge(release, name, crlf);
             String mode = crlf ? " (CRLF input)" : "";
             if (mergeRefused) {
                 String captured = status.get().get("message").getAsString();
@@ -119,10 +143,10 @@ class ArchiveMergeContractTest {
     }
 
     /** The archive folder: the plugin names it as the CLI did, refuses an existing one with its words, never makes openspec/archive. */
-    @ParameterizedTest(name = "{0}")
+    @ParameterizedTest(name = "{0}/{1}")
     @MethodSource("cases")
-    void archiveFolderMatchesTheCli(String name) throws IOException {
-        Path dir = ROOT.resolve(name);
+    void archiveFolderMatchesTheCli(String release, String name) throws IOException {
+        Path dir = root(release).resolve(name);
         String change = Files.readString(dir.resolve("change.txt")).strip();
         List<String> layout = Files.readAllLines(dir.resolve("layout.txt"));
         assertEquals("openspec/archive exists: False", layout.get(1), name);
@@ -136,11 +160,11 @@ class ArchiveMergeContractTest {
         }
     }
 
-    @ParameterizedTest(name = "{0}")
+    @ParameterizedTest(name = "{0}/{1}")
     @MethodSource("cases")
-    void fixtureIsSelfConsistent(String name) throws IOException {
-        String exit = Files.readString(ROOT.resolve(name).resolve("exit.txt")).strip();
-        boolean refused = status(JsonParser.parseString(Files.readString(ROOT.resolve(name).resolve("archive.json")))
+    void fixtureIsSelfConsistent(String release, String name) throws IOException {
+        String exit = Files.readString(root(release).resolve(name).resolve("exit.txt")).strip();
+        boolean refused = status(JsonParser.parseString(Files.readString(root(release).resolve(name).resolve("archive.json")))
                 .getAsJsonObject()).isPresent();
         assertEquals(refused ? "1" : "0", exit, name + ": exit code and status disagree");
     }

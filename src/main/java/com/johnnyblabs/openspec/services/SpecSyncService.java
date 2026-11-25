@@ -93,10 +93,12 @@ public final class SpecSyncService {
      */
     public List<SpecSyncResult> computeSync(String changeName) {
         List<SpecSyncResult> results = new ArrayList<>();
+        // The release whose archive the merge follows: the detected CLI, or the plugin's target with none.
+        String release = com.johnnyblabs.openspec.validation.ValidationRelease.followed(project);
         for (Map.Entry<String, String> entry : readDeltaSpecs(changeName).entrySet()) {
             String capability = entry.getKey();
             String original = readMainSpec(capability);
-            SpecMerge.Result merged = SpecMerge.merge(capability, changeName, entry.getValue(), original, getMainSpecPath(capability));
+            SpecMerge.Result merged = SpecMerge.merge(capability, changeName, entry.getValue(), original, getMainSpecPath(capability), release);
             results.add(new SpecSyncResult(capability, getMainSpecPath(capability), original,
                     merged.refused() ? original : merged.projected(), merged.operations(), merged.warnings(),
                     merged.refused() ? List.of(merged.refusal()) : List.of()));

@@ -1,0 +1,2 @@
+changes/archive: <DATE>-c1
+openspec/archive exists: False

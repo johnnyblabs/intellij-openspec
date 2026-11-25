@@ -152,14 +152,20 @@ class ValidatorRulePortsContractTest {
         assertEquals(List.of(), SpecMerge.modifiedGrowth(unknown, MAIN), "no current requirement: no check");
     }
 
+    /**
+     * From 2.1.1 a delta's front matter stays with the change, so a fence or comment opener in it can't hide the
+     * delta's sections: the captured {@code new-cap-purpose-front-matter} delta merges on 2.1.1 and is refused before.
+     */
     @Test
-    void mergingNeverCarriesADeltasFrontMatter() {
-        String delta = "---\nowner: team-a\n---\n\n## ADDED Requirements\n\n### Requirement: Added\nThe system SHALL add.\n\n"
-                + "#### Scenario: ok\n- **WHEN** x\n- **THEN** y\n";
-        SpecMerge.Result result = SpecMerge.merge("demo", "c", delta, MAIN);
+    void mergingNeverCarriesADeltasFrontMatter() throws java.io.IOException {
+        String delta = java.nio.file.Files.readString(java.nio.file.Path.of(
+                "src/test/resources/fixtures/cli/archive-2.1.1/new-cap-purpose-front-matter/newcap/delta.md"));
+        SpecMerge.Result result = SpecMerge.merge("newcap", "c1", delta, null, "openspec/specs/newcap/spec.md", "2.1.1");
         assertNull(result.refusal(), String.valueOf(result.refusal()));
-        assertFalse(result.projected().contains("owner: team-a"), result.projected());
-        assertTrue(result.projected().contains("### Requirement: Added"));
+        assertFalse(result.projected().contains("not a comment"), result.projected());
+        assertTrue(result.projected().contains("### Requirement: Fresh"), result.projected());
+        assertNotNull(SpecMerge.merge("newcap", "c1", delta, null, "openspec/specs/newcap/spec.md", "2.1.0").refusal(),
+                "2.1.0 refuses it");
     }
 
     @Test

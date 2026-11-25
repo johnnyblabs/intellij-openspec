@@ -1,0 +1,8 @@
+Task status: ✓ Complete
+
+Specs to update:
+  demo: update
+⚠️  Warning: demo - REMOVED requirement "Missing" is not in the current spec; treating it as already removed.
+Totals: + 0, ~ 0, - 0, → 0
+Specs already in sync; no files changed.
+Change 'c1' archived as '<DATE>-c1'.

@@ -1,0 +1,10 @@
+Task status: ✓ Complete
+
+Specs to update:
+  newcap: create
+⚠️  Warning: newcap - carried Purpose is under 50 characters; openspec validate --strict reports it as too brief.
+Applying changes to openspec/specs/newcap/spec.md:
+  + 1 added
+Totals: + 1, ~ 0, - 0, → 0
+Specs updated successfully.
+Change 'c1' archived as '<DATE>-c1'.

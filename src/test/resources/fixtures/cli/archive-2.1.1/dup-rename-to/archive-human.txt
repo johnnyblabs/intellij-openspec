@@ -1,0 +1,6 @@
+
+Validation errors in change delta specs:
+  ✗ Duplicate TO in RENAMED: "Same"
+
+Validation failed. Please fix the errors before archiving.
+To skip validation (not recommended), use --no-validate flag.

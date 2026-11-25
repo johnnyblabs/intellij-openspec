@@ -1,0 +1,12 @@
+{
+  "archive": {
+    "change": "c1",
+    "archivedAs": "<DATE>-c1",
+    "path": "/fixture/openspec/changes/archive/<DATE>-c1",
+    "specsUpdated": false
+  },
+  "root": {
+    "path": "/fixture",
+    "source": "nearest"
+  }
+}

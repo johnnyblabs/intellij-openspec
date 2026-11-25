@@ -18,6 +18,7 @@ Runs use an isolated HOME and XDG directories, so the real global OpenSpec state
 Machine paths are replaced with /fixture and the archive date with <DATE>.
 
 Usage: scripts/capture-archive-fixtures.py   (uses the `openspec` on PATH, or $OPENSPEC_BIN)
+       CAPTURE_VERSION=2.1.1 scripts/capture-archive-fixtures.py   (a release installed into scratch, never npx)
        CAPTURE_CASES=a,b scripts/capture-archive-fixtures.py   (only those cases, e.g. for an older CLI)
 """
 import json
@@ -31,8 +32,14 @@ from datetime import date
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-# The CLI to capture from; e.g. OPENSPEC_BIN="npx -y @fission-ai/openspec@1.14.3" pins a version explicitly.
-OPENSPEC = os.environ.get("OPENSPEC_BIN", "openspec").split()
+# The CLI to capture from: CAPTURE_VERSION installs that release into the shared scratch cache (scripts/lib);
+# otherwise $OPENSPEC_BIN, or the `openspec` on PATH. Never a pinned npx, whose cache leaks into fixtures.
+if os.environ.get("CAPTURE_VERSION"):
+    sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
+    from openspec_capture import cli  # noqa: E402
+    OPENSPEC = cli(os.environ["CAPTURE_VERSION"])
+else:
+    OPENSPEC = os.environ.get("OPENSPEC_BIN", "openspec").split()
 
 PROPOSAL = """## Why
 
@@ -206,6 +213,18 @@ CASES = {
     "delta-purpose-existing": {"main": {"demo": DEMO}, "delta": {"demo":
         "## Purpose\nA different purpose written in the delta for the demo capability here.\n\n"
         "## ADDED Requirements\n\n" + req("New")}},
+    # A main spec whose front matter holds a comment opener: 2.1.1 reads its Purpose past the front matter.
+    "main-front-matter-purpose": {"main": {"demo": "---\nnote: <!-- not a comment\n---\n" + DEMO}, "delta": {"demo":
+        "## Purpose\nA different purpose written in the delta for the demo capability here.\n\n"
+        "## ADDED Requirements\n\n" + req("New")}},
+    # 2.1.1 drops a byte-order mark and reads past a delta's front matter before looking for the Purpose.
+    "new-cap-purpose-bom": {"main": {}, "delta": {"newcap":
+        "\ufeff## Purpose\nThe purpose text that runs long enough to count for the threshold here.\n\n"
+        "## ADDED Requirements\n\n" + req("Fresh")}},
+    "new-cap-purpose-front-matter": {"main": {}, "delta": {"newcap":
+        "---\nnote: <!-- not a comment\nexample: |\n  ```\n---\n"
+        "## Purpose\nThe purpose text that runs long enough to count for the threshold here.\n\n"
+        "## ADDED Requirements\n\n" + req("Fresh")}},
     "new-cap-short-purpose": {"main": {}, "delta": {"newcap":
         "## Purpose\nShort purpose.\n\n## ADDED Requirements\n\n" + req("Fresh")}},
     "new-cap-unreadable-purpose": {"main": {}, "delta": {"newcap":

@@ -20,6 +20,11 @@ public final class ValidationRelease {
     /** A MODIFIED requirement that grows past the limit, and delta front matter, from here. */
     public static final String MODIFIED_GROWTH = "2.1.1";
     public static final String DELTA_FRONT_MATTER = "2.1.1";
+    /**
+     * A new main spec's layout and the delta Purpose reader, from here: a blank line after {@code ## Purpose}, a
+     * byte-order mark dropped, and the delta's front matter read past (left out of the merge, with a warning).
+     */
+    public static final String NEW_SPEC_LAYOUT = "2.1.1";
 
     private ValidationRelease() {
     }

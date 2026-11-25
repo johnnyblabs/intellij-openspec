@@ -1,0 +1,6 @@
+Task status: ✓ Complete
+
+Specs to update:
+  newcap: create
+newcap: target spec does not exist; only ADDED requirements are allowed for new specs. MODIFIED and RENAMED operations require an existing spec.
+Aborted. No files were changed.

@@ -4,6 +4,7 @@ import com.johnnyblabs.openspec.model.DeltaSpecOperation;
 import com.johnnyblabs.openspec.model.DeltaSpecOperation.OperationType;
 import com.johnnyblabs.openspec.util.CodeFences;
 import com.johnnyblabs.openspec.util.SpecPatterns;
+import com.johnnyblabs.openspec.validation.ValidationRelease;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
@@ -321,11 +322,27 @@ public final class SpecMerge {
 
     /** {@link #merge(String, String, String, String)} naming the main spec's path in warnings, as upstream does. */
     public static Result merge(String capability, String changeName, String delta, @Nullable String main, String mainSpecPath) {
-        // A delta's front matter (CLI 2.1.1) stays with the change: it is never carried into the main spec.
-        delta = com.johnnyblabs.openspec.util.FrontMatter.blank(delta);
+        return merge(capability, changeName, delta, main, mainSpecPath, null);
+    }
+
+    /**
+     * {@link #merge(String, String, String, String, String)} as {@code release}'s archive merges: from
+     * {@link ValidationRelease#NEW_SPEC_LAYOUT} the delta's front matter stays with the change (with a warning), and a
+     * new spec gets that release's layout and Purpose. {@code null}, or a release that can't be read, merges as the
+     * releases before it do.
+     */
+    public static Result merge(String capability, String changeName, String delta, @Nullable String main, String mainSpecPath,
+                               @Nullable String release) {
+        boolean layout211 = ValidationRelease.has(release, ValidationRelease.NEW_SPEC_LAYOUT);
+        List<String> warnings = new ArrayList<>();
+        if (layout211) {
+            if (com.johnnyblabs.openspec.util.FrontMatter.present(delta)) {
+                warnings.add(capability + " - frontmatter (line 1) is not carried into the main spec. It stays with the change.");
+            }
+            delta = com.johnnyblabs.openspec.util.FrontMatter.blank(delta);
+        }
         Plan plan = parseDelta(delta);
         List<DeltaSpecOperation> ops = operations(capability, plan);
-        List<String> warnings = new ArrayList<>();
         for (Orphan orphan : orphans(delta)) {
             if (orphan.fails()) {
                 return new Result(capability, null, ops, List.copyOf(warnings),
@@ -333,7 +350,7 @@ public final class SpecMerge {
             }
         }
         try {
-            String projected = apply(capability, changeName, delta, main, mainSpecPath, plan, warnings);
+            String projected = apply(capability, changeName, delta, main, mainSpecPath, plan, warnings, layout211);
             return new Result(capability, projected, ops, List.copyOf(warnings), null);
         } catch (Refusal r) {
             return new Result(capability, null, ops, List.copyOf(warnings), r.getMessage());
@@ -386,7 +403,7 @@ public final class SpecMerge {
     }
 
     private static String apply(String spec, String changeName, String delta, @Nullable String main, String mainSpecPath,
-                                Plan plan, List<String> warnings) {
+                                Plan plan, List<String> warnings, boolean layout211) {
         if (!plan.unpaired().isEmpty()) {
             Unpaired first = plan.unpaired().get(0);
             String missing = first.side().equals("FROM") ? "TO" : "FROM";
@@ -457,13 +474,13 @@ public final class SpecMerge {
                     + "Provide ADDED/MODIFIED/REMOVED/RENAMED sections in change spec.");
         }
 
-        String deltaPurpose = purposeSection(delta);
+        String deltaPurpose = purposeSection(delta, layout211);
         String target;
         boolean isNewSpec = main == null;
         if (!isNewSpec) {
             target = main;
             if (deltaPurpose != null) {
-                String existing = purposeSection(main);
+                String existing = purposeSection(main, layout211);
                 if (existing != null && !existing.equals(deltaPurpose)) {
                     warnings.add(spec + " - delta Purpose ignored; " + spec + " already has one. "
                             + "Edit " + mainSpecPath + " directly to change it.");
@@ -477,9 +494,9 @@ public final class SpecMerge {
             if (!plan.removed().isEmpty()) {
                 warnings.add(spec + " - " + plan.removed().size() + " REMOVED requirement(s) ignored for new spec (nothing to remove).");
             }
-            target = skeleton(spec, changeName, deltaPurpose);
+            target = skeleton(spec, changeName, deltaPurpose, layout211);
             if (deltaPurpose != null && !readablePurpose(deltaPurpose)) {
-                target = skeleton(spec, changeName, null);
+                target = skeleton(spec, changeName, null, layout211);
                 warnings.add(spec + " - delta Purpose ignored (it would leave the new spec unreadable); wrote the placeholder Purpose instead.");
             } else if (deltaPurpose != null && deltaPurpose.strip().length() < MIN_PURPOSE_LENGTH) {
                 warnings.add(spec + " - carried Purpose is under " + MIN_PURPOSE_LENGTH + " characters; "
@@ -663,14 +680,20 @@ public final class SpecMerge {
                 String.join("\n", preamble).stripTrailing(), blocks, after.startsWith("\n") ? after : "\n" + after);
     }
 
-    static String skeleton(String capability, String changeName, @Nullable String purpose) {
+    /** A new main spec as upstream's {@code buildSpecSkeleton} writes it; {@code layout211}: a blank line after {@code ## Purpose}. */
+    static String skeleton(String capability, String changeName, @Nullable String purpose, boolean layout211) {
         String body = purpose != null && !purpose.isBlank() ? purpose.strip()
                 : PURPOSE_PLACEHOLDER_PREFIX + changeName + PURPOSE_PLACEHOLDER_SUFFIX;
-        return "# " + capability + " Specification\n\n## Purpose\n" + body + "\n\n## Requirements\n";
+        return "# " + capability + " Specification\n\n## Purpose\n" + (layout211 ? "\n" : "") + body + "\n\n## Requirements\n";
     }
 
-    /** The body of a {@code ## Purpose} section, ignoring fenced and commented-out headers; null when absent or empty. */
-    static @Nullable String purposeSection(String content) {
+    /**
+     * The body of a {@code ## Purpose} section, ignoring fenced and commented-out headers; null when absent or empty.
+     * {@code layout211}: upstream 2.1.1's reader, which first drops a byte-order mark and blanks the front matter
+     * ({@link com.johnnyblabs.openspec.util.FrontMatter#blank} does both, in that order).
+     */
+    static @Nullable String purposeSection(String content, boolean layout211) {
+        if (layout211) content = com.johnnyblabs.openspec.util.FrontMatter.blank(content);
         String normalized = content.replace("\r\n", "\n").replace('\r', '\n');
         List<String> original = List.of(normalized.split("\n", -1));
         List<String> masked = List.of(maskHtmlComments(normalized).split("\n", -1));

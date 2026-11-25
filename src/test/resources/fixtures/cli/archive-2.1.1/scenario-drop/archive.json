@@ -1,0 +1,15 @@
+{
+  "archive": null,
+  "root": {
+    "path": "/fixture",
+    "source": "nearest"
+  },
+  "status": [
+    {
+      "severity": "error",
+      "code": "archive_spec_update_failed",
+      "message": "demo MODIFIED failed for header \"### Requirement: Works\" - current spec contains scenario(s) not present in the modified block: \"It works\". The modified block has 1 scenario; the current spec has 1 scenario. It adds 1 scenario not in the current spec: \"Renamed scenario\". Refresh the change spec before archiving to avoid dropping scenarios.",
+      "fix": "Fix the change delta specs and rerun. No files were changed."
+    }
+  ]
+}

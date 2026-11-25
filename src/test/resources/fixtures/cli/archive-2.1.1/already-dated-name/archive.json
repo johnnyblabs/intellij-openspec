@@ -1,0 +1,18 @@
+{
+  "archive": {
+    "change": "2026-01-02-c1",
+    "archivedAs": "2026-01-02-c1",
+    "path": "/fixture/openspec/changes/archive/2026-01-02-c1",
+    "specsUpdated": true,
+    "totals": {
+      "added": 1,
+      "modified": 0,
+      "removed": 0,
+      "renamed": 0
+    }
+  },
+  "root": {
+    "path": "/fixture",
+    "source": "nearest"
+  }
+}

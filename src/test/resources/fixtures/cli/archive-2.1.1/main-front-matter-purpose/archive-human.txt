@@ -1,0 +1,10 @@
+Task status: ✓ Complete
+
+Specs to update:
+  demo: update
+⚠️  Warning: demo - delta Purpose ignored; demo already has one. Edit /fixture/openspec/specs/demo/spec.md directly to change it.
+Applying changes to openspec/specs/demo/spec.md:
+  + 1 added
+Totals: + 1, ~ 0, - 0, → 0
+Specs updated successfully.
+Change 'c1' archived as '<DATE>-c1'.
