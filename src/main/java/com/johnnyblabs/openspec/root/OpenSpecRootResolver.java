@@ -119,6 +119,11 @@ public final class OpenSpecRootResolver implements Disposable {
         return s;
     }
 
+    /** The cached snapshot as it stands: no scheduling, for callers that must not cause work (editor hooks). */
+    public Snapshot current() {
+        return snapshot;
+    }
+
     /** Re-resolve soon, off the UI thread. */
     public void invalidate() {
         scheduled.set(true);
@@ -174,8 +179,20 @@ public final class OpenSpecRootResolver implements Disposable {
         if (!same(old, next)) LOG.info("OpenSpec root: " + next.kind() + " " + resolution.root() + " (" + resolution.source() + ")");
         if (!same(old, next) && live && !project.isDisposed()) {
             project.getMessageBus().syncPublisher(TOPIC).rootChanged(next);
+            notifyIgnoredPointer(old, next);
+            // Open store files gain or lose their banner with the root.
+            com.intellij.ui.EditorNotifications.getInstance(project).updateAllNotifications();
         }
         return next;
+    }
+
+    /** Once, on the way into the ignored-pointer state; the tree's hint carries it after that. */
+    private void notifyIgnoredPointer(Snapshot old, Snapshot next) {
+        String text = RootProvenance.ignoredPointerText(next.resolution());
+        if (text == null || old.resolution().ignoredStoreId() != null) return;
+        com.johnnyblabs.openspec.util.OpenSpecNotifier.notify(project,
+                com.johnnyblabs.openspec.util.OpenSpecNotifier.GROUP_SYSTEM, "OpenSpec store ignored", text,
+                com.intellij.notification.NotificationType.INFORMATION);
     }
 
     private void updateWatches(LocalFileSystem lfs, @Nullable String base, @Nullable Path openspecDir,

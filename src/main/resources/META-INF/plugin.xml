@@ -30,6 +30,9 @@
         <!-- Services -->
         <projectService serviceImplementation="com.johnnyblabs.openspec.services.OpenSpecProjectService"/>
         <projectService serviceImplementation="com.johnnyblabs.openspec.root.OpenSpecRootResolver"/>
+        <!-- Store files: editable without the "does not belong to the project" prompt, with a banner saying where they live. -->
+        <nonProjectFileWritingAccessExtension implementation="com.johnnyblabs.openspec.root.StoreFileWritingAccess"/>
+        <editorNotificationProvider implementation="com.johnnyblabs.openspec.root.StoreFileBanner"/>
         <projectService serviceImplementation="com.johnnyblabs.openspec.services.ConfigService"/>
         <projectService serviceImplementation="com.johnnyblabs.openspec.services.SpecParsingService"/>
         <projectService serviceImplementation="com.johnnyblabs.openspec.services.UpdatePreviewService"/>

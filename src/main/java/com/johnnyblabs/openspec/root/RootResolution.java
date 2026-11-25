@@ -14,7 +14,13 @@ import java.nio.file.Path;
  * @param warning a non-fatal note, such as a {@code store:} pointer ignored next to a local planning tree
  */
 public record RootResolution(@Nullable Path root, @Nullable Source source, @Nullable String storeId,
-                             @Nullable Problem problem, @Nullable String warning) {
+                             @Nullable Problem problem, @Nullable String warning, @Nullable String ignoredStoreId) {
+
+    /** A resolution with no ignored store pointer. */
+    public RootResolution(@Nullable Path root, @Nullable Source source, @Nullable String storeId,
+                          @Nullable Problem problem, @Nullable String warning) {
+        this(root, source, storeId, problem, warning, null);
+    }
 
     /** Where a root came from. {@link #cliName()} is the CLI's {@code root.source} value. */
     public enum Source {
@@ -31,11 +37,17 @@ public record RootResolution(@Nullable Path root, @Nullable Source source, @Null
         }
     }
 
-    /** A reason a store root can't be used, with the CLI's diagnostic code. */
-    public record Problem(String code, String message, @Nullable String fix) {
+    /**
+     * A reason a store root can't be used, with the CLI's diagnostic code. {@code storeId} names the store the
+     * pointer or the global default asked for, when one did; the plugin's titles use it, the CLI's text doesn't.
+     */
+    public record Problem(String code, String message, @Nullable String fix, @Nullable String storeId) {
+        public Problem(String code, String message, @Nullable String fix) {
+            this(code, message, fix, null);
+        }
     }
 
-    static RootResolution none() {
+    public static RootResolution none() {
         return new RootResolution(null, null, null, null, null);
     }
 

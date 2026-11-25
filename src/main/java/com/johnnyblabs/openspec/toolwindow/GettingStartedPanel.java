@@ -146,7 +146,8 @@ public class GettingStartedPanel extends JPanel implements Disposable {
                 RootResolution.Problem problem = OpenSpecRootResolver.getInstance(project).snapshot().problem();
                 if (problem != null) {
                     // The project points at a store that can't be used: say why, instead of offering a fresh init.
-                    add(createCard("The OpenSpec store can't be used", problemText(problem), null), gbc);
+                    add(createCard(com.johnnyblabs.openspec.root.RootProvenance.problemTitle(problem), problemText(problem),
+                            null), gbc);
                     break;
                 }
                 add(createCard(

@@ -107,7 +107,7 @@ public final class RootResolver {
             String warning = pointer.value() == null ? null
                     : "Warning: " + pointer.file() + " declares store '" + pointer.value()
                     + "', but this directory is a real OpenSpec root; the declaration is ignored.";
-            return new RootResolution(nearest, RootResolution.Source.NEAREST, null, null, warning);
+            return new RootResolution(nearest, RootResolution.Source.NEAREST, null, null, warning, pointer.value());
         }
         if (pointer.malformed() != null) {
             boolean unparseable = "unparseable".equals(pointer.malformed());
@@ -165,7 +165,7 @@ public final class RootResolver {
         if (Files.exists(storeRoot) && !Files.isDirectory(storeRoot)) {
             // Upstream fails reading the metadata through a file and reports the raw error, with no origin prefix.
             return RootResolution.problem(new RootResolution.Problem("context_failed",
-                    "ENOTDIR: not a directory, open '" + storeRoot.resolve(STORE_METADATA) + "'", null));
+                    "ENOTDIR: not a directory, open '" + storeRoot.resolve(STORE_METADATA) + "'", null, id));
         }
         RootResolution.Problem problem = inspectStore(id, storeRoot);
         if (problem != null) {
@@ -177,7 +177,7 @@ public final class RootResolver {
     /** The CLI prefixes a store problem with where the store was named. */
     private static RootResolution.Problem origin(RootResolution.Problem p, String id, @Nullable Path declaredIn) {
         String prefix = declaredIn != null ? "Declared in " + declaredIn + ": " : "Global defaultStore '" + id + "': ";
-        return new RootResolution.Problem(p.code(), prefix + p.message(), p.fix());
+        return new RootResolution.Problem(p.code(), prefix + p.message(), p.fix(), id);
     }
 
     static final String KEBAB_ID_FIX = "Use kebab-case with lowercase letters, numbers, and single hyphen separators.";

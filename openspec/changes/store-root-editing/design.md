@@ -41,7 +41,7 @@ Upstream facts (checked for `store-root-resolver`):
 
 Words:
 - `declared` is the CLI's own word for a pointer.
-- `machine default` stands for the CLI's `global_default`, which is jargon to a user.
+- `global default` for the CLI's `global_default` source. It is upstream's own user-facing phrase ("clear the stale global default"); "machine" appears only in upstream code comments.
 - `parent folder` covers an ancestor root.
 
 A root inside the project gets no label.
@@ -129,7 +129,7 @@ When the root changes, the resolver's listener calls `EditorNotifications.update
 
 - **The banner provider could be slow.** It runs for every opened file. Mitigation: the snapshot check is O(1). It returns early for local roots and for files under the project.
 - **Suppressing the write prompt removes a safety net.** Mitigation: only files under the resolved root are affected, and the banner states the version-control caveat in its place.
-- **The wording is a product choice.** "machine default" in particular. Mitigation: it lives in one helper, and the Marketplace screenshot is re-read at capture time.
+- **The wording is a product choice.** It follows upstream's output text, lives in one helper, and the Marketplace screenshot is re-read at capture time.
 
 ## Migration Plan
 

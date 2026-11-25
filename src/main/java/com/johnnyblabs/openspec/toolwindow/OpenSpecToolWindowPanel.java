@@ -690,8 +690,10 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
                     com.johnnyblabs.openspec.actions.ActionLauncher.launch(action, tree, "SpecTree");
                 }
             }
-        } else if ("OpenSpec".equals(parent.getUserObject())) {
-            // Root-level hint — trigger Init
+        }
+        // A root-level hint initializes only when it says the project isn't set up. The store-problem and
+        // ignored-pointer hints don't: a new local planning tree would silently override the store.
+        if (SpecTreeModel.initializesOnActivation(hintNode)) {
             project.getService(com.johnnyblabs.openspec.scaffolding.ScaffoldingService.class).initOpenSpec(
                     com.intellij.openapi.application.ModalityState.nonModal(), dir -> refreshAsync(),
                     ex -> com.johnnyblabs.openspec.util.OpenSpecNotifier.notify(project,

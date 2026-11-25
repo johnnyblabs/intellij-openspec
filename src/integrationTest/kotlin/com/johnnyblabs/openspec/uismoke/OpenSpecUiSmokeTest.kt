@@ -104,6 +104,7 @@ class OpenSpecUiSmokeTest {
     interface FileEditorManagerRef {
         fun getInstance(project: Project): FileEditorManagerRef
         fun openFile(file: VirtualFileRef, focusEditor: Boolean): Array<FileEditorRef>
+        fun closeFile(file: VirtualFileRef)
     }
 
     @Remote("com.intellij.openapi.fileEditor.FileEditor")
@@ -513,6 +514,32 @@ class OpenSpecUiSmokeTest {
                 waitUntil("the Browse tree lists the store's change", timeout = 2.minutes) {
                     hasText("store-add-farewell")
                 }
+                // The tree's root says where the specs live.
+                waitUntil("the tree's root names the declared store", timeout = 1.minutes) {
+                    hasText("OpenSpec \u00b7 store demo (declared)")
+                }
+            }
+
+            // A store file opens with a banner naming the store, in place of the not-in-project prompt.
+            val storeFile = withContext(OnDispatcher.EDT) {
+                utility(LocalFileSystemRef::class).getInstance()
+                    .refreshAndFindFileByPath(change.resolve("proposal.md").toString())
+                    ?: error("the store's proposal isn't visible to the IDE")
+            }
+            withContext(OnDispatcher.EDT) {
+                utility(FileEditorManagerRef::class).getInstance(singleProject()).openFile(storeFile, true)
+            }
+            // The banner's label carries its full sentence as its accessible name (its painted text is cut to width).
+            val banner = ui.x {
+                byAccessibleName("This file is in OpenSpec store 'demo', outside this project. " +
+                    "Commit changes from the store's own repository.")
+            }
+            waitUntil("the store banner shows on the store's file", timeout = 1.minutes) { banner.present() }
+            // Closed again, so the editor's tab and breadcrumbs don't show the change's name to later checks.
+            withContext(OnDispatcher.EDT) {
+                utility(FileEditorManagerRef::class).getInstance(singleProject()).closeFile(storeFile)
+            }
+            ideFrame {
 
                 // Stop 2: a change made in the store outside the IDE appears without a manual refresh.
                 val outside = store.resolve("openspec/changes/store-made-outside")
@@ -528,7 +555,7 @@ class OpenSpecUiSmokeTest {
                 Files.writeString(pointer, "store: ghost\n")
                 waitUntil("the tree explains the unusable store", timeout = 2.minutes) {
                     returnToIde()
-                    hasSubtext("store can't be used")
+                    hasSubtext("store 'ghost' can't be used")
                 }
                 check(!hasText("store-add-farewell")) { "the store's change is still listed under a broken pointer" }
 

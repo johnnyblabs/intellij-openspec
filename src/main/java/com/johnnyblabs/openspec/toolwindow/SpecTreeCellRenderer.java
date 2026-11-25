@@ -160,7 +160,7 @@ public class SpecTreeCellRenderer extends ColoredTreeCellRenderer {
             case ARTIFACT_BLOCKED -> ARTIFACT_BLOCKED_ICON;
             case MISSING_ARTIFACT -> MISSING_ARTIFACT_BADGED_ICON;
             case DELTA_SPEC -> DELTA_SPEC_ICON;
-            case HINT -> null;
+            case HINT, ROOT -> null;
         };
     }
 }

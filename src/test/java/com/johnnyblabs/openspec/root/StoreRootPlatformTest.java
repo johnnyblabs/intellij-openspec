@@ -224,8 +224,7 @@ public class StoreRootPlatformTest extends HeavyPlatformTestCase {
         // The Browse tree, already open when the pointer broke, says why instead of offering init.
         var model = new com.johnnyblabs.openspec.toolwindow.SpecTreeModel(getProject()).buildModel();
         String hint = String.valueOf(((javax.swing.tree.DefaultMutableTreeNode) model.getRoot()).getChildAt(0));
-        assertTrue(hint, hint.contains(com.johnnyblabs.openspec.toolwindow.SpecTreeModel.STORE_PROBLEM_PREFIX
-                + "Declared in "));
+        assertTrue(hint, hint.startsWith("The OpenSpec store 'ghost' can't be used: Declared in "));
     }
 
     public void testUntilTheFirstResolutionTheToolWindowIsResolving() throws Exception {

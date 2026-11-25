@@ -28,28 +28,61 @@ public class SpecTreeModel {
 
     private final Project project;
 
-    /** Leads the tree's hint when the project's store can't be used. */
-    public static final String STORE_PROBLEM_PREFIX = "The OpenSpec store can't be used: ";
+    /**
+     * What a hint directly under the root is about, kept in the hint's otherwise unused artifact-id slot. Only the
+     * not-set-up hint initializes on activation: initializing next to a store pointer would create a local planning
+     * tree that silently overrides the store.
+     */
+    public static final String HINT_NOT_SET_UP = "not-set-up";
+    public static final String HINT_STORE_PROBLEM = "store-problem";
+    public static final String HINT_IGNORED_POINTER = "ignored-pointer";
+
+    /**
+     * Whether activating {@code hintNode} (a double-click) runs Initialize: only the not-set-up hint directly under the
+     * root. The store-problem and ignored-pointer hints don't, since a new local planning tree would override the store.
+     */
+    public static boolean initializesOnActivation(DefaultMutableTreeNode hintNode) {
+        if (!(hintNode.getParent() instanceof DefaultMutableTreeNode parent)) return false;
+        return parent.getUserObject() instanceof TreeNodeData rootData && rootData.type() == TreeNodeType.ROOT
+                && hintNode.getUserObject() instanceof TreeNodeData hintData
+                && hintData.type() == TreeNodeType.HINT && HINT_NOT_SET_UP.equals(hintData.artifactId());
+    }
 
     public SpecTreeModel(Project project) {
         this.project = project;
     }
 
     public DefaultTreeModel buildModel() {
-        DefaultMutableTreeNode root = new DefaultMutableTreeNode("OpenSpec");
+        com.johnnyblabs.openspec.root.OpenSpecRootResolver resolver =
+                com.johnnyblabs.openspec.root.OpenSpecRootResolver.getInstance(project);
+        com.johnnyblabs.openspec.root.RootResolution resolution = resolver == null
+                ? com.johnnyblabs.openspec.root.RootResolution.none() : resolver.snapshot().resolution();
+        java.nio.file.Path base = project.getBasePath() == null ? null : java.nio.file.Path.of(project.getBasePath());
+        // The root says where the specs live when that isn't the project's own openspec/.
+        String rootLabel = com.johnnyblabs.openspec.root.RootProvenance.treeLabel(resolution, base);
+        DefaultMutableTreeNode root = new DefaultMutableTreeNode(new TreeNodeData(rootLabel, TreeNodeType.ROOT,
+                null, null, null, com.johnnyblabs.openspec.root.RootProvenance.treeTooltip(resolution, base)));
 
         if (!OpenSpecFileUtil.isOpenSpecProject(project)) {
             // A project pointing at a store that can't be used is set up: say why, not "initialize".
-            com.johnnyblabs.openspec.root.OpenSpecRootResolver resolver =
-                    com.johnnyblabs.openspec.root.OpenSpecRootResolver.getInstance(project);
-            com.johnnyblabs.openspec.root.RootResolution.Problem problem =
-                    resolver == null ? null : resolver.snapshot().problem();
-            String hint = problem != null
-                    ? STORE_PROBLEM_PREFIX + GettingStartedPanel.problemText(problem)
-                    : "No openspec/ directory found — click Initialize to set up.";
-            root.add(new DefaultMutableTreeNode(
-                    new TreeNodeData(hint, TreeNodeType.HINT, null, null, null, hint)));
+            com.johnnyblabs.openspec.root.RootResolution.Problem problem = resolution.problem();
+            if (problem != null) {
+                String hint = com.johnnyblabs.openspec.root.RootProvenance.problemTitle(problem) + ": "
+                        + GettingStartedPanel.problemText(problem);
+                root.add(new DefaultMutableTreeNode(
+                        new TreeNodeData(hint, TreeNodeType.HINT, null, null, HINT_STORE_PROBLEM, hint)));
+            } else {
+                String hint = "No openspec/ directory found — click Initialize to set up.";
+                root.add(new DefaultMutableTreeNode(
+                        new TreeNodeData(hint, TreeNodeType.HINT, null, null, HINT_NOT_SET_UP, hint)));
+            }
             return new DefaultTreeModel(root);
+        }
+
+        String ignored = com.johnnyblabs.openspec.root.RootProvenance.ignoredPointerText(resolution);
+        if (ignored != null) {
+            root.add(new DefaultMutableTreeNode(
+                    new TreeNodeData(ignored, TreeNodeType.HINT, null, null, HINT_IGNORED_POINTER, ignored)));
         }
 
         // The tool-window tree shows only the model/process surface — the Changes subtree. File
@@ -331,6 +364,8 @@ public class SpecTreeModel {
     }
 
     public enum TreeNodeType {
+        /** The tree's root: labelled with where the specs live. */
+        ROOT,
         CHANGES, CHANGE, CHANGE_DONE, CHANGE_ARCHIVE_READY, ARTIFACT, MISSING_ARTIFACT,
         ARTIFACT_DONE, ARTIFACT_READY, ARTIFACT_BLOCKED,
         DELTA_SPEC, HINT;
@@ -372,6 +407,8 @@ public class SpecTreeModel {
          */
         @Override
         public @org.jetbrains.annotations.NotNull String getPathElementId() {
+            // Fixed, so expansion state survives the root's label changing with the resolved root.
+            if (type == TreeNodeType.ROOT) return "root";
             if (type == TreeNodeType.CHANGES) return "changes";
             if (type.isChange()) return "change:" + changeName;
             return switch (type) {

@@ -6,7 +6,7 @@ Since the plugin resolves the OpenSpec root as the CLI does, a project can show 
 
 ## What Changes
 
-- **The Browse tree says where the specs live.** When the root isn't the project's own `openspec/`, the tree's root reads, for example, "OpenSpec · store demo (declared)", "OpenSpec · store demo (machine default)" or "OpenSpec · parent folder". Its tooltip gives the full path, and for a root outside the project says to commit changes from that folder's own repository. A project with its own `openspec/` keeps the plain "OpenSpec" root.
+- **The Browse tree says where the specs live.** When the root isn't the project's own `openspec/`, the tree's root reads, for example, "OpenSpec · store demo (declared)", "OpenSpec · store demo (global default)" or "OpenSpec · parent folder". Its tooltip gives the full path, and for a root outside the project says to commit changes from that folder's own repository. A project with its own `openspec/` keeps the plain "OpenSpec" root.
 - **An ignored pointer is shown.** When `openspec/config.yaml` names a store but the project has its own planning tree, the tree shows a hint saying the store is ignored, and a notification says so once when it starts happening.
 - **Store files edit like project files.** The platform's "does not belong to the project" prompt no longer appears for files under the resolved root. An editor banner on those files names the store and says to commit from the store's own repository. The banner can be dismissed for the project.
 - **Store problems name the store.** The Getting Started card and the tree hint read "The OpenSpec store 'demo' can't be used" when the store id is known.

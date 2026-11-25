@@ -2,15 +2,15 @@
 
 ### Requirement: Where the specs live is shown
 
-When the resolved root isn't the project's own `openspec/`, the Browse tree's root label SHALL name it: a store by id with its source (`declared` or `machine default`), or `parent folder`. Its tooltip SHALL give the root's path and, for a root outside the project, say to commit changes from that folder's own repository. A project's own root SHALL keep the plain label.
+When the resolved root isn't the project's own `openspec/`, the Browse tree's root label SHALL name it: a store by id with its source (`declared` or `global default`), or `parent folder`. Its tooltip SHALL give the root's path and, for a root outside the project, say to commit changes from that folder's own repository. A project's own root SHALL keep the plain label.
 
 #### Scenario: A declared store is named
 - **WHEN** the project's config points at the registered store `demo`
 - **THEN** the tree's root label SHALL read `OpenSpec · store demo (declared)` and its tooltip SHALL give the store's path and the commit advice
 
-#### Scenario: The machine default store is named
+#### Scenario: The global default store is named
 - **WHEN** the root resolves from the global `defaultStore` `demo`
-- **THEN** the tree's root label SHALL read `OpenSpec · store demo (machine default)`
+- **THEN** the tree's root label SHALL read `OpenSpec · store demo (global default)`
 
 #### Scenario: A parent folder's root is named
 - **WHEN** the root is a parent folder's `openspec/`
