@@ -54,7 +54,7 @@
     - dropping `update` actions (`eve-edited`);
     - dropping non-`SKILL.md` files (`notes-beside-skill`);
     - dropping the `allowed-tools` normalization (the unedited Eve copy).
-- [ ] 2.3 Exclude every path under `*/skills/openspec-*/`, and `.agents/skills/.openspec-target`, from `UpdatePreviewService.legacyDeletes` (design decision 6). Verify with `UpdatePreviewServiceTest`:
+- [x] 2.3 Exclude every path under `*/skills/openspec-*/`, and `.agents/skills/.openspec-target`, from `UpdatePreviewService.legacyDeletes` (design decision 6). Verify with `UpdatePreviewServiceTest`:
   - on 2.1.x `update-migration/*/plan-force.json`, no skill-folder file or marker is offered;
   - the existing 1.17.0 and 2.x `legacy-*-force` captures offer exactly the files they offer today.
 

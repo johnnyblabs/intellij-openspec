@@ -200,13 +200,16 @@ public final class UpdatePreviewService {
 
     /**
      * The in-project deletes OpenSpec's legacy cleanup lists in a forced plan: the only files the cleanup flow may
-     * offer. Deletes of other tools (stale skills, the earlier-release sweep) are not legacy files. Package-private
-     * for tests.
+     * offer. Deletes of other tools (stale skills, the earlier-release sweep) are not legacy files, and neither is
+     * anything in an OpenSpec skill folder or the shared-skills marker: CLI 2.1 tags those {@code openspec} too, and the
+     * update itself manages them (upstream's legacy cleanup never targets a {@code skills/} path). Package-private for
+     * tests.
      */
     static List<String> legacyDeletes(UpdatePlanParser.Plan forced) {
         return forced.changes().stream()
                 .filter(c -> c.action().equals("delete") && !c.outsideProject()
-                        && LEGACY_CLEANUP_TOOL.equals(c.tool()))
+                        && LEGACY_CLEANUP_TOOL.equals(c.tool())
+                        && !UpdateMigration.inSkillFolder(c.path()) && !UpdateMigration.MARKER.equals(c.path()))
                 .map(UpdatePlanParser.Change::path)
                 .toList();
     }

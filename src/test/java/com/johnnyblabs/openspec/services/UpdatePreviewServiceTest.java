@@ -298,6 +298,48 @@ public class UpdatePreviewServiceTest extends BasePlatformTestCase {
                 ".cursor/commands/openspec-proposal.md"), offered);
     }
 
+    private static UpdatePlanParser.Plan forcedPlan(java.nio.file.Path json) {
+        try {
+            return (UpdatePlanParser.Plan) UpdatePlanParser.parse(
+                    new CliRunner.CliResult(0, java.nio.file.Files.readString(json), ""));
+        } catch (java.io.IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /** 2.1 tags skill-folder deletes and the marker {@code openspec}; the update manages them, so none is offered. */
+    public void testSkillFoldersAndTheMarkerAreNeverOfferedAsLegacyFiles() {
+        int planned = 0;
+        for (String v : List.of("2.1.0", "2.1.1")) {
+            for (String name : List.of("notes-beside-skill", "profile-shrink", "profile-empty", "unedited")) {
+                java.nio.file.Path json = com.johnnyblabs.openspec.util.FixtureVersions.CLI
+                        .resolve(v + "/update-migration/" + name + "/plan-force.json");
+                UpdatePlanParser.Plan forced = forcedPlan(json);
+                planned += (int) forced.changes().stream().filter(c -> c.action().equals("delete")
+                        && c.tool().equals("openspec") && (UpdateMigration.inSkillFolder(c.path())
+                        || c.path().equals(UpdateMigration.MARKER))).count();
+                assertEquals(v + " " + name, List.of(), UpdatePreviewService.legacyDeletes(forced));
+            }
+        }
+        assertTrue("sanity: the plans tag skill-folder deletes openspec: " + planned, planned > 20);
+    }
+
+    /** The captured legacy cleanups still offer exactly OpenSpec's own legacy deletes. */
+    public void testLegacyCapturesOfferWhatTheyOfferedBefore() {
+        for (String v : List.of("1.17.0", "2.0.0", "2.1.0", "2.1.1")) {
+            for (String name : List.of("legacy-pending-force", "legacy-one-edited-force")) {
+                java.nio.file.Path json = com.johnnyblabs.openspec.util.FixtureVersions.CLI
+                        .resolve(v + "/update-dry-run/" + name + ".json");
+                if (!java.nio.file.Files.exists(json)) continue;
+                UpdatePlanParser.Plan forced = forcedPlan(json);
+                List<String> before = forced.changes().stream().filter(c -> c.action().equals("delete")
+                        && !c.outsideProject() && c.tool().equals("openspec")).map(UpdatePlanParser.Change::path).toList();
+                assertFalse(v + " " + name + " sanity", before.isEmpty());
+                assertEquals(v + " " + name, before, UpdatePreviewService.legacyDeletes(forced));
+            }
+        }
+    }
+
     // ---------- The profile switch ----------
 
     public void testOnCli115TheProfileSwitchShowsThePreviewInsteadOfAsking() {
