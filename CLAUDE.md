@@ -14,7 +14,7 @@ OpenSpec changes are mirrored to project trackers via project-level custom skill
 
 Without the middle step the card jumps Todo→Done and never appears in the "In Progress" column while work is actually happening. Forgejo issues have no In-Progress state (open/closed only), so `advance-change-trackers` touches Plane only and leaves the issue open.
 
-**Why these skills are custom-named, not inside `openspec-*`:** the `openspec` CLI manages `.claude/skills/openspec-*/SKILL.md` and rewrites them on every `openspec update`. Custom-named skills (`mirror-change-trackers`, `advance-change-trackers`, `close-change-trackers`, `release-cut`, `release-prep`) live outside that managed surface and survive updates.
+**Why these skills are custom-named, not inside `openspec-*`:** the `openspec` CLI manages the `openspec-*` skills (since CLI 2.x, `.agents/skills/openspec-*/SKILL.md`, linked from `.claude/skills/`) and rewrites them on every `openspec update`. Custom-named skills (`mirror-change-trackers`, `advance-change-trackers`, `close-change-trackers`, `release-cut`, `release-prep`) live outside that managed surface and survive updates.
 
 **These five skills are gitignored** (`.gitignore` entries `.claude/skills/{mirror,advance,close}-change-trackers/`, `.claude/skills/release-cut/`, and `.claude/skills/release-prep/`). They intrinsically reference `forgejo.geek`, the Plane project UUID, `mcp__homelab__*` server-tool names, and `johnb/intellij-openspec` — things that violate the anti-leak rule below if they reach the public GitHub mirror. The skill files exist on disk and work in any local session; they just don't ride to git history. Edits to these skills are local-only.
 
@@ -43,10 +43,10 @@ The broader rule: nothing local-homelab-specific ever lands in artifacts that wi
 ## If `openspec update` clobbers customizations
 
 ```bash
-git checkout HEAD -- .claude/skills/ .claude/commands/
+git checkout HEAD -- .agents/skills/ .claude/skills/
 ```
 
-Since the 1.5.0 skills-only migration, `.claude/skills/openspec-*/` was the only *tracked* surface the CLI regenerated; **since adopting 1.8.0, `.claude/commands/opsx/` is a second tracked, CLI-regenerated surface** (the `opsx:*` experimental commands) — hence the checkout restores both. The other AI-tool mirrors (`.augment/`, `.codex/`, `.gemini/`, `.github/skills/`, `.github/prompts/`, `.junie/`, and their `commands` variants) are gitignored regenerated copies — clobbering there is harmless, and git can't (and needn't) restore them. The custom-named skills are gitignored too, so the checkout won't touch them.
+Since adopting CLI 2.1.1, the CLI keeps the managed skills once, in **`.agents/skills/openspec-*/`** (plus `.agents/skills/.openspec-target`, its tool list), and **`.claude/skills/openspec-*` are links** to them; both are tracked, so the checkout restores the copies and the links. 2.x installs skills only: there are no `/opsx` command files any more, so `.claude/commands/` is no longer a tracked surface. The other AI-tool folders (`.augment/`, `.codex/`, `.gemini/`, `.github/skills/`, `.github/prompts/`, `.junie/`) are gitignored regenerated copies or links: clobbering there is harmless, and git can't (and needn't) restore them. The custom-named skills under `.claude/skills/` are outside the CLI's managed set: the gitignored ones aren't in `HEAD`, so the checkout leaves them alone, and the tracked `lifecycle-testdrive` comes back as committed.
 
 ## OpenSpec validation and CLI updates
 
