@@ -60,7 +60,7 @@
 
 ## 3. The preview dialog and the apply gate
 
-- [ ] 3.1 In `UpdatePreviewService`, compute the at-risk files on the dry run's background thread and pass them into the model. Add the model's `applyEnabled` rule: no failures, and either no at-risk files or the backed-up confirmation ticked.
+- [x] 3.1 In `UpdatePreviewService`, compute the at-risk files on the dry run's background thread and pass them into the model. Add the model's `applyEnabled` rule: no failures, and either no at-risk files or the backed-up confirmation ticked.
   - Verify with `UpdatePreviewServiceTest`, through the existing seams and the captured plans:
     - the decider receives the at-risk paths;
     - the files are read on the background seam;

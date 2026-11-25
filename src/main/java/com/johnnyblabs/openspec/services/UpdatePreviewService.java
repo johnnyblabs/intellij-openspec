@@ -65,12 +65,19 @@ public final class UpdatePreviewService {
         void run(ModalityState modality, Runnable task);
     }
 
+    /** Reads the files at risk from the project; a seam so tests can see which thread does it. */
+    interface AtRiskReader {
+        List<UpdateMigration.AtRisk> read(java.nio.file.Path root, UpdatePlanParser.Plan plan);
+    }
+
     private final Project project;
     private UpdateCli cli = CliRunner::run;
     private Decider decider;
     private Background background;
     private Ui ui = (modality, task) -> ApplicationManager.getApplication().invokeLater(task, modality);
     private @Nullable String versionForTest;
+    private java.nio.file.@Nullable Path rootForTest;
+    private AtRiskReader atRiskReader = UpdateMigration::atRiskFiles;
 
     public UpdatePreviewService(Project project) {
         this.project = project;
@@ -119,11 +126,33 @@ public final class UpdatePreviewService {
         ModalityState modality = ModalityState.current();
         background.run("Previewing openspec update", () -> {
             UpdatePlanParser.Result result = dryRun(false);
-            ui.run(modality, () -> decide(result, focusTool, onApplied, onFinished, modality));
+            List<UpdateMigration.AtRisk> atRisk = result instanceof UpdatePlanParser.Plan plan
+                    ? atRiskFiles(plan) : List.of();
+            ui.run(modality, () -> decide(result, atRisk, focusTool, onApplied, onFinished, modality));
         });
     }
 
-    private void decide(UpdatePlanParser.Result result, @Nullable String focusTool,
+    /** The planned files OpenSpec can't confirm as its own, read from the project. Off the EDT. */
+    private List<UpdateMigration.AtRisk> atRiskFiles(UpdatePlanParser.Plan plan) {
+        java.nio.file.Path root = projectRoot();
+        if (root == null) return List.of();
+        try {
+            List<UpdateMigration.AtRisk> found = atRiskReader.read(root, plan);
+            if (!found.isEmpty()) LOG.info("Update preview: " + found.size() + " file(s) at risk");
+            return found;
+        } catch (RuntimeException e) {
+            LOG.warn("Couldn't check the planned skill files", e);
+            return List.of();
+        }
+    }
+
+    private @Nullable java.nio.file.Path projectRoot() {
+        if (rootForTest != null) return rootForTest;
+        String base = project.getBasePath();
+        return base != null ? java.nio.file.Path.of(base) : null;
+    }
+
+    private void decide(UpdatePlanParser.Result result, List<UpdateMigration.AtRisk> atRisk, @Nullable String focusTool,
                         Consumer<CliRunner.CliResult> onApplied, Runnable onFinished, ModalityState modality) {
         if (result instanceof UpdatePlanParser.Failed failed) {
             LOG.info("Update preview failed: " + failed.message());
@@ -141,7 +170,7 @@ public final class UpdatePreviewService {
         }
         LOG.info("Update preview: " + plan.changes().size() + " change(s), " + plan.notes().size() + " note(s), "
                 + plan.failures().size() + " failure(s)" + (focusTool != null ? ", focus " + focusTool : ""));
-        if (!decider.apply(UpdatePreviewModel.of(plan, focusTool, detectedVersion()))) {
+        if (!decider.apply(UpdatePreviewModel.of(plan, focusTool, detectedVersion(), atRisk))) {
             LOG.info("Update preview cancelled");
             onFinished.run();
             return;
@@ -278,6 +307,22 @@ public final class UpdatePreviewService {
             console.printError(message + "\n");
         }
         OpenSpecNotifier.warn(project, "OpenSpec update", message);
+    }
+
+    @TestOnly
+    void setThreadingForTest(Background background, Ui ui) {
+        this.background = background;
+        this.ui = ui;
+    }
+
+    @TestOnly
+    void setAtRiskReaderForTest(AtRiskReader reader) {
+        this.atRiskReader = reader;
+    }
+
+    @TestOnly
+    void setProjectRootForTest(java.nio.file.@Nullable Path root) {
+        this.rootForTest = root;
     }
 
     @TestOnly

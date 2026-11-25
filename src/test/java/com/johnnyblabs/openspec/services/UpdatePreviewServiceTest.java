@@ -340,6 +340,99 @@ public class UpdatePreviewServiceTest extends BasePlatformTestCase {
         }
     }
 
+    // ---------- Files at risk (update-migration captures) ----------
+
+    private static CliRunner.CliResult migrationPlan(String version, String name) {
+        String base = "/fixtures/cli/" + version + "/update-migration/" + name + "/plan";
+        return new CliRunner.CliResult(Integer.parseInt(read(base + ".exit").strip()), read(base + ".json"), "");
+    }
+
+    /** Recreates a capture's project before the update in a real temp folder and points the service at it. */
+    private java.nio.file.Path projectBefore(String version, String name) throws IOException {
+        java.nio.file.Path dir = com.johnnyblabs.openspec.util.FixtureVersions.CLI.resolve(version + "/update-migration");
+        java.nio.file.Path root = java.nio.file.Files.createTempDirectory("update-migration");
+        com.intellij.openapi.util.Disposer.register(getTestRootDisposable(),
+                () -> com.intellij.openapi.util.io.FileUtil.delete(root.toFile()));
+        com.johnnyblabs.openspec.util.FixtureLayout.materialize(
+                com.google.gson.JsonParser.parseString(java.nio.file.Files.readString(dir.resolve(name + "/before.json")))
+                        .getAsJsonObject(), root.resolve("project"), root.resolve("home"),
+                com.johnnyblabs.openspec.util.FixtureLayout.LinkMode.SYMLINK_OR_COPY,
+                com.google.gson.JsonParser.parseString(java.nio.file.Files.readString(dir.resolve("texts.json")))
+                        .getAsJsonObject());
+        service.setProjectRootForTest(root.resolve("project"));
+        service.setCliVersionForTest(version);
+        return root.resolve("project");
+    }
+
+    public void testTheFilesAtRiskReachThePreviewAndHoldApply() throws IOException {
+        projectBefore("2.1.1", "edited");
+        List<UpdatePreviewModel> shown = new ArrayList<>();
+        service.setSeamsForTest(cli(migrationPlan("2.1.1", "edited"), OK, null), model -> {
+            shown.add(model);
+            return false;
+        });
+        service.setCliVersionForTest("2.1.1");
+
+        service.previewAndApply(UpdatePreviewService.Origin.ACTION, null, r -> {});
+
+        assertEquals(1, shown.size());
+        UpdatePreviewModel m = shown.get(0);
+        assertTrue(m.migration());
+        assertEquals(List.of(".claude/skills/openspec-explore/SKILL.md", ".cursor/skills/openspec-explore/SKILL.md"),
+                m.atRisk().stream().map(UpdateMigration.AtRisk::path).sorted().toList());
+        assertFalse("Apply waits for the backed-up confirmation", m.canApply(false));
+        assertTrue(m.canApply(true));
+        assertTrue(m.cancelIsDefault());
+        assertEquals("cancelled: no apply", List.of(DRY), callArgs());
+    }
+
+    public void testNothingIsAtRiskWhereTwoZeroZeroKeepsTheEdits() throws IOException {
+        projectBefore("2.0.0", "edited");
+        List<UpdatePreviewModel> shown = new ArrayList<>();
+        service.setSeamsForTest(cli(migrationPlan("2.0.0", "edited"), OK, null), model -> {
+            shown.add(model);
+            return false;
+        });
+        service.setCliVersionForTest("2.0.0");
+
+        service.previewAndApply(UpdatePreviewService.Origin.ACTION, null, r -> {});
+
+        assertEquals(List.of(), shown.get(0).atRisk());
+        assertTrue(shown.get(0).canApply(false));
+    }
+
+    public void testTheFilesAreReadInTheBackgroundNotInTheUiStep() throws IOException {
+        projectBefore("2.1.1", "edited");
+        boolean[] inBackground = {false};
+        List<Boolean> readInBackground = new ArrayList<>();
+        service.setSeamsForTest(cli(migrationPlan("2.1.1", "edited"), OK, null), model -> false);
+        service.setCliVersionForTest("2.1.1");
+        service.setThreadingForTest((title, task) -> {
+            inBackground[0] = true;
+            try {
+                task.run();
+            } finally {
+                inBackground[0] = false;
+            }
+        }, (modality, task) -> {
+            boolean was = inBackground[0];
+            inBackground[0] = false;
+            try {
+                task.run();
+            } finally {
+                inBackground[0] = was;
+            }
+        });
+        service.setAtRiskReaderForTest((root, plan) -> {
+            readInBackground.add(inBackground[0]);
+            return UpdateMigration.atRiskFiles(root, plan);
+        });
+
+        service.previewAndApply(UpdatePreviewService.Origin.ACTION, null, r -> {});
+
+        assertEquals(List.of(true), readInBackground);
+    }
+
     // ---------- The profile switch ----------
 
     public void testOnCli115TheProfileSwitchShowsThePreviewInsteadOfAsking() {

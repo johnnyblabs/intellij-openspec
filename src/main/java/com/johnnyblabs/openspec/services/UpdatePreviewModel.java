@@ -23,12 +23,15 @@ import java.util.TreeMap;
  *   <li>one "Outside this project" group last;</li>
  *   <li>whether the plan is the move to OpenSpec 2 ({@link UpdateMigration}): then the shared skills, the replaced
  *       skill copies and the command files each form one group, ahead of the tools' groups;</li>
- *   <li>whether Apply is allowed and whether Cancel is the default button.</li>
+ *   <li>the files the update would delete or overwrite that OpenSpec can't confirm as its own
+ *       ({@link UpdateMigration#atRiskFiles}, read before the preview opens);</li>
+ *   <li>whether Apply is allowed and whether Cancel is the default button. With files at risk, Apply also needs the
+ *       user's confirmation that they backed them up ({@link #canApply}).</li>
  * </ul>
  */
 public record UpdatePreviewModel(String summary, List<NoteRow> notes, List<Failure> failures, List<Group> groups,
                                  @Nullable String focusTool, boolean applyEnabled, boolean cancelIsDefault,
-                                 boolean migration) {
+                                 boolean migration, List<UpdateMigration.AtRisk> atRisk) {
 
     public static final String OUTSIDE_PROJECT = "Outside this project";
     /** The plan's tool value for untouched files an earlier release left where no tool reads them (CLI 1.17.0+). */
@@ -66,6 +69,12 @@ public record UpdatePreviewModel(String summary, List<NoteRow> notes, List<Failu
 
     /** As {@link #of(Plan, String)}, for a plan from CLI {@code cliVersion} (null when unknown: never a migration). */
     public static UpdatePreviewModel of(Plan plan, @Nullable String focusTool, @Nullable String cliVersion) {
+        return of(plan, focusTool, cliVersion, List.of());
+    }
+
+    /** As {@link #of(Plan, String, String)}, with the files at risk already read from the project. */
+    public static UpdatePreviewModel of(Plan plan, @Nullable String focusTool, @Nullable String cliVersion,
+                                        List<UpdateMigration.AtRisk> atRisk) {
         List<NoteRow> notes = plan.notes().stream()
                 .map(n -> new NoteRow(n.code(), n.message(),
                         com.johnnyblabs.openspec.util.UpdatePlanParser.LEGACY_TOOL_DIRECTORIES.equals(n.code())))
@@ -108,7 +117,18 @@ public record UpdatePreviewModel(String summary, List<NoteRow> notes, List<Failu
 
         boolean deletes = plan.changes().stream().anyMatch(c -> c.action().equals("delete"));
         return new UpdatePreviewModel(summary(plan.changes()), notes, plan.failures(), List.copyOf(groups), focusTool,
-                plan.failures().isEmpty(), deletes, migration);
+                plan.failures().isEmpty(), deletes, migration, List.copyOf(atRisk));
+    }
+
+    /** The heading of the at-risk warning. */
+    public static final String AT_RISK_WARNING = "OpenSpec can't confirm it generated these files. "
+            + "Update will delete or overwrite them and keep no copy.";
+    /** The confirmation Apply waits for when files are at risk. */
+    public static final String BACKED_UP = "I've backed up these files";
+
+    /** Whether Apply may run: no failures, and, when files are at risk, the user confirmed they backed them up. */
+    public boolean canApply(boolean backedUp) {
+        return applyEnabled && (atRisk.isEmpty() || backedUp);
     }
 
     /** The migration group a change of {@code kind} belongs to, or {@code null} for its tool's group. */

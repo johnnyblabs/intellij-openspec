@@ -208,4 +208,24 @@ class UpdatePreviewModelTest {
         }
     }
 
+
+    @Test
+    void filesAtRiskHoldApplyUntilTheBackupIsConfirmed() {
+        var risk = List.of(new UpdateMigration.AtRisk(".claude/skills/openspec-explore/SKILL.md", "delete"));
+        UpdatePreviewModel m = UpdatePreviewModel.of(migrationPlan("2.1.1", "edited"), null, "2.1.1", risk);
+        assertTrue(m.applyEnabled());
+        assertFalse(m.canApply(false));
+        assertTrue(m.canApply(true));
+        UpdatePreviewModel none = UpdatePreviewModel.of(migrationPlan("2.1.1", "edited"), null, "2.1.1", List.of());
+        assertTrue(none.canApply(false), "nothing at risk: no confirmation needed");
+    }
+
+    @Test
+    void failuresStillBlockApplyWhateverTheBackup() {
+        var risk = List.of(new UpdateMigration.AtRisk(".claude/skills/openspec-explore/SKILL.md", "delete"));
+        UpdatePreviewModel m = UpdatePreviewModel.of(plan("read-only-failure"), null, "1.15.0", risk);
+        assertFalse(m.applyEnabled());
+        assertFalse(m.canApply(true));
+        assertFalse(m.canApply(false));
+    }
 }
