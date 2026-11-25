@@ -433,6 +433,58 @@ public class UpdatePreviewServiceTest extends BasePlatformTestCase {
         assertEquals(List.of(true), readInBackground);
     }
 
+    private static CliRunner.CliResult appliedRun(String version, String name) {
+        String base = "/fixtures/cli/" + version + "/update-migration/" + name + "/applied";
+        return new CliRunner.CliResult(Integer.parseInt(read(base + ".exit").strip()), read(base + ".txt"),
+                read(base + ".stderr"));
+    }
+
+    private List<Notification> keptNotices() {
+        return raised.stream().filter(n -> UpdatePreviewService.KEPT_TITLE.equals(n.getTitle())).toList();
+    }
+
+    public void testWhatTheUpdateKeptIsReportedOnceWithItsGuidance() throws IOException {
+        projectBefore("2.1.1", "edited");
+        service.setSeamsForTest(cli(migrationPlan("2.1.1", "edited"), appliedRun("2.1.1", "edited"), null), model -> true);
+        service.setCliVersionForTest("2.1.1");
+
+        service.previewAndApply(UpdatePreviewService.Origin.ACTION, null, r -> {});
+
+        List<Notification> notices = keptNotices();
+        assertEquals(1, notices.size());
+        String content = notices.get(0).getContent();
+        assertTrue(content, content.contains(".claude/commands/opsx/explore.md"));
+        assertTrue(content, content.contains("Move anything worth keeping into the skill, then delete by hand."));
+        assertEquals(NotificationType.INFORMATION, notices.get(0).getType());
+        assertEquals("the kept command file exists in the project, so it can be opened",
+                List.of("Open explore.md"), notices.get(0).getActions().stream()
+                        .map(a -> a.getTemplatePresentation().getText()).toList());
+    }
+
+    public void testReplacedEditsAreReportedAsAWarning() throws IOException {
+        projectBefore("2.0.0", "shared-folder");
+        service.setSeamsForTest(cli(migrationPlan("2.0.0", "shared-folder"), appliedRun("2.0.0", "shared-folder"), null),
+                model -> true);
+        service.setCliVersionForTest("2.0.0");
+
+        service.previewAndApply(UpdatePreviewService.Origin.ACTION, null, r -> {});
+
+        List<Notification> notices = keptNotices();
+        assertEquals(1, notices.size());
+        assertEquals(NotificationType.WARNING, notices.get(0).getType());
+        assertTrue(notices.get(0).getContent().contains(".agents/skills/openspec-explore/SKILL.md"));
+    }
+
+    public void testAnUpdateThatKeptNothingRaisesNoKeptNotice() throws IOException {
+        projectBefore("2.1.1", "unedited");
+        service.setSeamsForTest(cli(migrationPlan("2.1.1", "unedited"), appliedRun("2.1.1", "unedited"), null), model -> true);
+        service.setCliVersionForTest("2.1.1");
+
+        service.previewAndApply(UpdatePreviewService.Origin.ACTION, null, r -> {});
+
+        assertEquals(List.of(), keptNotices());
+    }
+
     // ---------- The profile switch ----------
 
     public void testOnCli115TheProfileSwitchShowsThePreviewInsteadOfAsking() {

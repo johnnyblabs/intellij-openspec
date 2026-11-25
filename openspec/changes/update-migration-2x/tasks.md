@@ -88,7 +88,7 @@
     - every `unedited/applied.txt` and every 1.x update capture yields nothing.
   - Verify the reports without a capture (home prompt files, left-in-place command files, retired-tool files, kept shared skills) against text built from the format strings in the 2.1.1 and 2.0.0 sources. Name the source file for each in the test.
   - A truncated header yields nothing.
-- [ ] 4.2 After an applied update with any report, show one notification listing each path, a link for paths in the project, with the CLI's guidance; a replaced-edits report shows as a warning.
+- [x] 4.2 After an applied update with any report, show one notification listing each path, a link for paths in the project, with the CLI's guidance; a replaced-edits report shows as a warning.
   - Verify with `UpdatePreviewServiceTest`: an applied run whose stdout is `edited/applied.txt` raises one notification carrying those paths, and an `unedited` one raises none.
 - [ ] 4.3 Add the 2.1.0 Git and network sentence to the applied-update failure report (design decision 9).
   - Verify with `UpdatePreviewServiceTest`:

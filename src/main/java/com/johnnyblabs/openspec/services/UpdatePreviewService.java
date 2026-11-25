@@ -189,14 +189,81 @@ public final class UpdatePreviewService {
                 return;
             }
             LOG.info("openspec update finished with exit code " + applied.exitCode());
+            KeptNotice kept = keptNotice(applied);
             ui.run(modality, () -> {
                 onApplied.accept(applied);
                 onFinished.run();
+                if (kept != null) kept.show(project);
             });
             if (applied.isSuccess() && plan.hasNote(UpdatePlanParser.LEGACY_ARTIFACTS)) {
                 offerLegacyCleanup(plan, modality);
             }
         });
+    }
+
+    /** At most this many files get their own Open action; every path is still listed in the text. */
+    static final int MAX_OPEN_ACTIONS = 5;
+    static final String KEPT_TITLE = "OpenSpec update kept or replaced files";
+
+    /** What the applied update reported keeping, leaving or replacing, with the in-project files found on disk. */
+    record KeptNotice(List<com.johnnyblabs.openspec.util.UpdateOutputParser.KeptReport> reports,
+                      List<com.intellij.openapi.vfs.VirtualFile> files) {
+        boolean replaced() {
+            return reports.stream().anyMatch(r -> r.kind() == com.johnnyblabs.openspec.util.UpdateOutputParser.KeptKind.REPLACED);
+        }
+
+        String content() {
+            StringBuilder html = new StringBuilder();
+            for (var r : reports) {
+                if (html.length() > 0) html.append("<br><br>");
+                html.append(com.intellij.openapi.util.text.StringUtil.escapeXmlEntities(r.header()));
+                for (String path : r.paths()) {
+                    html.append("<br>&nbsp;&nbsp;").append(com.intellij.openapi.util.text.StringUtil.escapeXmlEntities(path));
+                }
+                if (r.guidance() != null) {
+                    html.append("<br>").append(com.intellij.openapi.util.text.StringUtil.escapeXmlEntities(r.guidance()));
+                }
+            }
+            return html.toString();
+        }
+
+        void show(Project project) {
+            var actions = files.stream().limit(MAX_OPEN_ACTIONS).map(f -> (com.intellij.notification.NotificationAction)
+                    new com.intellij.notification.NotificationAction("Open " + f.getName()) {
+                        @Override
+                        public void actionPerformed(@NotNull com.intellij.openapi.actionSystem.AnActionEvent e,
+                                                    @NotNull com.intellij.notification.Notification n) {
+                            new com.intellij.openapi.fileEditor.OpenFileDescriptor(project, f).navigate(true);
+                        }
+                    }).toArray(com.intellij.notification.NotificationAction[]::new);
+            OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_SYSTEM, KEPT_TITLE, content(),
+                    replaced() ? com.intellij.notification.NotificationType.WARNING
+                            : com.intellij.notification.NotificationType.INFORMATION, actions);
+        }
+    }
+
+    /**
+     * The kept-files notice for an applied run, or {@code null} when its output reports nothing kept, left or replaced.
+     * Off the EDT: it refreshes the in-project files it names so they can be opened.
+     */
+    @Nullable KeptNotice keptNotice(CliRunner.CliResult applied) {
+        var reports = com.johnnyblabs.openspec.util.UpdateOutputParser.parseKept(applied.stdout());
+        if (reports.isEmpty()) return null;
+        LOG.info("Update kept or replaced: " + reports.size() + " report(s)");
+        java.nio.file.Path root = projectRoot();
+        List<com.intellij.openapi.vfs.VirtualFile> files = new java.util.ArrayList<>();
+        if (root != null) {
+            for (var r : reports) {
+                for (String path : r.paths()) {
+                    if (path.startsWith("/") || path.startsWith("~")) continue;
+                    java.nio.file.Path file = root.resolve(path).normalize();
+                    if (!file.startsWith(root)) continue;
+                    var vf = com.intellij.openapi.vfs.LocalFileSystem.getInstance().refreshAndFindFileByNioFile(file);
+                    if (vf != null && !vf.isDirectory()) files.add(vf);
+                }
+            }
+        }
+        return new KeptNotice(reports, List.copyOf(files));
     }
 
     /** Called off the EDT after an applied update that left legacy artifacts: reads their removal from the forced plan. */
