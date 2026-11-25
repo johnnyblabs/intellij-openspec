@@ -270,4 +270,128 @@ class UpdateOutputParserContractTest {
                     "more than a short guidance before the bullets means unknown structure — offer nothing");
         }
     }
+
+    /** What a 2.x applied update kept, left or replaced, read from the real runs ({@code <v>/update-migration/}). */
+    @Nested
+    class KeptReports {
+
+        private static String applied(String version, String name) throws java.io.IOException {
+            return java.nio.file.Files.readString(FixtureVersions.CLI.resolve(version + "/update-migration/" + name
+                    + "/applied.txt"));
+        }
+
+        private static final List<String> RELEASES = List.of("2.0.0", "2.1.0", "2.1.1");
+        private static final String MOVE = "Move anything worth keeping into the skill, then delete by hand.";
+
+        @Test
+        void anEditedCommandFileIsKeptOnEveryRelease() throws java.io.IOException {
+            for (String v : RELEASES) {
+                List<UpdateOutputParser.KeptReport> reports = UpdateOutputParser.parseKept(applied(v, "edited"));
+                var commands = reports.stream().filter(r -> r.header().contains("command file")).toList();
+                assertEquals(1, commands.size(), v + " " + reports);
+                assertEquals(UpdateOutputParser.KeptKind.KEPT, commands.get(0).kind());
+                assertEquals(List.of(".claude/commands/opsx/explore.md"), commands.get(0).paths(), v);
+                assertEquals(MOVE, commands.get(0).guidance(), v);
+            }
+        }
+
+        @Test
+        void twoZeroZeroAlsoReportsTheSkillFoldersItKept() throws java.io.IOException {
+            var folders = UpdateOutputParser.parseKept(applied("2.0.0", "edited")).stream()
+                    .filter(r -> r.header().startsWith("Kept 2 skill folders")).toList();
+            assertEquals(1, folders.size());
+            assertEquals(List.of(".claude/skills/openspec-explore", ".cursor/skills/openspec-explore"), folders.get(0).paths());
+            assertTrue(folders.get(0).guidance().startsWith("Nothing was overwritten."));
+            for (String v : List.of("2.1.0", "2.1.1")) {
+                assertTrue(UpdateOutputParser.parseKept(applied(v, "edited")).stream()
+                        .noneMatch(r -> r.header().contains("skill folder")), v + ": 2.1 reports nothing about the copies");
+            }
+        }
+
+        @Test
+        void twoZeroZeroReportsReplacedEditsAndASkillKeptAsTheUsersOwn() throws java.io.IOException {
+            var replaced = UpdateOutputParser.parseKept(applied("2.0.0", "shared-folder"));
+            assertEquals(List.of(UpdateOutputParser.KeptKind.REPLACED), replaced.stream().map(UpdateOutputParser.KeptReport::kind).toList());
+            assertEquals(List.of(".agents/skills/openspec-explore/SKILL.md"), replaced.get(0).paths());
+            var own = UpdateOutputParser.parseKept(applied("2.0.0", "shared-own-skill")).stream()
+                    .filter(r -> r.header().contains("as your own")).toList();
+            assertEquals(List.of(".agents/skills/openspec-explore"), own.get(0).paths());
+            assertEquals(UpdateOutputParser.KeptKind.KEPT, own.get(0).kind());
+        }
+
+        @Test
+        void commandFilesThatCouldNotBeRemovedAreLeftInPlace() throws java.io.IOException {
+            for (String v : RELEASES) {
+                var left = UpdateOutputParser.parseKept(applied(v, "command-left-in-place"));
+                assertEquals(1, left.size(), v + " " + left);
+                assertEquals(UpdateOutputParser.KeptKind.LEFT, left.get(0).kind());
+                assertEquals(6, left.get(0).paths().size(), v);
+                assertTrue(left.get(0).paths().stream().allMatch(p -> p.startsWith(".claude/commands/opsx/")), v);
+                assertEquals("Check the file permissions or symbolic links, then delete by hand.", left.get(0).guidance());
+            }
+        }
+
+        @Test
+        void aRetiredToolsKeptFilesAreIndentedAndCarryNoGuidanceLine() throws java.io.IOException {
+            for (String v : RELEASES) {
+                var kept = UpdateOutputParser.parseKept(applied(v, "retired-tool-edited"));
+                assertEquals(1, kept.size(), v + " " + kept);
+                assertEquals(List.of(".amazonq/prompts/opsx-apply.md"), kept.get(0).paths(), v);
+                assertNull(kept.get(0).guidance(), "the line after the paths is unrelated output, " + v);
+            }
+        }
+
+        @Test
+        void runsThatKeepNothingReportNothing() throws java.io.IOException {
+            for (String v : RELEASES) {
+                assertEquals(List.of(), UpdateOutputParser.parseKept(applied(v, "unedited")), v);
+            }
+            int seen = 0;
+            for (String v : List.of("1.6.0", "1.7.0", "1.13.2", "1.14.3")) {
+                for (String name : List.of("update-clean.txt", "update-legacy-pending.txt",
+                        "update-legacy-pending-regenerated.txt")) {
+                    java.nio.file.Path f = FixtureVersions.CLI.resolve(v).resolve(name);
+                    if (!java.nio.file.Files.exists(f)) continue;
+                    seen++;
+                    assertEquals(List.of(), UpdateOutputParser.parseKept(java.nio.file.Files.readString(f)), v + " " + name);
+                }
+            }
+            assertTrue(seen >= 6, "sanity: 1.x update captures " + seen);
+        }
+
+        /**
+         * The two home-folder prompt reports print only after the legacy-cleanup flow, which a non-interactive run doesn't
+         * reach, so no capture has them. These lines are built from 2.1.1's own format strings in
+         * {@code dist/core/update.js}: {@code reportEditedGlobalPrompts} and the "Left … prompt file(s)" line after
+         * {@code performImmediateLegacyCleanup}.
+         */
+        @Test
+        void theHomeFolderPromptReportsAsTheirSourcePrintsThem() {
+            String edited = "Kept 2 prompt files in your home folder that differ from what OpenSpec generated (likely edited):\n"
+                    + "  /fixture/home/.codex/prompts/openspec-apply.md\n"
+                    + "  /fixture/home/.codex/prompts/openspec-archive.md\n"
+                    + MOVE + "\n\n";
+            var kept = UpdateOutputParser.parseKept(edited);
+            assertEquals(1, kept.size());
+            assertEquals(List.of("/fixture/home/.codex/prompts/openspec-apply.md",
+                    "/fixture/home/.codex/prompts/openspec-archive.md"), kept.get(0).paths());
+            assertEquals(MOVE, kept.get(0).guidance());
+
+            String left = "Left 3 OpenSpec prompt file(s) in your home folder: other projects may still use them. "
+                    + "Run \"openspec update --force\" to remove them.\n";
+            var leftReports = UpdateOutputParser.parseKept(left);
+            assertEquals(1, leftReports.size());
+            assertEquals(UpdateOutputParser.KeptKind.LEFT, leftReports.get(0).kind());
+            assertEquals(List.of(), leftReports.get(0).paths(), "this report names no files");
+            assertTrue(leftReports.get(0).guidance().startsWith("other projects may still use them."));
+        }
+
+        @Test
+        void aTruncatedHeaderYieldsNothing() {
+            assertEquals(List.of(), UpdateOutputParser.parseKept(
+                    "Kept 1 command file that does not match what OpenSpec generated\n  .claude/commands/opsx/explore.md\n"));
+            assertEquals(List.of(), UpdateOutputParser.parseKept(
+                    "Kept 1 command file that does not match what OpenSpec generated (likely edited):\nno indented path\n"));
+        }
+    }
 }

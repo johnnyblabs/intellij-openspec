@@ -113,4 +113,107 @@ public final class UpdateOutputParser {
         }
         return files.isEmpty() ? LegacyCleanup.NONE : new LegacyCleanup(files, guidance);
     }
+
+    // ---------- What an applied update kept, left or replaced (CLI 2.x) ----------
+
+    /** What a report says happened to its files. */
+    public enum KeptKind {
+        /** Kept because the files differ from what OpenSpec generated. */
+        KEPT,
+        /** Left in place because the CLI couldn't read or remove them, or because other projects may use them. */
+        LEFT,
+        /** Overwritten: the user's edits were replaced, and no copy was kept. */
+        REPLACED
+    }
+
+    /**
+     * One report from an applied update: its kind, the paths it names (in CLI order, possibly none), the header line as
+     * printed, and the guidance the CLI printed with it ({@code null} when it printed none).
+     */
+    public record KeptReport(KeptKind kind, List<String> paths, String header, String guidance) {
+        public KeptReport {
+            paths = List.copyOf(paths);
+        }
+    }
+
+    /** A report whose paths follow on indented lines, and whether the CLI prints a guidance line after them. */
+    private record BlockReport(Pattern header, KeptKind kind, boolean guidanceFollows) {
+    }
+
+    /**
+     * The block reports, from the 2.x sources: {@code shared/command-reconcile.js} (kept and left command files),
+     * {@code update.js} {@code reportEditedGlobalPrompts} (kept home prompts) and {@code retired-tools.js} (a retired
+     * tool's kept files, itself indented, its paths four spaces in, with no guidance line after).
+     */
+    private static final List<BlockReport> BLOCKS = List.of(
+            new BlockReport(Pattern.compile("^Kept \\d+ command files? that (?:does|do) not match what OpenSpec generated "
+                    + "\\(likely edited\\):$"), KeptKind.KEPT, true),
+            new BlockReport(Pattern.compile("^Kept \\d+ prompt files? in your home folder that differs? from what OpenSpec "
+                    + "generated \\(likely edited\\):$"), KeptKind.KEPT, true),
+            new BlockReport(Pattern.compile("^Left \\d+ command files? in place because (?:it|they) could not be read or "
+                    + "removed:$"), KeptKind.LEFT, true),
+            new BlockReport(Pattern.compile("^ +Kept \\d+ files? in \\S+/ that differs? from what OpenSpec generated "
+                    + "\\(likely edited\\); delete (?:it|them) when you're done:$"), KeptKind.KEPT, false));
+
+    /** A one-line report: the paths are a comma-separated list ended by {@code ". "}; the rest is guidance. */
+    private record LineReport(Pattern line, KeptKind kind) {
+    }
+
+    /**
+     * The one-line reports: 2.0.0's {@code formatKeptSkills} ({@code shared/shared-skill-install.js}) and 2.1.1's
+     * {@code update.js} line for home prompts left for other projects, which names no paths.
+     */
+    private static final List<LineReport> LINES = List.of(
+            new LineReport(Pattern.compile("^Kept \\d+ skill folders? with your own changes: (.+?)\\. (Nothing was overwritten\\..*)$"),
+                    KeptKind.KEPT),
+            new LineReport(Pattern.compile("^Kept \\d+ skills? in \\.agents/skills as your own: (.+?)\\. (OpenSpec won't .*)$"),
+                    KeptKind.KEPT),
+            new LineReport(Pattern.compile("^Replaced your edits in \\d+ skills? OpenSpec installs: (.+?)\\. (OpenSpec refreshes .*)$"),
+                    KeptKind.REPLACED),
+            new LineReport(Pattern.compile("^Left \\d+ OpenSpec prompt file(?:s|\\(s\\))? in your home folder: ()(.+)$"), KeptKind.LEFT));
+
+    /**
+     * The kept, left and replaced reports in an applied {@code openspec update}'s output, in the order printed. Output
+     * it doesn't recognize yields nothing; a path is only ever one the CLI printed.
+     */
+    public static List<KeptReport> parseKept(String stdout) {
+        if (stdout == null || stdout.isEmpty()) return List.of();
+        String[] lines = CliText.stripAnsi(stdout).split("\r?\n", -1);
+        List<KeptReport> reports = new ArrayList<>();
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i];
+            BlockReport block = BLOCKS.stream().filter(b -> b.header().matcher(line).matches()).findFirst().orElse(null);
+            if (block != null) {
+                int indent = indentOf(line);
+                List<String> paths = new ArrayList<>();
+                int j = i + 1;
+                while (j < lines.length && !lines[j].isBlank() && indentOf(lines[j]) > indent) {
+                    paths.add(lines[j].trim());
+                    j++;
+                }
+                if (paths.isEmpty()) continue;
+                String guidance = null;
+                if (block.guidanceFollows() && j < lines.length && !lines[j].isBlank() && indentOf(lines[j]) == 0) {
+                    guidance = lines[j].trim();
+                }
+                reports.add(new KeptReport(block.kind(), paths, line.trim(), guidance));
+                i = j - 1;
+                continue;
+            }
+            for (LineReport one : LINES) {
+                Matcher m = one.line().matcher(line);
+                if (!m.matches()) continue;
+                List<String> paths = m.group(1).isEmpty() ? List.of() : List.of(m.group(1).split(", "));
+                reports.add(new KeptReport(one.kind(), paths, line.trim(), m.group(2)));
+                break;
+            }
+        }
+        return List.copyOf(reports);
+    }
+
+    private static int indentOf(String line) {
+        int n = 0;
+        while (n < line.length() && line.charAt(n) == ' ') n++;
+        return n;
+    }
 }

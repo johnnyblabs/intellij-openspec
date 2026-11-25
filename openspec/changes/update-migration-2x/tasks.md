@@ -80,7 +80,7 @@
 
 ## 4. After the update: kept files and the 2.1.0 hint
 
-- [ ] 4.1 Add `UpdateOutputParser.parseKept(stdout)` for each report in design decision 7.
+- [x] 4.1 Add `UpdateOutputParser.parseKept(stdout)` for each report in design decision 7.
   - Verify with `UpdateOutputParserContractTest`:
     - every `update-migration/edited/applied.txt` yields `.claude/commands/opsx/explore.md` with the CLI's guidance line;
     - 2.0.0's also yields both skill folders;

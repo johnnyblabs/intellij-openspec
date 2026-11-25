@@ -126,13 +126,13 @@ Upstream's legacy cleanup never targets a `skills/` path (checked in `legacy-cle
 
 ### 7. What the update kept, from its text output
 
-`UpdateOutputParser.parseKept(stdout)` reads each report as a header line followed by indented paths. The paths run up to the first line that isn't indented; that line is the guidance, quoted as printed. The reports, from 2.x's source (`update.js`, `command-reconcile.js`, `retired-tools.js`, 2.0.0's `shared-skill-install.js`):
+`UpdateOutputParser.parseKept(stdout)` reads each report as a header line followed by indented paths. The paths are the lines indented further than the header. The next unindented line is the guidance, quoted as printed, for the reports whose source prints one; the retired-tool report prints none, and the line after its paths is unrelated output. The reports, from 2.x's source (`update.js`, `command-reconcile.js`, `retired-tools.js`, 2.0.0's `shared-skill-install.js`):
 
 - `Kept <n> command file(s) that do(es) not match what OpenSpec generated (likely edited):`
 - `Kept <n> prompt file(s) in your home folder that differ(s) from what OpenSpec generated (likely edited):`
 - `Left <n> command file(s) in place because it/they could not be read or removed:`
 - A retired tool's `  Kept <n> file(s) in <folder>/ that differ(s) … (likely edited); delete it/them when you're done:`. The header itself is indented two spaces and its paths four.
-- One-line: `Left <n> OpenSpec prompt file(s) in your home folder: <a>, …` (2.1.1 `update.js`), listing prompt files the update leaves for the user.
+- One-line, naming no files: `Left <n> OpenSpec prompt file(s) in your home folder: other projects may still use them. …` (2.1.1 `update.js`, printed with a literal `(s)`). It becomes a left-in-place entry with no paths and the rest of the line as guidance.
 - One-line, comma-separated (2.0.0):
   - `Kept <n> skill folder(s) with your own changes: <a>, <b>. …`;
   - `Kept <n> skill(s) in .agents/skills as your own: <a>. …`.
