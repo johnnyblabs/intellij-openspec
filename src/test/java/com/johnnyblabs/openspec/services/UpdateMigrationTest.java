@@ -34,7 +34,7 @@ class UpdateMigrationTest {
     /** The captured cases that move a 1.x layout to 2.x, and so show the banner on a 2.x CLI. */
     static final Set<String> MIGRATIONS = Set.of("unedited", "edited", "notes-beside-skill", "shared-folder",
             "nested-commands", "narrow-profile", "command-left-in-place", "shared-own-skill", "read-only-applied",
-            "no-git");
+            "no-git", "no-network");
     /**
      * The captured cases that don't: a 2.x project changing its profile, Eve set up by 2.1, a project 2.0.0 already
      * migrated (no marker change), and Amazon Q alone (retired, so no shared skills are written).
@@ -176,5 +176,18 @@ class UpdateMigrationTest {
         }
         assertTrue(seen > 30, "sanity: command files seen " + seen);
         assertEquals(List.of(), missing);
+    }
+
+    /** A plan whose only 1.x leftovers are command files (the copies already gone) still moves to 2.x. */
+    @Test
+    void commandFilesAloneMakeAMigration() throws IOException {
+        Plan full = migrationPlans().get("2.1.1/unedited");
+        Plan commandsOnly = new Plan(full.changes().stream()
+                .filter(c -> UpdateMigration.kind(c) != Kind.REPLACED_COPY).toList(), full.notes(), full.failures());
+        assertTrue(commandsOnly.changes().stream().anyMatch(c -> UpdateMigration.kind(c) == Kind.COMMAND_FILE), "sanity");
+        assertTrue(UpdateMigration.isMigration(commandsOnly, "2.1.1"));
+        Plan neither = new Plan(commandsOnly.changes().stream()
+                .filter(c -> UpdateMigration.kind(c) != Kind.COMMAND_FILE).toList(), full.notes(), full.failures());
+        assertFalse(UpdateMigration.isMigration(neither, "2.1.1"), "the marker alone is not a migration");
     }
 }

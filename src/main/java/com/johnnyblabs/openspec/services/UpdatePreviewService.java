@@ -208,22 +208,23 @@ public final class UpdatePreviewService {
             + "Git is installed and the network is reachable, or use CLI 2.1.1 or later, which installs offline.";
 
     /**
-     * Whether a finished update failed the way only 2.1.0 does: the output says Git is needed or the skills couldn't be
-     * fetched. Any other failure, or another release, gets no hint. Package-private for tests.
+     * Whether a finished update failed the way only 2.1.0 does: the output says Git is needed ({@code no-git} capture),
+     * the clone failed ({@code no-network} capture), or the installer couldn't fetch the skills
+     * ({@code SKILLS_SOURCE_FETCH_FAILED} in the {@code skills} package). Any other failure, or another release, gets no hint. Package-private for tests.
      */
     static boolean needsGitHint(CliRunner.CliResult applied, @Nullable String version) {
         if (applied.isSuccess() || version == null || !"2.1.0".equals(version.trim())) return false;
         String out = applied.stdout() + "\n" + applied.stderr();
-        return out.contains("Git is needed") || out.contains("Could not fetch");
+        return out.contains("Git is needed") || out.contains("Failed to clone") || out.contains("Could not fetch");
     }
 
     /** At most this many files get their own Open action; every path is still listed in the text. */
     static final int MAX_OPEN_ACTIONS = 5;
     static final String KEPT_TITLE = "OpenSpec update kept or replaced files";
 
-    /** What the applied update reported keeping, leaving or replacing, with the in-project files found on disk. */
+    /** What the applied update reported keeping, leaving or replacing, with the in-project files found on disk (their paths). */
     record KeptNotice(List<com.johnnyblabs.openspec.util.UpdateOutputParser.KeptReport> reports,
-                      List<com.intellij.openapi.vfs.VirtualFile> files) {
+                      List<java.nio.file.Path> files) {
         boolean replaced() {
             return reports.stream().anyMatch(r -> r.kind() == com.johnnyblabs.openspec.util.UpdateOutputParser.KeptKind.REPLACED);
         }
@@ -244,12 +245,19 @@ public final class UpdatePreviewService {
         }
 
         void show(Project project) {
+            // The notice outlives its balloon, so each button keeps the path and looks the file up again when clicked.
             var actions = files.stream().limit(MAX_OPEN_ACTIONS).map(f -> (com.intellij.notification.NotificationAction)
-                    new com.intellij.notification.NotificationAction("Open " + f.getName()) {
+                    new com.intellij.notification.NotificationAction("Open " + f.getFileName()) {
                         @Override
                         public void actionPerformed(@NotNull com.intellij.openapi.actionSystem.AnActionEvent e,
                                                     @NotNull com.intellij.notification.Notification n) {
-                            new com.intellij.openapi.fileEditor.OpenFileDescriptor(project, f).navigate(true);
+                            var vf = project.isDisposed() || !java.nio.file.Files.isRegularFile(f) ? null
+                                    : com.intellij.openapi.vfs.LocalFileSystem.getInstance().findFileByNioFile(f);
+                            if (vf == null || !vf.isValid()) {
+                                n.expire();
+                                return;
+                            }
+                            new com.intellij.openapi.fileEditor.OpenFileDescriptor(project, vf).navigate(true);
                         }
                     }).toArray(com.intellij.notification.NotificationAction[]::new);
             OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_SYSTEM, KEPT_TITLE, content(),
@@ -267,7 +275,7 @@ public final class UpdatePreviewService {
         if (reports.isEmpty()) return null;
         LOG.info("Update kept or replaced: " + reports.size() + " report(s)");
         java.nio.file.Path root = projectRoot();
-        List<com.intellij.openapi.vfs.VirtualFile> files = new java.util.ArrayList<>();
+        List<java.nio.file.Path> files = new java.util.ArrayList<>();
         if (root != null) {
             for (var r : reports) {
                 for (String path : r.paths()) {
@@ -275,7 +283,7 @@ public final class UpdatePreviewService {
                     java.nio.file.Path file = root.resolve(path).normalize();
                     if (!file.startsWith(root)) continue;
                     var vf = com.intellij.openapi.vfs.LocalFileSystem.getInstance().refreshAndFindFileByNioFile(file);
-                    if (vf != null && !vf.isDirectory()) files.add(vf);
+                    if (vf != null && !vf.isDirectory()) files.add(file);
                 }
             }
         }

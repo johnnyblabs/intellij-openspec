@@ -35,11 +35,13 @@ class UpdateMigrationAtRiskContractTest {
             "notes-beside-skill", Set.of(".claude/skills/openspec-explore/notes.md",
                     ".cursor/skills/openspec-explore/notes.md"),
             "shared-folder", Set.of(".agents/skills/openspec-explore/SKILL.md"),
-            "eve-edited", Set.of("agent/skills/openspec-explore/SKILL.md"));
+            "eve-edited", Set.of("agent/skills/openspec-explore/SKILL.md"),
+            "shared-own-skill", Set.of(".agents/skills/openspec-explore/SKILL.md"));
 
     /**
      * The known false warning (design Risks): 1.17 writes a narrow profile's skills in text the released-file set
-     * doesn't hold, so OpenSpec can't confirm them. Only the skills that refer to other workflows differ.
+     * doesn't hold, so OpenSpec can't confirm them. Only the skills that refer to other workflows differ. This entry
+     * pins the plugin's current answer, not the user's intent: the files are unedited.
      */
     static final Set<String> NARROW_PROFILE_UNCONFIRMED = Set.of(".claude/skills/openspec-apply-change/SKILL.md");
 

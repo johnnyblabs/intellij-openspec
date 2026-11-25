@@ -157,9 +157,9 @@ The notice reads "This project was set up by OpenSpec 1.x. Run Update to migrate
 
 ### 9. The 2.1.0 Git and network hint
 
-When an applied update on detected CLI 2.1.0 exits non-zero and its output contains `Git is needed` or `Could not fetch`, the failure report gets one more sentence: "OpenSpec 2.1.0 installs skills with Git over the network; check both, or use 2.1.1, which installs offline."
+When an applied update on detected CLI 2.1.0 exits non-zero and its output contains `Git is needed` (no Git: the `no-git` capture), `Failed to clone` (Git but no network: the `no-network` capture) or `Could not fetch` (the `skills` installer's fetch failure), the failure report gets one more sentence: "OpenSpec 2.1.0 installs skills with Git over the network; check both, or use 2.1.1, which installs offline."
 
-Other 2.1.0 failures (a read-only file, say) and other releases get no such sentence. The recognition is tested against the captured `no-git` run.
+Other 2.1.0 failures (a read-only file, say) and other releases get no such sentence. The recognition is tested against the captured `no-git` and `no-network` runs, and the captured `read-only-applied` run is the negative case.
 
 ### 10. Every run is non-interactive
 

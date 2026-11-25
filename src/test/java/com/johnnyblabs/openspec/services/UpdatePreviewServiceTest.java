@@ -461,6 +461,37 @@ public class UpdatePreviewServiceTest extends BasePlatformTestCase {
                         .map(a -> a.getTemplatePresentation().getText()).toList());
     }
 
+    /** The notice outlives its balloon: a kept file deleted since then expires the notice instead of opening nothing. */
+    public void testOpeningAKeptFileThatIsGoneExpiresTheNotice() throws IOException {
+        java.nio.file.Path project = projectBefore("2.1.1", "edited");
+        service.setSeamsForTest(cli(migrationPlan("2.1.1", "edited"), appliedRun("2.1.1", "edited"), null), model -> true);
+        service.setCliVersionForTest("2.1.1");
+        service.previewAndApply(UpdatePreviewService.Origin.ACTION, null, r -> {});
+        Notification notice = keptNotices().get(0);
+
+        java.nio.file.Files.delete(project.resolve(".claude/commands/opsx/explore.md"));
+        var open = (com.intellij.notification.NotificationAction) notice.getActions().get(0);
+        open.actionPerformed(com.intellij.testFramework.TestActionEvent.createTestEvent(), notice);
+
+        assertTrue("a gone file expires the notice", notice.isExpired());
+    }
+
+    /** Paths outside the project (home-folder prompts) are listed but never opened. */
+    public void testPathsOutsideTheProjectGetNoOpenButton() throws IOException {
+        java.nio.file.Path project = projectBefore("2.1.1", "unedited");
+        java.nio.file.Path outside = project.resolveSibling("home").resolve(".codex/prompts/openspec-apply.md");
+        java.nio.file.Files.createDirectories(outside.getParent());
+        java.nio.file.Files.writeString(outside, "x");
+        String text = "Kept 2 prompt files in your home folder that differ from what OpenSpec generated (likely edited):\n"
+                + "  " + outside + "\n"
+                + "  ../home/.codex/prompts/openspec-apply.md\n"
+                + "Move anything worth keeping into the skill, then delete by hand.\n";
+        var notice = service.keptNotice(new CliRunner.CliResult(0, text, ""));
+        assertNotNull(notice);
+        assertEquals(2, notice.reports().get(0).paths().size());
+        assertEquals("neither an absolute path nor one leaving the project is opened", List.of(), notice.files());
+    }
+
     public void testReplacedEditsAreReportedAsAWarning() throws IOException {
         projectBefore("2.0.0", "shared-folder");
         service.setSeamsForTest(cli(migrationPlan("2.0.0", "shared-folder"), appliedRun("2.0.0", "shared-folder"), null),
@@ -501,6 +532,10 @@ public class UpdatePreviewServiceTest extends BasePlatformTestCase {
         CliRunner.CliResult readOnly = appliedRun("2.1.0", "read-only-applied");
         assertEquals("sanity: both captures failed", List.of(1, 1), List.of(noGit.exitCode(), readOnly.exitCode()));
         assertTrue(UpdatePreviewService.needsGitHint(noGit, "2.1.0"));
+        CliRunner.CliResult noNetwork = appliedRun("2.1.0", "no-network");
+        assertEquals("sanity: the clone failed", 1, noNetwork.exitCode());
+        assertTrue("no network, Git present", UpdatePreviewService.needsGitHint(noNetwork, "2.1.0"));
+        assertFalse(UpdatePreviewService.needsGitHint(noNetwork, "2.1.1"));
         assertFalse("another failure", UpdatePreviewService.needsGitHint(readOnly, "2.1.0"));
         assertFalse(UpdatePreviewService.needsGitHint(noGit, "2.1.1"));
         assertFalse(UpdatePreviewService.needsGitHint(noGit, "2.0.0"));

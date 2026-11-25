@@ -386,6 +386,19 @@ class UpdateOutputParserContractTest {
             assertTrue(leftReports.get(0).guidance().startsWith("other projects may still use them."));
         }
 
+        /** The singular form, and the colours the CLI prints when a wrapper forces them, as {@code chalk} writes them. */
+        @Test
+        void theSingularHomePromptFormAndColouredOutputAreRead() {
+            String one = "\u001b[33mKept 1 prompt file in your home folder that differs from what OpenSpec generated"
+                    + " (likely edited):\u001b[39m\n"
+                    + "\u001b[2m  /fixture/home/.codex/prompts/openspec-apply.md\u001b[22m\n"
+                    + "\u001b[2m" + MOVE + "\u001b[22m\n";
+            var kept = UpdateOutputParser.parseKept(one);
+            assertEquals(1, kept.size());
+            assertEquals(List.of("/fixture/home/.codex/prompts/openspec-apply.md"), kept.get(0).paths());
+            assertEquals(MOVE, kept.get(0).guidance());
+        }
+
         @Test
         void aTruncatedHeaderYieldsNothing() {
             assertEquals(List.of(), UpdateOutputParser.parseKept(

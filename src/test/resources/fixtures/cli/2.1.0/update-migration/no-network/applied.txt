@@ -1,0 +1,14 @@
+Updating 2 tool(s): claude (1.17.0 → 2.1.0), cursor (1.17.0 → 2.1.0)
+
+✗ Could not write the shared skills in .agents/skills: Failed to clone https://github.com/Fission-AI/OpenSpec.git: Cloning into '/tmp/skills-clone'...
+fatal: unable to access 'https://github.com/Fission-AI/OpenSpec.git/': Failed to connect to 127.0.0.1 port 9 after 0 ms: Couldn't connect to server
+
+
+✗ Failed: Claude Code (the shared skills in .agents/skills could not be written: Failed to clone https://github.com/Fission-AI/OpenSpec.git: Cloning into '/tmp/skills-clone'...
+fatal: unable to access 'https://github.com/Fission-AI/OpenSpec.git/': Failed to connect to 127.0.0.1 port 9 after 0 ms: Couldn't connect to server
+), Cursor (the shared skills in .agents/skills could not be written: Failed to clone https://github.com/Fission-AI/OpenSpec.git: Cloning into '/tmp/skills-clone'...
+fatal: unable to access 'https://github.com/Fission-AI/OpenSpec.git/': Failed to connect to 127.0.0.1 port 9 after 0 ms: Couldn't connect to server
+)
+Note: 6 more workflows are available (new, continue, ff, bulk-archive, verify, onboard).
+Add them with `openspec config profile`.
+

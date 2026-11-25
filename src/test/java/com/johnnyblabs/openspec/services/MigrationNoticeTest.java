@@ -25,7 +25,11 @@ class MigrationNoticeTest {
     /** The cases a 1.x release set up with tool-folder skill copies: a 2.x CLI should offer the migration. */
     static final Set<String> SET_UP_BY_1X = Set.of("unedited", "edited", "notes-beside-skill", "shared-folder",
             "nested-commands", "narrow-profile", "command-left-in-place", "retired-tool-edited", "shared-own-skill",
-            "read-only-applied", "no-git");
+            "read-only-applied", "no-git", "no-network");
+
+    /** The cases with nothing a 1.x release wrote in a tool folder to migrate. */
+    static final Set<String> NOT_SET_UP_BY_1X = Set.of("after-2.0.0-kept", "eve-edited", "eve-from-2.1.0",
+            "profile-shrink", "profile-empty");
 
     @TempDir
     Path tmp;
@@ -49,6 +53,7 @@ class MigrationNoticeTest {
             try (var cases = Files.list(FixtureVersions.CLI.resolve(v).resolve("update-migration"))) {
                 for (Path c : cases.filter(Files::isDirectory).sorted().toList()) {
                     String name = c.getFileName().toString();
+                    assertTrue(SET_UP_BY_1X.contains(name) || NOT_SET_UP_BY_1X.contains(name), "unclassified case " + name);
                     boolean before = applies(c, "before.json", v);
                     if (before != SET_UP_BY_1X.contains(name)) wrong.add(v + "/" + name + " before: " + before);
                     if (before) told++;

@@ -42,6 +42,7 @@ public class LegacyCleanupDialog extends DialogWrapper {
     private final List<JCheckBox> checkboxes = new ArrayList<>();
     private String introHtml;
     private final @Nullable String terminalHint;
+    private JBLabel footer;
 
     /** Said with the terminal handoff on CLI 2.1+, where an interactive {@code openspec update} can ask two questions. */
     static final String TERMINAL_QUESTIONS = "In the terminal, OpenSpec 2.1 may ask whether to keep this project's "
@@ -94,10 +95,10 @@ public class LegacyCleanupDialog extends DialogWrapper {
         introHtml = introHtml(guidance, preselect);
         panel.add(new JBLabel(introHtml), BorderLayout.NORTH);
         panel.add(new JBScrollPane(list), BorderLayout.CENTER);
-        panel.add(new JBLabel("<html><small>The plugin never runs <code>openspec update --force</code> on your behalf."
-                        + (terminalHint != null ? "<br>" + StringUtil.escapeXmlEntities(terminalHint) : "")
-                        + "</small></html>"),
-                BorderLayout.SOUTH);
+        footer = new JBLabel("<html><small>The plugin never runs <code>openspec update --force</code> on your behalf."
+                + (terminalHint != null ? "<br>" + StringUtil.escapeXmlEntities(terminalHint) : "")
+                + "</small></html>");
+        panel.add(footer, BorderLayout.SOUTH);
         return panel;
     }
 
@@ -131,6 +132,12 @@ public class LegacyCleanupDialog extends DialogWrapper {
     @TestOnly
     @Nullable String terminalHintForTest() {
         return terminalHint;
+    }
+
+    /** The footer as rendered, markup removed. */
+    @TestOnly
+    String footerTextForTest() {
+        return footer.getText().replaceAll("<[^>]+>", "");
     }
 
     @TestOnly

@@ -71,11 +71,14 @@ public class LegacyCleanupDialogTest extends BasePlatformTestCase {
             LegacyCleanupDialog d = new LegacyCleanupDialog(getProject(), block, v);
             Disposer.register(getTestRootDisposable(), d.getDisposable());
             assertEquals(v, LegacyCleanupDialog.TERMINAL_QUESTIONS, d.terminalHintForTest());
+            assertTrue("shown in the dialog, " + v, d.footerTextForTest().contains(
+                    com.intellij.openapi.util.text.StringUtil.escapeXmlEntities(LegacyCleanupDialog.TERMINAL_QUESTIONS)));
         }
         for (String v : new String[]{"2.0.0", "1.17.0", null}) {
             LegacyCleanupDialog d = new LegacyCleanupDialog(getProject(), block, v);
             Disposer.register(getTestRootDisposable(), d.getDisposable());
             assertNull(String.valueOf(v), d.terminalHintForTest());
+            assertFalse(String.valueOf(v), d.footerTextForTest().contains("OpenSpec 2.1 may ask"));
         }
     }
 }

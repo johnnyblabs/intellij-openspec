@@ -941,6 +941,7 @@ From `scripts/capture-update-migration-fixtures.py`, on 2.0.0, 2.1.0 and 2.1.1. 
 | `retired-tool-edited` | Amazon Q, one file edited | `  Kept N file(s) in .amazonq/ that differ …`: the header indented two spaces, the paths four |
 | `shared-own-skill` (2.0.0) | Claude, plus a user's own `.agents/skills/openspec-explore/SKILL.md` | `Kept 1 skill in .agents/skills as your own: …` |
 | `read-only-applied` (2.1.0) | as `unedited`, with one skill folder made read-only | the applied update fails for a reason other than Git (exit 1, `EACCES`) |
+| `no-network` (2.1.0) | as `unedited`, with every proxy variable pointed at a closed local port (Git present) | exit 1, the project unchanged; stdout says `Failed to clone https://github.com/Fission-AI/OpenSpec.git` (the temporary clone folder is written as `/tmp/skills-clone`) |
 | `no-git` (2.1.0) | as `unedited`, the applied update run with a PATH holding only node | exit 1, the project unchanged; stdout names Git |
 
 What each release does, from these captures:

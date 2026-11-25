@@ -27,6 +27,7 @@ applied update with a PATH holding only node.
 import hashlib
 import json
 import os
+import re
 import shutil
 import stat
 import subprocess
@@ -169,6 +170,13 @@ def read_only_applied(project, home, v):
     (project / ".claude" / "skills" / "openspec-propose").chmod(stat.S_IRUSR | stat.S_IXUSR)
 
 
+def no_network(project, home, v):
+    """2.1.0 with Git but no network (every proxy pointed at a closed port): the clone fails."""
+    if v != "2.1.0":
+        raise Skip("only 2.1.0 installs from the network")
+    unedited(project, home, v)
+
+
 def no_git(project, home, v):
     if v != "2.1.0":
         raise Skip("only 2.1.0 needs Git")
@@ -192,7 +200,14 @@ CASES = {
     "shared-own-skill": shared_own_skill,
     "read-only-applied": read_only_applied,
     "no-git": no_git,
+    "no-network": no_network,
 }
+
+# A closed local port for every proxy variable git and node read: the clone fails at once, nothing leaves the machine.
+NO_NETWORK = {k: "http://127.0.0.1:9" for k in ("https_proxy", "HTTPS_PROXY", "http_proxy", "HTTP_PROXY", "ALL_PROXY")}
+NO_NETWORK["GIT_TERMINAL_PROMPT"] = "0"
+# The temporary folder 2.1.0 clones into, named in its failure message.
+CLONE_DIR = re.compile(r"(?:/private)?/var/folders/[^ '\n]+?/T/skills-[A-Za-z0-9]+|/tmp/skills-[A-Za-z0-9]+")
 
 
 def tree_hash(*roots):
@@ -279,7 +294,7 @@ def capture(v):
             forced = run(cli(v) + ["update", "--dry-run", "--force", "--json"], project, home, check=False)
             if tree_hash(project, home) != before:
                 sys.exit(f"{v} {name}: a dry run changed the project or HOME")
-            extra = {}
+            extra = dict(NO_NETWORK) if name == "no-network" else {}
             if name == "no-git":
                 extra = {"PATH": node_only_path(scratch)}
                 if shutil.which("git", path=extra["PATH"]):
@@ -288,9 +303,9 @@ def capture(v):
             write_fixture(target / "plan.json", sanitize(plan.stdout, project, home))
             write_fixture(target / "plan.exit", f"{plan.returncode}\n")
             write_fixture(target / "plan-force.json", sanitize(forced.stdout, project, home))
-            write_fixture(target / "applied.txt", sanitize(applied.stdout, project, home))
+            write_fixture(target / "applied.txt", CLONE_DIR.sub("/tmp/skills-clone", sanitize(applied.stdout, project, home)))
             write_fixture(target / "applied.exit", f"{applied.returncode}\n")
-            stderr = sanitize(applied.stderr, project, home).strip()
+            stderr = CLONE_DIR.sub("/tmp/skills-clone", sanitize(applied.stderr, project, home)).strip()
             if stderr:
                 write_fixture(target / "applied.stderr", stderr + "\n")
             write_fixture(target / "after.json", layout(project, home, texts))
