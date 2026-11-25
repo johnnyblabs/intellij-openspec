@@ -35,13 +35,15 @@ public class UpdatePreviewDialog extends DialogWrapper {
 
     private final UpdatePreviewModel model;
     private Tree tree;
+    private @Nullable com.intellij.ui.components.JBCheckBox backedUp;
+    private @Nullable JComponent center;
 
     public UpdatePreviewDialog(Project project, UpdatePreviewModel model) {
         super(project, true);
         this.model = model;
         setTitle(TITLE);
         setOKButtonText(APPLY);
-        setOKActionEnabled(model.applyEnabled());
+        setOKActionEnabled(model.canApply(false));
         if (model.cancelIsDefault()) {
             getOKAction().putValue(DEFAULT_ACTION, null);
             getCancelAction().putValue(DEFAULT_ACTION, Boolean.TRUE);
@@ -54,6 +56,28 @@ public class UpdatePreviewDialog extends DialogWrapper {
         JPanel top = new JPanel();
         top.setLayout(new BoxLayout(top, BoxLayout.Y_AXIS));
         top.add(left(new JBLabel("<html><b>" + StringUtil.escapeXmlEntities(model.summary()) + "</b></html>")));
+        if (model.migration()) {
+            JBLabel banner = new JBLabel("<html>" + StringUtil.escapeXmlEntities(UpdatePreviewModel.MIGRATION_BANNER)
+                    + "</html>", AllIcons.General.Information, SwingConstants.LEFT);
+            banner.getAccessibleContext().setAccessibleName("OpenSpec 2 migration");
+            top.add(left(banner));
+        }
+        if (!model.atRisk().isEmpty()) {
+            JBLabel warning = new JBLabel("<html><b>" + StringUtil.escapeXmlEntities(UpdatePreviewModel.AT_RISK_WARNING)
+                    + "</b></html>", AllIcons.General.Error, SwingConstants.LEFT);
+            warning.setForeground(JBColor.RED);
+            warning.getAccessibleContext().setAccessibleName("Files at risk");
+            top.add(left(warning));
+            for (var risk : model.atRisk()) {
+                JBLabel row = new JBLabel(risk.path() + "  (" + risk.action() + ")");
+                row.setForeground(JBColor.RED);
+                row.setBorder(JBUI.Borders.emptyLeft(20));
+                top.add(left(row));
+            }
+            backedUp = new com.intellij.ui.components.JBCheckBox(UpdatePreviewModel.BACKED_UP);
+            backedUp.addItemListener(e -> setOKActionEnabled(model.canApply(backedUp.isSelected())));
+            top.add(left(backedUp));
+        }
         for (UpdatePreviewModel.NoteRow note : model.notes()) {
             JBLabel label = new JBLabel("<html>" + (note.warning() ? "<b>" : "")
                     + StringUtil.escapeXmlEntities(note.message()) + (note.warning() ? "</b>" : "") + "</html>",
@@ -87,6 +111,7 @@ public class UpdatePreviewDialog extends DialogWrapper {
         }
         panel.add(new JBLabel("<html><small>Apply runs <code>openspec update</code> once. Cancel changes nothing.</small></html>"),
                 BorderLayout.SOUTH);
+        center = panel;
         return panel;
     }
 
@@ -129,6 +154,10 @@ public class UpdatePreviewDialog extends DialogWrapper {
             if (o instanceof UpdatePreviewModel.Group g) {
                 setIcon(g.outsideProject() ? AllIcons.Nodes.HomeFolder : AllIcons.Nodes.Folder);
                 append(g.label(), SimpleTextAttributes.REGULAR_BOLD_ATTRIBUTES);
+            } else if (o instanceof UpdatePlanParser.Change c && UpdatePreviewModel.linkRow(c) != null) {
+                setIcon(AllIcons.Nodes.Folder);
+                append(UpdatePreviewModel.linkRow(c));
+                append("  link", SimpleTextAttributes.GRAYED_ATTRIBUTES);
             } else if (o instanceof UpdatePlanParser.Change c) {
                 switch (c.action()) {
                     case "delete" -> {
@@ -159,6 +188,16 @@ public class UpdatePreviewDialog extends DialogWrapper {
     @TestOnly
     public boolean isApplyEnabledForTest() {
         return isOKActionEnabled();
+    }
+
+    @TestOnly
+    public @Nullable JComponent centerForTest() {
+        return center;
+    }
+
+    @TestOnly
+    public @Nullable com.intellij.ui.components.JBCheckBox backedUpForTest() {
+        return backedUp;
     }
 
     @TestOnly

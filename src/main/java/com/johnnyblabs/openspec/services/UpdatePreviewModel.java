@@ -48,7 +48,15 @@ public record UpdatePreviewModel(String summary, List<NoteRow> notes, List<Failu
     public static final String FAILURES_EXPLANATION =
             "openspec update stops at the first tool it can't update, so fix these before applying.";
 
-    /** A note to show; {@code warning} marks the legacy tool-directory move, which happens without asking. */
+    /**
+     * The notes shown as warnings: the legacy tool-directory move (done without asking), the refresh and removal of the
+     * skills shared by every project on the machine (CLI 2.1), and replaced edits in a shared copy (2.0.0).
+     */
+    public static final java.util.Set<String> WARNING_NOTES = java.util.Set.of(
+            com.johnnyblabs.openspec.util.UpdatePlanParser.LEGACY_TOOL_DIRECTORIES, "global-skills", "removed-skills",
+            "edited-skills");
+
+    /** A note to show; {@code warning} marks a note in {@link #WARNING_NOTES}. */
     public record NoteRow(String code, String message, boolean warning) {
     }
 
@@ -76,8 +84,7 @@ public record UpdatePreviewModel(String summary, List<NoteRow> notes, List<Failu
     public static UpdatePreviewModel of(Plan plan, @Nullable String focusTool, @Nullable String cliVersion,
                                         List<UpdateMigration.AtRisk> atRisk) {
         List<NoteRow> notes = plan.notes().stream()
-                .map(n -> new NoteRow(n.code(), n.message(),
-                        com.johnnyblabs.openspec.util.UpdatePlanParser.LEGACY_TOOL_DIRECTORIES.equals(n.code())))
+                .map(n -> new NoteRow(n.code(), n.message(), WARNING_NOTES.contains(n.code())))
                 .toList();
 
         boolean migration = UpdateMigration.isMigration(plan, cliVersion);
