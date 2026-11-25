@@ -144,6 +144,11 @@
                     text="Propose..."
                     description="Propose a new change: create it and generate all artifacts in one step"
                     icon="AllIcons.General.Add"/>
+            <!-- Upstream new: scaffold only, gated on `new` (not in the core profile). Menu only, never the toolbar. -->
+            <action id="OpenSpec.New"
+                    class="com.johnnyblabs.openspec.actions.OpenSpecNewChangeAction"
+                    text="New Change..."
+                    description="Start a new change, then create its artifacts one at a time"/>
             <action id="OpenSpec.Ff"
                     class="com.johnnyblabs.openspec.actions.OpenSpecFfAction"
                     text="Fast-Forward..."

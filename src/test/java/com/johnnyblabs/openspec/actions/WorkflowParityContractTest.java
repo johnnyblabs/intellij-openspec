@@ -31,14 +31,12 @@ import java.util.regex.Pattern;
  * {@code scripts/capture-workflow-ids.py}. Re-capture it on every CLI bump; a new upstream workflow then fails here
  * until it's mapped or explained.
  *
- * <p>This checks structure only. Whether an action does what its workflow does (Propose currently behaves like
- * {@code new}), and whether users can find it, is the workflow-to-UI parity audit's job, not this test's.
+ * <p>This checks structure only. Whether an action does what its workflow does, and whether users can find it, is the
+ * workflow-to-UI parity audit's job, not this test's.
  *
- * <p>Recorded behaviour exception, v0.17.0: <b>Propose</b> creates the change folder and proposal without generating
- * its artifacts, which is upstream {@code new}. Upstream {@code propose} (create the change and every artifact it
- * needs before apply, in one step) is reachable through Fast-Forward with Direct API, or as Propose followed by
- * Generate All. It is scheduled for the OpenSpec 2.x release, whose new skill layout the propose handoff depends on.
- * (The v0.16.0 Apply exception was resolved in v0.16.1.)
+ * <p>No behaviour exception is recorded. <b>Propose</b> does upstream {@code propose} (create the change and every
+ * artifact it needs before apply, or hand the description to the AI tool's propose workflow), and <b>New Change</b>
+ * does upstream {@code new}. (The v0.17.0 Propose exception and the v0.16.0 Apply exception are resolved.)
  */
 public class WorkflowParityContractTest extends BasePlatformTestCase {
 
@@ -56,13 +54,12 @@ public class WorkflowParityContractTest extends BasePlatformTestCase {
 
     /** Upstream workflows the plugin deliberately has no action gated on, each with why and where it's tracked. */
     static final Map<String, String> NOT_SURFACED = Map.of(
-            "new", "no scaffold-only action yet; Propose currently behaves like it (tracked: Propose = upstream propose, New Change = new)",
             "onboard", "undecided whether the plugin offers a guided tour (tracked with the menu alignment work)",
             "sync", "Sync Specs is the built-in merge that writes main specs without the CLI or an agent, deliberately not gated on the agent workflow");
 
     /** Workflow-gated actions registered today; the test must find at least these, so it can't pass on an empty list. */
     private static final Set<String> KNOWN_GATED = Set.of(
-            "propose", "explore", "continue", "update", "apply", "ff", "archive", "bulk-archive", "verify");
+            "propose", "new", "explore", "continue", "update", "apply", "ff", "archive", "bulk-archive", "verify");
 
     private static List<String> upstream(String version, String key) {
         String fixture = "/fixtures/cli/" + version + "/workflows.json";

@@ -27,14 +27,21 @@ public class ExploreEntryPointsTest extends BasePlatformTestCase {
         return ids;
     }
 
-    public void testExploreComesBeforeProposeAndFastForwardInTheMenu() {
+    public void testExploreComesBeforeProposeNewChangeAndFastForwardInTheMenu() {
         List<String> menu = childIds("OpenSpec.MainMenu");
         int explore = menu.indexOf("OpenSpec.Explore");
         int propose = menu.indexOf("OpenSpec.Propose");
+        int newChange = menu.indexOf("OpenSpec.New");
         int ff = menu.indexOf("OpenSpec.Ff");
+        int cont = menu.indexOf("OpenSpec.Continue");
 
-        assertTrue(menu.toString(), explore >= 0 && propose >= 0 && ff >= 0);
-        assertTrue("Explore, then Propose, then Fast-Forward: " + menu, explore < propose && propose < ff);
+        assertTrue(menu.toString(), explore >= 0 && propose >= 0 && newChange >= 0 && ff >= 0 && cont >= 0);
+        assertTrue("Explore, Propose, New Change, Fast-Forward, Continue: " + menu,
+                explore < propose && propose < newChange && newChange < ff && ff < cont);
+    }
+
+    public void testNewChangeIsNotInTheToolbar() {
+        assertFalse(childIds("OpenSpec.ToolWindowToolbar").contains("OpenSpec.New"));
     }
 
     public void testTheToolbarShowsExploreImmediatelyBeforePropose() {

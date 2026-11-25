@@ -39,15 +39,15 @@
 
 ## 3. New Change = upstream new
 
-- [ ] 3.1 Add `OpenSpecNewChangeAction` (`OpenSpec.New`, "New Change...", gated on `new`, `DumbAware`).
+- [x] 3.1 Add `OpenSpecNewChangeAction` (`OpenSpec.New`, "New Change...", gated on `new`, `DumbAware`).
   - Its `NewChangeDialog` asks for a name and, when several schemas exist, a schema.
   - It creates the change without any artifact: the CLI's `new change` when available, else `createEmptyChange`.
   - It then refreshes and selects the change.
   - Its `plugin.xml` description, after upstream `new`'s: "Start a new change, then create its artifacts one at a time".
-- [ ] 3.2 Register it in `plugin.xml` after Propose in the OpenSpec menu, not the toolbar. Mirror upstream's command descriptions (2.1.1 templates), which the parity audit compares:
+- [x] 3.2 Register it in `plugin.xml` after Propose in the OpenSpec menu, not the toolbar. Mirror upstream's command descriptions (2.1.1 templates), which the parity audit compares:
   - Propose: "Propose a new change: create it and generate all artifacts in one step";
   - Fast-Forward: "Create a change and generate all artifacts needed for implementation in one step" (today's "all artifacts" stops being true once a run stops at the apply-ready set).
-- [ ] 3.3 Tests:
+- [x] 3.3 Tests:
   - disabled with the "(custom)" suffix on core, enabled when `new` is in a custom profile;
   - creates no artifact file and generates nothing;
   - the schema's first artifact (the proposal, for spec-driven) is the selected change's first READY artifact;
