@@ -36,6 +36,6 @@
 
 ## 4. Verification and docs
 
-- [ ] 4.1 `./gradlew build`, `./gradlew verifyPlugin`, and the full `caffeinate -dimsu ./gradlew uiSmoke`.
+- [x] 4.1 `./gradlew build`, `./gradlew verifyPlugin`, and the full `caffeinate -dimsu ./gradlew uiSmoke`.
 - [x] 4.2 CHANGELOG (Unreleased) and `docs/feature-reference.md` (the store section gains the label, the banner and the ignored-pointer hint).
-- [ ] 4.3 `openspec validate --all --strict` on the branch.
+- [x] 4.3 `openspec validate --all --strict` on the branch.
