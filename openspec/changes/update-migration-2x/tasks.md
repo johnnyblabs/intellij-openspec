@@ -109,21 +109,21 @@
 
 ## 6. Non-interactive runs
 
-- [ ] 6.1 Add `OPEN_SPEC_INTERACTIVE=0` to `CliRunner.applyPlainOutputEnvironment`, and close the process's stdin right after it starts.
+- [x] 6.1 Add `OPEN_SPEC_INTERACTIVE=0` to `CliRunner.applyPlainOutputEnvironment`, and close the process's stdin right after it starts.
   - Verify:
     - `CliRunnerTest` checks the variable on every command line `prepare` builds;
     - a run of a stub executable that reads stdin returns at once with end-of-input instead of timing out;
     - `CliCommandsTest` still pins `updateWithoutPrompts`' environment;
     - the full `./gradlew test` passes.
-- [ ] 6.2 On CLI 2.1.0+, add to the cleanup dialog's terminal-handoff hint that the CLI may ask where to keep the project's skills, or whether to set skills up for the machine.
+- [x] 6.2 On CLI 2.1.0+, add to the cleanup dialog's terminal-handoff hint that the CLI may ask where to keep the project's skills, or whether to set skills up for the machine.
   - Verify with `LegacyCleanupDialogTest`: the hint has the sentence for 2.1.0 and 2.1.1, and not for 2.0.0 or 1.17.0.
 
 ## 7. Documentation and finish
 
-- [ ] 7.1 Update the docs:
+- [x] 7.1 Update the docs:
   - CHANGELOG `## Unreleased`: the migration preview, the at-risk warning, the kept-files report, and the notice;
   - `docs/feature-reference.md`: the update preview section;
-  - the README and the marketplace getting-started page, where they describe Update.
+  - the README and the marketplace getting-started page, where they describe Update. Neither describes the update preview, so neither changes here; the README overhaul is tracked separately.
   - Record internally (not in public files) the two upstream defects: 2.1 removes unconfirmed skill-folder files with no note, and the released-file set lacks narrow-profile renderings.
   - Verify: `DocumentationHygieneTest`, and the vendor-neutral grep over the staged files.
 - [ ] 7.2 Final checks:

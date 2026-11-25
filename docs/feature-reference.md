@@ -525,6 +525,36 @@ On OpenSpec CLI 1.15 or later, every update the plugin starts shows you what it 
 
 The plan isn't saved anywhere: each Update asks the CLI again.
 
+### Moving to OpenSpec 2
+
+On a project set up by OpenSpec 1.x, the first `openspec update` with CLI 2.x moves the project to OpenSpec 2. It writes one shared copy of each skill in `.agents/skills`, links each tool folder that needs it (`.claude/skills/openspec-explore` → `.agents/skills/openspec-explore`), deletes the tool folders' own copies, and removes the `/opsx` command files, which OpenSpec 2 no longer uses.
+
+```mermaid
+flowchart LR
+    subgraph before["Set up by OpenSpec 1.x"]
+        A[".claude/skills/openspec-*/SKILL.md"]
+        B[".cursor/skills/openspec-*/SKILL.md"]
+        C[".claude/commands/opsx/*.md"]
+    end
+    subgraph after["After openspec update on 2.x"]
+        S[".agents/skills/openspec-*/SKILL.md<br>(one shared copy)"]
+        L[".claude/skills/openspec-*<br>(link)"]
+    end
+    A -- replaced --> S
+    B -- replaced --> S
+    L -. points at .-> S
+    C -- removed --> D["(deleted)"]
+```
+
+With CLI 2.0 or later, the preview names that move above the changes and groups them as **Shared skills (.agents/skills)**, **Skill copies replaced by the shared copy** and **Command files (OpenSpec 2 installs skills only)**, across tools. Each link is shown as a link to its shared skill.
+
+- **Files OpenSpec can't confirm as its own.** CLI 2.1.0 and 2.1.1 delete or overwrite a skill file you edited, and files you put beside a skill, with no warning and no copy. 2.0.0 keeps them. When the plan would delete or overwrite such a file, the preview lists each one in red, and **Apply** stays disabled until you tick **I've backed up these files**. A file counts as OpenSpec's own when it is exactly one an OpenSpec release generated, or still matches the project's shared copy. Copies written for a custom profile with only a few workflows can show up here although you didn't edit them: OpenSpec can't confirm them either.
+- **Notes that reach beyond the project.** On CLI 2.1, when the update will also refresh or remove the skills installed for every project on the machine (`~/.agents/skills`), the preview shows OpenSpec's note as a warning. So does 2.0.0's note that it will replace edits in a shared skill.
+- **What the update kept.** After the update, a notification lists the files OpenSpec kept because they differ from what it generated (an edited `/opsx` command file, say), the files it couldn't remove, and on 2.0.0 the skill folders it kept and any edits it replaced, with OpenSpec's own advice and a button to open each file.
+- **One notice per project.** When a project still holds skill copies an OpenSpec 1.x release wrote and the CLI is 2.0 or later, the plugin says once, at startup, that **Update** migrates it to OpenSpec 2.
+- **CLI 2.1.0 needs Git and a network connection** to install skills. When its update fails for that reason, the plugin says so; 2.1.1 installs offline.
+- **No prompts.** The plugin runs every CLI command non-interactively with its input closed. When you choose to run `openspec update` in the terminal instead, CLI 2.1 may ask whether to keep the project's skills in the project or install them globally.
+
 ## Troubleshooting
 
 ### "CLI: not found" in the status bar
