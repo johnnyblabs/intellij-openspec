@@ -1137,4 +1137,76 @@ class OpenSpecUiSmokeTest {
             }
         }
     }
+
+    // ---- Journeys 16 and 17 — Propose says which way it will go ------------------------
+
+    /** The change folders in the project, to check a cancelled dialog created nothing. */
+    private fun changeNames(projectPath: Path): Set<String> =
+        Files.list(projectPath.resolve("openspec/changes")).use { s -> s.map { it.fileName.toString() }.toList().toSet() }
+
+    /** Cancels the dialog titled [title] with its Cancel button, which robot Escape can't be relied on to reach. */
+    private fun com.intellij.driver.client.Driver.cancelDialog(title: String) {
+        ui.x { byTitle(title) }.x { byAccessibleName("Cancel") }.click(null)
+        waitUntil("the dialog closed on cancel") { ui.x { byTitle(title) }.notPresent() }
+    }
+
+    /**
+     * Journey 16 — Propose with Direct API: the dialog names the provider, says it creates the change and generates
+     * its artifacts, and offers a change name. Cancelling creates nothing. (The schema selector needs several schemas,
+     * which the host CLI decides; SchemaComboVisibilityTest checks it.)
+     */
+    @Test
+    fun proposeWithDirectApiSaysItCreatesAndGenerates() {
+        val projectPath = freshDemoProject()
+        val before = changeNames(projectPath)
+        newContext(projectPath).runIdeWithDriver().useDriverAndCloseIde {
+            waitForIndicators(5.minutes)
+            configureDirectApiGemini()
+
+            invokeAction("OpenSpec.Propose", now = false)
+
+            val title = "Propose a Change with Gemini"
+            waitUntil("the Direct API Propose dialog", timeout = 2.minutes) { ui.x { byTitle(title) }.present() }
+            val dialog = ui.x { byTitle(title) }
+            waitUntil("it says what it will do") {
+                dialog.x { byAccessibleName("Mode") }.present()
+            }
+            check(dialog.x { byAccessibleName("Description") }.present()) { "no description field" }
+            check(dialog.x { byAccessibleName("Change name") }.present()) { "no change name field with Direct API" }
+            runCatching { execute(CommandChain().takeScreenshot("propose/A-direct-api")) }
+            cancelDialog(title)
+        }
+        check(changeNames(projectPath) == before) { "cancelling Propose created a change" }
+    }
+
+    /**
+     * Journey 17 — Propose in a clipboard handoff: the demo project has Junie's propose command, so the dialog names
+     * Junie, asks only for the description (no name field: the agent picks the name) and says what it copies.
+     * Cancelling copies and creates nothing.
+     */
+    @Test
+    fun proposeWithClipboardHandsOffToTheTool() {
+        val projectPath = freshDemoProject()
+        val before = changeNames(projectPath)
+        newContext(projectPath).runIdeWithDriver().useDriverAndCloseIde {
+            waitForIndicators(5.minutes)
+            val settings = utility(OpenSpecSettingsRef::class).getInstance(singleProject())
+            settings.setPreferredTool("")
+            settings.setPreferredDeliveryMethod("CLIPBOARD")
+
+            invokeAction("OpenSpec.Propose", now = false)
+
+            val title = "Propose a Change with Junie"
+            waitUntil("the handoff Propose dialog", timeout = 2.minutes) { ui.x { byTitle(title) }.present() }
+            val dialog = ui.x { byTitle(title) }
+            waitUntil("it says what it will do") { dialog.x { byAccessibleName("Mode") }.present() }
+            check(dialog.x { byAccessibleName("Description") }.present()) { "no description field" }
+            check(dialog.x { byAccessibleName("Change name") }.notPresent()) {
+                "a handoff must not ask for a name: the agent's propose workflow picks it"
+            }
+            runCatching { execute(CommandChain().takeScreenshot("propose/B-clipboard-handoff")) }
+            cancelDialog(title)
+        }
+        check(changeNames(projectPath) == before) { "cancelling Propose created a change" }
+    }
 }
