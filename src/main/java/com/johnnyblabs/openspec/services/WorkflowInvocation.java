@@ -31,6 +31,8 @@ public final class WorkflowInvocation {
     public static final String APPLY_SKILL = "openspec-apply-change";
     public static final String CONTINUE = "continue";
     public static final String CONTINUE_SKILL = "openspec-continue-change";
+    public static final String PROPOSE = "propose";
+    public static final String PROPOSE_SKILL = "openspec-propose";
 
     /** Tools upstream gives no slash invocation for skills; their skills are named in plain words. */
     private static final Set<String> PLAIN_WORDS_SKILL_TOOLS = Set.of("gsd", "rovodev", "codeassistant");

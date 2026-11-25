@@ -41,7 +41,7 @@ class WorkflowInvocationContractTest {
     private static final String TARGET = AiToolRegistryContractTest.TARGET;
 
     /** Each release's row count: 2 workflows x tools with skills x deliveries (one delivery from 2.0). */
-    private static final Map<String, Integer> ROWS = Map.of("1.17.0", 294, "2.0.0", 96, "2.1.0", 174, "2.1.1", 174);
+    private static final Map<String, Integer> ROWS = Map.of("1.17.0", 441, "2.0.0", 144, "2.1.0", 261, "2.1.1", 261);
 
     @TempDir Path root;
 
@@ -146,7 +146,7 @@ class WorkflowInvocationContractTest {
             }
             checked++;
         }
-        assertEquals(List.of("explore", "update"), workflows);
+        assertEquals(List.of("explore", "update", "propose"), workflows);
         assertEquals(java.util.Set.of(), unknown, "every tool in CLI " + version + "'s matrix is in the registry");
         assertEquals(ROWS.get(version), checked, "every row of CLI " + version + "'s matrix is checked");
         assertTrue(wrong.isEmpty(), "invocations that differ from upstream's:\n" + String.join("\n", wrong));
@@ -256,12 +256,12 @@ class WorkflowInvocationContractTest {
                 compared++;
             }
         }
-        assertEquals(ROWS.get(version) / 2, compared, "every update row of CLI " + version + " is compared");
+        assertEquals(ROWS.get(version) / 3, compared, "every update row of CLI " + version + " is compared (one workflow of three)");
         assertTrue(drift.isEmpty(), "update paths that differ from what init wrote:\n" + String.join("\n", drift));
     }
 
     @Test
-    void theHandoffAddsTheArgumentsOrNamesTheSkillInWords() {
+    void theHandoffAddsTheArgumentsOrNamesTheSkillInWords() throws IOException {
         String explore = WorkflowInvocation.EXPLORE_SKILL;
         String update = WorkflowInvocation.UPDATE_SKILL;
         assertEquals("/opsx:explore why caching", WorkflowInvocation.handoff("/opsx:explore", explore, "why caching"));
@@ -272,5 +272,21 @@ class WorkflowInvocationContractTest {
                 WorkflowInvocation.handoff(WorkflowInvocation.plainWords(explore), explore, null));
         assertEquals("Use the openspec-update-change skill: add-auth drop export",
                 WorkflowInvocation.handoff(WorkflowInvocation.plainWords(update), update, "add-auth drop export"));
+        String propose = WorkflowInvocation.PROPOSE_SKILL;
+        int proposeRows = 0;
+        for (String v : ROWS.keySet()) {
+            for (JsonObject row : rows(v)) {
+                if (WorkflowInvocation.PROPOSE.equals(row.get("workflow").getAsString())) {
+                    assertEquals(row.get("skill").getAsString(), propose, "CLI " + v + "'s propose skill");
+                    proposeRows++;
+                }
+            }
+        }
+        assertTrue(proposeRows > 0, "sanity: the captures hold propose rows");
+        assertEquals("/openspec-propose add a dark mode toggle",
+                WorkflowInvocation.handoff("/openspec-propose", propose, "add a dark mode toggle"));
+        assertEquals("/openspec-propose", WorkflowInvocation.handoff("/openspec-propose", propose, ""));
+        assertEquals("Use the openspec-propose skill: add a dark mode toggle",
+                WorkflowInvocation.handoff(WorkflowInvocation.plainWords(propose), propose, "add a dark mode toggle"));
     }
 }
