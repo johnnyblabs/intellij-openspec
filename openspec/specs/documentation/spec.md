@@ -15,7 +15,7 @@ The README SHALL document every shipped workflow action, every tool window tab a
 
 #### Scenario: Names the shipped surfaces
 - **WHEN** a reader checks the README against the plugin's surfaces
-- **THEN** it SHALL name the workflow actions Init, Propose, Fast-Forward, Continue, Generate, Verify, Apply, Archive, Sync Specs, Bulk Archive, Explore, Manage AI Tools and Update
+- **THEN** it SHALL name the workflow actions Init, Propose, New Change, Fast-Forward, Continue, Generate, Verify, Apply, Archive, Sync Specs, Bulk Archive, Explore, Manage AI Tools and Update
 - **AND** it SHALL name the tool window tabs Browse, Coverage, Console and Explore
 - **AND** it SHALL name the settings sections CLI, General, Config Profile, Schemas, Tools & Delivery and Direct API
 

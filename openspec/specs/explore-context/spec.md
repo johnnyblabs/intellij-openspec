@@ -232,7 +232,7 @@ Explore SHALL be presented as the step before Propose: first in the OpenSpec men
 
 #### Scenario: Menu order
 - **WHEN** the user opens the OpenSpec menu
-- **THEN** Explore SHALL appear before Propose, and Propose before Fast-Forward, and Explore SHALL have an icon
+- **THEN** Explore SHALL appear before Propose, Propose before New Change, and New Change before Fast-Forward, and Explore SHALL have an icon
 
 #### Scenario: Toolbar order
 - **WHEN** the OpenSpec tool window's toolbar is shown
