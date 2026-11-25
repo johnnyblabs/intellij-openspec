@@ -7,6 +7,7 @@ For each version named, under src/test/resources/fixtures/cli/<version>/ it writ
                                             2.1.1/parity-corpus-2x/ (step check, length rules, MODIFIED growth,
                                             delta front matter and their lookalikes, inline fence, unspaced header)
     validate-parity-corpus-2x-strict.json   the same with --strict
+    instructions/apply-wrapped-tasks.md     (2.0.0 and later) the tasks.md that capture reads, committed as its input
     instructions/instructions-apply-wrapped.json
                                             (2.0.0 and later) `instructions apply --change wrapped --json` over a
                                             tasks.md with a wrapped task, a hard line break, a task followed by a note
@@ -16,7 +17,7 @@ The corpus is copied into a project set up by `init --tools none`, so its root i
 the captures. Every run uses an isolated HOME and XDG directories and a package installed into a scratch prefix
 (scripts/lib/openspec_capture.py), never npx. A file is written only after it is checked for machine paths.
 
-Usage: scripts/capture-validator-parity-2x.py 1.14.0 1.14.3 1.15.0 1.16.1 1.17.0 2.0.0 2.1.0 2.1.1
+Usage: scripts/capture-validator-parity-2x.py 1.14.0 1.14.1 1.14.3 1.15.0 1.16.0 1.16.1 1.17.0 2.0.0 2.1.0 2.1.1
 """
 import shutil
 import sys
@@ -80,6 +81,7 @@ def capture(version):
             change = demo / "openspec" / "changes" / "wrapped"
             (change / "proposal.md").write_text(PROPOSAL)
             (change / "tasks.md").write_text(TASKS)
+            write_fixture(out / "instructions" / "apply-wrapped-tasks.md", TASKS)
             text = run(osp + ["instructions", "apply", "--change", "wrapped", "--json"], demo, home, check=False).stdout
             write_fixture(out / "instructions" / "instructions-apply-wrapped.json", sanitize(text, demo, home))
             print(f"  {version} instructions/instructions-apply-wrapped.json")

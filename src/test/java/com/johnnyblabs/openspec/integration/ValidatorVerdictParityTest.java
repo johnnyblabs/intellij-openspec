@@ -63,6 +63,15 @@ public class ValidatorVerdictParityTest extends OpenSpecIntegrationTestBase {
         }
     }
 
+    @Override
+    protected void tearDown() throws Exception {
+        try {
+            getProject().getService(BuiltInValidator.class).clearReleaseForTest();
+        } finally {
+            super.tearDown();
+        }
+    }
+
     public void testPluginVerdictsMatchCapturedCliVerdicts() {
         for (String file : CORPUS_FILES) {
             myFixture.addFileToProject(file, resource(CORPUS_PREFIX + file));
@@ -72,6 +81,9 @@ public class ValidatorVerdictParityTest extends OpenSpecIntegrationTestBase {
         VfsUtil.markDirtyAndRefresh(false, true, true, root);
 
         BuiltInValidator validator = getProject().getService(BuiltInValidator.class);
+        // This guard is the laxest-anchor one: the validator follows the anchor release (1.8.0), so rules a later
+        // release added stay out of it; ValidatorVerdictReleaseParityTest holds those to each release instead.
+        validator.followReleaseForTest("1.8.0");
         List<ValidationIssue> issues = new ArrayList<>();
         issues.addAll(validator.validateSpecs().issues());
         ValidationResult changes = validator.validateChanges();

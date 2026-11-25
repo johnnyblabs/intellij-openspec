@@ -321,6 +321,8 @@ public final class SpecMerge {
 
     /** {@link #merge(String, String, String, String)} naming the main spec's path in warnings, as upstream does. */
     public static Result merge(String capability, String changeName, String delta, @Nullable String main, String mainSpecPath) {
+        // A delta's front matter (CLI 2.1.1) stays with the change: it is never carried into the main spec.
+        delta = com.johnnyblabs.openspec.util.FrontMatter.blank(delta);
         Plan plan = parseDelta(delta);
         List<DeltaSpecOperation> ops = operations(capability, plan);
         List<String> warnings = new ArrayList<>();
@@ -336,6 +338,51 @@ public final class SpecMerge {
         } catch (Refusal r) {
             return new Result(capability, null, ops, List.copyOf(warnings), r.getMessage());
         }
+    }
+
+    /** A MODIFIED requirement whose text grew past the limit; {@code line} is its header's 1-based line in the delta. */
+    public record Growth(String name, int line) {
+    }
+
+    /**
+     * CLI 2.1.1's MODIFIED growth check ({@code findMainSpecModifiedIssues}): each MODIFIED requirement whose text
+     * ({@link com.johnnyblabs.openspec.util.RequirementText}) is over the limit and longer than the main spec's current
+     * text for it. The current requirement is the one of that name, or the one the delta renamed into it, following
+     * rename chains; a MODIFIED naming a name the delta renames away, or with no current requirement, is not checked.
+     */
+    public static List<Growth> modifiedGrowth(String delta, String main) {
+        String blanked = com.johnnyblabs.openspec.util.FrontMatter.blank(delta);
+        Plan plan = parseDelta(blanked);
+        Map<String, Block> current = new HashMap<>();
+        for (Block b : requirementsSection(com.johnnyblabs.openspec.util.FrontMatter.blank(main)).blocks()) {
+            current.putIfAbsent(b.name(), b);
+        }
+        Map<String, String> renamedFrom = new HashMap<>();
+        Set<String> renamedAway = new HashSet<>();
+        for (RenamePair r : plan.renamed()) {
+            renamedFrom.put(normalizeName(r.to()), normalizeName(r.from()));
+            renamedAway.add(normalizeName(r.from()));
+        }
+        List<String> lines = lines(blanked);
+        List<Growth> grown = new ArrayList<>();
+        for (Block block : plan.modified()) {
+            String name = normalizeName(block.name());
+            if (renamedAway.contains(name)) continue;
+            Block was = null;
+            Set<String> visited = new HashSet<>();
+            for (String key = name; key != null && visited.add(key); key = renamedFrom.get(key)) {
+                was = current.get(key);
+                if (was != null) break;
+            }
+            if (was == null) continue;
+            String next = com.johnnyblabs.openspec.util.RequirementText.ofBlock(block.raw());
+            int currentLength = com.johnnyblabs.openspec.util.RequirementText.ofBlock(was.raw()).length();
+            if (!next.isEmpty() && com.johnnyblabs.openspec.util.RequirementText.tooLong(next)
+                    && next.length() > currentLength) {
+                grown.add(new Growth(block.name(), Math.max(1, lines.indexOf(block.headerLine()) + 1)));
+            }
+        }
+        return grown;
     }
 
     private static String apply(String spec, String changeName, String delta, @Nullable String main, String mainSpecPath,

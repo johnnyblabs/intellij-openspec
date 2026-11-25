@@ -152,4 +152,34 @@ class OpenSpecValidateStrictTest {
         assertSame(errored, OpenSpecValidateAction.applyStrictFallbackVerdict(errored, true),
                 "already failing on an ERROR: nothing to flip");
     }
+
+    /**
+     * The strict-failing set follows the release, and each gated rule enters it exactly where that release's CLI fails
+     * the corpus item that isolates the rule under {@code --strict} (the 2.x parity captures).
+     */
+    @org.junit.jupiter.api.Test
+    void theStrictSetFollowsEachCapturedRelease() throws java.io.IOException {
+        java.util.Map<String, String> ruleItem = java.util.Map.of(
+                "spec-requirement-too-long", "len-501",
+                "spec-scenario-steps", "step-missing-when",
+                "delta-modified-too-long", "grow-short");
+        for (String v : java.util.List.of("1.14.0", "1.14.1", "1.14.3", "1.15.0", "1.16.0", "1.16.1", "1.17.0", "2.0.0",
+                "2.1.0", "2.1.1")) {
+            com.google.gson.JsonObject strict = com.google.gson.JsonParser.parseString(java.nio.file.Files.readString(
+                    java.nio.file.Path.of("src/test/resources/fixtures/cli", v, "validate-parity-corpus-2x-strict.json")))
+                    .getAsJsonObject();
+            java.util.Set<String> set = OpenSpecValidateAction.strictWarnings(v);
+            org.junit.jupiter.api.Assertions.assertTrue(set.containsAll(OpenSpecValidateAction.CLI_MIRRORING_STRICT_WARNINGS), v);
+            for (var e : ruleItem.entrySet()) {
+                boolean fails = false;
+                for (var el : strict.getAsJsonArray("items")) {
+                    var item = el.getAsJsonObject();
+                    if (item.get("id").getAsString().equals(e.getValue())) fails = !item.get("valid").getAsBoolean();
+                }
+                org.junit.jupiter.api.Assertions.assertEquals(fails, set.contains(e.getKey()), v + " " + e.getKey());
+            }
+        }
+        org.junit.jupiter.api.Assertions.assertEquals(OpenSpecValidateAction.CLI_MIRRORING_STRICT_WARNINGS,
+                OpenSpecValidateAction.strictWarnings(null), "no release: no gated rule");
+    }
 }

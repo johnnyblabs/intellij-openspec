@@ -106,4 +106,27 @@ class TaskLinesContractTest {
         assertFalse(tasks.getFirst().done());
         assertEquals("", tasks.getFirst().mark());
     }
+
+    /**
+     * CLI 2.0+ joins a wrapped task line into one description ({@code instructions apply}); the counts are unchanged, and
+     * the plugin, which only counts, agrees with them. The input is the committed {@code apply-wrapped-tasks.md}.
+     */
+    @Test
+    void wrappedTasksCountAsTheTwoXClientCountsThem() throws IOException {
+        for (String v : java.util.List.of("2.0.0", "2.1.0", "2.1.1")) {
+            String tasks = read("/fixtures/cli/" + v + "/instructions/apply-wrapped-tasks.md");
+            com.google.gson.JsonObject captured = com.google.gson.JsonParser.parseString(
+                    read("/fixtures/cli/" + v + "/instructions/instructions-apply-wrapped.json")).getAsJsonObject();
+            com.google.gson.JsonObject progress = captured.getAsJsonObject("progress");
+            int[] counts = ApplyPromptBuilder.countTasks(tasks);
+            assertArrayEquals(new int[]{progress.get("complete").getAsInt(), progress.get("total").getAsInt()}, counts, v);
+            assertEquals(counts[1], captured.getAsJsonArray("tasks").size(), v);
+            assertTrue(captured.getAsJsonArray("tasks").get(0).getAsJsonObject().get("description").getAsString()
+                    .endsWith("wraps onto a second line"), v + ": the client joins the wrapped line");
+            // Another continuation line changes no count: a continuation is never itself a task.
+            String longer = tasks.replace("  wraps onto a second line\n", "  wraps onto a second line\n  and a third\n");
+            assertNotEquals(tasks, longer, "sanity: the wrapped task is in the input");
+            assertArrayEquals(counts, ApplyPromptBuilder.countTasks(longer), v);
+        }
+    }
 }

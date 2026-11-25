@@ -18,7 +18,7 @@
           "message": "Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
         }
       ],
-      "durationMs": 1
+      "durationMs": 2
     },
     {
       "id": "base-rename",
@@ -39,7 +39,14 @@
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 18
+      "durationMs": 19
+    },
+    {
+      "id": "fm-comment-only",
+      "type": "change",
+      "valid": true,
+      "issues": [],
+      "durationMs": 19
     },
     {
       "id": "fm-comment-title",
@@ -56,18 +63,32 @@
       "durationMs": 19
     },
     {
+      "id": "fm-empty",
+      "type": "change",
+      "valid": true,
+      "issues": [],
+      "durationMs": 20
+    },
+    {
       "id": "fm-heading-before-close",
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 19
+      "durationMs": 10
     },
     {
       "id": "fm-indented",
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 20
+      "durationMs": 9
+    },
+    {
+      "id": "fm-quoted-key",
+      "type": "change",
+      "valid": true,
+      "issues": [],
+      "durationMs": 11
     },
     {
       "id": "fm-thematic",
@@ -81,14 +102,27 @@
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 13
+      "durationMs": 11
     },
     {
       "id": "grow-equal",
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 17
+      "durationMs": 12
+    },
+    {
+      "id": "grow-no-main",
+      "type": "change",
+      "valid": true,
+      "issues": [
+        {
+          "level": "INFO",
+          "path": "no-such-capability/spec.md",
+          "message": "Archive would refuse this delta: no-such-capability: target spec does not exist; only ADDED requirements are allowed for new specs. MODIFIED and RENAMED operations require an existing spec."
+        }
+      ],
+      "durationMs": 9
     },
     {
       "id": "grow-rename",
@@ -102,7 +136,7 @@
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 15
+      "durationMs": 17
     },
     {
       "id": "inline-fence",
@@ -145,6 +179,13 @@
       "durationMs": 0
     },
     {
+      "id": "len-h5-break",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 0
+    },
+    {
       "id": "len-metadata-only",
       "type": "spec",
       "valid": true,
@@ -155,6 +196,13 @@
           "message": "Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
         }
       ],
+      "durationMs": 0
+    },
+    {
+      "id": "len-metadata-plus-text",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
       "durationMs": 0
     },
     {
@@ -192,6 +240,13 @@
       "durationMs": 0
     },
     {
+      "id": "step-bodiless",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 0
+    },
+    {
       "id": "step-bold-lower",
       "type": "spec",
       "valid": true,
@@ -203,7 +258,7 @@
       "type": "spec",
       "valid": true,
       "issues": [],
-      "durationMs": 1
+      "durationMs": 0
     },
     {
       "id": "step-delta",
@@ -217,7 +272,7 @@
       "type": "spec",
       "valid": true,
       "issues": [],
-      "durationMs": 0
+      "durationMs": 1
     },
     {
       "id": "step-header-only",
@@ -255,6 +310,20 @@
       "durationMs": 0
     },
     {
+      "id": "step-modified-delta",
+      "type": "change",
+      "valid": true,
+      "issues": [],
+      "durationMs": 16
+    },
+    {
+      "id": "step-removed",
+      "type": "change",
+      "valid": true,
+      "issues": [],
+      "durationMs": 14
+    },
+    {
       "id": "step-under-h5",
       "type": "spec",
       "valid": true,
@@ -263,6 +332,13 @@
     },
     {
       "id": "step-underscore",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 0
+    },
+    {
+      "id": "step-unlabeled-note",
       "type": "spec",
       "valid": true,
       "issues": [],
@@ -289,19 +365,19 @@
   ],
   "summary": {
     "totals": {
-      "items": 35,
-      "passed": 34,
+      "items": 45,
+      "passed": 44,
       "failed": 1
     },
     "byType": {
       "change": {
-        "items": 12,
-        "passed": 12,
+        "items": 18,
+        "passed": 18,
         "failed": 0
       },
       "spec": {
-        "items": 23,
-        "passed": 22,
+        "items": 27,
+        "passed": 26,
         "failed": 1
       }
     }

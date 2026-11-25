@@ -22,14 +22,14 @@
 
 ## 2. The release followed
 
-- [ ] 2.1 Add `ValidationRelease.followed(project)`: the detected CLI's version, else `PluginVersions.targetCliVersion()`. Thread it into `BuiltInValidator`, with the existing entry points looking it up.
+- [x] 2.1 Add `ValidationRelease.followed(project)`: the detected CLI's version, else `PluginVersions.targetCliVersion()`. Thread it into `BuiltInValidator`, with the existing entry points looking it up.
   - Verify:
     - a light test: a fake detection at 1.15.0 gives `1.15.0`, and no CLI gives the target;
     - an unparseable version applies no gated rule;
     - pin `BuiltInValidatorRulesTest` and `BuiltInValidatorTest`'s INFO-hint cases to 1.15.0, and `ValidatorVerdictParityTest` to 1.8.0;
     - the existing validator, inspection and parity tests then pass.
-- [ ] 2.2 Replace the fixed `CLI_MIRRORING_STRICT_WARNINGS` with `strictWarnings(release)` (design decision 3), and pass the release into `applyStrictFallbackVerdict`.
-  - Verify with `OpenSpecValidateActionTest`:
+- [x] 2.2 Replace the fixed `CLI_MIRRORING_STRICT_WARNINGS` with `strictWarnings(release)` (design decision 3), and pass the release into `applyStrictFallbackVerdict`.
+  - Verify with `OpenSpecValidateStrictTest` (each gated rule enters the set exactly where that release fails the corpus item isolating it under `--strict`):
     - 1.14.0 gives the keyword rules only;
     - 1.14.1 adds `spec-requirement-too-long`;
     - 1.16.0 and 2.1.0 add `spec-scenario-steps`;
@@ -38,14 +38,14 @@
 
 ## 3. The rules
 
-- [ ] 3.1 Port the step check (design decision 2), with `spec-scenario-steps` for main specs and ADDED/MODIFIED deltas from 1.16.0, and the existing INFO below.
+- [x] 3.1 Port the step check (design decision 2), with `spec-scenario-steps` for main specs and ADDED/MODIFIED deltas from 1.16.0, and the existing INFO below.
   - Verify with a plain test over the corpus files: each step form counts or doesn't exactly as the 2.1.1 capture says.
   - Mutations, each turning a case red:
     - counting `AND`;
     - dropping fence masking;
     - accepting lowercase bare words;
     - checking unlabeled or bodiless scenarios.
-- [ ] 3.2 Port the requirement-text measure, and add the too-long and growth checks (design decision 4).
+- [x] 3.2 Port the requirement-text measure, and add the too-long and growth checks (design decision 4).
   - Verify with a plain test of the measure: every length body in the corpus measures as its capture implies (500 passes, 501 warns, two lines, comment, metadata only).
   - Verify the too-long check: the main-spec and ADDED cases warn following 1.14.1 and not following 1.14.0.
   - Verify the growth check:
@@ -58,7 +58,7 @@
     - `>=` instead of `>`;
     - dropping the "longer than current" clause;
     - ignoring renames.
-- [ ] 3.3 Port `findFrontmatterEnd` and blank front matter in delta parsing from 2.1.1, and in `SpecMerge` always (design decision 5).
+- [x] 3.3 Port `findFrontmatterEnd` and blank front matter in delta parsing from 2.1.1, and in `SpecMerge` always (design decision 5).
   - Verify with a plain test over upstream's cases:
     - a key-led block, a quoted key, an empty block, and `# Title` then a key all count;
     - a BOM and CRLF are accepted;
@@ -69,16 +69,17 @@
 
 ## 4. Parity per release
 
-- [ ] 4.1 Add `ValidatorVerdictReleaseParityTest` (design decision 6): for each captured release, the built-in validator following it agrees with that release's `valid` flag on every `parity-corpus-2x` item, in default and in strict mode. The existing 1.8-oracle `ValidatorVerdictParityTest` keeps passing.
-  - The pinned laxer exceptions are the front-matter and lookalike deltas under `--strict` below 2.1.1, where the release fails its "text above the first `##`" warning. For them the plugin must give `valid`, and the list must match exactly.
-  - Verify: the test passes, and checks every item for eight releases in two modes.
+- [x] 4.1 Add `ValidatorVerdictReleaseParityTest` (design decision 6): for each captured release, the built-in validator following it agrees with that release's `valid` flag on every `parity-corpus-2x` item, in default and in strict mode. The existing 1.8-oracle `ValidatorVerdictParityTest` keeps passing.
+  - The pinned laxer exceptions are the items a release fails under `--strict` only through its "not carried into the main spec by archive" warnings ("Text above the first `##` section", "Section `## Notes`"), which the plugin leaves to the CLI: front matter from 1.14.3 until 2.1.0, and the lookalikes from 1.14.3 on every release. The plugin must give `valid` for them, and the list must match exactly.
+  - The test also found that the plugin's `#### Scenario:` match was case-sensitive, which made it stricter than every release on `#### scenario:`. The label now matches in any case.
+  - Verify: the test passes, and checks all 45 items for ten releases (1.14.0, 1.14.1, 1.14.3, 1.15.0, 1.16.0, 1.16.1, 1.17.0, 2.0.0, 2.1.0, 2.1.1) in two modes.
   - Mutations, each turning its releases red:
     - removing the 1.14.1 gate (1.14.0);
     - removing the 1.16 gate (1.15.0);
     - removing the 2.1.1 gate (2.0.0 and 2.1.0);
     - leaving a rule out of the strict set;
     - adding an item to the exceptions.
-- [ ] 4.2 Add `TaskLinesContractTest` over the 1.2 captures: the plugin's `[complete, total]` equals each capture's, and the capture's joined descriptions are pinned. Verify: the test passes, and appending a line to a wrapped task in the fixture changes no count.
+- [x] 4.2 Add `TaskLinesContractTest` over the 1.2 captures: the plugin's `[complete, total]` equals each capture's, and the capture's joined descriptions are pinned. Verify: the test passes, and appending a line to a wrapped task in the fixture changes no count.
 
 ## 5. Docs and finish
 

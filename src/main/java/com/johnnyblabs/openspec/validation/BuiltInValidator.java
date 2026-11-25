@@ -38,7 +38,8 @@ public final class BuiltInValidator {
     // SHOULD/MAY never satisfied `openspec validate`; accepting them made the plugin laxer
     // than the client it wraps. "SHALL NOT" still satisfies via the SHALL word match.
     private static final Pattern RFC_KEYWORD_PATTERN = Pattern.compile("\\b(SHALL|MUST)\\b");
-    private static final Pattern SCENARIO_PATTERN = Pattern.compile("^#{4} Scenario:.+", Pattern.MULTILINE);
+    /** A scenario header. The label matches in any case, as OpenSpec matches it ({@code #### scenario:} counts). */
+    private static final Pattern SCENARIO_PATTERN = Pattern.compile("^#{4} (?i:Scenario):.+", Pattern.MULTILINE);
     private static final Pattern CLAUSE_PATTERN = Pattern.compile("^-\\s+\\*{0,2}(GIVEN|WHEN|THEN|AND)\\*{0,2}\\b", Pattern.MULTILINE);
     private static final Pattern DELTA_SECTION_PATTERN = Pattern.compile("^## (ADDED|MODIFIED|REMOVED|RENAMED)", Pattern.MULTILINE);
     private static final Pattern FULL_SPEC_PATTERN = Pattern.compile("^## (Requirements|Purpose)", Pattern.MULTILINE);
@@ -47,6 +48,28 @@ public final class BuiltInValidator {
     private static final Pattern REMOVED_MIGRATION_PATTERN = Pattern.compile("\\*\\*\\s*Migration\\s*:?\\s*\\*\\*", Pattern.CASE_INSENSITIVE);
 
     private final Project project;
+
+    /** Set by tests to follow a named release; {@code null} follows {@link ValidationRelease#followed}. */
+    private volatile @org.jetbrains.annotations.Nullable String releaseForTest;
+    private volatile boolean releasePinned;
+
+    /** The CLI release whose rules this validator follows (see {@link ValidationRelease}). */
+    public @org.jetbrains.annotations.Nullable String release() {
+        return releasePinned ? releaseForTest : ValidationRelease.followed(project);
+    }
+
+    /** Follows {@code release} (which may be {@code null}: no release-gated rule) until cleared. */
+    @org.jetbrains.annotations.TestOnly
+    public void followReleaseForTest(@org.jetbrains.annotations.Nullable String release) {
+        this.releaseForTest = release;
+        this.releasePinned = true;
+    }
+
+    @org.jetbrains.annotations.TestOnly
+    public void clearReleaseForTest() {
+        this.releaseForTest = null;
+        this.releasePinned = false;
+    }
 
     public BuiltInValidator(Project project) {
         this.project = project;
@@ -89,7 +112,7 @@ public final class BuiltInValidator {
     private void validateSpecFile(VirtualFile file, List<ValidationIssue> issues) {
         String raw = readFile(file);
         if (raw == null) return;
-        validateSpecContent(raw, file.getPath(), issues);
+        validateSpecContent(raw, file.getPath(), issues, release());
     }
 
     /**
@@ -99,6 +122,15 @@ public final class BuiltInValidator {
      * package-visible because the logic is stateless.
      */
     static void validateSpecContent(String rawContent, String path, List<ValidationIssue> issues) {
+        validateSpecContent(rawContent, path, issues, null);
+    }
+
+    /**
+     * As {@link #validateSpecContent(String, String, List)}, following CLI {@code release}: the rules a release
+     * introduced apply from that release ({@link ValidationRelease}); {@code null} applies none of them.
+     */
+    static void validateSpecContent(String rawContent, String path, List<ValidationIssue> issues,
+                                    @org.jetbrains.annotations.Nullable String release) {
         // All structural matching runs on the fence-masked form (offsets preserved).
         String content = maskFences(rawContent);
 
@@ -159,6 +191,8 @@ public final class BuiltInValidator {
             // Find the content between this requirement and the next requirement or end
             int nextReq = findNextRequirement(content, reqMatcher.end());
             String reqContent = content.substring(reqMatcher.end(), nextReq);
+            String reqRaw = rawContent.substring(reqStart, nextReq);
+            checkLength(reqRaw, reqHeader, path, reqLine, release, issues, "Requirement");
 
             if (!RFC_KEYWORD_PATTERN.matcher(reqContent).find()) {
                 // CLI 1.8 parity: the missing-keyword rule is severity-conditional on the requirement
@@ -198,8 +232,13 @@ public final class BuiltInValidator {
                         "Requirement '" + reqHeader + "' must have at least one '#### Scenario:' block", "spec-scenario-required"));
             }
 
-            // Scenario WHEN/THEN structure is an authoring hint only — INFO, not a verdict input.
-            // The CLI performs no clause-structure validation (a scenario need only be non-empty),
+            // From CLI 1.16.0 a labeled scenario needs a trigger and an outcome: a WARNING, strict-failing.
+            if (ValidationRelease.has(release, ValidationRelease.SCENARIO_STEPS)) {
+                checkSteps(reqRaw, reqHeader, "Requirement \"" + reqHeader + "\"", path, reqLine, issues);
+                continue;
+            }
+            // Below 1.16: scenario WHEN/THEN structure is an authoring hint only — INFO, not a verdict input.
+            // Those releases perform no clause-structure validation (a scenario need only be non-empty),
             // so flagging it as an ERROR would be stricter than the client we wrap.
             Matcher scenMatcher = SCENARIO_PATTERN.matcher(reqContent);
             while (scenMatcher.find()) {
@@ -369,6 +408,26 @@ public final class BuiltInValidator {
         return found;
     }
 
+    /**
+     * The main spec a delta in capability directory {@code dir} ({@code changes/<c>/specs/<capability-path>/}) applies
+     * to: {@code openspec/specs/<capability-path>/spec.md}, read through the VFS; {@code null} when there is none.
+     */
+    private @org.jetbrains.annotations.Nullable String mainSpecFor(VirtualFile dir) {
+        StringBuilder rel = new StringBuilder();
+        VirtualFile cursor = dir;
+        while (cursor != null && !"specs".equals(cursor.getName())) {
+            rel.insert(0, "/" + cursor.getName());
+            cursor = cursor.getParent();
+        }
+        if (cursor == null) return null;
+        VirtualFile change = cursor.getParent();
+        VirtualFile changes = change != null ? change.getParent() : null;
+        VirtualFile openspec = changes != null ? changes.getParent() : null;
+        if (openspec == null) return null;
+        VirtualFile main = openspec.findFileByRelativePath("specs" + rel + "/spec.md");
+        return main != null && !main.isDirectory() ? readFile(main) : null;
+    }
+
     /** Recursively validate every {@code spec.md} at or below {@code dir} (a capability directory). */
     private int validateDeltaSpecsUnder(VirtualFile dir, List<ValidationIssue> issues) {
         int found = 0;
@@ -377,7 +436,7 @@ public final class BuiltInValidator {
             String raw = readFile(specFile);
             // Count parsed entries (OpenSpec's "at least one delta" counts entries, not files); an unreadable
             // file counts as one so it can't trigger a false no-deltas error.
-            found += raw != null ? validateDeltaContent(raw, specFile.getPath(), issues) : 1;
+            found += raw != null ? validateDeltaContent(raw, specFile.getPath(), issues, release(), mainSpecFor(dir)) : 1;
         }
         for (VirtualFile child : dir.getChildren()) {
             if (child.isDirectory()) {
@@ -620,6 +679,20 @@ public final class BuiltInValidator {
      * Fence-masks internally; {@code path} is used only for issue locations.
      */
     static int validateDeltaContent(String raw, String path, List<ValidationIssue> issues) {
+        return validateDeltaContent(raw, path, issues, null, null);
+    }
+
+    /**
+     * As {@link #validateDeltaContent(String, String, List)}, following CLI {@code release}, with the main spec the
+     * delta applies to ({@code null} when there is none) for the MODIFIED growth check.
+     */
+    static int validateDeltaContent(String raw, String path, List<ValidationIssue> issues,
+                                    @org.jetbrains.annotations.Nullable String release,
+                                    @org.jetbrains.annotations.Nullable String mainSpec) {
+        // From CLI 2.1.1 a leading front-matter block is opaque: blanked, so line numbers hold.
+        if (ValidationRelease.has(release, ValidationRelease.DELTA_FRONT_MATTER)) {
+            raw = com.johnnyblabs.openspec.util.FrontMatter.blank(raw);
+        }
         // Entries are recognised exactly as OpenSpec's reader (and the plugin's merge) recognise them.
         com.johnnyblabs.openspec.services.SpecMerge.DeltaSummary summary =
                 com.johnnyblabs.openspec.services.SpecMerge.summarize(raw);
@@ -651,8 +724,42 @@ public final class BuiltInValidator {
             issues.add(new ValidationIssue(ValidationIssue.Severity.WARNING, path, 1,
                     "Delta spec should have ADDED, MODIFIED, REMOVED, or RENAMED sections", "delta-spec-sections"));
         }
-        validateDeltaSpecStructure(content, path, issues);
+        validateDeltaSpecStructure(content, raw, path, release, issues);
+        if (ValidationRelease.has(release, ValidationRelease.MODIFIED_GROWTH) && mainSpec != null) {
+            for (com.johnnyblabs.openspec.services.SpecMerge.Growth g
+                    : com.johnnyblabs.openspec.services.SpecMerge.modifiedGrowth(raw, mainSpec)) {
+                issues.add(new ValidationIssue(ValidationIssue.Severity.WARNING, path, g.line(),
+                        "MODIFIED \"" + g.name() + "\": " + TOO_LONG_MESSAGE, "delta-modified-too-long"));
+            }
+        }
         return summary.entries();
+    }
+
+    /** From CLI 1.14.1 a requirement whose text is over 500 characters is a WARNING (strict-failing). */
+    private static void checkLength(String blockRaw, String name, String path, int line,
+                                    @org.jetbrains.annotations.Nullable String release, List<ValidationIssue> issues,
+                                    String label) {
+        if (!ValidationRelease.has(release, ValidationRelease.TOO_LONG)) return;
+        if (!com.johnnyblabs.openspec.util.RequirementText.tooLong(
+                com.johnnyblabs.openspec.util.RequirementText.ofBlock(blockRaw))) return;
+        issues.add(new ValidationIssue(ValidationIssue.Severity.WARNING, path, line,
+                label + " '" + name + "': " + TOO_LONG_MESSAGE, "spec-requirement-too-long"));
+    }
+
+    /** OpenSpec's wording for every length rule. */
+    static final String TOO_LONG_MESSAGE = "Requirement text is very long (>"
+            + com.johnnyblabs.openspec.util.RequirementText.MAX_LENGTH + " characters). Move examples and edge cases "
+            + "into scenarios, or split it into separate requirements that each state one behavior.";
+
+    /** The 1.16 step check over one requirement block (raw); {@code line} is the block's first line. */
+    private static void checkSteps(String blockRaw, String name, String label, String path, int line,
+                                   List<ValidationIssue> issues) {
+        for (ScenarioSteps.Missing m : ScenarioSteps.missing(blockRaw)) {
+            issues.add(new ValidationIssue(ValidationIssue.Severity.WARNING, path, line + m.line(),
+                    label + ": scenario \"" + m.scenario() + "\" is missing " + m.describe()
+                            + ". A scenario needs a trigger and an outcome, e.g. \"- **WHEN** an invoice is voided\" "
+                            + "and \"- **THEN** a credit note is issued\".", "spec-scenario-steps"));
+        }
     }
 
     /** OpenSpec's section list: "A", "A and B", "A, B and C". */
@@ -669,7 +776,9 @@ public final class BuiltInValidator {
         return 1;
     }
 
-    private static void validateDeltaSpecStructure(String content, String path, List<ValidationIssue> issues) {
+    private static void validateDeltaSpecStructure(String content, String raw, String path,
+                                                   @org.jetbrains.annotations.Nullable String release,
+                                                   List<ValidationIssue> issues) {
         // Find each delta section and validate requirement blocks within
         Pattern deltaSectionStart = Pattern.compile("^## (ADDED|MODIFIED|REMOVED|RENAMED) Requirements", Pattern.MULTILINE);
         Matcher sectionMatcher = deltaSectionStart.matcher(content);
@@ -723,6 +832,13 @@ public final class BuiltInValidator {
                                 "delta-removed-fields"));
                     }
                 } else {
+                    String blockRaw = raw.substring(sectionStart + reqMatcher.start(), sectionStart + nextReq);
+                    if ("ADDED".equals(sectionType)) {
+                        checkLength(blockRaw, reqHeader, path, reqLine, release, issues, "ADDED");
+                    }
+                    if (ValidationRelease.has(release, ValidationRelease.SCENARIO_STEPS)) {
+                        checkSteps(blockRaw, reqHeader, sectionType + " \"" + reqHeader + "\"", path, reqLine, issues);
+                    }
                     // ADDED and MODIFIED requirements must have at least one scenario with WHEN/THEN
                     if (!SCENARIO_PATTERN.matcher(reqContent).find()) {
                         String detail = "MODIFIED".equals(sectionType)

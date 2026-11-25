@@ -14,6 +14,7 @@ import com.johnnyblabs.openspec.util.CliRunner;
 import com.johnnyblabs.openspec.util.OpenSpecFileUtil;
 import com.johnnyblabs.openspec.util.OpenSpecNotifier;
 import com.johnnyblabs.openspec.validation.BuiltInValidator;
+import com.johnnyblabs.openspec.validation.ValidationRelease;
 import com.johnnyblabs.openspec.validation.ValidationIssue;
 import com.johnnyblabs.openspec.validation.ValidationResult;
 import org.jetbrains.annotations.NotNull;
@@ -84,7 +85,7 @@ public class OpenSpecValidateAction extends OpenSpecBaseAction {
                 } else {
                     // No CLI available — the built-in validator is the full fallback verdict.
                     finalResult = applyStrictFallbackVerdict(
-                            builtInValidate(project, validator, target), target.strict());
+                            builtInValidate(project, validator, target), target.strict(), validator.release());
                 }
 
                 ValidationResult result = finalResult;
@@ -118,7 +119,8 @@ public class OpenSpecValidateAction extends OpenSpecBaseAction {
         } catch (Exception ex) {
             // CLI failed to run or rejected the run — fall back to the full built-in validator, never a
             // blind pass. Apply the per-run strict verdict flip to the fallback.
-            return applyStrictFallbackVerdict(builtInValidate(project, validator, target), target.strict());
+            return applyStrictFallbackVerdict(builtInValidate(project, validator, target), target.strict(),
+                    validator.release());
         }
     }
 
@@ -168,6 +170,28 @@ public class OpenSpecValidateAction extends OpenSpecBaseAction {
      */
     public static ValidationResult applyStrictFallbackVerdict(ValidationResult result, boolean strict) {
         return applyStrictFallbackVerdict(result, strict, CLI_MIRRORING_STRICT_WARNINGS);
+    }
+
+    /**
+     * The strict flip for a fallback that followed CLI {@code release}: the warnings that release itself emits and
+     * fails on under {@code --strict} ({@link #strictWarnings}).
+     */
+    public static ValidationResult applyStrictFallbackVerdict(ValidationResult result, boolean strict,
+                                                              @org.jetbrains.annotations.Nullable String release) {
+        return applyStrictFallbackVerdict(result, strict, strictWarnings(release));
+    }
+
+    /**
+     * The built-in warnings that CLI {@code release} fails on under {@code --strict}: the missing-keyword rules on
+     * every release ({@link #CLI_MIRRORING_STRICT_WARNINGS}), long requirements from 1.14.1, scenario steps from 1.16.0
+     * and MODIFIED growth from 2.1.1. A {@code null} or unreadable release adds none of the gated ones.
+     */
+    public static Set<String> strictWarnings(@org.jetbrains.annotations.Nullable String release) {
+        java.util.Set<String> rules = new java.util.LinkedHashSet<>(CLI_MIRRORING_STRICT_WARNINGS);
+        if (ValidationRelease.has(release, ValidationRelease.TOO_LONG)) rules.add("spec-requirement-too-long");
+        if (ValidationRelease.has(release, ValidationRelease.SCENARIO_STEPS)) rules.add("spec-scenario-steps");
+        if (ValidationRelease.has(release, ValidationRelease.MODIFIED_GROWTH)) rules.add("delta-modified-too-long");
+        return java.util.Set.copyOf(rules);
     }
 
     /**

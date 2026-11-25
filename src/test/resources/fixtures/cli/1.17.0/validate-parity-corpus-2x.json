@@ -11,7 +11,7 @@
           "message": "ADDED \"Added long\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
         }
       ],
-      "durationMs": 18
+      "durationMs": 21
     },
     {
       "id": "base-long",
@@ -52,7 +52,21 @@
           "message": "Text above the first \"## \" section is not carried into the main spec by archive. Move it into a requirement, or into proposal.md or design.md."
         }
       ],
-      "durationMs": 20
+      "durationMs": 25
+    },
+    {
+      "id": "fm-comment-only",
+      "type": "change",
+      "valid": true,
+      "issues": [
+        {
+          "level": "WARNING",
+          "path": "demo-comment/spec.md",
+          "line": 1,
+          "message": "Text above the first \"## \" section is not carried into the main spec by archive. Move it into a requirement, or into proposal.md or design.md."
+        }
+      ],
+      "durationMs": 24
     },
     {
       "id": "fm-comment-title",
@@ -66,7 +80,7 @@
           "message": "Text above the first \"## \" section is not carried into the main spec by archive. Move it into a requirement, or into proposal.md or design.md."
         }
       ],
-      "durationMs": 18
+      "durationMs": 21
     },
     {
       "id": "fm-delta",
@@ -80,7 +94,21 @@
           "message": "Text above the first \"## \" section is not carried into the main spec by archive. Move it into a requirement, or into proposal.md or design.md."
         }
       ],
-      "durationMs": 20
+      "durationMs": 25
+    },
+    {
+      "id": "fm-empty",
+      "type": "change",
+      "valid": true,
+      "issues": [
+        {
+          "level": "WARNING",
+          "path": "demo-empty/spec.md",
+          "line": 1,
+          "message": "Text above the first \"## \" section is not carried into the main spec by archive. Move it into a requirement, or into proposal.md or design.md."
+        }
+      ],
+      "durationMs": 22
     },
     {
       "id": "fm-heading-before-close",
@@ -100,7 +128,7 @@
           "message": "Section \"## Notes\" is not carried into the main spec by archive. Move it into a requirement, or into proposal.md or design.md."
         }
       ],
-      "durationMs": 22
+      "durationMs": 11
     },
     {
       "id": "fm-indented",
@@ -114,7 +142,21 @@
           "message": "Text above the first \"## \" section is not carried into the main spec by archive. Move it into a requirement, or into proposal.md or design.md."
         }
       ],
-      "durationMs": 20
+      "durationMs": 14
+    },
+    {
+      "id": "fm-quoted-key",
+      "type": "change",
+      "valid": true,
+      "issues": [
+        {
+          "level": "WARNING",
+          "path": "demo-quoted/spec.md",
+          "line": 1,
+          "message": "Text above the first \"## \" section is not carried into the main spec by archive. Move it into a requirement, or into proposal.md or design.md."
+        }
+      ],
+      "durationMs": 14
     },
     {
       "id": "fm-thematic",
@@ -128,7 +170,7 @@
           "message": "Text above the first \"## \" section is not carried into the main spec by archive. Move it into a requirement, or into proposal.md or design.md."
         }
       ],
-      "durationMs": 15
+      "durationMs": 13
     },
     {
       "id": "fm-unclosed",
@@ -142,28 +184,41 @@
           "message": "Text above the first \"## \" section is not carried into the main spec by archive. Move it into a requirement, or into proposal.md or design.md."
         }
       ],
-      "durationMs": 16
+      "durationMs": 12
     },
     {
       "id": "grow-equal",
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 16
+      "durationMs": 14
+    },
+    {
+      "id": "grow-no-main",
+      "type": "change",
+      "valid": true,
+      "issues": [
+        {
+          "level": "INFO",
+          "path": "no-such-capability/spec.md",
+          "message": "Archive would refuse this delta: no-such-capability: target spec does not exist; only ADDED requirements are allowed for new specs. MODIFIED and RENAMED operations require an existing spec."
+        }
+      ],
+      "durationMs": 17
     },
     {
       "id": "grow-rename",
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 17
+      "durationMs": 18
     },
     {
       "id": "grow-short",
       "type": "change",
       "valid": true,
       "issues": [],
-      "durationMs": 17
+      "durationMs": 18
     },
     {
       "id": "inline-fence",
@@ -206,6 +261,13 @@
       "durationMs": 0
     },
     {
+      "id": "len-h5-break",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 0
+    },
+    {
       "id": "len-metadata-only",
       "type": "spec",
       "valid": true,
@@ -219,6 +281,13 @@
       "durationMs": 0
     },
     {
+      "id": "len-metadata-plus-text",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 0
+    },
+    {
       "id": "len-two-lines",
       "type": "spec",
       "valid": true,
@@ -229,7 +298,7 @@
           "message": "Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
         }
       ],
-      "durationMs": 0
+      "durationMs": 1
     },
     {
       "id": "step-and-only",
@@ -242,7 +311,7 @@
           "message": "Requirement \"Steps\": scenario \"Case\" is missing a WHEN/GIVEN step. A scenario needs a trigger and an outcome, e.g. \"- **WHEN** an invoice is voided\" and \"- **THEN** a credit note is issued\"."
         }
       ],
-      "durationMs": 1
+      "durationMs": 0
     },
     {
       "id": "step-and-with-when",
@@ -253,6 +322,13 @@
     },
     {
       "id": "step-bare-upper",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 0
+    },
+    {
+      "id": "step-bodiless",
       "type": "spec",
       "valid": true,
       "issues": [],
@@ -283,7 +359,7 @@
           "message": "ADDED \"Delta missing then\": scenario \"no then\" is missing a THEN step. A scenario needs a trigger and an outcome, e.g. \"- **WHEN** an invoice is voided\" and \"- **THEN** a credit note is issued\"."
         }
       ],
-      "durationMs": 7
+      "durationMs": 8
     },
     {
       "id": "step-fenced",
@@ -358,6 +434,26 @@
       "durationMs": 0
     },
     {
+      "id": "step-modified-delta",
+      "type": "change",
+      "valid": true,
+      "issues": [
+        {
+          "level": "WARNING",
+          "path": "base-short/spec.md",
+          "message": "MODIFIED \"Short\": scenario \"ok\" is missing a THEN step. A scenario needs a trigger and an outcome, e.g. \"- **WHEN** an invoice is voided\" and \"- **THEN** a credit note is issued\"."
+        }
+      ],
+      "durationMs": 16
+    },
+    {
+      "id": "step-removed",
+      "type": "change",
+      "valid": true,
+      "issues": [],
+      "durationMs": 15
+    },
+    {
       "id": "step-under-h5",
       "type": "spec",
       "valid": true,
@@ -366,6 +462,13 @@
     },
     {
       "id": "step-underscore",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 0
+    },
+    {
+      "id": "step-unlabeled-note",
       "type": "spec",
       "valid": true,
       "issues": [],
@@ -392,19 +495,19 @@
   ],
   "summary": {
     "totals": {
-      "items": 35,
-      "passed": 34,
+      "items": 45,
+      "passed": 44,
       "failed": 1
     },
     "byType": {
       "change": {
-        "items": 12,
-        "passed": 12,
+        "items": 18,
+        "passed": 18,
         "failed": 0
       },
       "spec": {
-        "items": 23,
-        "passed": 22,
+        "items": 27,
+        "passed": 26,
         "failed": 1
       }
     }

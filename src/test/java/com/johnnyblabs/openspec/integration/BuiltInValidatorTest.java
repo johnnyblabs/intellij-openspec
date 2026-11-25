@@ -25,9 +25,19 @@ public class BuiltInValidatorTest extends OpenSpecIntegrationTestBase {
     private BuiltInValidator validator;
 
     @Override
+    protected void tearDown() throws Exception {
+        try {
+            if (validator != null) validator.clearReleaseForTest();
+        } finally {
+            super.tearDown();
+        }
+    }
+
+    @Override
     protected void setUp() throws Exception {
         super.setUp();
         validator = getProject().getService(BuiltInValidator.class);
+        validator.clearReleaseForTest();
     }
 
     // ---------------------------------------------------------------
@@ -179,8 +189,9 @@ public class BuiltInValidatorTest extends OpenSpecIntegrationTestBase {
     }
 
     public void testEmptyScenarioClausesAreInfoAndPass() {
-        // The CLI performs no WHEN/THEN clause validation (a scenario need only be non-empty), so a
-        // missing-clause scenario is an INFO hint that does not fail the verdict.
+        // Below CLI 1.16 there is no WHEN/THEN clause validation (a scenario need only be non-empty), so a
+        // missing-clause scenario is an INFO hint that does not fail the verdict. From 1.16 the step check applies.
+        validator.followReleaseForTest("1.15.0");
         myFixture.addFileToProject("openspec/specs/bad-scenario/spec.md",
                 "# Scenario Spec\n\n### Requirement: Bad Scenario\n\nThe system SHALL work.\n\n" +
                 "#### Scenario: Missing clauses\nJust a description with no structured clauses.\n");
