@@ -96,7 +96,7 @@ public class ScaffoldingFailedInitTest extends HeavyPlatformTestCase {
             return noGit;
         });
 
-        assertEquals(base.resolve("openspec").toString(), dir.getPath());
+        assertEquals(base.resolve("openspec"), dir.toNioPath());
         assertEquals("the CLI's init runs off the UI thread", Boolean.FALSE, onEdt.get());
         assertEquals("the CLI's config is kept, not replaced", "schema: spec-driven\n# written by the CLI\n",
                 Files.readString(base.resolve("openspec/config.yaml")));
