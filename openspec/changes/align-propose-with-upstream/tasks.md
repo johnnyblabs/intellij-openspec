@@ -10,14 +10,14 @@
 
 ## 2. Propose = upstream propose
 
-- [ ] 2.1 Make `ProposeChangeDialog` a description form.
+- [x] 2.1 Make `ProposeChangeDialog` a description form.
   - Direct API: an optional name (derived with `deriveKebabName` when blank) and the schema combo when several schemas exist; OK disabled on an empty description.
   - Handoff modes: the description alone; empty allowed.
   - Both: the title names the mode, and a line under the description says what will happen (the provider, or the invocation and tool) and points to the tool window's delivery selector.
-- [ ] 2.2 Factor `WorkflowActionPanel.onFfGo()`'s create-and-generate body into a public `proposeAndGenerate(name, description, schema, delivery)` used by both Fast-Forward and Propose. Propose passes Direct API explicitly; `onFfGo` passes the panel's selector. Propose reports a creation error as a notification. Neither passes `--description` or `--goal` to `new change`.
-- [ ] 2.2a Make a Propose or Fast-Forward Direct API run stop once `ChangeArtifactDag.isApplyReady()` holds, in `ArtifactOrchestrationService`; the panel's Generate All button keeps generating everything. Test with a captured custom-schema status whose artifacts extend past `applyRequires`: the run stops at the apply-ready set; Generate All doesn't.
-- [ ] 2.3 Add `ScaffoldingService.createEmptyChange(name, schema)`, writing only `.openspec.yaml` as `openspec new change` does. `proposeAndGenerate` uses it when the CLI is unavailable.
-- [ ] 2.4 Rewrite `OpenSpecProposeAction` and fix its class Javadoc.
+- [x] 2.2 Factor `WorkflowActionPanel.onFfGo()`'s create-and-generate body into a public `proposeAndGenerate(name, description, schema, delivery)` used by both Fast-Forward and Propose. Propose passes Direct API explicitly; `onFfGo` passes the panel's selector. Propose reports a creation error as a notification. Neither passes `--description` or `--goal` to `new change`.
+- [x] 2.2a Make a Propose or Fast-Forward Direct API run stop once `ChangeArtifactDag.isApplyReady()` holds, in `ArtifactOrchestrationService`; the panel's Generate All button keeps generating everything. Test with a captured custom-schema status whose artifacts extend past `applyRequires`: the run stops at the apply-ready set; Generate All doesn't.
+- [x] 2.3 Add `ScaffoldingService.createEmptyChange(name, schema)`, writing only `.openspec.yaml` as `openspec new change` does. `proposeAndGenerate` uses it when the CLI is unavailable.
+- [x] 2.4 Rewrite `OpenSpecProposeAction` and fix its class Javadoc.
   - Resolve the delivery mode.
   - Direct API: show the dialog, then call the panel through `OpenSpecToolWindowPanel`.
   - Clipboard or editor tab:
@@ -27,7 +27,7 @@
   - Direct API landing: show the tool window (waiting for its content when not created yet), select the change, and show the pipeline generating.
   - Reword the first-proposal "What's next" notice, and show it after generation completes. Reword the dialog's first-proposal banner too ("Propose a change, then generate artifacts (design, specs, tasks)…").
   - Replace `ProposeCreatesUpstreamSetTest`'s use of `ScaffoldingService.createChange`, then remove `createChange` if nothing else uses it. Update the `OpenSpecBaseAction` comment that lists Propose as a built-in write.
-- [ ] 2.5 Tests:
+- [x] 2.5 Tests:
   - the handoff text for a description and for an empty one;
   - the not-installed notice, with no change created;
   - Direct API calls `proposeAndGenerate` with the dialog's values;

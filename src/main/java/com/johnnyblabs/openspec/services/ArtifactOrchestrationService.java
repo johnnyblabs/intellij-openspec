@@ -288,6 +288,17 @@ public final class ArtifactOrchestrationService {
      */
     public void generateAllRemaining(String changeName, DirectApiService apiService,
                                      GenerateAllListener listener, @Nullable String request) {
+        generateAllRemaining(changeName, apiService, listener, request, false);
+    }
+
+    /**
+     * {@link #generateAllRemaining(String, DirectApiService, GenerateAllListener, String)} that, when
+     * {@code untilApplyReady}, stops once the change is ready to apply ({@link ChangeArtifactDag#isApplyReady()}),
+     * as upstream's propose and ff do: they generate the apply-required artifacts and leave any other. Generate All
+     * itself keeps going until the change is complete.
+     */
+    public void generateAllRemaining(String changeName, DirectApiService apiService,
+                                     GenerateAllListener listener, @Nullable String request, boolean untilApplyReady) {
         boolean requested = request != null && !request.isBlank();
         generateAllCancelled.set(false);
 
@@ -317,7 +328,7 @@ public final class ArtifactOrchestrationService {
                 return;
             }
 
-            if (dag.isComplete()) {
+            if (dag.isComplete() || (untilApplyReady && dag.isApplyReady())) {
                 listener.onAllComplete();
                 return;
             }

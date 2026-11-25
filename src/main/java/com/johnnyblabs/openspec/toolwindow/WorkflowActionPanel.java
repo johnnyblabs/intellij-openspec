@@ -1993,50 +1993,73 @@ public class WorkflowActionPanel extends JPanel {
         String schema = ffSchemaComboVisible && ffSchemaCombo.getSelectedItem() != null
                 ? ffSchemaCombo.getSelectedItem().toString() : null;
 
-        String finalChangeName = changeName;
-        ProgressManager.getInstance().run(new Task.Backgroundable(project, "Fast-Forward: " + changeName, false) {
+        // The panel's own delivery selector decides how a Fast-Forward run generates (null: read it when it starts).
+        // Fast-Forward creates its change through the CLI only, as its spec says; a missing CLI is reported in the form.
+        proposeAndGenerate(changeName, description, schema, null, false, error -> {
+            ffStatusLabel.setText(error);
+            ffStatusLabel.setForeground(COLOR_ERROR);
+            ffGoButton.setEnabled(true);
+            ffCancelButton.setEnabled(true);
+            ffDescriptionField.setEnabled(true);
+            ffNameOverrideField.setEnabled(true);
+        }, () -> {
+            // Reset FF form for next use
+            ffDescriptionField.setEnabled(true);
+            ffNameOverrideField.setEnabled(true);
+            ffGoButton.setEnabled(false);
+            ffCancelButton.setEnabled(true);
+        }, null);
+    }
+
+    /**
+     * Creates a change and generates it, as OpenSpec's propose and ff workflows do: {@code openspec new change} (or,
+     * without the CLI, {@link com.johnnyblabs.openspec.scaffolding.ScaffoldingService#createEmptyChange}), then the
+     * generation {@link #startFastForwardGeneration(String, String, DeliveryMode, Runnable)} starts. Shared by
+     * Propose and Fast-Forward. Call on the EDT.
+     *
+     * @param delivery       how to generate; {@code null} reads the panel's selector when generation starts
+     * @param withoutCli     whether to scaffold the change without the CLI when it isn't available (Propose)
+     * @param onError        on the EDT, with a message, when the change can't be created
+     * @param onCreated      on the EDT, once the change exists and before generation starts
+     * @param afterGenerated on the EDT, when a Direct API run finishes; may be null
+     */
+    public void proposeAndGenerate(String changeName, String description, @Nullable String schema,
+                                   @Nullable DeliveryMode delivery, boolean withoutCli,
+                                   java.util.function.Consumer<String> onError,
+                                   Runnable onCreated, @Nullable Runnable afterGenerated) {
+        Runnable created = () -> {
+            activeChangeName = changeName;
+            onCreated.run();
+            if (onRefreshRequested != null) onRefreshRequested.run();
+            startFastForwardGeneration(changeName, description, delivery, afterGenerated);
+        };
+        var detection = project.getService(com.johnnyblabs.openspec.services.CliDetectionService.class);
+        if (withoutCli && (detection == null || !detection.isAvailable())) {
+            // No CLI: write what `openspec new change` writes, in a write action here on the EDT.
+            try {
+                project.getService(com.johnnyblabs.openspec.scaffolding.ScaffoldingService.class)
+                        .createEmptyChange(changeName, schema);
+            } catch (java.io.IOException e) {
+                onError.accept("Error: " + e.getMessage());
+                return;
+            }
+            created.run();
+            return;
+        }
+        ProgressManager.getInstance().run(new Task.Backgroundable(project, "Creating change: " + changeName, false) {
             @Override
             public void run(@NotNull ProgressIndicator indicator) {
                 try {
-                    com.johnnyblabs.openspec.util.CliRunner.CliResult result;
-                    result = com.johnnyblabs.openspec.util.CliRunner.run(project,
-                            com.johnnyblabs.openspec.util.CliCommands.newChange(finalChangeName, schema));
-
+                    // Never --description or --goal: --description writes a README.md, which is no schema artifact.
+                    com.johnnyblabs.openspec.util.CliRunner.CliResult result = com.johnnyblabs.openspec.util.CliRunner.run(
+                            project, com.johnnyblabs.openspec.util.CliCommands.newChange(changeName, schema));
                     if (!result.isSuccess()) {
-                        ApplicationManager.getApplication().invokeLater(() -> {
-                            ffStatusLabel.setText("Error: " + result.stderr());
-                            ffStatusLabel.setForeground(COLOR_ERROR);
-                            ffGoButton.setEnabled(true);
-                            ffCancelButton.setEnabled(true);
-                            ffDescriptionField.setEnabled(true);
-                            ffNameOverrideField.setEnabled(true);
-                        });
+                        ApplicationManager.getApplication().invokeLater(() -> onError.accept("Error: " + result.stderr()));
                         return;
                     }
-
-                    // Success: switch to pipeline and trigger generation
-                    ApplicationManager.getApplication().invokeLater(() -> {
-                        activeChangeName = finalChangeName;
-
-                        // Reset FF form for next use
-                        ffDescriptionField.setEnabled(true);
-                        ffNameOverrideField.setEnabled(true);
-                        ffGoButton.setEnabled(false);
-                        ffCancelButton.setEnabled(true);
-
-                        if (onRefreshRequested != null) onRefreshRequested.run();
-
-                        startFastForwardGeneration(finalChangeName, description);
-                    });
+                    ApplicationManager.getApplication().invokeLater(created);
                 } catch (com.johnnyblabs.openspec.util.CliRunner.CliException e) {
-                    ApplicationManager.getApplication().invokeLater(() -> {
-                        ffStatusLabel.setText("CLI error: " + e.getMessage());
-                        ffStatusLabel.setForeground(COLOR_ERROR);
-                        ffGoButton.setEnabled(true);
-                        ffCancelButton.setEnabled(true);
-                        ffDescriptionField.setEnabled(true);
-                        ffNameOverrideField.setEnabled(true);
-                    });
+                    ApplicationManager.getApplication().invokeLater(() -> onError.accept("CLI error: " + e.getMessage()));
                 }
             }
         });
@@ -2048,12 +2071,22 @@ public class WorkflowActionPanel extends JPanel {
      * as the request, as OpenSpec's ff workflow uses it; it isn't kept, so later generations don't carry it.
      */
     void startFastForwardGeneration(String changeName, String description) {
+        startFastForwardGeneration(changeName, description, null, null);
+    }
+
+    /**
+     * {@link #startFastForwardGeneration(String, String)} in a given delivery mode ({@code null}: the panel's
+     * selector). A Direct API run stops once the change is ready to apply, as upstream's propose and ff do, then runs
+     * {@code afterGenerated}.
+     */
+    void startFastForwardGeneration(String changeName, String description, @Nullable DeliveryMode delivery,
+                                    @Nullable Runnable afterGenerated) {
         ApplicationManager.getApplication().executeOnPooledThread(() -> {
             refreshForChangeOnPool(changeName);
             ApplicationManager.getApplication().invokeLater(() -> {
-                DeliveryMode mode = getSelectedDeliveryMode();
+                DeliveryMode mode = delivery != null ? delivery : getSelectedDeliveryMode();
                 if (mode == DeliveryMode.DIRECT_API) {
-                    onGenerateAll(description);
+                    onGenerateAll(description, true, afterGenerated);
                 } else if (activeChangeName != null && nextArtifactId != null) {
                     executeGeneration(mode, "", false, description);
                 }
@@ -2617,11 +2650,15 @@ public class WorkflowActionPanel extends JPanel {
     // --- Generate All ---
 
     private void onGenerateAll() {
-        onGenerateAll(null);
+        onGenerateAll(null, false, null);
     }
 
-    /** Generate All, with a Fast-Forward request for every artifact in the run (null for none). */
-    private void onGenerateAll(@Nullable String request) {
+    /**
+     * Generate All, with a Fast-Forward request for every artifact in the run (null for none). With
+     * {@code untilApplyReady} it stops once the change is ready to apply (a Propose or Fast-Forward run) and then runs
+     * {@code afterGenerated}; otherwise it completes the change.
+     */
+    private void onGenerateAll(@Nullable String request, boolean untilApplyReady, @Nullable Runnable afterGenerated) {
         if (activeChangeName == null) return;
 
         String changeName = activeChangeName;
@@ -2698,13 +2735,14 @@ public class WorkflowActionPanel extends JPanel {
                     flashPipelineChipsGreen(changeName);
 
                     // Show completion in status strip briefly
-                    verifyStatusLabel.setText("\u2713 All generated");
+                    verifyStatusLabel.setText(untilApplyReady ? "\u2713 Ready to apply" : "\u2713 All generated");
                     verifyStatusLabel.setForeground(COLOR_SUCCESS);
                     taskProgressStatusLabel.setText(" \u00B7 " + formatElapsed(elapsedSeconds));
                     taskProgressStatusLabel.setVisible(true);
 
                     // Notify
-                    OpenSpecNotifier.generateAllSummary(project, totalCount, elapsedSeconds);
+                    OpenSpecNotifier.generateAllSummary(project, untilApplyReady ? completedCount : totalCount, elapsedSeconds);
+                    if (afterGenerated != null) afterGenerated.run();
 
                     // Restore normal state after 3 seconds
                     javax.swing.Timer restoreTimer = new javax.swing.Timer(3000, ev -> {
@@ -2764,7 +2802,7 @@ public class WorkflowActionPanel extends JPanel {
         ApplicationManager.getApplication().executeOnPooledThread(() -> {
             ArtifactOrchestrationService orchestration = project.getService(ArtifactOrchestrationService.class);
             DirectApiService apiService = project.getService(DirectApiService.class);
-            orchestration.generateAllRemaining(changeName, apiService, listener, request);
+            orchestration.generateAllRemaining(changeName, apiService, listener, request, untilApplyReady);
         });
     }
 

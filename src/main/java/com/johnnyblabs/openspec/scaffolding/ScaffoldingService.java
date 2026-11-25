@@ -51,37 +51,26 @@ public final class ScaffoldingService {
         this.project = project;
     }
 
-    public VirtualFile createChange(String changeName, String why, String whatChanges) throws IOException {
+    /**
+     * Creates a change the way {@code openspec new change <name> [--schema <schema>]} does, for when the CLI isn't
+     * available: the change folder with only {@code .openspec.yaml} (schema and created date), and no artifact. Every
+     * artifact, the proposal first, is then generated or written. A blank {@code schema} uses the project's effective
+     * schema. Unlike the CLI, it doesn't write {@code openspec/config.yaml} when the project has none.
+     */
+    public VirtualFile createEmptyChange(String changeName, @Nullable String schema) throws IOException {
         VirtualFile changesDir = OpenSpecFileUtil.getChangesDir(project);
         if (changesDir == null) {
-            // Create changes dir if needed
             VirtualFile root = OpenSpecFileUtil.getOpenSpecRoot(project);
             if (root == null) throw new IOException("OpenSpec root not found");
             changesDir = WriteAction.compute(() -> root.createChildDirectory(this, "changes"));
         }
-
         String safeName = changeName.toLowerCase().replaceAll("[^a-z0-9-]", "-");
+        String effective = schema != null && !schema.isBlank() ? schema
+                : OpenSpecSettings.getInstance(project).getEffectiveSchema(project);
         VirtualFile finalChangesDir = changesDir;
-
         return WriteAction.compute(() -> {
             VirtualFile changeDir = finalChangesDir.createChildDirectory(this, safeName);
-
-            // .openspec.yaml — schema+created only, matching real `openspec new change` (no status:)
-            writeFile(changeDir, ".openspec.yaml",
-                    TemplateProvider.openspecYamlTemplate(
-                            OpenSpecSettings.getInstance(project).getEffectiveSchema(project)));
-
-            // proposal.md, from what the user entered in the Propose dialog
-            writeFile(changeDir, "proposal.md",
-                    TemplateProvider.proposalTemplate(changeName, why, whatChanges));
-
-            // No design.md or tasks.md: `openspec new change` doesn't create them, and a template file would read as
-            // done to `openspec status` (which decides done-ness by the file existing). They are generated or written
-            // next; until then the CLI reports them ready or blocked.
-
-            // specs directory for delta specs
-            changeDir.createChildDirectory(this, "specs");
-
+            writeFile(changeDir, ".openspec.yaml", TemplateProvider.openspecYamlTemplate(effective));
             return changeDir;
         });
     }

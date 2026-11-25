@@ -1,0 +1,41 @@
+{
+  "changeName": "retro-demo",
+  "artifactId": "tasks",
+  "schemaName": "with-retro",
+  "changeDir": "/fixture/demo-project/openspec/changes/retro-demo",
+  "planningHome": {
+    "kind": "repo",
+    "root": "/fixture/demo-project",
+    "changesDir": "/fixture/demo-project/openspec/changes",
+    "defaultSchema": "spec-driven"
+  },
+  "outputPath": "tasks.md",
+  "resolvedOutputPath": "/fixture/demo-project/openspec/changes/retro-demo/tasks.md",
+  "existingOutputPaths": [
+    "/fixture/demo-project/openspec/changes/retro-demo/tasks.md"
+  ],
+  "description": "Implementation checklist with trackable tasks",
+  "instruction": "Create the task list that breaks down the implementation work.\n\nBefore writing tasks, check design.md for Open Questions. If any of them\nwould change what gets built, resolve them with the user first - do not\nbake an unstated assumption into the task list.\n\n**IMPORTANT: Follow the template below for tracked tasks.** The apply phase parses\ncheckbox format to track progress. A box holding only `x` counts as done,\nupper or lower case and with any spacing, so `- [ x]` is done too. Every\nother marker, including `- [~]`, `- [-]` and an empty `- []`, reads as\nunfinished. A line with no checkbox is not tracked at all.\n\nGuidelines:\n- Group related tracked tasks under ## numbered headings\n- Each tracked task MUST be a checkbox: `- [ ] X.Y Task description`\n- Tasks should be small enough to complete in one session\n- Order tasks by dependency (what must be done first?)\n- Track implementation and verification work that can be completed before\n  archive. If the requested workflow includes archive or work that requires\n  this change to be archived, preserve those steps as plain bullets in an\n  optional `## Workflow follow-up` section at the end of tasks.md. These\n  bullets are reference information outside tracked task progress.\n- Each task MUST state how to verify completion (a test, command,\n  observable behavior, or delivered artifact). Put the verification in\n  that task's checkbox description. Use a separate verification task only\n  when it checks broader integration or system behavior that spans\n  multiple implementation tasks.\n- Each task group MUST land the tests and documentation its own work\n  calls for. Do NOT collect testing or documentation into a final group -\n  when a late group first exercises work from an early one, the failures\n  cascade back through every group in between and force rework. A group\n  whose work calls for neither, such as scaffolding or dependency setup,\n  carries neither. A final group is for integration checks only, not for\n  the tests and docs an earlier group owed.\n\nExample:\n```\n# Tasks\n\n## 1. Setup\n\n- [ ] 1.1 Create new module structure and verify expected files are present\n- [ ] 1.2 Add dependencies to package.json and verify package installation succeeds\n\n## 2. Core Implementation\n\n- [ ] 2.1 Implement data export function and verify the export test passes\n- [ ] 2.2 Add CSV formatting utilities and verify unit tests cover quoting and delimiters\n- [ ] 2.3 Document the export API in docs/export.md and verify the documented command runs as written\n```\n\nWhen applicable, append workflow follow-up as plain bullets, for example:\n```\n## Workflow follow-up\n\n- Archive the change after the project's review requirements are satisfied.\n- Verify the archived result.\n```\n\nReference specs for what needs to be built, design for how to build it.\n",
+  "template": "# Tasks\n\n## 1. <!-- Task Group Name -->\n\n- [ ] 1.1 <!-- Task description -->\n- [ ] 1.2 <!-- Task description -->\n\n## 2. <!-- Task Group Name -->\n\n- [ ] 2.1 <!-- Task description -->\n- [ ] 2.2 <!-- Task description -->\n",
+  "dependencies": [
+    {
+      "id": "specs",
+      "done": true,
+      "path": "specs/**/*.md",
+      "description": "Detailed specifications for the change"
+    },
+    {
+      "id": "design",
+      "done": true,
+      "path": "design.md",
+      "description": "Technical design document with implementation details"
+    }
+  ],
+  "unlocks": [
+    "retro"
+  ],
+  "root": {
+    "path": "/fixture/demo-project",
+    "source": "nearest"
+  }
+}

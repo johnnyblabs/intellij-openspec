@@ -893,6 +893,37 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
         workflowPanel.selectChangeAndApply(changeName);
     }
 
+    /**
+     * Creates a change and generates the artifacts it needs before apply with Direct API, as OpenSpec's propose
+     * workflow does; a creation failure is reported as a notification. Call on the EDT.
+     */
+    public void proposeAndGenerate(String changeName, String description, @org.jetbrains.annotations.Nullable String schema,
+                                   @org.jetbrains.annotations.Nullable Runnable afterGenerated) {
+        workflowPanel.proposeAndGenerate(changeName, description, schema,
+                com.johnnyblabs.openspec.ai.DeliveryMode.DIRECT_API, true,
+                error -> com.johnnyblabs.openspec.util.OpenSpecNotifier.error(project, "Propose",
+                        "Couldn't create change '" + changeName + "'. " + error),
+                () -> selectChange(changeName), afterGenerated);
+    }
+
+    /**
+     * Shows the OpenSpec tool window and hands its panel to {@code use}, creating the window's content first when it
+     * has never been opened. Does nothing when the project has no OpenSpec tool window.
+     */
+    public static void withPanel(Project project, java.util.function.Consumer<OpenSpecToolWindowPanel> use) {
+        com.intellij.openapi.wm.ToolWindow toolWindow =
+                com.intellij.openapi.wm.ToolWindowManager.getInstance(project).getToolWindow("OpenSpec");
+        if (toolWindow == null) return;
+        toolWindow.activate(() -> {
+            for (com.intellij.ui.content.Content content : toolWindow.getContentManager().getContents()) {
+                if (content.getComponent() instanceof OpenSpecToolWindowPanel panel) {
+                    use.accept(panel);
+                    return;
+                }
+            }
+        });
+    }
+
     private void updateAiStatus() {
         AiToolDetectionService aiDetection = project.getService(AiToolDetectionService.class);
         if (aiDetection != null && aiDetection.hasDetectedTools()) {

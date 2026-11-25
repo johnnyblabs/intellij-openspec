@@ -1,48 +1,58 @@
 package com.johnnyblabs.openspec.dialogs;
 
+import com.intellij.testFramework.ServiceContainerUtil;
+import com.intellij.testFramework.fixtures.BasePlatformTestCase;
 import com.johnnyblabs.openspec.model.SchemaInfo;
-import org.junit.jupiter.api.Test;
+import com.johnnyblabs.openspec.services.SchemaService;
 
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
- * Tests the schema combo box visibility logic used in ProposeChangeDialog and WorkflowActionPanel FF form.
- * The combo is visible only when the schema list has more than one entry.
+ * The dialogs that create a change show a schema selector only when the project has several schemas: Propose with
+ * Direct API (where the plugin creates the change) and New Change. Propose in a handoff never shows one, since the
+ * agent's propose workflow picks the schema.
  */
-class SchemaComboVisibilityTest {
+public class SchemaComboVisibilityTest extends BasePlatformTestCase {
 
-    @Test
-    void hiddenWithEmptyList() {
-        List<SchemaInfo> schemas = List.of();
-        assertFalse(schemas.size() > 1, "Combo should be hidden when no schemas exist");
+    private void schemas(String... names) {
+        SchemaService service = mock(SchemaService.class);
+        when(service.listSchemas()).thenReturn(java.util.Arrays.stream(names)
+                .map(n -> new SchemaInfo(n, n, false, List.of())).toList());
+        ServiceContainerUtil.replaceService(getProject(), SchemaService.class, service, getTestRootDisposable());
     }
 
-    @Test
-    void hiddenWithSingleSchema() {
-        List<SchemaInfo> schemas = List.of(
-                new SchemaInfo("spec-driven", "Default", true, List.of("proposal", "design"))
-        );
-        assertFalse(schemas.size() > 1, "Combo should be hidden when only one schema exists");
+    private ProposeChangeDialog propose(boolean directApi) {
+        ProposeChangeDialog dialog = new ProposeChangeDialog(getProject(), directApi, "Propose", "mode");
+        com.intellij.openapi.util.Disposer.register(getTestRootDisposable(), dialog.getDisposable());
+        return dialog;
     }
 
-    @Test
-    void visibleWithTwoSchemas() {
-        List<SchemaInfo> schemas = List.of(
-                new SchemaInfo("spec-driven", "Default", true, List.of("proposal", "design")),
-                new SchemaInfo("rapid", "Rapid prototyping", false, List.of("proposal", "tasks"))
-        );
-        assertTrue(schemas.size() > 1, "Combo should be visible when multiple schemas exist");
+    private NewChangeDialog newChange() {
+        NewChangeDialog dialog = new NewChangeDialog(getProject());
+        com.intellij.openapi.util.Disposer.register(getTestRootDisposable(), dialog.getDisposable());
+        return dialog;
     }
 
-    @Test
-    void visibleWithThreeSchemas() {
-        List<SchemaInfo> schemas = List.of(
-                new SchemaInfo("spec-driven", "Default", true, List.of()),
-                new SchemaInfo("rapid", "Rapid", false, List.of()),
-                new SchemaInfo("compliance", "Compliance", false, List.of())
-        );
-        assertTrue(schemas.size() > 1, "Combo should be visible when more than two schemas exist");
+    public void testHiddenWithOneSchema() {
+        schemas("spec-driven");
+        assertFalse(propose(true).isSchemaComboVisible());
+        assertFalse(newChange().isSchemaComboVisible());
+        assertNull(propose(true).getSelectedSchema());
+    }
+
+    public void testShownWithSeveralSchemas() {
+        schemas("spec-driven", "research-first");
+        assertTrue(propose(true).isSchemaComboVisible());
+        assertTrue(newChange().isSchemaComboVisible());
+        assertEquals("spec-driven", newChange().getSelectedSchema());
+    }
+
+    public void testNeverInAHandoff() {
+        schemas("spec-driven", "research-first");
+        assertFalse(propose(false).isSchemaComboVisible());
+        assertNull(propose(false).getSelectedSchema());
     }
 }

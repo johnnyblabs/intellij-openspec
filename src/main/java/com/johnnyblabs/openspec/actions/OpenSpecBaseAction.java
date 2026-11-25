@@ -28,10 +28,13 @@ import java.awt.*;
  * <p>The plugin uses a hybrid approach to ensure predictable results whether or
  * not the OpenSpec CLI ({@code @fission-ai/openspec}) is installed:</p>
  * <ul>
- *   <li><b>Write operations</b> (Init, Propose, Apply, Archive) — <b>Always built-in.</b>
+ *   <li><b>Write operations</b> (Init, Apply, Archive) — <b>Always built-in.</b>
  *       These create/move/update files on disk. The built-in implementation guarantees
  *       a consistent directory layout, artifact set, and metadata format. This avoids
  *       divergence when the CLI version differs from what the plugin expects.</li>
+ *   <li><b>Creating a change</b> (Propose with Direct API, New Change) — <b>the CLI's {@code new change}</b>,
+ *       or, without the CLI, the same scaffold ({@code .openspec.yaml} only). Propose in a handoff creates nothing;
+ *       the AI tool's own propose workflow does.</li>
  *   <li><b>Read operations</b> (Validate, List) — <b>Built-in + CLI enhancement.</b>
  *       The built-in implementation handles the baseline. When the CLI is available,
  *       its output is merged or preferred — the CLI may provide richer information

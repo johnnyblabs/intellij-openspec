@@ -142,12 +142,12 @@
             <action id="OpenSpec.Propose"
                     class="com.johnnyblabs.openspec.actions.OpenSpecProposeAction"
                     text="Propose..."
-                    description="Propose a new change"
+                    description="Propose a new change: create it and generate all artifacts in one step"
                     icon="AllIcons.General.Add"/>
             <action id="OpenSpec.Ff"
                     class="com.johnnyblabs.openspec.actions.OpenSpecFfAction"
                     text="Fast-Forward..."
-                    description="Create a change and generate all artifacts in one step"
+                    description="Create a change and generate all artifacts needed for implementation in one step"
                     icon="AllIcons.Actions.Lightning"/>
             <action id="OpenSpec.Continue"
                     class="com.johnnyblabs.openspec.actions.OpenSpecContinueAction"

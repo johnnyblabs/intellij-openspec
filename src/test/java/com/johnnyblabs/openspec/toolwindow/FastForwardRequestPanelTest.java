@@ -159,6 +159,18 @@ public class FastForwardRequestPanelTest extends OpenSpecIntegrationTestBase {
         assertFalse("the stubbed failure writes nothing", Files.exists(changeDir.resolve("proposal.md")));
     }
 
+    public void testAProposeRunGeneratesWithDirectApiWhateverThePanelsSelector() throws Exception {
+        // Propose resolves Direct API itself and passes it, so a panel set to clipboard can't make it a one-artifact run.
+        workflowPanel.setDeliveryModeForTest(DeliveryMode.CLIPBOARD);
+
+        workflowPanel.startFastForwardGeneration(CHANGE, REQUEST, DeliveryMode.DIRECT_API, null);
+        waitFor(() -> !runRequests.isEmpty());
+        dispatch();
+
+        assertEquals(List.of(REQUEST), runRequests);
+        assertNull("nothing was copied for the clipboard", workflowPanel.lastPromptForTest());
+    }
+
     public void testALaterGenerationDoesNotCarryTheRequest() throws Exception {
         workflowPanel.setDeliveryModeForTest(DeliveryMode.CLIPBOARD);
         workflowPanel.startFastForwardGeneration(CHANGE, REQUEST);
