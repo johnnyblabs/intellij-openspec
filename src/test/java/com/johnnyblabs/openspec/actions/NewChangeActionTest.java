@@ -102,6 +102,57 @@ public class NewChangeActionTest extends OpenSpecIntegrationTestBase {
         assertEquals("no artifact, only what `openspec new change` writes", Set.of(".openspec.yaml"), written);
     }
 
+    public void testWithTheCliItRunsNewChangeWithTheSchemaAndNoDescription() throws Exception {
+        when(profile.isWorkflowEnabled(anyString())).thenReturn(true);
+        CliDetectionTestSupport.fakeAvailable(getProject().getService(CliDetectionService.class), "2.1.1");
+        java.util.List<java.util.List<String>> runs = new java.util.concurrent.CopyOnWriteArrayList<>();
+        OpenSpecNewChangeAction.setCliForTest((project, args) -> {
+            runs.add(args.requested());
+            return new com.johnnyblabs.openspec.util.CliRunner.CliResult(0, "", "");
+        });
+        try {
+            OpenSpecNewChangeAction.create(getProject(), "add-export", "research-first");
+            long end = System.currentTimeMillis() + 10_000;
+            while (runs.isEmpty() && System.currentTimeMillis() < end) {
+                com.intellij.testFramework.PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
+                Thread.sleep(20);
+            }
+            assertEquals(1, runs.size());
+            List<String> argv = runs.get(0);
+            assertTrue(argv.toString(), argv.containsAll(List.of("new", "change", "add-export", "--schema", "research-first")));
+            assertFalse("never --description, which writes a README", argv.contains("--description"));
+            assertFalse(argv.contains("--goal"));
+        } finally {
+            OpenSpecNewChangeAction.setCliForTest(null);
+        }
+    }
+
+    public void testACliFailureIsReported() throws Exception {
+        CliDetectionTestSupport.fakeAvailable(getProject().getService(CliDetectionService.class), "2.1.1");
+        java.util.List<com.intellij.notification.Notification> raised = new java.util.concurrent.CopyOnWriteArrayList<>();
+        getProject().getMessageBus().connect(getTestRootDisposable()).subscribe(com.intellij.notification.Notifications.TOPIC,
+                new com.intellij.notification.Notifications() {
+                    @Override
+                    public void notify(@org.jetbrains.annotations.NotNull com.intellij.notification.Notification n) {
+                        raised.add(n);
+                    }
+                });
+        OpenSpecNewChangeAction.setCliForTest((project, args) ->
+                new com.johnnyblabs.openspec.util.CliRunner.CliResult(1, "", "Change 'add-export' already exists"));
+        try {
+            OpenSpecNewChangeAction.create(getProject(), "add-export", null);
+            long end = System.currentTimeMillis() + 10_000;
+            while (raised.isEmpty() && System.currentTimeMillis() < end) {
+                com.intellij.testFramework.PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
+                Thread.sleep(20);
+            }
+            assertFalse(raised.isEmpty());
+            assertTrue(raised.get(0).getContent(), raised.get(0).getContent().contains("already exists"));
+        } finally {
+            OpenSpecNewChangeAction.setCliForTest(null);
+        }
+    }
+
     public void testCancellingCreatesNothing() {
         when(profile.isWorkflowEnabled(anyString())).thenReturn(true);
         VirtualFile changes = OpenSpecFileUtil.getChangesDir(getProject());

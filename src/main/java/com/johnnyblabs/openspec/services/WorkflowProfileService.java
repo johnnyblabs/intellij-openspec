@@ -104,7 +104,7 @@ public final class WorkflowProfileService {
      * <p>The diff signal is established for future cache-coherence work (notifying
      * users of external profile changes); v1 does not consume it.
      */
-    public void refresh() {
+    public synchronized void refresh() {
         Set<String> previous = activeWorkflows;
         Snapshot snapshot = resolve();
         activeWorkflows = snapshot.workflows;
@@ -170,12 +170,15 @@ public final class WorkflowProfileService {
     }
 
     private Snapshot resolve() {
-        try {
-            return resolveFromCli();
-        } finally {
-            CliDetectionService detection = project.getService(CliDetectionService.class);
-            resolvedForCli = detection != null && detection.isAvailable() ? detection.getDetectedVersion() : null;
-        }
+        Snapshot snapshot = resolveFromCli();
+        resolvedForCli = snapshot.cli();
+        return snapshot;
+    }
+
+    /** The detected CLI, read once: {@code null} when none is available. */
+    private @Nullable String detectedCli() {
+        CliDetectionService detection = project.getService(CliDetectionService.class);
+        return detection != null && detection.isAvailable() ? detection.getDetectedVersion() : null;
     }
 
     private Snapshot resolveFromCli() {
@@ -184,16 +187,17 @@ public final class WorkflowProfileService {
             CliRunner.CliResult result = seam != null ? seam.get()
                     : CliRunner.run(project, com.johnnyblabs.openspec.util.CliCommands.configList());
             if (CliJson.read(result) instanceof CliJson.Ok ok && ok.object() != null) {
-                return parseSnapshot(ok.object());
+                // Read after the run, which waits for the first detection; the same value resolves and is recorded.
+                return parseSnapshot(ok.object(), detectedCli());
             }
             LOG.info("CLI config list gave no readable config (exit " + result.exitCode() + "), using core defaults");
         } catch (CliRunner.CliException e) {
             LOG.info("CLI unavailable for workflow resolution, using core defaults");
         }
-        return Snapshot.fallback();
+        return Snapshot.fallback(detectedCli());
     }
 
-    private Snapshot parseSnapshot(JsonObject config) {
+    private Snapshot parseSnapshot(JsonObject config, @Nullable String cli) {
         try {
             String profileName = null;
             JsonElement profileEl = config.get("profile");
@@ -209,16 +213,11 @@ public final class WorkflowProfileService {
                 }
             }
             return new Snapshot(profileName != null ? profileName : FALLBACK_PROFILE_NAME,
-                    resolve(profileName, stored, detectedCliVersion()));
+                    resolve(profileName, stored, cli), cli);
         } catch (Exception e) {
             LOG.warn("Failed to parse workflows from config JSON", e);
         }
-        return Snapshot.fallback();
-    }
-
-    private @Nullable String detectedCliVersion() {
-        CliDetectionService detection = project.getService(CliDetectionService.class);
-        return detection != null ? detection.getDetectedVersion() : null;
+        return Snapshot.fallback(cli);
     }
 
     /**
@@ -271,9 +270,10 @@ public final class WorkflowProfileService {
         return Collections.unmodifiableSet(new LinkedHashSet<>(List.of(workflows)));
     }
 
-    private record Snapshot(String profileName, Set<String> workflows) {
-        static Snapshot fallback() {
-            return new Snapshot(FALLBACK_PROFILE_NAME, CURRENT_CORE);
+    /** A resolved profile and the CLI it was resolved for ({@code null}: none available). */
+    private record Snapshot(String profileName, Set<String> workflows, @Nullable String cli) {
+        static Snapshot fallback(@Nullable String cli) {
+            return new Snapshot(FALLBACK_PROFILE_NAME, CURRENT_CORE, cli);
         }
     }
 }

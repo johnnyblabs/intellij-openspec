@@ -471,23 +471,6 @@ class WorkflowActionPanelTest {
     }
 
     @Test
-    void activateFfInput_blockedWithoutDirectApi_showsMessage() {
-        boolean apiConfigured = false;
-        JLabel statusLabel = new JLabel();
-        JButton goButton = new JButton("Go");
-
-        if (!apiConfigured) {
-            statusLabel.setText("Requires AI provider. Configure in Settings \u2192 Tools \u2192 OpenSpec.");
-            goButton.setEnabled(false);
-        }
-
-        assertTrue(statusLabel.getText().contains("Requires AI provider"));
-        assertFalse(goButton.isEnabled());
-    }
-
-    // --- Overflow menu structure ---
-
-    @Test
     void overflowMenu_bulkArchiveRenamedToArchiveAll() {
         String label = "Archive All Changes...";
         assertTrue(label.contains("All Changes"), "Should say 'All Changes' not 'Bulk Archive'");

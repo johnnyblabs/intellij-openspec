@@ -14,6 +14,9 @@ propose and ff stop: they generate the apply-required artifacts and leave `retro
                                  (0: none; 4: proposal, specs, design and tasks, so apply-ready but not complete;
                                  5: retro too, so complete)
     instructions-<id>.json       `instructions <id> --change retro-demo --json` for each of the five artifacts
+    change-files.txt             what `new change` leaves in the change folder, one name per line
+    openspec-yaml-keys.txt       the top-level keys of the `.openspec.yaml` it writes (values aren't kept: `created`
+                                 is a date)
 
 The run uses an isolated HOME and XDG directories, so the real global OpenSpec state is untouched.
 Machine paths are replaced with /fixture/demo-project.
@@ -93,6 +96,10 @@ def main():
         schema.write_text(text.replace("\napply:\n", RETRO_ARTIFACT + "\napply:\n", 1))
         run("new", "change", "retro-demo", "--schema", "with-retro")
         change = project / "openspec/changes/retro-demo"
+        (past / "change-files.txt").write_text("".join(f"{p.name}\n" for p in sorted(change.iterdir())))
+        keys = [line.split(":", 1)[0] for line in (change / ".openspec.yaml").read_text().splitlines()
+                if line and not line.startswith((" ", "#")) and ":" in line]
+        (past / "openspec-yaml-keys.txt").write_text("".join(f"{k}\n" for k in keys))
         (past / "status-step0.json").write_text(run("status", "--change", "retro-demo", "--json"))
         for step, (rel, content) in enumerate(ARTIFACT_FILES, start=1):
             (change / rel).parent.mkdir(parents=True, exist_ok=True)

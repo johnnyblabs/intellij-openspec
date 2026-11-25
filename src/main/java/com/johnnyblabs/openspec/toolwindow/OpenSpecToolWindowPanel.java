@@ -899,8 +899,7 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
      */
     public void proposeAndGenerate(String changeName, String description, @org.jetbrains.annotations.Nullable String schema,
                                    @org.jetbrains.annotations.Nullable Runnable afterGenerated) {
-        workflowPanel.proposeAndGenerate(changeName, description, schema,
-                com.johnnyblabs.openspec.ai.DeliveryMode.DIRECT_API, true,
+        workflowPanel.proposeAndGenerate(changeName, description, schema, true,
                 error -> com.johnnyblabs.openspec.util.OpenSpecNotifier.error(project, "Propose",
                         "Couldn't create change '" + changeName + "'. " + error),
                 () -> selectChange(changeName), afterGenerated);
@@ -915,13 +914,29 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
                 com.intellij.openapi.wm.ToolWindowManager.getInstance(project).getToolWindow("OpenSpec");
         if (toolWindow == null) return;
         toolWindow.activate(() -> {
-            for (com.intellij.ui.content.Content content : toolWindow.getContentManager().getContents()) {
-                if (content.getComponent() instanceof OpenSpecToolWindowPanel panel) {
-                    use.accept(panel);
-                    return;
-                }
+            OpenSpecToolWindowPanel panel = findPanel(toolWindow);
+            if (panel == null && GettingStartedPanel.detectState(project) != GettingStartedPanel.State.NOT_INITIALIZED) {
+                // Still showing Getting Started from before the project was initialized: switch to the normal
+                // content, as the factory does once a project is set up, so there is a panel to hand the work to.
+                toolWindow.getContentManager().removeAllContents(true);
+                OpenSpecToolWindowFactory.createNormalContent(project, toolWindow);
+                panel = findPanel(toolWindow);
+            }
+            if (panel != null) {
+                use.accept(panel);
+            } else {
+                com.johnnyblabs.openspec.util.OpenSpecNotifier.error(project, "OpenSpec",
+                        "The OpenSpec tool window has no workflow panel yet. Initialize OpenSpec in this project first.");
             }
         });
+    }
+
+    private static @org.jetbrains.annotations.Nullable OpenSpecToolWindowPanel findPanel(
+            com.intellij.openapi.wm.ToolWindow toolWindow) {
+        for (com.intellij.ui.content.Content content : toolWindow.getContentManager().getContents()) {
+            if (content.getComponent() instanceof OpenSpecToolWindowPanel panel) return panel;
+        }
+        return null;
     }
 
     private void updateAiStatus() {

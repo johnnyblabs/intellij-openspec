@@ -78,6 +78,15 @@ Add `WorkflowInvocation.PROPOSE = "propose"` and `PROPOSE_SKILL = "openspec-prop
 
 `buildNoChangesCard` drops the "or" label and the Fast-Forward link. "Propose a change" keeps launching `OpenSpec.Propose` through `ActionLauncher`. Fast-Forward... in the menu and toolbar is gated on `ff`, unchanged, with its description unchanged: upstream tags propose and new as experimental too, so the tag wouldn't set it apart.
 
+### 5a. Fast-Forward hands off outside Direct API
+
+Added after the workflow ↔ UI parity audit found that Fast-Forward, with clipboard or editor tab, created the change and handed off only the first artifact (upstream `new` plus one `continue`), and was enabled only when Direct API was configured.
+
+- `OpenSpecFfAction` resolves the delivery mode with `DeliveryMethodResolver`, as Propose does. With Direct API it opens the panel's form, as before; the form's run is a Direct API run.
+- With clipboard or editor tab it uses Propose's handoff (`OpenSpecProposeAction.handOff` with a `Handoff` for `ff` / `openspec-ff-change`): the description alone, no change created, the not-installed notice offering Update OpenSpec….
+- Its Direct API gate applies only when Direct API is the delivery mode.
+- `scripts/capture-workflow-invocations.py` gains `ff`, and the fixtures are re-captured, so the contract test covers ff's invocation for every tool and release.
+
 ### 6. Re-gate on a CLI change
 
 Re-resolving matters wherever the version changes the result: the core set's 1.4 and 1.6 boundaries (it is fixed from 1.6 through 2.1.1), the custom-profile `sync` rule that changes at 1.10, and the CLI appearing or disappearing, which switches between the fallback core set and the stored custom list. `WorkflowProfileService` records the CLI version `resolve()` actually used. A project-level listener on `CliDetectionService.TOPIC`, registered in `plugin.xml` under `<projectListeners>`, calls `onCliDetected(available, version)`. When `available ? version : null` differs from the recorded value, it calls `refresh()` on a pooled thread, because `refresh()` may run `openspec config list --json`. The same value is a no-op. Action `update()` reads the cached set, so the next menu or toolbar update shows the new gating. The status-bar widget, which shows the profile, is updated after the refresh. Reading the detected version doesn't start detection, so the listener can't loop.

@@ -54,7 +54,7 @@ public class WorkflowParityContractTest extends BasePlatformTestCase {
 
     /** Upstream workflows the plugin deliberately has no action gated on, each with why and where it's tracked. */
     static final Map<String, String> NOT_SURFACED = Map.of(
-            "onboard", "undecided whether the plugin offers a guided tour (tracked with the menu alignment work)",
+            "onboard", "undecided whether the plugin offers a guided tour (tracked as its own follow-up)",
             "sync", "Sync Specs is the built-in merge that writes main specs without the CLI or an agent, deliberately not gated on the agent workflow");
 
     /** Workflow-gated actions registered today; the test must find at least these, so it can't pass on an empty list. */

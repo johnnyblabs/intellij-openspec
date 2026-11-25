@@ -41,7 +41,7 @@ class WorkflowInvocationContractTest {
     private static final String TARGET = AiToolRegistryContractTest.TARGET;
 
     /** Each release's row count: 2 workflows x tools with skills x deliveries (one delivery from 2.0). */
-    private static final Map<String, Integer> ROWS = Map.of("1.17.0", 441, "2.0.0", 144, "2.1.0", 261, "2.1.1", 261);
+    private static final Map<String, Integer> ROWS = Map.of("1.17.0", 588, "2.0.0", 192, "2.1.0", 348, "2.1.1", 348);
 
     @TempDir Path root;
 
@@ -146,7 +146,7 @@ class WorkflowInvocationContractTest {
             }
             checked++;
         }
-        assertEquals(List.of("explore", "update", "propose"), workflows);
+        assertEquals(List.of("explore", "update", "propose", "ff"), workflows);
         assertEquals(java.util.Set.of(), unknown, "every tool in CLI " + version + "'s matrix is in the registry");
         assertEquals(ROWS.get(version), checked, "every row of CLI " + version + "'s matrix is checked");
         assertTrue(wrong.isEmpty(), "invocations that differ from upstream's:\n" + String.join("\n", wrong));
@@ -256,7 +256,7 @@ class WorkflowInvocationContractTest {
                 compared++;
             }
         }
-        assertEquals(ROWS.get(version) / 3, compared, "every update row of CLI " + version + " is compared (one workflow of three)");
+        assertEquals(ROWS.get(version) / 4, compared, "every update row of CLI " + version + " is compared (one workflow of four)");
         assertTrue(drift.isEmpty(), "update paths that differ from what init wrote:\n" + String.join("\n", drift));
     }
 
@@ -278,6 +278,10 @@ class WorkflowInvocationContractTest {
             for (JsonObject row : rows(v)) {
                 if (WorkflowInvocation.PROPOSE.equals(row.get("workflow").getAsString())) {
                     assertEquals(row.get("skill").getAsString(), propose, "CLI " + v + "'s propose skill");
+                    proposeRows++;
+                }
+                if (WorkflowInvocation.FF.equals(row.get("workflow").getAsString())) {
+                    assertEquals(row.get("skill").getAsString(), WorkflowInvocation.FF_SKILL, "CLI " + v + "'s ff skill");
                     proposeRows++;
                 }
             }

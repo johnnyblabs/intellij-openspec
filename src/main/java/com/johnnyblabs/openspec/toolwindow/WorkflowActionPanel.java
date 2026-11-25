@@ -3,6 +3,7 @@ package com.johnnyblabs.openspec.toolwindow;
 import com.intellij.openapi.actionSystem.ActionManager;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.fileEditor.OpenFileDescriptor;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.progress.ProgressIndicator;
@@ -1778,6 +1779,11 @@ public class WorkflowActionPanel extends JPanel {
         return card;
     }
 
+    /** The status strip's verdict line, for tests. */
+    String verifyStatusTextForTest() {
+        return verifyStatusLabel.getText();
+    }
+
     /** A freshly built "no changes" card, for tests. */
     JPanel noChangesCardForTest() {
         return buildNoChangesCard();
@@ -1987,9 +1993,9 @@ public class WorkflowActionPanel extends JPanel {
         String schema = ffSchemaComboVisible && ffSchemaCombo.getSelectedItem() != null
                 ? ffSchemaCombo.getSelectedItem().toString() : null;
 
-        // The panel's own delivery selector decides how a Fast-Forward run generates (null: read it when it starts).
-        // Fast-Forward creates its change through the CLI only, as its spec says; a missing CLI is reported in the form.
-        proposeAndGenerate(changeName, description, schema, null, false, error -> {
+        // The form is opened only with Direct API (clipboard and editor tab hand off the AI tool's ff workflow instead),
+        // and creates its change through the CLI only, as its spec says; a missing CLI is reported in the form.
+        proposeAndGenerate(changeName, description, schema, false, error -> {
             ffStatusLabel.setText(error);
             ffStatusLabel.setForeground(COLOR_ERROR);
             ffGoButton.setEnabled(true);
@@ -2006,26 +2012,25 @@ public class WorkflowActionPanel extends JPanel {
     }
 
     /**
-     * Creates a change and generates it, as OpenSpec's propose and ff workflows do: {@code openspec new change} (or,
-     * without the CLI, {@link com.johnnyblabs.openspec.scaffolding.ScaffoldingService#createEmptyChange}), then the
-     * generation {@link #startFastForwardGeneration(String, String, DeliveryMode, Runnable)} starts. Shared by
-     * Propose and Fast-Forward. Call on the EDT.
+     * Creates a change and generates it with Direct API, as OpenSpec's propose and ff workflows do:
+     * {@code openspec new change} (or, without the CLI, {@link com.johnnyblabs.openspec.scaffolding.ScaffoldingService#createEmptyChange}),
+     * then {@link #startFastForwardGeneration}. Shared by Propose and Fast-Forward. Call on the EDT.
      *
-     * @param delivery       how to generate; {@code null} reads the panel's selector when generation starts
      * @param withoutCli     whether to scaffold the change without the CLI when it isn't available (Propose)
      * @param onError        on the EDT, with a message, when the change can't be created
      * @param onCreated      on the EDT, once the change exists and before generation starts
      * @param afterGenerated on the EDT, when a Direct API run finishes; may be null
      */
     public void proposeAndGenerate(String changeName, String description, @Nullable String schema,
-                                   @Nullable DeliveryMode delivery, boolean withoutCli,
+                                   boolean withoutCli,
                                    java.util.function.Consumer<String> onError,
                                    Runnable onCreated, @Nullable Runnable afterGenerated) {
         Runnable created = () -> {
+            if (released) return; // the tool window went away while the change was created
             activeChangeName = changeName;
             onCreated.run();
             if (onRefreshRequested != null) onRefreshRequested.run();
-            startFastForwardGeneration(changeName, description, delivery, afterGenerated);
+            startFastForwardGeneration(changeName, description, afterGenerated);
         };
         var detection = project.getService(com.johnnyblabs.openspec.services.CliDetectionService.class);
         if (withoutCli && (detection == null || !detection.isAvailable())) {
@@ -2048,12 +2053,17 @@ public class WorkflowActionPanel extends JPanel {
                     com.johnnyblabs.openspec.util.CliRunner.CliResult result = com.johnnyblabs.openspec.util.CliRunner.run(
                             project, com.johnnyblabs.openspec.util.CliCommands.newChange(changeName, schema));
                     if (!result.isSuccess()) {
-                        ApplicationManager.getApplication().invokeLater(() -> onError.accept("Error: " + result.stderr()));
+                        ApplicationManager.getApplication().invokeLater(() -> onError.accept("Error: " + result.stderr()),
+                                ModalityState.defaultModalityState(), project.getDisposed());
                         return;
                     }
-                    ApplicationManager.getApplication().invokeLater(created);
+                    // The CLI wrote outside the VFS: refresh the change folder before the panel and tree look for it.
+                    refreshChangeDirInVfs(changeName);
+                    ApplicationManager.getApplication().invokeLater(created, ModalityState.defaultModalityState(),
+                            project.getDisposed());
                 } catch (com.johnnyblabs.openspec.util.CliRunner.CliException e) {
-                    ApplicationManager.getApplication().invokeLater(() -> onError.accept("CLI error: " + e.getMessage()));
+                    ApplicationManager.getApplication().invokeLater(() -> onError.accept("CLI error: " + e.getMessage()),
+                            ModalityState.defaultModalityState(), project.getDisposed());
                 }
             }
         });
@@ -2064,28 +2074,21 @@ public class WorkflowActionPanel extends JPanel {
      * first ready artifact through the selected delivery mode. The user's {@code description} goes into those prompts
      * as the request, as OpenSpec's ff workflow uses it; it isn't kept, so later generations don't carry it.
      */
-    void startFastForwardGeneration(String changeName, String description) {
-        startFastForwardGeneration(changeName, description, null, null);
-    }
-
-    /**
-     * {@link #startFastForwardGeneration(String, String)} in a given delivery mode ({@code null}: the panel's
-     * selector). A Direct API run stops once the change is ready to apply, as upstream's propose and ff do, then runs
-     * {@code afterGenerated}.
-     */
-    void startFastForwardGeneration(String changeName, String description, @Nullable DeliveryMode delivery,
-                                    @Nullable Runnable afterGenerated) {
+    void startFastForwardGeneration(String changeName, String description, @Nullable Runnable afterGenerated) {
         ApplicationManager.getApplication().executeOnPooledThread(() -> {
             refreshForChangeOnPool(changeName);
-            ApplicationManager.getApplication().invokeLater(() -> {
-                DeliveryMode mode = delivery != null ? delivery : getSelectedDeliveryMode();
-                if (mode == DeliveryMode.DIRECT_API) {
-                    onGenerateAll(description, true, afterGenerated);
-                } else if (activeChangeName != null && nextArtifactId != null) {
-                    executeGeneration(mode, "", false, description);
-                }
-            });
+            // The run names its change, so a tree refresh that reselects another change meanwhile can't redirect it.
+            ApplicationManager.getApplication().invokeLater(() -> onGenerateAll(changeName, description, true, afterGenerated),
+                    ModalityState.defaultModalityState(), project.getDisposed());
         });
+    }
+
+    /** Refreshes {@code changes/<name>} in the VFS after the CLI created it outside the IDE. Call off the EDT. */
+    private void refreshChangeDirInVfs(String changeName) {
+        String base = project.getBasePath();
+        if (base == null) return;
+        java.nio.file.Path dir = java.nio.file.Path.of(base, "openspec", "changes", changeName);
+        com.intellij.openapi.vfs.LocalFileSystem.getInstance().refreshAndFindFileByNioFile(dir);
     }
 
     public static String deriveKebabName(String description) {
@@ -2620,7 +2623,11 @@ public class WorkflowActionPanel extends JPanel {
      * component tree, and from the owning {@link OpenSpecToolWindowPanel#dispose()} so the watcher's Swing timers stop
      * even when the panel was never shown (a headless test's panel is never removed, so removeNotify never fires).
      */
+    /** Set once the panel's resources are released, so late callbacks don't start work on a dead panel. */
+    private volatile boolean released;
+
     void releaseResources() {
+        released = true;
         disposeAnimations();
         disposeWatcher();
         dismissActivePopup();
@@ -2644,7 +2651,7 @@ public class WorkflowActionPanel extends JPanel {
     // --- Generate All ---
 
     private void onGenerateAll() {
-        onGenerateAll(null, false, null);
+        if (activeChangeName != null) onGenerateAll(activeChangeName, null, false, null);
     }
 
     /**
@@ -2652,10 +2659,8 @@ public class WorkflowActionPanel extends JPanel {
      * {@code untilApplyReady} it stops once the change is ready to apply (a Propose or Fast-Forward run) and then runs
      * {@code afterGenerated}; otherwise it completes the change.
      */
-    private void onGenerateAll(@Nullable String request, boolean untilApplyReady, @Nullable Runnable afterGenerated) {
-        if (activeChangeName == null) return;
-
-        String changeName = activeChangeName;
+    private void onGenerateAll(String changeName, @Nullable String request, boolean untilApplyReady,
+                               @Nullable Runnable afterGenerated) {
 
         // Reset UI state
         disposeAnimations();
@@ -2717,7 +2722,8 @@ public class WorkflowActionPanel extends JPanel {
             @Override
             public void onAllComplete() {
                 ApplicationManager.getApplication().invokeLater(() -> {
-                    if (!isDisplayable()) return;
+                    // Only a released panel is gone; a hidden tool window still finishes the run and what follows it.
+                    if (released) return;
                     disposeAnimations();
                     generatingArtifactId = null;
                     generateAllInProgress = false;

@@ -14,6 +14,7 @@ The workflow ↔ UI parity audit for this release found this as the one core wor
 - **New Change... is a new action for upstream `new`.** It is gated on the `new` workflow, so on core it is shown disabled with the "(custom)" suffix, like Fast-Forward and Continue. Like upstream `new`, it only scaffolds: it asks for a name and, when several schemas exist, a schema, creates the change without any artifact, and the user steps through the artifacts with Continue or the panel, starting with the proposal.
 - **The dialog says what it will do.** Its title and a line under the description name the mode: generating with the Direct API provider, or copying the tool's propose invocation for the agent.
 - **No Fast-Forward link on the workflow panel's empty state.** The card offers Propose only. **Fast-Forward...** stays in the menu and toolbar for profiles that include `ff`. A Fast-Forward run with Direct API also stops once the artifacts needed before apply are done.
+- **Fast-Forward does what upstream `ff` does in every delivery mode** (added after the workflow ↔ UI parity audit). With clipboard or editor tab it used to create the change and hand off only the first artifact, which is `new` plus one `continue`. It now hands the description to the AI tool's own ff workflow and creates nothing, as Propose does, and needs no Direct API provider in those modes. It resolves the delivery mode the way Propose does.
 - **Menu gating follows a CLI change.** When the plugin detects a different CLI version during a session, it re-resolves the active workflows, so a CLI upgrade that changes the core set (for example 1.5 → 1.6 adds `update`) takes effect without reopening the project.
 - **Descriptions match.** Propose's menu description, Continue's empty-state hint, the Propose action's code comment, the feature reference and the CHANGELOG describe the new behaviour. Today's three-field Propose form (name, why, what changes) goes away: the description replaces why and what changes. Update OpenSpec… and Revise Change... keep distinct names and descriptions.
 - Out of scope: an `onboard` action (custom profiles only), recorded as a follow-up.
@@ -28,8 +29,8 @@ None.
 
 - `workflow`: the Propose action does upstream `propose` in every delivery mode; a new New Change action does upstream `new` (scaffold only); the panel's empty state no longer offers Fast-Forward.
 - `profile-visibility`: active workflows are re-resolved when the detected CLI version changes during a session.
-- `ff-panel`: Fast-Forward is opened from its menu or toolbar action only, and its Direct API run stops at the artifacts needed before apply.
-- `ai-integration`: Direct API gates the Fast-Forward action; there is no panel link to gate.
+- `ff-panel`: Fast-Forward is opened from its menu or toolbar action only; its Direct API run stops at the artifacts needed before apply; with clipboard or editor tab it hands off the AI tool's ff workflow.
+- `ai-integration`: Direct API's configuration gates Fast-Forward only when Direct API is the delivery method; there is no panel link to gate.
 - `edt-compliance`: how Propose and New Change create a change off the EDT.
 - `explore-context`: the menu order includes New Change.
 - `documentation`: the README names New Change.

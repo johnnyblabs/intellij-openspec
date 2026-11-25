@@ -97,21 +97,38 @@ public class OpenSpecProposeAction extends OpenSpecBaseAction implements com.int
     }
 
     private static void handOff(Project project, DeliveryMode mode) {
+        handOff(project, mode, HANDOFF);
+    }
+
+    /**
+     * A workflow Propose or Fast-Forward hands to the AI tool in clipboard and editor-tab modes: its id and skill,
+     * the dialog title's verb, the editor tab's file name, and the notice when the project doesn't have it.
+     */
+    record Handoff(String workflowId, String skill, String title, String verb, String editorTabFileName,
+                   String notInstalledNotice) {
+    }
+
+    static final Handoff HANDOFF = new Handoff(WorkflowInvocation.PROPOSE, WorkflowInvocation.PROPOSE_SKILL,
+            TITLE, "Propose a Change", EDITOR_TAB_FILE_NAME, NOT_INSTALLED_NOTICE);
+
+    /**
+     * Asks for the description and hands the tool's {@code handoff} workflow the description alone: the workflow
+     * picks the name and schema itself, and the plugin creates nothing. Call on the EDT.
+     */
+    static void handOff(Project project, DeliveryMode mode, Handoff handoff) {
         // A handful of project file checks, cheap enough for the EDT (home skills come from a cache that never reads
         // there); done before the dialog so nothing is asked for in vain, and so the dialog can name the tool.
-        WorkflowInvocation.Found found = WorkflowInvocation.find(project,
-                WorkflowInvocation.PROPOSE, WorkflowInvocation.PROPOSE_SKILL);
+        WorkflowInvocation.Found found = WorkflowInvocation.find(project, handoff.workflowId(), handoff.skill());
         if (found == null) {
-            OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_WORKFLOW, TITLE, NOT_INSTALLED_NOTICE,
+            OpenSpecNotifier.notify(project, OpenSpecNotifier.GROUP_WORKFLOW, handoff.title(), handoff.notInstalledNotice(),
                     NotificationType.WARNING, ActionLauncher.notificationAction(project, "Update OpenSpec…", "OpenSpec.Update"));
             return;
         }
         ProposeChangeDialog dialog = dialogFactory.create(project, false,
-                "Propose a Change with " + found.tool().name(), handoffModeLine(found, mode));
+                handoff.verb() + " with " + found.tool().name(), handoffModeLine(found, mode));
         if (!dialog.showAndGet()) return;
-        String handoff = WorkflowInvocation.handoff(found.invocation(), WorkflowInvocation.PROPOSE_SKILL,
-                dialog.getDescription());
-        WorkflowHandoffDelivery.deliver(project, TITLE, EDITOR_TAB_FILE_NAME, "", found, handoff, mode);
+        String text = WorkflowInvocation.handoff(found.invocation(), handoff.skill(), dialog.getDescription());
+        WorkflowHandoffDelivery.deliver(project, handoff.title(), handoff.editorTabFileName(), "", found, text, mode);
     }
 
     static String directApiModeLine(String provider) {

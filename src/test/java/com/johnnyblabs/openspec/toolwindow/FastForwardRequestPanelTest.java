@@ -33,8 +33,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * Fast-Forward sends the user's description as the request for the change: into the first artifact's prompt for
- * clipboard and editor-tab delivery, into every artifact of a Direct API run, and never into a later generation. Runs the
+ * Fast-Forward and Propose send the user's description as the request for the change: into every artifact of their
+ * Direct API run, and never into a later generation. (With clipboard or editor tab the actions hand off the AI tool's
+ * own workflow instead; ProposeActionTest and FastForwardActionTest cover that.) Runs the
  * panel against a change just created by the CLI, from captured CLI 1.15.0 output ({@code fixtures/cli/1.15.0/new-change/},
  * re-captured by {@code scripts/capture-new-change-fixtures.py}), with a stubbed Direct API call.
  */
@@ -126,32 +127,10 @@ public class FastForwardRequestPanelTest extends OpenSpecIntegrationTestBase {
         }
     }
 
-    public void testClipboardFastForwardSendsTheRequestWithTheFirstArtifact() throws Exception {
-        workflowPanel.setDeliveryModeForTest(DeliveryMode.CLIPBOARD);
-
-        workflowPanel.startFastForwardGeneration(CHANGE, REQUEST);
-        waitFor(() -> workflowPanel.lastPromptForTest() != null);
-
-        String prompt = workflowPanel.lastPromptForTest();
-        assertTrue(prompt, prompt.contains(ArtifactInstruction.REQUEST_HEADING + "\n" + REQUEST + "\n"));
-        assertTrue("it's the proposal's prompt", prompt.startsWith("# Change: " + CHANGE));
-        assertFalse(prompt.contains(ArtifactInstruction.NOTE_HEADING));
-    }
-
-    public void testEditorTabFastForwardSendsTheRequest() throws Exception {
-        workflowPanel.setDeliveryModeForTest(DeliveryMode.EDITOR_TAB);
-
-        workflowPanel.startFastForwardGeneration(CHANGE, REQUEST);
-        waitFor(() -> workflowPanel.lastEditorTabPromptForTest() != null);
-
-        assertTrue(workflowPanel.lastEditorTabPromptForTest().getContent().toString()
-                .contains(ArtifactInstruction.REQUEST_HEADING + "\n" + REQUEST + "\n"));
-    }
-
     public void testDirectApiFastForwardRunCarriesTheRequest() throws Exception {
         workflowPanel.setDeliveryModeForTest(DeliveryMode.DIRECT_API);
 
-        workflowPanel.startFastForwardGeneration(CHANGE, REQUEST);
+        workflowPanel.startFastForwardGeneration(CHANGE, REQUEST, null);
         waitFor(() -> !runRequests.isEmpty());
         dispatch();
 
@@ -159,11 +138,12 @@ public class FastForwardRequestPanelTest extends OpenSpecIntegrationTestBase {
         assertFalse("the stubbed failure writes nothing", Files.exists(changeDir.resolve("proposal.md")));
     }
 
-    public void testAProposeRunGeneratesWithDirectApiWhateverThePanelsSelector() throws Exception {
-        // Propose resolves Direct API itself and passes it, so a panel set to clipboard can't make it a one-artifact run.
+    public void testARunGeneratesWithDirectApiWhateverThePanelsSelector() throws Exception {
+        // A Propose or Fast-Forward run is a Direct API run: the clipboard and editor tab hand off the AI tool's workflow
+        // at the action instead, so a panel set to clipboard can't make the run a one-artifact one.
         workflowPanel.setDeliveryModeForTest(DeliveryMode.CLIPBOARD);
 
-        workflowPanel.startFastForwardGeneration(CHANGE, REQUEST, DeliveryMode.DIRECT_API, null);
+        workflowPanel.startFastForwardGeneration(CHANGE, REQUEST, null);
         waitFor(() -> !runRequests.isEmpty());
         dispatch();
 
@@ -191,13 +171,15 @@ public class FastForwardRequestPanelTest extends OpenSpecIntegrationTestBase {
     }
 
     public void testALaterGenerationDoesNotCarryTheRequest() throws Exception {
-        workflowPanel.setDeliveryModeForTest(DeliveryMode.CLIPBOARD);
-        workflowPanel.startFastForwardGeneration(CHANGE, REQUEST);
-        waitFor(() -> workflowPanel.lastPromptForTest() != null);
-        String fastForward = workflowPanel.lastPromptForTest();
+        workflowPanel.setDeliveryModeForTest(DeliveryMode.DIRECT_API);
+        workflowPanel.startFastForwardGeneration(CHANGE, REQUEST, null);
+        waitFor(() -> !runRequests.isEmpty());
+        dispatch();
+        assertEquals("sanity: the run carried it", List.of(REQUEST), runRequests);
 
+        workflowPanel.setDeliveryModeForTest(DeliveryMode.CLIPBOARD);
         workflowPanel.generateNextForTest();
-        waitFor(() -> workflowPanel.lastPromptForTest() != fastForward);
+        waitFor(() -> workflowPanel.lastPromptForTest() != null);
 
         String later = workflowPanel.lastPromptForTest();
         assertFalse(later, later.contains(ArtifactInstruction.REQUEST_HEADING));

@@ -68,11 +68,14 @@ public final class ScaffoldingService {
         String effective = schema != null && !schema.isBlank() ? schema
                 : OpenSpecSettings.getInstance(project).getEffectiveSchema(project);
         VirtualFile finalChangesDir = changesDir;
-        return WriteAction.compute(() -> {
-            VirtualFile changeDir = finalChangesDir.createChildDirectory(this, safeName);
-            writeFile(changeDir, ".openspec.yaml", TemplateProvider.openspecYamlTemplate(effective));
-            return changeDir;
-        });
+        // A user action creates it, so it's one undoable command with a name.
+        return com.intellij.openapi.command.WriteCommandAction.writeCommandAction(project)
+                .withName("Create Change " + safeName)
+                .compute(() -> {
+                    VirtualFile changeDir = finalChangesDir.createChildDirectory(this, safeName);
+                    writeFile(changeDir, ".openspec.yaml", TemplateProvider.openspecYamlTemplate(effective));
+                    return changeDir;
+                });
     }
 
     public VirtualFile createDeltaSpec(VirtualFile changeDir, String domain) throws IOException {

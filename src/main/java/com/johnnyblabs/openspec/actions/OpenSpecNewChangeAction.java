@@ -40,6 +40,19 @@ public class OpenSpecNewChangeAction extends OpenSpecBaseAction implements DumbA
         dialogFactory = factory == null ? REAL_DIALOG : factory;
     }
 
+    /** Runs the CLI's {@code new change}; tests replace it, on any thread. */
+    interface Cli {
+        CliRunner.CliResult run(Project project, com.johnnyblabs.openspec.util.CliArgs args) throws CliRunner.CliException;
+    }
+
+    private static final Cli REAL_CLI = CliRunner::run;
+    private static volatile Cli cli = REAL_CLI;
+
+    @TestOnly
+    static void setCliForTest(@Nullable Cli testCli) {
+        cli = testCli == null ? REAL_CLI : testCli;
+    }
+
     @Override
     public void actionPerformed(@NotNull AnActionEvent e) {
         Project project = e.getProject();
@@ -71,8 +84,16 @@ public class OpenSpecNewChangeAction extends OpenSpecBaseAction implements DumbA
             public void run(@NotNull ProgressIndicator indicator) {
                 String error;
                 try {
-                    CliRunner.CliResult result = CliRunner.run(project, CliCommands.newChange(changeName, schema));
+                    CliRunner.CliResult result = cli.run(project, CliCommands.newChange(changeName, schema));
                     error = result.isSuccess() ? null : result.stderr();
+                    if (error == null) {
+                        // The CLI wrote outside the VFS: refresh the folder so the tree and panel find the change.
+                        String base = project.getBasePath();
+                        if (base != null) {
+                            com.intellij.openapi.vfs.LocalFileSystem.getInstance().refreshAndFindFileByNioFile(
+                                    java.nio.file.Path.of(base, "openspec", "changes", changeName));
+                        }
+                    }
                 } catch (CliRunner.CliException ex) {
                     error = ex.getMessage();
                 }
@@ -83,7 +104,7 @@ public class OpenSpecNewChangeAction extends OpenSpecBaseAction implements DumbA
                     } else {
                         created(project, changeName);
                     }
-                }, project.getDisposed());
+                }, com.intellij.openapi.application.ModalityState.defaultModalityState(), project.getDisposed());
             }
         });
     }

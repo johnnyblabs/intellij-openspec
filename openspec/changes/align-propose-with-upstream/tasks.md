@@ -72,6 +72,12 @@
   - the CLI appearing with a stored custom profile switches to that list;
   - the status-bar widget is updated after the refresh.
 
+## 5a. Fast-Forward = upstream ff (added after the parity audit)
+
+- [x] 5a.1 Capture the ff workflow's invocations (`ff: 'openspec-ff-change'` in both maps) for every release, and add `WorkflowInvocation.FF` and `FF_SKILL`, checked against every captured ff row.
+- [x] 5a.2 Make `OpenSpecFfAction` resolve the delivery mode as Propose does: Direct API opens the panel's form (a Direct API run); clipboard and editor tab hand off the tool's ff workflow with the description through Propose's handoff, creating nothing. Gate on Direct API's configuration only in Direct API mode.
+- [x] 5a.3 Tests: enabled without Direct API in a handoff, disabled in Direct API mode without a provider; the handoff text, title and no name field; the not-installed notice with Update OpenSpec…; the panel-level Fast-Forward clipboard tests replaced, since the panel no longer runs a handoff.
+
 ## 6. Docs, parity record and checks
 
 - [x] 6.0 At the start of implementation, run test-engineer in PLAN mode, and jetbrains-platform-guru for the `<projectListeners>` registration and the dialog changes.
@@ -90,7 +96,7 @@
   - the full `uiSmoke` under `caffeinate -dimsu`;
   - the workflow ↔ UI parity audit (openspec-guru plus plugin-ui-specialist) for Propose, New Change and Fast-Forward;
   - test-engineer AUDIT and intellij-code-reviewer on the diff, with findings fixed or recorded.
-- [ ] 6.5 Record a follow-up tracker entry for an `onboard` action (custom profiles).
+- [x] 6.5 Record a follow-up tracker entry for an `onboard` action (custom profiles).
 
 ## Workflow follow-up
 

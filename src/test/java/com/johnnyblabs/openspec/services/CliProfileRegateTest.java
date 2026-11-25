@@ -80,14 +80,18 @@ public class CliProfileRegateTest extends BasePlatformTestCase {
         assertEquals("sanity: resolved once", 1, reads);
 
         CliDetectionTestSupport.fakeAvailable(detection, "1.6.0");
-        pumpFor(300);
-        assertEquals(reads, configReads.get());
-        assertEquals(0, uiUpdates.get());
+        // Barrier: a different CLI does re-resolve; once that lands, the same-version event above has had its chance.
+        CliDetectionTestSupport.fakeAvailable(detection, "1.7.0");
+        pumpUntil(() -> uiUpdates.get() == 1);
+        assertEquals("only the different CLI re-resolved", reads + 1, configReads.get());
     }
 
     public void testNoReResolveBeforeAnythingAskedForTheWorkflows() throws Exception {
         CliDetectionTestSupport.fakeAvailable(detection, "1.6.0");
         pumpFor(300);
-        assertEquals("the first ask resolves for the CLI it finds", 0, configReads.get());
+        assertEquals("nothing resolved before anything asked", 0, configReads.get());
+        profiles.getActiveWorkflows();
+        assertEquals("the first ask resolves for the CLI it finds", 1, configReads.get());
+        assertFalse(profiles.needsRefreshFor(true, "1.6.0"));
     }
 }

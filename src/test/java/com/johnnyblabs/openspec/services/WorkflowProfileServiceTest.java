@@ -374,6 +374,7 @@ class WorkflowProfileServiceTest {
 
         private Set<String> resolvedAt115(String name) {
             CliDetectionService detection = mock(CliDetectionService.class);
+            when(detection.isAvailable()).thenReturn(true); // it just answered config list
             when(detection.getDetectedVersion()).thenReturn("1.15.0");
             when(project.getService(CliDetectionService.class)).thenReturn(detection);
             String json = fixture("1.15.0/config-list/" + name + ".json");

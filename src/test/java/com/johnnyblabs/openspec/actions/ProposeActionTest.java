@@ -221,6 +221,28 @@ public class ProposeActionTest extends BasePlatformTestCase {
                 OpenSpecProposeAction.NOT_INSTALLED_NOTICE.equals(n.getContent())));
     }
 
+    public void testTheFirstProposalSaysWhatsNextOnceGenerationHasFinished() {
+        directApi();
+        OpenSpecSettings settings = OpenSpecSettings.getInstance(getProject());
+        boolean saved = settings.isFirstProposalCompleted();
+        try {
+            settings.setFirstProposalCompleted(false);
+            List<Runnable> afterRuns = new ArrayList<>();
+            OpenSpecProposeAction.setDirectApiTargetForTest((project, name, description, schema, after) -> afterRuns.add(after));
+            dialog(DESCRIPTION, "", true);
+            OpenSpecProposeAction.propose(getProject());
+            assertTrue("nothing until generation finishes", raised.stream()
+                    .noneMatch(n -> OpenSpecProposeAction.WHATS_NEXT.equals(n.getContent())));
+
+            afterRuns.get(0).run();
+            afterRuns.get(0).run();
+            assertEquals("once", 1, raised.stream().filter(n -> OpenSpecProposeAction.WHATS_NEXT.equals(n.getContent())).count());
+            assertTrue(settings.isFirstProposalCompleted());
+        } finally {
+            settings.setFirstProposalCompleted(saved);
+        }
+    }
+
     // --- helpers ---
 
     private @Nullable String lastContent() {
