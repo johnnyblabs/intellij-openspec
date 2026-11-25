@@ -2,7 +2,7 @@
 
 ### Requirement: The update preview presents the OpenSpec 2 migration
 
-When the plan adds or updates `.agents/skills/.openspec-target` and deletes a tool-folder skill copy or a 1.x command file, the preview SHALL say the update migrates the project to OpenSpec 2. It SHALL group the shared-skill changes, the replaced tool-folder skill copies and the command-file deletes, each as one group regardless of tool, and SHALL show each tool-folder skill link as a link to its shared skill.
+On CLI 2.0.0 or later, when the plan adds or updates `.agents/skills/.openspec-target` and deletes a tool-folder skill copy or a 1.x command file, the preview SHALL say the update migrates the project to OpenSpec 2. It SHALL group the shared-skill changes, the replaced tool-folder skill copies and the command-file deletes, each as one group regardless of tool, and SHALL show each tool-folder skill link as a link to its shared skill.
 
 #### Scenario: Migration plan from a 1.x project
 - **WHEN** the dry run of a project set up by CLI 1.17.0 for Claude and Cursor runs on CLI 2.0.0, 2.1.0 or 2.1.1
@@ -24,6 +24,10 @@ When the plan adds or updates `.agents/skills/.openspec-target` and deletes a to
 #### Scenario: Not a migration
 - **WHEN** the plan neither adds nor updates `.agents/skills/.openspec-target`, or deletes no tool-folder skill copy or command file
 - **THEN** the preview SHALL show no migration banner and SHALL group changes by tool as before
+
+#### Scenario: A 1.x CLI moving a former tool folder
+- **WHEN** CLI 1.17.0 plans to move a 1.6-era Antigravity project's skills from `.agent/` to `.agents/`, adding the marker and deleting the old copies
+- **THEN** the preview SHALL show no migration banner, because the update doesn't move the project to OpenSpec 2
 
 ### Requirement: Files OpenSpec can't confirm as its own are named before the update removes them
 

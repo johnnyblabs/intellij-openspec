@@ -29,7 +29,7 @@
 
 ## 2. Plan reading: migration, links and at-risk files
 
-- [ ] 2.1 Add the migration shape to `UpdatePreviewModel`, per design decision 4:
+- [x] 2.1 Add the migration shape to `UpdatePreviewModel`, per design decision 4:
   - the banner, on a marker add or update;
   - the groups for shared skills, replaced copies and command files, with command paths derived from `EXPLORE_COMMAND_PATHS` over the captured workflow ids;
   - link rows.

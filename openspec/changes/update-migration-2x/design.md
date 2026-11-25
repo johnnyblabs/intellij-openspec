@@ -61,10 +61,10 @@ Other facts this design rests on:
 
 The preview already renders the CLI's plan.
 
-- **Migration banner:** the plan **adds or updates** `.agents/skills/.openspec-target` **and** deletes at least one tool-folder skill copy or command file (decision 4 defines both).
-  - A 1.6-era Antigravity project (`update-dry-run/earlier-release`) gets the banner, correctly: its skills move from the former `.agent/` root to `.agents/`. A pre-skills project (`update-dry-run/legacy-unedited`) does not, because it deletes only 0.x `commands/openspec/*` files, which are neither skill copies nor 1.x command paths.
+- **Migration banner:** the detected CLI is 2.0.0 or later, and the plan **adds or updates** `.agents/skills/.openspec-target` **and** deletes at least one tool-folder skill copy or command file (decision 4 defines both).
+  - A 1.6-era Antigravity project (`update-dry-run/earlier-release`) gets the banner on 2.x, correctly: its skills move from the former `.agent/` root to `.agents/`. On 1.17.0 the same plan shape appears, which is why the banner also needs the CLI version: 1.17 moves the folder without moving to OpenSpec 2. A pre-skills project (`update-dry-run/legacy-unedited`) does not, because it deletes only 0.x `commands/openspec/*` files, which are neither skill copies nor 1.x command paths.
 - **The at-risk warning (decision 2) does not depend on the banner.** It appears in any plan, including one for a project that 2.0.0 already migrated.
-- **No version gate.** 2.0.0 leaves kept files out of its plan, so a plan-driven warning is correct on 2.0.0 by construction. The 2.0.0 `edited` capture is the negative control.
+- **No version gate on the warning.** 2.0.0 leaves kept files out of its plan, so a plan-driven warning is correct on 2.0.0 by construction. The 2.0.0 `edited` capture is the negative control.
 
 *Alternatives rejected:*
 - Gating on "CLI ≥ 2.1.1", as the tracker proposed. 2.1.0 loses edits too.

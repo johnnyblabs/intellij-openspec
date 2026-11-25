@@ -26,7 +26,7 @@ final class Detector2x {
     private static final String SHARED_ROOT = ".agents";
 
     /** Upstream's {@code COMMAND_IDS}: the commands an adapter may have written. */
-    private static final List<String> COMMAND_IDS = List.of("explore", "new", "continue", "apply", "update", "ff",
+    static final List<String> COMMAND_IDS = List.of("explore", "new", "continue", "apply", "update", "ff",
             "sync", "archive", "bulk-archive", "verify", "onboard", "propose");
 
     private Detector2x() {

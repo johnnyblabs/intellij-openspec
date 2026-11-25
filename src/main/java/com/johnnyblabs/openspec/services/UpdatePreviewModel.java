@@ -21,17 +21,27 @@ import java.util.TreeMap;
  *   <li>the failures;</li>
  *   <li>in-project changes grouped by tool (the focus tool first, then by name; deletes first within a group);</li>
  *   <li>one "Outside this project" group last;</li>
+ *   <li>whether the plan is the move to OpenSpec 2 ({@link UpdateMigration}): then the shared skills, the replaced
+ *       skill copies and the command files each form one group, ahead of the tools' groups;</li>
  *   <li>whether Apply is allowed and whether Cancel is the default button.</li>
  * </ul>
  */
 public record UpdatePreviewModel(String summary, List<NoteRow> notes, List<Failure> failures, List<Group> groups,
-                                 @Nullable String focusTool, boolean applyEnabled, boolean cancelIsDefault) {
+                                 @Nullable String focusTool, boolean applyEnabled, boolean cancelIsDefault,
+                                 boolean migration) {
 
     public static final String OUTSIDE_PROJECT = "Outside this project";
     /** The plan's tool value for untouched files an earlier release left where no tool reads them (CLI 1.17.0+). */
     public static final String EARLIER_RELEASE_TOOL = "earlier-release";
     /** How the preview names the {@link #EARLIER_RELEASE_TOOL} group. */
     public static final String EARLIER_RELEASE_LABEL = "Left by an earlier OpenSpec release";
+    /** The migration's groups, keyed (in {@link Group#tool()}) by how the preview names them. */
+    public static final String SHARED_SKILLS_GROUP = "Shared skills (.agents/skills)";
+    public static final String REPLACED_COPIES_GROUP = "Skill copies replaced by the shared copy";
+    public static final String COMMAND_FILES_GROUP = "Command files (OpenSpec 2 installs skills only)";
+    /** The banner a migration plan shows above its changes. */
+    public static final String MIGRATION_BANNER = "This update moves the project to OpenSpec 2: one shared copy of each "
+            + "skill in .agents/skills, linked from the tool folders that need it, and no command files.";
     public static final String FAILURES_EXPLANATION =
             "openspec update stops at the first tool it can't update, so fix these before applying.";
 
@@ -51,16 +61,32 @@ public record UpdatePreviewModel(String summary, List<NoteRow> notes, List<Failu
     private static final List<String> ACTION_ORDER = List.of("delete", "update", "add");
 
     public static UpdatePreviewModel of(Plan plan, @Nullable String focusTool) {
+        return of(plan, focusTool, null);
+    }
+
+    /** As {@link #of(Plan, String)}, for a plan from CLI {@code cliVersion} (null when unknown: never a migration). */
+    public static UpdatePreviewModel of(Plan plan, @Nullable String focusTool, @Nullable String cliVersion) {
         List<NoteRow> notes = plan.notes().stream()
                 .map(n -> new NoteRow(n.code(), n.message(),
                         com.johnnyblabs.openspec.util.UpdatePlanParser.LEGACY_TOOL_DIRECTORIES.equals(n.code())))
                 .toList();
 
+        boolean migration = UpdateMigration.isMigration(plan, cliVersion);
+        Map<String, List<Change>> migrationGroups = new LinkedHashMap<>();
+        if (migration) {
+            List.of(SHARED_SKILLS_GROUP, REPLACED_COPIES_GROUP, COMMAND_FILES_GROUP)
+                    .forEach(g -> migrationGroups.put(g, new ArrayList<>()));
+        }
         Map<String, List<Change>> byTool = new TreeMap<>();
         List<Change> outside = new ArrayList<>();
         for (Change c : plan.changes()) {
             if (c.outsideProject()) {
                 outside.add(c);
+                continue;
+            }
+            String group = migration ? migrationGroup(UpdateMigration.kind(c)) : null;
+            if (group != null) {
+                migrationGroups.get(group).add(c);
             } else {
                 byTool.computeIfAbsent(c.tool(), t -> new ArrayList<>()).add(c);
             }
@@ -72,6 +98,9 @@ public record UpdatePreviewModel(String summary, List<NoteRow> notes, List<Failu
         ordered.putAll(byTool);
 
         List<Group> groups = new ArrayList<>();
+        migrationGroups.forEach((name, changes) -> {
+            if (!changes.isEmpty()) groups.add(new Group(name, false, sorted(changes)));
+        });
         ordered.forEach((tool, changes) -> groups.add(new Group(tool, false, sorted(changes))));
         if (!outside.isEmpty()) {
             groups.add(new Group(OUTSIDE_PROJECT, true, sorted(outside)));
@@ -79,7 +108,23 @@ public record UpdatePreviewModel(String summary, List<NoteRow> notes, List<Failu
 
         boolean deletes = plan.changes().stream().anyMatch(c -> c.action().equals("delete"));
         return new UpdatePreviewModel(summary(plan.changes()), notes, plan.failures(), List.copyOf(groups), focusTool,
-                plan.failures().isEmpty(), deletes);
+                plan.failures().isEmpty(), deletes, migration);
+    }
+
+    /** The migration group a change of {@code kind} belongs to, or {@code null} for its tool's group. */
+    private static @Nullable String migrationGroup(UpdateMigration.Kind kind) {
+        return switch (kind) {
+            case SHARED -> SHARED_SKILLS_GROUP;
+            case REPLACED_COPY -> REPLACED_COPIES_GROUP;
+            case COMMAND_FILE -> COMMAND_FILES_GROUP;
+            case LINK, OTHER -> null;
+        };
+    }
+
+    /** A link's row text, {@code <path> → .agents/skills/<skill>}, or {@code null} for a change that isn't a link. */
+    public static @Nullable String linkRow(Change change) {
+        return UpdateMigration.kind(change) == UpdateMigration.Kind.LINK
+                ? change.path() + " \u2192 " + UpdateMigration.linkTarget(change) : null;
     }
 
     private static List<Change> sorted(List<Change> changes) {

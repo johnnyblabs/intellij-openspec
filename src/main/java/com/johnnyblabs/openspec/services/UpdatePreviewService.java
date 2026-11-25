@@ -70,6 +70,7 @@ public final class UpdatePreviewService {
     private Decider decider;
     private Background background;
     private Ui ui = (modality, task) -> ApplicationManager.getApplication().invokeLater(task, modality);
+    private @Nullable String versionForTest;
 
     public UpdatePreviewService(Project project) {
         this.project = project;
@@ -84,6 +85,13 @@ public final class UpdatePreviewService {
 
     public static UpdatePreviewService getInstance(Project project) {
         return project.getService(UpdatePreviewService.class);
+    }
+
+    /** The detected CLI's version, or {@code null} when none is detected. Package-private for tests. */
+    @Nullable String detectedVersion() {
+        if (versionForTest != null) return versionForTest;
+        CliDetectionService detection = project.getService(CliDetectionService.class);
+        return detection != null && detection.isAvailable() ? detection.getDetectedVersion() : null;
     }
 
     /** Whether the detected CLI can preview an update; false when it is missing or older than {@link #DRY_RUN_FLOOR}. */
@@ -133,7 +141,7 @@ public final class UpdatePreviewService {
         }
         LOG.info("Update preview: " + plan.changes().size() + " change(s), " + plan.notes().size() + " note(s), "
                 + plan.failures().size() + " failure(s)" + (focusTool != null ? ", focus " + focusTool : ""));
-        if (!decider.apply(UpdatePreviewModel.of(plan, focusTool))) {
+        if (!decider.apply(UpdatePreviewModel.of(plan, focusTool, detectedVersion()))) {
             LOG.info("Update preview cancelled");
             onFinished.run();
             return;
@@ -267,6 +275,11 @@ public final class UpdatePreviewService {
             console.printError(message + "\n");
         }
         OpenSpecNotifier.warn(project, "OpenSpec update", message);
+    }
+
+    @TestOnly
+    void setCliVersionForTest(@Nullable String version) {
+        this.versionForTest = version;
     }
 
     @TestOnly

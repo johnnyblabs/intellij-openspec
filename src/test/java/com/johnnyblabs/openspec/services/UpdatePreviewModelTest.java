@@ -142,4 +142,70 @@ class UpdatePreviewModelTest {
         List<String> labels = m.groups().stream().map(UpdatePreviewModel.Group::label).toList();
         assertEquals(List.of("antigravity (13)", "Left by an earlier OpenSpec release (" + swept + ")"), labels);
     }
+
+    // --- The move to OpenSpec 2 (update-migration captures) ---
+
+    private static Plan migrationPlan(String version, String name) {
+        String base = "/fixtures/cli/" + version + "/update-migration/" + name + "/plan";
+        try (InputStream json = UpdatePreviewModelTest.class.getResourceAsStream(base + ".json");
+             InputStream exit = UpdatePreviewModelTest.class.getResourceAsStream(base + ".exit")) {
+            assertNotNull(json, base);
+            assertNotNull(exit, base);
+            var run = new CliRunner.CliResult(Integer.parseInt(new String(exit.readAllBytes(), StandardCharsets.UTF_8).strip()),
+                    new String(json.readAllBytes(), StandardCharsets.UTF_8), "");
+            return assertInstanceOf(Plan.class, UpdatePlanParser.parse(run));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static List<String> groupNames(UpdatePreviewModel m) {
+        return m.groups().stream().map(UpdatePreviewModel.Group::tool).toList();
+    }
+
+    @Test
+    void aMigrationGroupsTheSharedSkillsCopiesAndCommandsAcrossTools() {
+        for (String v : List.of("2.0.0", "2.1.0", "2.1.1")) {
+            Plan plan = migrationPlan(v, "unedited");
+            UpdatePreviewModel m = UpdatePreviewModel.of(plan, null, v);
+            assertTrue(m.migration(), v);
+            assertEquals(List.of(UpdatePreviewModel.SHARED_SKILLS_GROUP, UpdatePreviewModel.REPLACED_COPIES_GROUP,
+                    UpdatePreviewModel.COMMAND_FILES_GROUP, "claude", UpdatePreviewModel.OUTSIDE_PROJECT), groupNames(m), v);
+            var byName = new java.util.HashMap<String, UpdatePreviewModel.Group>();
+            m.groups().forEach(g -> byName.put(g.tool(), g));
+            assertEquals(12, byName.get(UpdatePreviewModel.REPLACED_COPIES_GROUP).changes().size(),
+                    "both tools' six copies, whatever their tool value, " + v);
+            assertEquals(12, byName.get(UpdatePreviewModel.COMMAND_FILES_GROUP).changes().size(), v);
+            assertTrue(byName.get("claude").changes().stream().allMatch(c -> UpdatePreviewModel.linkRow(c) != null),
+                    "Claude's group holds its links: " + v);
+            int total = m.groups().stream().mapToInt(g -> g.changes().size()).sum();
+            assertEquals(plan.changes().size(), total, "no change is dropped or repeated, " + v);
+            assertTrue(m.cancelIsDefault());
+        }
+    }
+
+    @Test
+    void theSameMigrationPlanIsGroupedByToolWithoutATwoXCli() {
+        UpdatePreviewModel m = UpdatePreviewModel.of(migrationPlan("2.1.1", "unedited"), null, null);
+        assertFalse(m.migration());
+        assertTrue(groupNames(m).containsAll(List.of("claude", "cursor", "openspec")), groupNames(m).toString());
+        assertFalse(groupNames(m).contains(UpdatePreviewModel.REPLACED_COPIES_GROUP));
+    }
+
+    @Test
+    void plansThatAreNotAMigrationKeepTheirToolGroups() {
+        for (String v : List.of("2.0.0", "2.1.0", "2.1.1")) {
+            for (String name : List.of("up-to-date", "stale-skills", "legacy-unedited", "global-skills-removed")) {
+                if (UpdatePreviewModelTest.class.getResource("/fixtures/cli/" + v + "/update-dry-run/" + name + ".json") == null) {
+                    continue;
+                }
+                UpdatePreviewModel m = UpdatePreviewModel.of(plan(v, name), null, v);
+                assertFalse(m.migration(), v + " " + name);
+                assertEquals(UpdatePreviewModel.of(plan(v, name), null).groups(), m.groups(), v + " " + name);
+            }
+            UpdatePreviewModel shrink = UpdatePreviewModel.of(migrationPlan(v, "profile-shrink"), null, v);
+            assertFalse(shrink.migration(), v);
+        }
+    }
+
 }
