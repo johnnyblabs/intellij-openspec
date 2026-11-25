@@ -24,6 +24,7 @@ class OpenSpecFfActionTest {
     @Mock AnActionEvent event;
     @Mock DirectApiService apiService;
     @Mock WorkflowProfileService profileService;
+    @Mock com.johnnyblabs.openspec.services.DeliveryMethodResolver resolver;
 
     private OpenSpecFfAction action;
     private Presentation presentation;
@@ -36,6 +37,11 @@ class OpenSpecFfActionTest {
         presentation.setVisible(true);
         lenient().when(event.getPresentation()).thenReturn(presentation);
         lenient().when(event.getProject()).thenReturn(project);
+        // These cases are Direct API delivery, where Fast-Forward's run needs a provider. A handoff needs none
+        // (FastForwardActionTest).
+        lenient().when(project.getService(com.johnnyblabs.openspec.services.DeliveryMethodResolver.class)).thenReturn(resolver);
+        lenient().when(resolver.resolve()).thenReturn(new com.johnnyblabs.openspec.services.DeliveryMethodResolver.ResolvedMethod(
+                com.johnnyblabs.openspec.ai.DeliveryMode.DIRECT_API, "Direct API"));
     }
 
     @Nested
