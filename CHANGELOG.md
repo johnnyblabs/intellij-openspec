@@ -7,9 +7,16 @@
 ### Added
 
 - **Settings tells you when your provider no longer lists your saved model.** After you click **Test** under Direct API, a warning under the Model dropdown appears if your provider's own model list doesn't include the selected model. Such a model may have been retired, or the provider may send its requests to another model, billed as that model. Google does this for `gemini-2.5-pro` and `gemini-2.5-flash` from 1 December 2026. The warning appears only once the provider drops the model from its list.
+- **New Change...** creates a change without any artifact, as OpenSpec's `new` workflow does; you then create its artifacts one at a time from the workflow panel or with Continue. `new` isn't in OpenSpec's core profile, so it's available on a custom profile that includes it.
 
 ### Changed
 
+- **Propose now does what OpenSpec's `propose` does: describe what you want to build, and you get a change with every artifact it needs before you implement.**
+  - **With Direct API**, the plugin creates the change and generates its proposal, specs, design and tasks from your description, then stops, ready to implement. The tool window shows the generation.
+  - **With Clipboard or Editor Tab**, it hands your description to your AI tool's own propose workflow (`/openspec-propose …`, `$openspec-propose …` in Codex), which picks the name, asks what it needs and writes the artifacts.
+  - The dialog says which of the two it will do. The name, why and what-changes form is gone: the description replaces it.
+- **The workflow panel's "Fast-Forward" link is gone** from its empty state, since Propose now does the same. **Fast-Forward...** stays in the menu and toolbar for profiles that include `ff`, and a Direct API Fast-Forward run now also stops once the change is ready to implement, leaving any artifact a custom schema adds after that.
+- **Actions follow a CLI change without reopening the project.** When the plugin detects a different OpenSpec CLI, for example after an upgrade that adds a workflow, the enabled actions and the status-bar profile update.
 - Every OpenSpec CLI command the plugin runs is now fitted to the CLI version you have installed. If that version doesn't have a command or option the plugin needs, the plugin says which CLI version it needs instead of showing the CLI's "unknown option" error. Each command and option is checked against every supported CLI from 1.3 to 2.1.
 - The console line for Validate now shows the exact command that ran, including `--json`.
 

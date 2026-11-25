@@ -74,13 +74,14 @@
 
 ## 6. Docs, parity record and checks
 
-- [ ] 6.0 At the start of implementation, run test-engineer in PLAN mode, and jetbrains-platform-guru for the `<projectListeners>` registration and the dialog changes.
-- [ ] 6.1 Update the docs:
+- [x] 6.0 At the start of implementation, run test-engineer in PLAN mode, and jetbrains-platform-guru for the `<projectListeners>` registration and the dialog changes.
+- [x] 6.1 Update the docs:
   - `docs/feature-reference.md`: the Propose rows and their CLI note, a New Change row, the list of workflow-bound actions, the Fast-Forward section that says it needs Direct API (say what Propose needs in each mode), the empty state, and gating after a CLI change;
   - `README.md` (New Change, Propose), `docs/feature-comparison-matrix.md`, the getting-started guides (Copilot, CLI companion, API) and `docs/openspec-support.md`, wherever they describe Propose or the Fast-Forward link;
   - CHANGELOG `## Unreleased` entries: Propose generates everything (or hands off), the three-field form is gone, the Fast-Forward link moved into Propose, and Fast-Forward with Direct API stops at the apply-ready set;
   - run doc-fidelity on the marketplace page.
-- [ ] 6.2 Update `WorkflowParityContractTest`'s class comment: drop the v0.17.0 Propose exception and record that Propose now matches upstream `propose`.
+  - Outcome: the feature reference, the three getting-started guides, the support page, the comparison matrix, the marketplace getting-started page and the CHANGELOG are updated; `DocumentationHygieneTest` passes. The README names no individual action today, so New Change goes in with the tracked README refresh, which rewrites that page.
+- [x] 6.2 Update `WorkflowParityContractTest`'s class comment: drop the v0.17.0 Propose exception and record that Propose now matches upstream `propose`.
 - [ ] 6.3 Add UI smoke journeys for the Propose dialog: with Direct API it shows the mode line, the name and the schema field; in clipboard mode it shows the description only and its mode line. Existing journeys and the screenshot tour don't drive the old dialog (checked); confirm the Setup Wizard's "Create your first change" path still opens Propose.
 - [ ] 6.4 Final checks, with the outcome recorded here:
   - `./gradlew build`;

@@ -23,7 +23,7 @@ A comprehensive comparison of the OpenSpec IntelliJ plugin against known VS Code
 | Feature | IntelliJ | Codder13 | atman-dev | AngDrew | AvantMedia |
 |---|---|---|---|---|---|
 | Initialize project (`openspec init`) | Yes (menu + toolbar) | No | No | No | No |
-| Propose change (create + scaffold) | Yes (dialog with name/desc) | No | Yes | No | No |
+| Propose change (create + scaffold) | Yes (describe it; Direct API creates and generates it, or hands it to the AI tool's propose workflow) | No | Yes | No | No |
 | Apply change | Yes (panel action) | No | No | No | No |
 | Archive change | Yes (panel action; via `openspec archive` on CLI 1.5+) | No | Yes | No | No |
 | List specs/changes | Yes (tree + menu) | No | Partial | Yes | Yes |
@@ -154,7 +154,7 @@ A comprehensive comparison of the OpenSpec IntelliJ plugin against known VS Code
 | Feature | IntelliJ | Codder13 | atman-dev | AngDrew | AvantMedia |
 |---|---|---|---|---|---|
 | Init creates full directory structure | Yes | No | No | No | No |
-| Propose creates the change (as `openspec new change` does) | Yes (settings + proposal + empty specs/; design and tasks generated next) | No | Yes | No | No |
+| Propose creates the change (as `openspec new change` does) | Yes (`.openspec.yaml`, then the artifacts needed before apply; New Change creates it with no artifact) | No | Yes | No | No |
 | Template-based file generation | Yes | No | No | No | No |
 | Scaffolding content detection | Yes (flags unfilled templates; status follows `openspec status`) | No | No | No | No |
 | Version-aware scaffolding | Yes (adapts to schema version) | No | No | No | No |

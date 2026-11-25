@@ -219,30 +219,28 @@ schema: spec-driven
 
 ### Step 1: Propose a Change
 
-> **`OPENSPEC`** — Creating the change scaffold
+> **`OPENSPEC`** — Handing the change to Copilot
 
 1. Go to **OpenSpec > Propose...** in the menu bar
-2. Enter a name in kebab-case: `add-greeting-message`
-3. Optionally enter a brief description
+2. Describe what you want to build: `Show a greeting message on the home page`
+3. Click **OK**
 
-The plugin runs `openspec new change "add-greeting-message"` and creates:
+With clipboard delivery, Propose hands your description to Copilot's own OpenSpec propose workflow. The plugin copies what you'd type to run it, for example `/openspec-propose Show a greeting message on the home page`, and says where to paste it. The dialog's line under the description names the exact text and tool before you click OK. If Copilot has no propose workflow in this project yet, a notice offers **Update OpenSpec…**, which installs it.
+
+Paste it into Copilot's chat. Copilot picks a name such as `add-greeting-message`, asks anything it needs to know, and writes the change with every artifact needed before you implement:
 
 ```
 openspec/changes/add-greeting-message/
-├── .openspec.yaml    ← Change metadata (status, schema)
-├── proposal.md       ← Scaffolded (placeholder content)
-├── design.md         ← Scaffolded
-└── tasks.md          ← Scaffolded
+├── .openspec.yaml
+├── proposal.md
+├── specs/
+├── design.md
+└── tasks.md
 ```
 
-In the **tool window**, the change appears under **Changes**. The **Workflow Action Panel** at the bottom of the tool window shows the pipeline chips:
+In the **tool window**, the change appears under **Changes** as the files are written, and the **Workflow Action Panel** at the bottom shows each artifact's chip as done.
 
-```
-● proposal  →  ○ design  →  ○ specs  →  ○ tasks
-  (ready)      (blocked)    (blocked)    (blocked)
-```
-
-The **Generate** button in the Workflow Action Panel shows: **"Generate proposal → clipboard"**
+> **Steps 2 to 5** walk through each artifact one at a time with the plugin's **Generate** button, which is how you'd fill a change that still has artifacts to write, for example one you started with **New Change** on a custom profile, or an artifact you deleted to redo. If Copilot already wrote them all in Step 1, read these steps as a tour of what each artifact holds, and go on to Step 6.
 
 ### Step 2: Generate the Proposal
 

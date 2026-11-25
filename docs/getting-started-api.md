@@ -36,22 +36,22 @@ Go to **Settings > Tools > OpenSpec > Direct API**.
 
 Then go to the **Tools & Delivery** tab and set **Deliver via** to **"Generate via API"**.
 
-## Step 2: Fast-Forward a Change
+## Step 2: Propose a Change
 
 This is the flagship feature for API users:
 
-1. Go to **OpenSpec > Fast-Forward...**
-2. Enter a change name (e.g., `add-user-auth`) and a brief description
+1. Go to **OpenSpec > Propose...**
+2. Describe what you want to build (e.g., "Add user authentication with email and password"). Optionally give the change a name; otherwise it's derived from the description.
 3. Click OK
 
 The plugin:
 - Creates the change directory
 - Generates the **proposal** via your API provider
-- Feeds the proposal into the **design** prompt and generates it
-- Feeds proposal + design into the **specs** prompt and generates it
+- Feeds the proposal into the **specs** prompt and generates them
+- Feeds proposal + specs into the **design** prompt and generates it
 - Feeds everything into the **tasks** prompt and generates it
 
-All four artifacts are produced in sequence, each building on the last. The [Workflow Action Panel](feature-reference.md#artifact-pipeline) updates in real-time as each artifact completes.
+All four artifacts are produced in sequence, each building on the last, with your description sent as the request. The run stops once the change is ready to implement. The [Workflow Action Panel](feature-reference.md#artifact-pipeline) updates in real-time as each artifact completes.
 
 ## Step 3: Review the Generated Artifacts
 
@@ -87,15 +87,15 @@ Once implementation is complete:
 
 ## Incremental Generation
 
-If you prefer to review each artifact before generating the next, use **Continue** instead of Fast-Forward:
+If you prefer to review each artifact before generating the next, create the change without artifacts and generate them one at a time:
 
-1. **OpenSpec > Propose...** — create the change
+1. **OpenSpec > New Change...** — create the change (this needs the `new` workflow, so switch to a custom profile that includes it in **Settings → Tools → OpenSpec → Config Profile**)
 2. Click **Generate** — generates the next ready artifact via API
 3. Review the output
 4. Click **Generate** again for the next artifact
 5. Repeat until all artifacts are complete
 
-This is the same as Fast-Forward but one artifact at a time. See [Workflow Actions](feature-reference.md#workflow-actions) for details.
+This is the same as Propose but one artifact at a time. See [Workflow Actions](feature-reference.md#workflow-actions) for details.
 
 ---
 

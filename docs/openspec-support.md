@@ -139,7 +139,8 @@ A version-oriented view of what each OpenSpec CLI line offers and whether the pl
 
 | Workflow | Status | CLI | Notes |
 |----------|--------|-----|-------|
-| propose / new | ✅ | built-in | Without the CLI, writes what `openspec new change` creates (settings, proposal, empty `specs/`) + AI skill |
+| propose | ✅ | built-in + AI skill | **Propose**: with Direct API, creates the change and generates the artifacts needed before apply; with clipboard or editor tab, hands the description to the AI tool's propose skill or command |
+| new | ✅ | built-in | **New Change** (custom profiles): creates the change as `openspec new change` does, with no artifact; without the CLI, writes the same `.openspec.yaml` |
 | explore | ✅ | built-in · `instructions` | Thinking-space panel + AI skill |
 | apply-change | ✅ | built-in · `status` | Implement-tasks action + AI skill |
 | continue-change | ✅ | built-in · `status` | Resume action |

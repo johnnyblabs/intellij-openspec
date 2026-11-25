@@ -40,9 +40,9 @@ This ensures that when you click Generate, the copied prompt includes **save-pat
 If your project isn't already initialized:
 
 1. **OpenSpec > Init** — creates the `openspec/` directory structure
-2. **OpenSpec > Propose...** — enter a change name (e.g., `add-user-auth`)
+2. **OpenSpec > Propose...** — describe what you want to build (e.g., "Add user authentication")
 
-The plugin scaffolds the change directory. The [Workflow Action Panel](feature-reference.md#artifact-pipeline) shows your artifact pipeline.
+With clipboard delivery, Propose copies your AI tool's propose command with your description, for example `/openspec-propose Add user authentication`. Paste it into your terminal AI; it creates the change and writes its artifacts. The [Workflow Action Panel](feature-reference.md#artifact-pipeline) shows your artifact pipeline as the files appear. The steps below generate one artifact at a time, for a change that still has artifacts to write.
 
 ## Step 3: Generate with Your Terminal AI
 
