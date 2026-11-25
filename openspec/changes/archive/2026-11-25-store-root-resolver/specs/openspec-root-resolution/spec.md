@@ -1,3 +1,7 @@
+## Purpose
+
+Find the project's OpenSpec root the way the OpenSpec CLI does, so every surface works on the files the CLI works on: the project's own `openspec/`, one in a parent folder, a registered store the project's config points at, or the machine-wide default store. Resolution reads only files on disk, runs off the UI thread, and reports why a named store can't be used.
+
 ## ADDED Requirements
 
 ### Requirement: Root resolution order

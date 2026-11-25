@@ -58,6 +58,14 @@ The project SHALL maintain a small suite of automated UI smoke journeys that dri
 - **THEN** it SHALL isolate that state, for example to an isolated OpenSpec data directory injected through the IDE process environment
 - **AND** dialog journeys SHALL exit via cancel, performing no archive
 
+#### Scenario: Store-root journey (a project pointing at a store)
+- **WHEN** the smoke suite, on a host CLI at 1.5+ with isolated OpenSpec data and config directories, sets up a store with the real CLI and opens a project whose config holds only a pointer to it
+- **THEN** it SHALL assert the Browse tree lists the store's change, that a change created in the store outside the IDE appears when the user returns to the IDE (the platform's window-activation sync, not the plugin's Refresh), that a pointer to an unregistered store makes the tree say the store can't be used, and that fixing the pointer brings the store's change back; on a host CLI below 1.5 the journey SHALL be skipped, not failed
+
+#### Scenario: Store-spec inspection journey
+- **WHEN** the smoke suite, on a host CLI at 1.5+, opens a spec that lives in a store outside the project and whose requirement has no RFC 2119 keyword
+- **THEN** it SHALL assert the missing-keyword inspection reports it in the Problems view, proving the IDE's highlighting rules don't skip a store spec; on a host CLI below 1.5 the journey SHALL be skipped, not failed
+
 ### Requirement: Smoke journeys never gate ordinary PRs
 
 The UI smoke workflow SHALL run on manual dispatch only. It SHALL NOT be a required check on ordinary pull requests, and SHALL NOT run on a release tag push. The release gate SHALL be the maintainer's local `caffeinate -dimsu ./gradlew uiSmoke` run with real rendered-frame passes, before the release tag is pushed. The CI ui-smoke workflow SHALL NOT be relied on as the release gate.
