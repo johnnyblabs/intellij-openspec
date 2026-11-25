@@ -1,0 +1,10 @@
+Updating 2 tool(s): claude (skill files differ from the generated content), cursor (skill files differ from the generated content)
+
+
+✓ Updated: Claude Code, Cursor (v2.0.0)
+Removed: 4 skill directories (deselected workflows)
+Note: Your custom profile is missing 4 core workflows: apply, update, sync, archive
+Run `openspec config profile` to add them, or `openspec config profile core` to use the core set.
+Tools: Claude Code, Cursor
+
+Restart your IDE to refresh skills.

@@ -1,0 +1,18 @@
+Updating 2 tool(s): claude (1.17.0 → 2.1.1), cursor (1.17.0 → 2.1.1)
+
+
+✓ Updated: Claude Code, Cursor (v2.1.1)
+Removed: 6 command files (OpenSpec 2.0 installs skills only)
+Left 6 command files in place because they could not be read or removed:
+  .claude/commands/opsx/propose.md
+  .claude/commands/opsx/explore.md
+  .claude/commands/opsx/apply.md
+  .claude/commands/opsx/update.md
+  .claude/commands/opsx/sync.md
+  .claude/commands/opsx/archive.md
+Check the file permissions or symbolic links, then delete by hand.
+Note: 6 more workflows are available (new, continue, ff, bulk-archive, verify, onboard).
+Add them with `openspec config profile`.
+Tools: Claude Code, Cursor
+
+Restart your IDE to refresh skills.

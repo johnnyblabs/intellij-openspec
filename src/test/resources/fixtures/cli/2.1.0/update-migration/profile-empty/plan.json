@@ -1,0 +1,71 @@
+{
+  "changes": [
+    {
+      "path": ".agents/skills/.openspec-target",
+      "action": "delete",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-apply-change/SKILL.md",
+      "action": "delete",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-archive-change/SKILL.md",
+      "action": "delete",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-explore/SKILL.md",
+      "action": "delete",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-propose/SKILL.md",
+      "action": "delete",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-sync-specs/SKILL.md",
+      "action": "delete",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-update-change/SKILL.md",
+      "action": "delete",
+      "tool": "openspec"
+    },
+    {
+      "path": ".claude/skills/openspec-apply-change",
+      "action": "delete",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-archive-change",
+      "action": "delete",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-explore",
+      "action": "delete",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-propose",
+      "action": "delete",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-sync-specs",
+      "action": "delete",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-update-change",
+      "action": "delete",
+      "tool": "claude"
+    }
+  ],
+  "notes": [],
+  "failures": []
+}

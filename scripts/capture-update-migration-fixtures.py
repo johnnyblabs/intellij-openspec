@@ -113,6 +113,62 @@ def eve_edited(project, home, v):
     append(project, "agent/skills/openspec-explore/SKILL.md")
 
 
+def eve_from_210(project, home, v):
+    """Eve copies 2.1.0 wrote, refreshed by 2.1.1: unedited copies planned as updates (the allowed-tools negative)."""
+    if v != "2.1.1":
+        raise Skip("2.1.1 refreshing 2.1.0's copies")
+    run(cli("2.1.0") + ["init", "--tools", "eve", "--scope", "project", "."], project, home)
+
+
+def profile_shrink(project, home, v):
+    """A 2.x project whose profile drops workflows: shared skills are deleted, tagged openspec."""
+    scope = ["--scope", "project"] if key(v) >= key("2.1.0") else []
+    run(cli(v) + ["init", "--tools", "claude,cursor", *scope, "."], project, home)
+    run(cli(v) + ["config", "set", "profile", "custom"], project, home)
+    run(cli(v) + ["config", "set", "workflows", '["propose","explore"]'], project, home)
+
+
+def profile_empty(project, home, v):
+    """The same with no workflows at all: 2.x also removes the shared-skills marker."""
+    scope = ["--scope", "project"] if key(v) >= key("2.1.0") else []
+    run(cli(v) + ["init", "--tools", "claude,cursor", *scope, "."], project, home)
+    run(cli(v) + ["config", "set", "profile", "custom"], project, home)
+    run(cli(v) + ["config", "set", "workflows", "[]"], project, home)
+
+
+def command_left_in_place(project, home, v):
+    """The command folder made read-only: the files can't be removed and are reported as left in place."""
+    unedited(project, home, v)
+    (project / ".claude" / "commands" / "opsx").chmod(stat.S_IRUSR | stat.S_IXUSR)
+
+
+def retired_tool_edited(project, home, v):
+    """Amazon Q, retired in 2.0: its edited files are kept and reported."""
+    seed_init(project, home, ["amazon-q"])
+    files = sorted((project / ".amazonq").rglob("*.md"))
+    if not files:
+        raise Skip("1.17.0 wrote no Amazon Q files")
+    append(project, files[0].relative_to(project).as_posix())
+
+
+def shared_own_skill(project, home, v):
+    """A skill of the user's own at an OpenSpec name in .agents/skills: 2.0.0 keeps it as the user's."""
+    if v != "2.0.0":
+        raise Skip("the kept-as-your-own report is 2.0.0's")
+    seed_init(project, home, ["claude"])
+    own = project / ".agents" / "skills" / "openspec-explore" / "SKILL.md"
+    own.parent.mkdir(parents=True)
+    own.write_text("---\nname: openspec-explore\ndescription: My own explore skill\n---\n\nMine.\n")
+
+
+def read_only_applied(project, home, v):
+    """A skill copy made read-only: the applied update fails for a reason other than Git."""
+    if v != "2.1.0":
+        raise Skip("the negative control for 2.1.0's Git hint")
+    unedited(project, home, v)
+    (project / ".claude" / "skills" / "openspec-propose").chmod(stat.S_IRUSR | stat.S_IXUSR)
+
+
 def no_git(project, home, v):
     if v != "2.1.0":
         raise Skip("only 2.1.0 needs Git")
@@ -128,6 +184,13 @@ CASES = {
     "narrow-profile": narrow_profile,
     "after-2.0.0-kept": after_200_kept,
     "eve-edited": eve_edited,
+    "eve-from-2.1.0": eve_from_210,
+    "profile-shrink": profile_shrink,
+    "profile-empty": profile_empty,
+    "command-left-in-place": command_left_in_place,
+    "retired-tool-edited": retired_tool_edited,
+    "shared-own-skill": shared_own_skill,
+    "read-only-applied": read_only_applied,
     "no-git": no_git,
 }
 
@@ -205,13 +268,22 @@ def capture(v):
                 print(f"  {v} {name}: skipped ({e})")
                 continue
             target = out / name
-            write_fixture(target / "before.json", layout(project, home, texts))
+            before_layout = layout(project, home, texts)
+            if name == "after-2.0.0-kept":
+                committed = OUT / "2.0.0" / "update-migration" / "edited" / "after.json"
+                if committed.exists() and committed.read_text() != before_layout:
+                    sys.exit(f"{v} {name}: the seed differs from the committed 2.0.0 edited/after.json")
+            write_fixture(target / "before.json", before_layout)
             before = tree_hash(project, home)
             plan = run(cli(v) + ["update", "--dry-run", "--json"], project, home, check=False)
             forced = run(cli(v) + ["update", "--dry-run", "--force", "--json"], project, home, check=False)
             if tree_hash(project, home) != before:
                 sys.exit(f"{v} {name}: a dry run changed the project or HOME")
-            extra = {"PATH": node_only_path(scratch)} if name == "no-git" else {}
+            extra = {}
+            if name == "no-git":
+                extra = {"PATH": node_only_path(scratch)}
+                if shutil.which("git", path=extra["PATH"]):
+                    sys.exit("no-git: git is still reachable")
             applied = run(cli(v) + ["update"], project, home, check=False, **extra)
             write_fixture(target / "plan.json", sanitize(plan.stdout, project, home))
             write_fixture(target / "plan.exit", f"{plan.returncode}\n")

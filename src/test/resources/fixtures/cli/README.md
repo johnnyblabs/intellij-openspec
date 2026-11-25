@@ -934,6 +934,13 @@ From `scripts/capture-update-migration-fixtures.py`, on 2.0.0, 2.1.0 and 2.1.1. 
 | `narrow-profile` | Claude, with the workflows `explore` and `apply` only | 1.17 texts the released-file set doesn't hold |
 | `after-2.0.0-kept` (2.1.x) | `edited`, then updated by 2.0.0 | 2.1 deletes both copies 2.0.0 kept, with no marker add in the plan |
 | `eve-edited` (2.1.1) | Eve set up by 2.1.1, its `agent/skills/openspec-explore/SKILL.md` edited | an edited copy written in place of a link is overwritten: an `update` in the plan |
+| `eve-from-2.1.0` (2.1.1) | Eve set up by 2.1.0, untouched | unedited Eve copies refreshed in place: `update`s that are not edits |
+| `profile-shrink` | set up by the release under test, then the profile cut to `propose` and `explore` | shared skills and their links deleted, tagged `openspec` |
+| `profile-empty` | the same with no workflows | the marker `.agents/skills/.openspec-target` deleted too |
+| `command-left-in-place` | as `unedited`, with `.claude/commands/opsx/` made read-only | `Left N command files in place because they could not be read or removed:` |
+| `retired-tool-edited` | Amazon Q, one file edited | `  Kept N file(s) in .amazonq/ that differ …`: the header indented two spaces, the paths four |
+| `shared-own-skill` (2.0.0) | Claude, plus a user's own `.agents/skills/openspec-explore/SKILL.md` | `Kept 1 skill in .agents/skills as your own: …` |
+| `read-only-applied` (2.1.0) | as `unedited`, with one skill folder made read-only | the applied update fails for a reason other than Git (exit 1, `EACCES`) |
 | `no-git` (2.1.0) | as `unedited`, the applied update run with a PATH holding only node | exit 1, the project unchanged; stdout names Git |
 
 What each release does, from these captures:
@@ -945,3 +952,4 @@ What each release does, from these captures:
 | Unedited copies | `Replaced N unchanged skill copies in tool folders with the one shared copy in .agents/skills.` | nothing printed |
 | Edited command file | kept, left out of the plan; `Kept N command file(s) that do(es) not match what OpenSpec generated (likely edited):` and the indented paths | same |
 
+The `after-2.0.0-kept` seed is checked against the committed `2.0.0/update-migration/edited/after.json`, and a re-run reproduces every file. The reports of edited or left prompt files in the home folder print only after the legacy-cleanup flow, which a non-interactive run doesn't reach, so they have no capture.

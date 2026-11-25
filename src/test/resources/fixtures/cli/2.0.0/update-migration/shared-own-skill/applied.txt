@@ -1,0 +1,11 @@
+Updating 1 tool(s): claude (1.17.0 → 2.0.0)
+
+Replaced 6 unchanged skill copies in tool folders with the one shared copy in .agents/skills.
+Kept 1 skill in .agents/skills as your own: .agents/skills/openspec-explore. OpenSpec won't update or remove it; delete one to have OpenSpec install its own again.
+
+✓ Updated: Claude Code (v2.0.0)
+Removed: 6 command files (OpenSpec 2.0 installs skills only)
+Note: 6 more workflows are available (new, continue, ff, bulk-archive, verify, onboard).
+Add them with `openspec config profile`.
+Tools: Claude Code
+

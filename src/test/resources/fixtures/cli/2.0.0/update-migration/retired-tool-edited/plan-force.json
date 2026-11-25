@@ -1,0 +1,61 @@
+{
+  "changes": [
+    {
+      "path": ".amazonq/prompts/opsx-archive.md",
+      "action": "delete",
+      "tool": "openspec"
+    },
+    {
+      "path": ".amazonq/prompts/opsx-explore.md",
+      "action": "delete",
+      "tool": "openspec"
+    },
+    {
+      "path": ".amazonq/prompts/opsx-propose.md",
+      "action": "delete",
+      "tool": "openspec"
+    },
+    {
+      "path": ".amazonq/prompts/opsx-sync.md",
+      "action": "delete",
+      "tool": "openspec"
+    },
+    {
+      "path": ".amazonq/prompts/opsx-update.md",
+      "action": "delete",
+      "tool": "openspec"
+    },
+    {
+      "path": ".amazonq/skills/openspec-apply-change/SKILL.md",
+      "action": "delete",
+      "tool": "openspec"
+    },
+    {
+      "path": ".amazonq/skills/openspec-archive-change/SKILL.md",
+      "action": "delete",
+      "tool": "openspec"
+    },
+    {
+      "path": ".amazonq/skills/openspec-explore/SKILL.md",
+      "action": "delete",
+      "tool": "openspec"
+    },
+    {
+      "path": ".amazonq/skills/openspec-propose/SKILL.md",
+      "action": "delete",
+      "tool": "openspec"
+    },
+    {
+      "path": ".amazonq/skills/openspec-sync-specs/SKILL.md",
+      "action": "delete",
+      "tool": "openspec"
+    },
+    {
+      "path": ".amazonq/skills/openspec-update-change/SKILL.md",
+      "action": "delete",
+      "tool": "openspec"
+    }
+  ],
+  "notes": [],
+  "failures": []
+}

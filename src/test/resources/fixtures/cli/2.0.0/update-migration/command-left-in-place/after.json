@@ -1,0 +1,28 @@
+{
+  "home": {},
+  "links": {
+    "project": {
+      ".claude/skills/openspec-apply-change": "../../.agents/skills/openspec-apply-change",
+      ".claude/skills/openspec-archive-change": "../../.agents/skills/openspec-archive-change",
+      ".claude/skills/openspec-explore": "../../.agents/skills/openspec-explore",
+      ".claude/skills/openspec-propose": "../../.agents/skills/openspec-propose",
+      ".claude/skills/openspec-sync-specs": "../../.agents/skills/openspec-sync-specs",
+      ".claude/skills/openspec-update-change": "../../.agents/skills/openspec-update-change"
+    }
+  },
+  "project": {
+    ".agents/skills/.openspec-target": "@9eb39cc4d5fabe9a",
+    ".agents/skills/openspec-apply-change/SKILL.md": "@71f084a1ea26194f",
+    ".agents/skills/openspec-archive-change/SKILL.md": "@3b52b3a9ff61247a",
+    ".agents/skills/openspec-explore/SKILL.md": "@e776f0d8b5e36d2e",
+    ".agents/skills/openspec-propose/SKILL.md": "@5fa202ae4b4f27a6",
+    ".agents/skills/openspec-sync-specs/SKILL.md": "@10616a4935e75bbb",
+    ".agents/skills/openspec-update-change/SKILL.md": "@51066d453fa4300b",
+    ".claude/commands/opsx/apply.md": "@9a980fe310f04f66",
+    ".claude/commands/opsx/archive.md": "@0c48963c41c06b12",
+    ".claude/commands/opsx/explore.md": "@e00d9352b42e9ff0",
+    ".claude/commands/opsx/propose.md": "@2680d809cd4dcfce",
+    ".claude/commands/opsx/sync.md": "@a946e1a29b7421e1",
+    ".claude/commands/opsx/update.md": "@9a7db84558012013"
+  }
+}

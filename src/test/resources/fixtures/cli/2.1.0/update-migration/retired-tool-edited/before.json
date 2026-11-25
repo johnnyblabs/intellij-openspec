@@ -1,0 +1,17 @@
+{
+  "home": {},
+  "project": {
+    ".amazonq/prompts/opsx-apply.md": "@3500e78fc7554b69",
+    ".amazonq/prompts/opsx-archive.md": "@888d4ee1e01db14f",
+    ".amazonq/prompts/opsx-explore.md": "@6402ca246a16ff85",
+    ".amazonq/prompts/opsx-propose.md": "@71cfcfaa97c3be7f",
+    ".amazonq/prompts/opsx-sync.md": "@2e6bef45f4d15be2",
+    ".amazonq/prompts/opsx-update.md": "@20ad069e78888738",
+    ".amazonq/skills/openspec-apply-change/SKILL.md": "@4caef46c27409572",
+    ".amazonq/skills/openspec-archive-change/SKILL.md": "@5c7d26a62b455e70",
+    ".amazonq/skills/openspec-explore/SKILL.md": "@767ec561d0b2c938",
+    ".amazonq/skills/openspec-propose/SKILL.md": "@959dfa9f4c12ba36",
+    ".amazonq/skills/openspec-sync-specs/SKILL.md": "@a13f879cfad671fe",
+    ".amazonq/skills/openspec-update-change/SKILL.md": "@cc1a16dc144f4748"
+  }
+}

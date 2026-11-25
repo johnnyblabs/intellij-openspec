@@ -1,0 +1,21 @@
+{
+  "changes": [
+    {
+      "path": ".agents/skills/openspec-archive-change/SKILL.md",
+      "action": "update",
+      "tool": "openspec"
+    },
+    {
+      "path": "~/.config/openspec/config.json",
+      "action": "add",
+      "tool": "openspec"
+    },
+    {
+      "path": "agent/skills/openspec-archive-change/SKILL.md",
+      "action": "update",
+      "tool": "eve"
+    }
+  ],
+  "notes": [],
+  "failures": []
+}

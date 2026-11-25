@@ -62,6 +62,7 @@ Other facts this design rests on:
 The preview already renders the CLI's plan.
 
 - **Migration banner:** the plan **adds or updates** `.agents/skills/.openspec-target` **and** deletes at least one tool-folder skill copy or command file (decision 4 defines both).
+  - A 1.6-era Antigravity project (`update-dry-run/earlier-release`) gets the banner, correctly: its skills move from the former `.agent/` root to `.agents/`. A pre-skills project (`update-dry-run/legacy-unedited`) does not, because it deletes only 0.x `commands/openspec/*` files, which are neither skill copies nor 1.x command paths.
 - **The at-risk warning (decision 2) does not depend on the banner.** It appears in any plan, including one for a project that 2.0.0 already migrated.
 - **No version gate.** 2.0.0 leaves kept files out of its plan, so a plan-driven warning is correct on 2.0.0 by construction. The 2.0.0 `edited` capture is the negative control.
 
@@ -130,13 +131,14 @@ Upstream's legacy cleanup never targets a `skills/` path (checked in `legacy-cle
 - `Kept <n> command file(s) that do(es) not match what OpenSpec generated (likely edited):`
 - `Kept <n> prompt file(s) in your home folder that differ(s) from what OpenSpec generated (likely edited):`
 - `Left <n> command file(s) in place because it/they could not be read or removed:`
-- A retired tool's `Kept <n> file(s) in <folder>/ that differ … (likely edited); …`, with its paths indented four spaces.
+- A retired tool's `  Kept <n> file(s) in <folder>/ that differ(s) … (likely edited); delete it/them when you're done:`. The header itself is indented two spaces and its paths four.
+- One-line: `Left <n> OpenSpec prompt file(s) in your home folder: <a>, …` (2.1.1 `update.js`), listing prompt files the update leaves for the user.
 - One-line, comma-separated (2.0.0):
   - `Kept <n> skill folder(s) with your own changes: <a>, <b>. …`;
   - `Kept <n> skill(s) in .agents/skills as your own: <a>. …`.
 - The loss report, shown as a warning rather than a kept file: `Replaced your edits in <n> skill(s) OpenSpec installs: <a>. …`.
 
-Each report becomes one entry with a kind (kept, left in place, replaced), its paths and its guidance. Degradation is one-directional: text that doesn't match yields nothing, and the parser never invents a path.
+Each report becomes one entry with a kind (kept, left in place, replaced), its paths and its guidance. Every format but the home-folder prompt reports is captured (`update-migration/`). Those two print only after the legacy-cleanup flow, which a non-interactive run doesn't reach, so their tests build the text from the format strings and name the source file. Degradation is one-directional: text that doesn't match yields nothing, and the parser never invents a path.
 
 After an applied update with any entry, the plugin shows one notification listing each path, with a link that opens a path inside the project, and the CLI's guidance. The applied run's stdout is already in hand, so no extra CLI run is needed. Because the CLI repeats a kept report on every later update while the file stays, the notification repeats too, as the CLI does.
 

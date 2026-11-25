@@ -1,0 +1,14 @@
+{
+  "home": {},
+  "links": {
+    "project": {
+      ".claude/skills/openspec-explore": "../../.agents/skills/openspec-explore",
+      ".claude/skills/openspec-propose": "../../.agents/skills/openspec-propose"
+    }
+  },
+  "project": {
+    ".agents/skills/.openspec-target": "@9eb39cc4d5fabe9a",
+    ".agents/skills/openspec-explore/SKILL.md": "@ac41da2c74c774f6",
+    ".agents/skills/openspec-propose/SKILL.md": "@ea7e83ce13ce65cf"
+  }
+}
