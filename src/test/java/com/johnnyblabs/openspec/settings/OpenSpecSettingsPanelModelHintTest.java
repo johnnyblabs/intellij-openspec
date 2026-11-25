@@ -10,6 +10,9 @@ import com.johnnyblabs.openspec.ai.DirectApiTestSupport;
 import com.johnnyblabs.openspec.services.CliDetectionService;
 import com.johnnyblabs.openspec.services.CliDetectionTestSupport;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.http.HttpClient;
@@ -41,6 +44,8 @@ public class OpenSpecSettingsPanelModelHintTest extends BasePlatformTestCase {
     @Override
     protected void setUp() throws Exception {
         super.setUp();
+        // No saved key: a late saved-key placeholder from an earlier test must not land mid-test.
+        removeKeys();
         CliDetectionService detection = new CliDetectionService(getProject());
         CliDetectionTestSupport.fakeAvailable(detection, "1.14.3");
         ServiceContainerUtil.replaceService(getProject(), CliDetectionService.class, detection, getTestRootDisposable());
@@ -56,11 +61,15 @@ public class OpenSpecSettingsPanelModelHintTest extends BasePlatformTestCase {
     @Override
     protected void tearDown() throws Exception {
         try {
-            for (AiProvider p : AiProvider.values()) {
-                if (p != AiProvider.NONE) AiCredentialStore.removeApiKey(p);
-            }
+            removeKeys();
         } finally {
             super.tearDown();
+        }
+    }
+
+    private static void removeKeys() {
+        for (AiProvider p : AiProvider.values()) {
+            if (p != AiProvider.NONE) AiCredentialStore.removeApiKey(p);
         }
     }
 
@@ -171,7 +180,7 @@ public class OpenSpecSettingsPanelModelHintTest extends BasePlatformTestCase {
         when(response.body()).thenReturn(fixture("gemini/models-list.json"));
         doAnswer(inv -> {
             sent.countDown();
-            assertTrue(release.await(10, TimeUnit.SECONDS));
+            if (!release.await(10, TimeUnit.SECONDS)) throw new IllegalStateException("never released");
             return response;
         }).when(client).send(any(), any());
         panel.setAiModel(RETIRED);
@@ -195,7 +204,7 @@ public class OpenSpecSettingsPanelModelHintTest extends BasePlatformTestCase {
         when(response.body()).thenReturn(fixture("gemini/models-list.json"));
         doAnswer(inv -> {
             sent.countDown();
-            assertTrue(release.await(10, TimeUnit.SECONDS));
+            if (!release.await(10, TimeUnit.SECONDS)) throw new IllegalStateException("never released");
             return response;
         }).when(client).send(any(), any());
         panel.setAiModel(RETIRED);
@@ -205,6 +214,115 @@ public class OpenSpecSettingsPanelModelHintTest extends BasePlatformTestCase {
         release.countDown();
         pumpUntil(() -> !panel.testResultTextForTest().equals("Testing..."));
         assertNull("the list was fetched with the old key", panel.modelHintTextForTest());
+    }
+
+    public void testAPartialPageGivesNoHint() throws Exception {
+        JsonObject gemini = JsonParser.parseString(fixture("gemini/models-list.json")).getAsJsonObject();
+        gemini.addProperty("nextPageToken", "next");
+        answer(gemini.toString());
+        panel.setAiModel(RETIRED);
+        clickTestAndWait();
+        assertTrue("sanity: Test succeeded", panel.testResultTextForTest().startsWith("Connected"));
+        assertNull("a partial Gemini page can't prove the model is missing", panel.modelHintTextForTest());
+
+        panel.setAiProvider("CLAUDE");
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
+        panel.setApiKey("test-key");
+        JsonObject claude = JsonParser.parseString(fixture("claude/models-list-live.json")).getAsJsonObject();
+        claude.addProperty("has_more", true);
+        answer(claude.toString());
+        panel.setAiModel("claude-not-listed");
+        clickTestAndWait();
+        assertTrue("sanity: Test succeeded", panel.testResultTextForTest().startsWith("Connected"));
+        assertNull("nor a partial Claude page", panel.modelHintTextForTest());
+        claude.addProperty("has_more", false);
+        answer(claude.toString());
+        clickTestAndWait();
+        assertNotNull("sanity: the whole page does show it", panel.modelHintTextForTest());
+    }
+
+    public void testEditingTheOpenAiOrgOrProjectClearsIt() throws Exception {
+        panel.setAiProvider("OPENAI");
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
+        panel.setApiKey("test-key");
+        answer(fixture("openai/models-list.json"));
+        panel.setAiModel("model-id-9");
+        clickTestAndWait();
+        assertNotNull("sanity", panel.modelHintTextForTest());
+        panel.setAiOpenAiOrganization("org-other");
+        assertNull("an Organization edit", panel.modelHintTextForTest());
+        clickTestAndWait();
+        assertNotNull("sanity: shown again after a new Test", panel.modelHintTextForTest());
+        panel.setAiOpenAiProject("proj_other");
+        assertNull("a Project edit", panel.modelHintTextForTest());
+    }
+
+    public void testAGeminiIdWithItsPrefixIsListed() throws Exception {
+        answer(fixture("gemini/live/models-list.json"));
+        panel.setAiModel("models/gemini-3.8-flash");
+        clickTestAndWait();
+        assertTrue("sanity: Test succeeded", panel.testResultTextForTest().startsWith("Connected"));
+        assertNull(panel.modelHintTextForTest());
+    }
+
+    @SuppressWarnings("unchecked")
+    public void testALateDiscardedFetchLeavesANewerTestsResultLine() throws Exception {
+        CountDownLatch releaseFirst = new CountDownLatch(1);
+        CountDownLatch releaseSecond = new CountDownLatch(1);
+        CountDownLatch bothSent = new CountDownLatch(2);
+        HttpResponse<String> response = mock(HttpResponse.class);
+        when(response.statusCode()).thenReturn(200);
+        when(response.body()).thenReturn(fixture("gemini/models-list.json"));
+        doAnswer(inv -> {
+            // The two workers can reach the client in either order, so tell them apart by the key each sends.
+            java.net.http.HttpRequest request = inv.getArgument(0);
+            CountDownLatch mine = "test-key".equals(request.headers().firstValue("x-goog-api-key").orElse(""))
+                    ? releaseFirst : releaseSecond;
+            bothSent.countDown();
+            if (!mine.await(10, TimeUnit.SECONDS)) throw new IllegalStateException("never released");
+            return response;
+        }).when(client).send(any(), any());
+        panel.setAiModel(RETIRED);
+        panel.clickTestForTest();
+        panel.setApiKey("another-key");
+        panel.clickTestForTest();
+        assertTrue("sanity: both fetches started", bothSent.await(10, TimeUnit.SECONDS));
+        releaseFirst.countDown();
+        long end = System.currentTimeMillis() + 500;
+        while (System.currentTimeMillis() < end) {
+            PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
+            Thread.sleep(20);
+        }
+        assertEquals("the first fetch's late result leaves the running Test's line", "Testing...",
+                panel.testResultTextForTest());
+        releaseSecond.countDown();
+        pumpUntil(() -> !panel.testResultTextForTest().equals("Testing..."));
+        assertTrue(panel.testResultTextForTest().startsWith("Connected"));
+        assertNotNull("the newer Test applies", panel.modelHintTextForTest());
+    }
+
+    @SuppressWarnings("unchecked")
+    public void testTheSavedKeyPlaceholderDoesNotDiscardARunningTest() throws Exception {
+        AiCredentialStore.storeApiKey(AiProvider.GEMINI, "saved-key");
+        CountDownLatch release = new CountDownLatch(1);
+        CountDownLatch sent = new CountDownLatch(1);
+        HttpResponse<String> response = mock(HttpResponse.class);
+        when(response.statusCode()).thenReturn(200);
+        when(response.body()).thenReturn(fixture("gemini/models-list.json"));
+        doAnswer(inv -> {
+            sent.countDown();
+            if (!release.await(10, TimeUnit.SECONDS)) throw new IllegalStateException("never released");
+            return response;
+        }).when(client).send(any(), any());
+        panel.setAiProvider("GEMINI");      // the saved-key placeholder is now on its way
+        panel.setAiModel(RETIRED);
+        panel.clickTestForTest();
+        assertTrue("sanity: the fetch started", sent.await(10, TimeUnit.SECONDS));
+        pumpUntil(() -> OpenSpecSettingsPanel.API_KEY_MASK.equals(panel.getApiKey()));
+        release.countDown();
+        pumpUntil(() -> !panel.testResultTextForTest().equals("Testing..."));
+        assertTrue(panel.testResultTextForTest().startsWith("Connected"));
+        assertNotNull("the placeholder is not a key edit", panel.modelHintTextForTest());
     }
 
     private String firstModel() {

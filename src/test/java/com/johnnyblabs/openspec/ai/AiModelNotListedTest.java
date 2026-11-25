@@ -122,4 +122,16 @@ class AiModelNotListedTest {
         claude.addProperty("has_more", true);
         assertFalse(DirectApiService.pageComplete(AiProvider.CLAUDE, claude.toString()));
     }
+
+    @Test
+    void aMarkerOfAnotherTypeCountsAsPartialWithoutFailingTheFetch() {
+        JsonObject gemini = JsonParser.parseString(fixture("gemini/live/models-list.json")).getAsJsonObject();
+        gemini.add("nextPageToken", new JsonObject());
+        assertFalse(DirectApiService.pageComplete(AiProvider.GEMINI, gemini.toString()));
+        JsonObject claude = JsonParser.parseString(fixture("claude/models-list-live.json")).getAsJsonObject();
+        claude.add("has_more", new JsonObject());
+        assertFalse(DirectApiService.pageComplete(AiProvider.CLAUDE, claude.toString()));
+        claude.addProperty("has_more", "false");
+        assertFalse(DirectApiService.pageComplete(AiProvider.CLAUDE, claude.toString()), "a string isn't the boolean");
+    }
 }

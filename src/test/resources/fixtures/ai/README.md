@@ -80,7 +80,6 @@ mismatch.
 |------|----------|-----------|---------------------------|
 | `openai/models-list.json` | OpenAI | **DOCS** — models/list example (`platform.openai.com/docs/api-reference/models/list`); the page is 403 to automated fetch, so the example was corroborated field-for-field via web search 2026-09-09 | `data[].id` (show-all — see note) |
 | `gemini/models-list.json` | Google Gemini | **LIVE** — captured from a free AI Studio key via `GET /v1beta/models?pageSize=1000` on 2026-09-09; `nextPageToken` dropped, trimmed to a representative set that **keeps at least one non-`generateContent` (embedding) entry** | `models[]` filtered to `supportedGenerationMethods` ∋ `generateContent`, `models/` prefix stripped |
-
 | `gemini/live/models-list.json` | Google Gemini | **LIVE** — captured 2026-11-24 with `scripts/capture-gemini-models-list.py` (the plugin's own `GET /v1beta/models?pageSize=1000`), **untrimmed**: 65 models in one page, no `nextPageToken` | the same; the model-not-listed hint's tests check membership against it (`gemini-flash-latest` listed; `gemini-2.5-pro` listed a week before its 2026-12-01 shutdown) |
 
 The untrimmed capture is load-bearing for membership: a trimmed list would make a listed model look missing. Re-capture it with the script rather than editing it; the script refuses a partial page and a response containing the key.

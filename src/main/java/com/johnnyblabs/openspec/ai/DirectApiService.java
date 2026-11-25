@@ -587,19 +587,22 @@ public final class DirectApiService {
 
     /**
      * Whether a list-models response holds the whole list: false when Gemini sends a non-blank
-     * {@code nextPageToken} or Anthropic sends {@code has_more: true}. OpenAI documents no pagination, so its list is
-     * always whole. Extracted for contract-testing against the captured responses.
+     * {@code nextPageToken} or Anthropic sends {@code has_more: true}, and for a marker of any other type. OpenAI
+     * documents no pagination, so its list is always whole. Extracted for contract-testing against the captured responses.
      */
     static boolean pageComplete(AiProvider provider, String body) {
         JsonObject root = JsonParser.parseString(body).getAsJsonObject();
+        // A marker of an unexpected type counts as "more pages": the list is still used, only the hint is withheld.
         return switch (provider) {
             case GEMINI -> {
                 var token = root.get("nextPageToken");
-                yield token == null || token.isJsonNull() || token.getAsString().isBlank();
+                yield token == null || token.isJsonNull()
+                        || (token.isJsonPrimitive() && token.getAsJsonPrimitive().isString() && token.getAsString().isBlank());
             }
             case CLAUDE -> {
                 var more = root.get("has_more");
-                yield more == null || more.isJsonNull() || !more.getAsBoolean();
+                yield more == null || more.isJsonNull()
+                        || (more.isJsonPrimitive() && more.getAsJsonPrimitive().isBoolean() && !more.getAsBoolean());
             }
             case OPENAI, NONE -> true;
         };

@@ -52,7 +52,7 @@ import java.util.List;
 public class OpenSpecSettingsPanel {
 
     private static final Logger LOG = Logger.getInstance(OpenSpecSettingsPanel.class);
-    private static final String API_KEY_MASK = "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022";
+    static final String API_KEY_MASK = "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022";
 
     private final JPanel mainPanel;
     /** Set once the panel is first shown in the Settings dialog; CLI-backed loads wait for it (see onFirstShown). */
@@ -111,6 +111,12 @@ public class OpenSpecSettingsPanel {
     // Bumped whenever the fetched list is forgotten, so a fetch started before that (before a provider switch or a
     // key edit) can't apply its result.
     private int fetchGeneration;
+    // Bumped by each Test, so a discarded late result clears the result line only when no newer Test is running.
+    private int testRun;
+    // True while the panel itself writes the saved-key placeholder, which is not a key edit.
+    private boolean settingKeyPlaceholder;
+    // The hint's plain text while shown, else null (the label holds it wrapped as HTML).
+    private @org.jetbrains.annotations.Nullable String modelHint;
     // Claude-only: the workspace for keys that aren't scoped to one (sent as anthropic-workspace-id).
     private com.intellij.ui.components.JBTextField aiWorkspaceField;
     private JBLabel aiWorkspaceLabel;
@@ -831,7 +837,9 @@ public class OpenSpecSettingsPanel {
             scope.getDocument().addDocumentListener(new com.intellij.ui.DocumentAdapter() {
                 @Override
                 protected void textChanged(@org.jetbrains.annotations.NotNull javax.swing.event.DocumentEvent e) {
-                    forgetFetchedModels();
+                    if (!settingKeyPlaceholder) {
+                        forgetFetchedModels();
+                    }
                 }
             });
         }
@@ -959,7 +967,14 @@ public class OpenSpecSettingsPanel {
             boolean hasKey = AiCredentialStore.hasApiKey(provider);
             com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater(() -> {
                 if (getSelectedProvider() == provider && hasKey) {
-                    apiKeyField.setText(API_KEY_MASK);
+                    // The placeholder stands for the provider's saved key, which the provider switch already
+                    // accounted for, so it must not discard a fetched list or a running Test.
+                    settingKeyPlaceholder = true;
+                    try {
+                        apiKeyField.setText(API_KEY_MASK);
+                    } finally {
+                        settingKeyPlaceholder = false;
+                    }
                 }
             }, modality);
         });
@@ -998,6 +1013,7 @@ public class OpenSpecSettingsPanel {
         }
 
         final int generation = fetchGeneration;
+        final int run = ++testRun;
         new SwingWorker<DirectApiService.ModelList, Void>() {
             @Override
             protected DirectApiService.ModelList doInBackground() throws Exception {
@@ -1020,7 +1036,9 @@ public class OpenSpecSettingsPanel {
                 if (generation != fetchGeneration) {
                     // The provider, key or request settings changed while the list was fetched, so this result
                     // describes something the form no longer shows.
-                    aiTestResultLabel.setText(" ");
+                    if (run == testRun) {
+                        aiTestResultLabel.setText(" ");
+                    }
                     return;
                 }
                 try {
@@ -1196,8 +1214,13 @@ public class OpenSpecSettingsPanel {
         String model = getAiModel();
         boolean show = AiModelOptions.notListed(provider, model, fetchedModels, fetchedModels != null,
                 fetchedModelsComplete);
-        aiModelHintLabel.setText(show ? modelNotListedHint(model, provider) : " ");
+        modelHint = show ? modelNotListedHint(model, provider) : null;
+        // Wrapped like the section's other help text, so a long model name can't widen the dialog.
+        aiModelHintLabel.setText(show
+                ? "<html><body style='width:" + JBUI.scale(400) + "px'>" + escapeHtml(modelHint) + "</body></html>"
+                : " ");
         aiModelHintLabel.setVisible(show);
+        aiModelCombo.getAccessibleContext().setAccessibleDescription(modelHint);
     }
 
     /** The hint's wording. It names no replacement: providers' own pages disagree on what replaces a model. */
@@ -1464,7 +1487,7 @@ public class OpenSpecSettingsPanel {
 
     /** The model hint's text while it's shown, else null. */
     @org.jetbrains.annotations.Nullable String modelHintTextForTest() {
-        return aiModelHintLabel.isVisible() ? aiModelHintLabel.getText() : null;
+        return aiModelHintLabel.isVisible() ? modelHint : null;
     }
 
     /** The selector's first option. */
