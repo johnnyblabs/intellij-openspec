@@ -40,7 +40,7 @@
     - each `.claude/skills/openspec-*` add reads as a link to its shared skill.
     - Negative controls: the existing 1.15–1.17 and 2.x `update-dry-run` plans, and 2.1.x `after-2.0.0-kept`, keep today's grouping with no banner.
     - Mutation: deriving command paths from file names only turns `nested-commands` red.
-- [ ] 2.2 Add `UpdateMigration.atRiskFiles(projectRoot, plan)` (design decision 2). Verify with a plain test that recreates each capture's `before.json` through `FixtureLayout`:
+- [x] 2.2 Add `UpdateMigration.atRiskFiles(projectRoot, plan)` (design decision 2). Verify with a plain test that recreates each capture's `before.json` through `FixtureLayout`:
   - `edited` on 2.1.0 and 2.1.1: exactly the edited `.claude` and `.cursor` `openspec-explore/SKILL.md`; on 2.0.0, nothing;
   - `after-2.0.0-kept` on 2.1.x: both kept copies;
   - `notes-beside-skill` on 2.1.x: each `notes.md` and no `.DS_Store`;

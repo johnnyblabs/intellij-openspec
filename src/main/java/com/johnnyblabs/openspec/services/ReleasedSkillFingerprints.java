@@ -82,6 +82,18 @@ public final class ReleasedSkillFingerprints {
         return replaced + normalized.substring(frontmatter.length());
     }
 
+    /**
+     * The version in the front matter's first {@code generatedBy:} line, when it is a valid version, else {@code null}.
+     */
+    static @org.jetbrains.annotations.Nullable String generatedVersion(String content) {
+        Matcher fm = FRONTMATTER.matcher(normalizeFile(content));
+        if (!fm.find()) return null;
+        Matcher line = VERSION_LINE.matcher(fm.group());
+        if (!line.find()) return null;
+        String version = line.group(2) != null ? line.group(2) : line.group(3) != null ? line.group(3) : line.group(4);
+        return version != null && GENERATED_VERSION.matcher(version).matches() ? version : null;
+    }
+
     /** Upstream's {@code fingerprintGeneratedContent}: the first 16 hex digits of the normalized text's sha256. */
     static String fingerprint(String content) {
         try {

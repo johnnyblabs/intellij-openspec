@@ -75,9 +75,9 @@ The preview already renders the CLI's plan.
 A planned in-project `delete` or `update` is **at risk** when its path lies under `<folder>/skills/openspec-*/` (any `<folder>`, `.agents` included), the file on disk is not a link, and:
 
 - **For a file other than `SKILL.md`:** always, unless it is operating-system junk (upstream's `isOsJunk`: `.DS_Store`, `Thumbs.db`, `desktop.ini`, `._*`).
-- **For a `SKILL.md` whose front matter `generatedBy` is a 1.x version, or absent:** when it is not released (`ReleasedSkillFingerprints.isReleased`).
-- **For a `SKILL.md` with a 2.x `generatedBy` in a tool folder:** when it differs from that skill's shared copy in `.agents/skills/` on disk, compared after upstream's normalization and with `allowed-tools` removed from both front matters (upstream's Eve transform). The comparison is with the shared copy *before* the update, so it asks "is this still the copy the last update wrote?"
-- **For a 2.x shared copy in `.agents/skills/`:** not judged. The plugin can't reproduce a 2.x rendering, and 2.1 gives no signal. This is recorded in Risks.
+- **For a `SKILL.md` that is a released file** (`ReleasedSkillFingerprints.isReleased`): never.
+- **For any other `SKILL.md` in a tool folder:** unless it still equals that skill's shared copy in `.agents/skills/` on disk. The comparison reads both front matters as YAML, ignores `allowed-tools` (upstream's per-tool rewrite drops it and re-serializes the rest, folding long lines), and compares the bodies after leading blank lines. It is made with the shared copy *before* the update, so it asks "is this still the copy the last update wrote?" With no shared copy, the file is at risk.
+- **For any other `SKILL.md` in the shared folder:** only when its `generatedBy` names a 1.x release. 2.1 writes no `generatedBy` and 2.0.0 writes its own version, and the plugin can't reproduce a 2.x rendering to compare with, so a 2.x shared copy is not judged (Risks).
 - **For a file that can't be read:** always. Upstream calls an unreadable file the user's.
 
 A delete of a tool folder's skill-folder link or the marker is never at risk.

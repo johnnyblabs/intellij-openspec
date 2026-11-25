@@ -105,6 +105,100 @@ public final class UpdateMigration {
         return SHARED_PREFIX + m.group(1);
     }
 
+    /** A planned change OpenSpec can't confirm it generated: the update deletes or overwrites it and keeps no copy. */
+    public record AtRisk(String path, String action) {
+    }
+
+    /**
+     * The planned in-project deletes and updates of files in OpenSpec skill folders that OpenSpec can't confirm as its
+     * own, read from the project at {@code projectRoot} before the update runs. Reads the disk: call off the UI thread.
+     * <ul>
+     *   <li>A file reached through a link is never at risk: the update removes the link, not the file.</li>
+     *   <li>A file other than {@code SKILL.md} is at risk unless it is operating-system junk.</li>
+     *   <li>A {@code SKILL.md} that is a released file ({@link ReleasedSkillFingerprints}) is never at risk.</li>
+     *   <li>Any other {@code SKILL.md} in a tool folder is at risk unless it still equals the shared copy, apart from
+     *       upstream's per-tool front-matter rewrite ({@code allowed-tools} dropped).</li>
+     *   <li>Any other {@code SKILL.md} in the shared folder is at risk only when its {@code generatedBy} names a 1.x
+     *       release: 2.1 writes no {@code generatedBy}, 2.0.0 its own version, and the plugin can't reproduce a 2.x
+     *       rendering to compare with.</li>
+     *   <li>A file that can't be read is at risk.</li>
+     * </ul>
+     */
+    public static java.util.List<AtRisk> atRiskFiles(java.nio.file.Path projectRoot, Plan plan) {
+        java.util.List<AtRisk> risky = new java.util.ArrayList<>();
+        for (Change c : plan.changes()) {
+            if (c.outsideProject() || !(c.action().equals("delete") || c.action().equals("update"))) continue;
+            if (!inSkillFolder(c.path())) continue;
+            java.nio.file.Path file = projectRoot.resolve(c.path());
+            if (throughLink(projectRoot, file)) continue;
+            if (atRisk(projectRoot, c.path(), file)) risky.add(new AtRisk(c.path(), c.action()));
+        }
+        return java.util.List.copyOf(risky);
+    }
+
+    private static boolean atRisk(java.nio.file.Path root, String path, java.nio.file.Path file) {
+        String name = file.getFileName().toString();
+        if (!name.equals("SKILL.md")) return !SkillSpot.isOsJunk(name);
+        String content;
+        try {
+            content = java.nio.file.Files.readString(file);
+        } catch (java.io.IOException | RuntimeException e) {
+            return true;
+        }
+        if (ReleasedSkillFingerprints.isReleased(content)) return false;
+        if (path.startsWith(SHARED_PREFIX)) {
+            // A 1.x shared copy that isn't released was edited; a 2.x one can't be judged (no 2.x rendering to compare).
+            String version = ReleasedSkillFingerprints.generatedVersion(content);
+            return version != null && !com.johnnyblabs.openspec.util.CliVersion.atLeast(version, "2.0.0");
+        }
+        String skill = file.getParent().getFileName().toString();
+        java.nio.file.Path shared = root.resolve(SHARED_PREFIX + skill + "/SKILL.md");
+        try {
+            return !java.nio.file.Files.isRegularFile(shared) || !sameSkill(content, java.nio.file.Files.readString(shared));
+        } catch (java.io.IOException | RuntimeException e) {
+            return true;
+        }
+    }
+
+    /** Whether {@code file}, or a folder between it and {@code root}, is a link. */
+    private static boolean throughLink(java.nio.file.Path root, java.nio.file.Path file) {
+        for (java.nio.file.Path p = file; p != null && !p.equals(root); p = p.getParent()) {
+            if (java.nio.file.Files.isSymbolicLink(p)) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Whether two skill files say the same: the same front matter, read as data, apart from {@code allowed-tools}
+     * (which upstream drops for some tools, re-serializing the rest), and the same body after leading blank lines.
+     */
+    static boolean sameSkill(String a, String b) {
+        String[] pa = split(ReleasedSkillFingerprints.normalizeFile(a));
+        String[] pb = split(ReleasedSkillFingerprints.normalizeFile(b));
+        if (pa == null || pb == null) return false;
+        return frontMatter(pa[0]).equals(frontMatter(pb[0])) && pa[1].equals(pb[1]);
+    }
+
+    /** {front matter, body without leading blank lines}, or {@code null} without front matter. */
+    private static String @org.jetbrains.annotations.Nullable [] split(String text) {
+        if (!text.startsWith("---\n")) return null;
+        int end = text.indexOf("\n---", 4);
+        if (end < 0) return null;
+        int bodyStart = text.indexOf('\n', end + 4);
+        String body = bodyStart < 0 ? "" : text.substring(bodyStart + 1).replaceFirst("^\\n+", "");
+        return new String[]{text.substring(4, end), body};
+    }
+
+    private static Map<String, Object> frontMatter(String yaml) {
+        Object loaded = new org.yaml.snakeyaml.Yaml(new org.yaml.snakeyaml.constructor.SafeConstructor(
+                new org.yaml.snakeyaml.LoaderOptions())).load(yaml);
+        if (!(loaded instanceof Map<?, ?> map)) return Map.of();
+        Map<String, Object> copy = new java.util.TreeMap<>();
+        map.forEach((k, v) -> copy.put(String.valueOf(k), v));
+        copy.remove("allowed-tools");
+        return copy;
+    }
+
     /** Whether {@code path} is one of the files a 1.x command adapter writes. Package-private for tests. */
     static boolean isCommandPath(String path) {
         return COMMAND_PATHS.contains(path);
