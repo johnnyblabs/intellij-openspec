@@ -1,0 +1,141 @@
+{
+  "changes": [
+    {
+      "path": ".agents/skills/.openspec-target",
+      "action": "update",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-apply-change/SKILL.md",
+      "action": "update",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-archive-change/SKILL.md",
+      "action": "update",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-explore/SKILL.md",
+      "action": "update",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-propose/SKILL.md",
+      "action": "update",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-sync-specs/SKILL.md",
+      "action": "update",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-update-change/SKILL.md",
+      "action": "update",
+      "tool": "openspec"
+    },
+    {
+      "path": ".claude/commands/opsx/apply.md",
+      "action": "delete",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/commands/opsx/archive.md",
+      "action": "delete",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/commands/opsx/explore.md",
+      "action": "delete",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/commands/opsx/propose.md",
+      "action": "delete",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/commands/opsx/sync.md",
+      "action": "delete",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/commands/opsx/update.md",
+      "action": "delete",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-apply-change",
+      "action": "add",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-apply-change/SKILL.md",
+      "action": "delete",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-archive-change",
+      "action": "add",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-archive-change/SKILL.md",
+      "action": "delete",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-explore",
+      "action": "add",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-explore/SKILL.md",
+      "action": "delete",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-propose",
+      "action": "add",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-propose/SKILL.md",
+      "action": "delete",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-sync-specs",
+      "action": "add",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-sync-specs/SKILL.md",
+      "action": "delete",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-update-change",
+      "action": "add",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-update-change/SKILL.md",
+      "action": "delete",
+      "tool": "claude"
+    },
+    {
+      "path": "~/.config/openspec/config.json",
+      "action": "add",
+      "tool": "openspec"
+    }
+  ],
+  "notes": [
+    {
+      "code": "edited-skills",
+      "message": "Update will replace your edits in .agents/skills/openspec-explore/SKILL.md and keep no copy. OpenSpec refreshes the skills it installs on every update. Save your text first, and keep lasting changes in a skill of your own under another name."
+    }
+  ],
+  "failures": []
+}

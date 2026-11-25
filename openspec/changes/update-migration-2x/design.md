@@ -26,7 +26,7 @@ Further losses the same review observed on 2.1.0 and 2.1.1, each with nothing in
 - **Files beside a skill.** A `notes.md` in a tool folder's `openspec-explore/` is planned as a `delete` and removed. 2.0.0 keeps the folder.
 - **Copies 2.1 writes instead of links:** Eve's `agent/skills/` (and every tool on Windows). An edited copy is overwritten, planned as an `update` of the same path.
 - **An edited shared copy** in `.agents/skills/` is overwritten, planned as an `update`. 2.0.0 notes it with `edited-skills` ("Update will replace your edits in … and keep no copy") and prints `Replaced your edits in 1 skill OpenSpec installs: …`.
-- **A project 2.0.0 already migrated.** 2.0.0 kept the edited copies; a later 2.1 update plans the delete of the kept `.cursor` copy and removes it. There is no marker add in that plan.
+- **A project 2.0.0 already migrated.** 2.0.0 kept the edited copies; a later 2.1 update plans the delete of both kept copies (`.claude` and `.cursor`) and removes them. There is no marker add in that plan.
 
 Other facts this design rests on:
 

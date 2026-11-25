@@ -21,6 +21,10 @@ import java.util.stream.Stream;
  * path under {@code /fixture/demo-project} or {@code /fixture/home}, the names the capture gives the two sides.
  * <p>
  * {@link LinkMode} picks how each link is written, covering the three forms a user's checkout can hold.
+ * <p>
+ * A content value {@code "@<key>"} names a text stored once in a separate map (the update-migration captures keep each
+ * release's file texts in {@code update-migration/texts.json}); pass that map to
+ * {@link #materialize(JsonObject, Path, Path, LinkMode, JsonObject)}. Without one, values are written as they are.
  */
 public final class FixtureLayout {
 
@@ -44,8 +48,14 @@ public final class FixtureLayout {
 
     /** Writes both sides of {@code layout} and then its links. Files come first: a link's target must exist. */
     public static void materialize(JsonObject layout, Path project, Path home, LinkMode mode) throws IOException {
-        writeFiles(layout.getAsJsonObject("project"), project);
-        writeFiles(layout.getAsJsonObject("home"), home);
+        materialize(layout, project, home, mode, null);
+    }
+
+    /** As {@link #materialize(JsonObject, Path, Path, LinkMode)}, resolving {@code "@<key>"} values from {@code texts}. */
+    public static void materialize(JsonObject layout, Path project, Path home, LinkMode mode, JsonObject texts)
+            throws IOException {
+        writeFiles(layout.getAsJsonObject("project"), project, texts);
+        writeFiles(layout.getAsJsonObject("home"), home, texts);
         JsonObject links = layout.getAsJsonObject("links");
         if (links == null) return;
         writeLinks(links.getAsJsonObject("project"), project, project, home, mode);
@@ -54,13 +64,26 @@ public final class FixtureLayout {
 
     /** Writes one side's files under {@code root}. */
     public static void writeFiles(JsonObject files, Path root) throws IOException {
+        writeFiles(files, root, null);
+    }
+
+    /** Writes one side's files under {@code root}, resolving {@code "@<key>"} values from {@code texts}. */
+    public static void writeFiles(JsonObject files, Path root, JsonObject texts) throws IOException {
         Files.createDirectories(root);
         if (files == null) return;
         for (Map.Entry<String, JsonElement> f : files.entrySet()) {
             Path path = root.resolve(f.getKey());
             Files.createDirectories(path.getParent());
-            Files.writeString(path, f.getValue().getAsString());
+            Files.writeString(path, content(f.getValue().getAsString(), texts));
         }
+    }
+
+    /** A recorded value as file content: a {@code "@<key>"} reference resolved from {@code texts}, else the value. */
+    static String content(String value, JsonObject texts) {
+        if (texts == null || !value.startsWith("@")) return value;
+        JsonElement text = texts.get(value.substring(1));
+        if (text == null) throw new IllegalArgumentException("no stored text for " + value);
+        return text.getAsString();
     }
 
     private static void writeLinks(JsonObject links, Path side, Path project, Path home, LinkMode mode)

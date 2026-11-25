@@ -1,0 +1,51 @@
+{
+  "changes": [
+    {
+      "path": ".agents/skills/openspec-apply-change/SKILL.md",
+      "action": "update",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-archive-change/SKILL.md",
+      "action": "update",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-explore/SKILL.md",
+      "action": "update",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-propose/SKILL.md",
+      "action": "update",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-sync-specs/SKILL.md",
+      "action": "update",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-update-change/SKILL.md",
+      "action": "update",
+      "tool": "openspec"
+    },
+    {
+      "path": ".claude/skills/openspec-explore",
+      "action": "add",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-explore/SKILL.md",
+      "action": "delete",
+      "tool": "claude"
+    },
+    {
+      "path": ".cursor/skills/openspec-explore/SKILL.md",
+      "action": "delete",
+      "tool": "openspec"
+    }
+  ],
+  "notes": [],
+  "failures": []
+}

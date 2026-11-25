@@ -1,0 +1,176 @@
+{
+  "changes": [
+    {
+      "path": ".agents/skills/.openspec-target",
+      "action": "add",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-apply-change/SKILL.md",
+      "action": "add",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-archive-change/SKILL.md",
+      "action": "add",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-explore/SKILL.md",
+      "action": "add",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-propose/SKILL.md",
+      "action": "add",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-sync-specs/SKILL.md",
+      "action": "add",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-update-change/SKILL.md",
+      "action": "add",
+      "tool": "openspec"
+    },
+    {
+      "path": ".claude/commands/opsx/apply.md",
+      "action": "delete",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/commands/opsx/archive.md",
+      "action": "delete",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/commands/opsx/propose.md",
+      "action": "delete",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/commands/opsx/sync.md",
+      "action": "delete",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/commands/opsx/update.md",
+      "action": "delete",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-apply-change",
+      "action": "add",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-apply-change/SKILL.md",
+      "action": "delete",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-archive-change",
+      "action": "add",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-archive-change/SKILL.md",
+      "action": "delete",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-propose",
+      "action": "add",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-propose/SKILL.md",
+      "action": "delete",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-sync-specs",
+      "action": "add",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-sync-specs/SKILL.md",
+      "action": "delete",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-update-change",
+      "action": "add",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-update-change/SKILL.md",
+      "action": "delete",
+      "tool": "claude"
+    },
+    {
+      "path": ".cursor/commands/opsx-apply.md",
+      "action": "delete",
+      "tool": "cursor"
+    },
+    {
+      "path": ".cursor/commands/opsx-archive.md",
+      "action": "delete",
+      "tool": "cursor"
+    },
+    {
+      "path": ".cursor/commands/opsx-explore.md",
+      "action": "delete",
+      "tool": "cursor"
+    },
+    {
+      "path": ".cursor/commands/opsx-propose.md",
+      "action": "delete",
+      "tool": "cursor"
+    },
+    {
+      "path": ".cursor/commands/opsx-sync.md",
+      "action": "delete",
+      "tool": "cursor"
+    },
+    {
+      "path": ".cursor/commands/opsx-update.md",
+      "action": "delete",
+      "tool": "cursor"
+    },
+    {
+      "path": ".cursor/skills/openspec-apply-change/SKILL.md",
+      "action": "delete",
+      "tool": "cursor"
+    },
+    {
+      "path": ".cursor/skills/openspec-archive-change/SKILL.md",
+      "action": "delete",
+      "tool": "cursor"
+    },
+    {
+      "path": ".cursor/skills/openspec-propose/SKILL.md",
+      "action": "delete",
+      "tool": "cursor"
+    },
+    {
+      "path": ".cursor/skills/openspec-sync-specs/SKILL.md",
+      "action": "delete",
+      "tool": "cursor"
+    },
+    {
+      "path": ".cursor/skills/openspec-update-change/SKILL.md",
+      "action": "delete",
+      "tool": "cursor"
+    },
+    {
+      "path": "~/.config/openspec/config.json",
+      "action": "add",
+      "tool": "openspec"
+    }
+  ],
+  "notes": [],
+  "failures": []
+}

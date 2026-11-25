@@ -1,0 +1,8 @@
+Updating 2 tool(s): claude (1.17.0 → 2.1.0), cursor (1.17.0 → 2.1.0)
+
+✗ Could not write the shared skills in .agents/skills: Git is needed to install the OpenSpec skills, and it is not on your PATH. Install Git and run this again.
+
+✗ Failed: Claude Code (the shared skills in .agents/skills could not be written: Git is needed to install the OpenSpec skills, and it is not on your PATH. Install Git and run this again.), Cursor (the shared skills in .agents/skills could not be written: Git is needed to install the OpenSpec skills, and it is not on your PATH. Install Git and run this again.)
+Note: 6 more workflows are available (new, continue, ff, bulk-archive, verify, onboard).
+Add them with `openspec config profile`.
+

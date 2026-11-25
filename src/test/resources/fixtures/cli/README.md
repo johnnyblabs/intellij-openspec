@@ -788,6 +788,7 @@ On 2.1.0 and later a plain `init --tools` installs skills for the whole machine.
 | `workflow-invocations.json` | `OPENSPEC_BIN=<package>/bin/openspec.js scripts/capture-workflow-invocations.py` |
 | `explore/`, `update/` | `OPENSPEC_BIN="node <package>/bin/openspec.js" scripts/capture-explore-fixtures.py` |
 | `update-dry-run/` | `CAPTURE_VERSION=<v> scripts/capture-update-dry-run-fixtures.py` |
+| `update-migration/` | `CAPTURE_VERSIONS=<v>,... scripts/capture-update-migration-fixtures.py` |
 | `version.txt`, `config-list.json`, `errors/init-*`, `home-state/projects.json`, `validate-parity-corpus{,-strict}.json`, `instructions/instructions-{design,specs}.json` | `scripts/capture-cli-generation.py <v>...` |
 | `help/` (every supported line, not only 2.x) | `scripts/capture-help-sweep.py` |
 | `fingerprints/vectors.json`, and `src/main/resources/openspec/released-skill-fingerprints.txt` | `CAPTURE_VERSION=<v> scripts/capture-released-fingerprints.py` (`--vectors-only` leaves the resource alone) |
@@ -916,3 +917,31 @@ Real CLI **2.1.1** captures (released 2026-11-19, `dist.integrity` `sha512-GQv1x
 - The version stamps.
 
 `1.17.0/errors/init-scope-project.*` (exit 1, `unknown option '--scope'`) was captured alongside, by `scripts/capture-cli-generation.py`.
+
+## `2.x/update-migration/` — what a 2.x `update` does to a project an earlier release set up
+
+From `scripts/capture-update-migration-fixtures.py`, on 2.0.0, 2.1.0 and 2.1.1. Each case is seeded by CLI 1.17.0 (plain `init`, the core profile) unless it says otherwise. The release under test then runs `update --dry-run --json` (`plan.json`, `plan.exit`), `update --dry-run --force --json` (`plan-force.json`) and `update` (`applied.txt`, `applied.exit`, `applied.stderr` when non-empty). Both dry runs are checked to write nothing.
+
+`before.json` and `after.json` are the project and HOME before the dry runs and after the applied run, in the detect format with links as data; the `openspec/` tree is left out. File contents are stored once per release in `update-migration/texts.json`, keyed by the first 16 hex digits of their sha256, and a layout value `"@<key>"` names one. `FixtureLayout.materialize(..., texts)` resolves them.
+
+| Case | Seed | What it shows |
+|---|---|---|
+| `unedited` | Claude and Cursor | the migration itself |
+| `edited` | the same, plus a line appended to `.claude/commands/opsx/explore.md` and both `openspec-explore/SKILL.md` copies | 2.0.0 keeps the edited copies and reports them; 2.1.x deletes them and reports nothing. All three keep the edited command file and report it |
+| `notes-beside-skill` | Claude and Cursor, with a `notes.md` and a `.DS_Store` in both `openspec-explore` folders | 2.1.x deletes the files beside a skill |
+| `shared-folder` | Claude and Codex, with the shared `openspec-explore/SKILL.md` edited | 1.x already wrote `.agents/skills/.openspec-target`, so the plan updates it; 2.0.0 notes `edited-skills` |
+| `nested-commands` | Gemini and Claude | command files in nested `opsx/` folders, `.toml` included |
+| `narrow-profile` | Claude, with the workflows `explore` and `apply` only | 1.17 texts the released-file set doesn't hold |
+| `after-2.0.0-kept` (2.1.x) | `edited`, then updated by 2.0.0 | 2.1 deletes both copies 2.0.0 kept, with no marker add in the plan |
+| `eve-edited` (2.1.1) | Eve set up by 2.1.1, its `agent/skills/openspec-explore/SKILL.md` edited | an edited copy written in place of a link is overwritten: an `update` in the plan |
+| `no-git` (2.1.0) | as `unedited`, the applied update run with a PATH holding only node | exit 1, the project unchanged; stdout names Git |
+
+What each release does, from these captures:
+
+| | 2.0.0 | 2.1.0 and 2.1.1 |
+|---|---|---|
+| Cursor's copy deletes | tool `cursor` | tool `openspec` |
+| Edited tool-folder skill copy | kept, left out of the plan; `Kept N skill folder(s) with your own changes: …` | deleted, listed in the plan; nothing printed |
+| Unedited copies | `Replaced N unchanged skill copies in tool folders with the one shared copy in .agents/skills.` | nothing printed |
+| Edited command file | kept, left out of the plan; `Kept N command file(s) that do(es) not match what OpenSpec generated (likely edited):` and the indented paths | same |
+

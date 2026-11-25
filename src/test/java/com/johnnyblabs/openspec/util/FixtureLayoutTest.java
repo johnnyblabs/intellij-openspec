@@ -105,4 +105,34 @@ class FixtureLayoutTest {
         assertThrows(IllegalArgumentException.class,
                 () -> FixtureLayout.materialize(layout, project(), home(), LinkMode.COPY));
     }
+
+    /** The update-migration captures store each text once: a {@code "@<key>"} value is resolved from that map. */
+    @Test
+    void aStoredTextReferenceIsWrittenAsTheText() throws IOException {
+        JsonObject layout = JsonParser.parseString("""
+                {"project": {"a/SKILL.md": "@k1", "b.txt": "@plain"}, "home": {"c.md": "@k1"}}""").getAsJsonObject();
+        JsonObject texts = JsonParser.parseString("""
+                {"k1": "stored text\\n", "plain": "second\\n"}""").getAsJsonObject();
+        FixtureLayout.materialize(layout, project(), home(), LinkMode.SYMLINK_OR_COPY, texts);
+        assertEquals("stored text\n", Files.readString(project().resolve("a/SKILL.md")));
+        assertEquals("second\n", Files.readString(project().resolve("b.txt")));
+        assertEquals("stored text\n", Files.readString(home().resolve("c.md")));
+    }
+
+    @Test
+    void anUnknownTextReferenceIsRefused() {
+        JsonObject layout = JsonParser.parseString("""
+                {"project": {"a.md": "@missing"}, "home": {}}""").getAsJsonObject();
+        assertThrows(IllegalArgumentException.class, () ->
+                FixtureLayout.materialize(layout, project(), home(), LinkMode.SYMLINK_OR_COPY, new JsonObject()));
+    }
+
+    /** Without a text map, a value is written as it is, even one starting with {@code @}. */
+    @Test
+    void withoutATextMapValuesAreWrittenAsRecorded() throws IOException {
+        JsonObject layout = JsonParser.parseString("""
+                {"project": {"a.md": "@not-a-key"}, "home": {}}""").getAsJsonObject();
+        FixtureLayout.materialize(layout, project(), home(), LinkMode.SYMLINK_OR_COPY);
+        assertEquals("@not-a-key", Files.readString(project().resolve("a.md")));
+    }
 }

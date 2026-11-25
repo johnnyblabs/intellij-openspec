@@ -1,0 +1,36 @@
+{
+  "changes": [
+    {
+      "path": ".agents/skills/.openspec-target",
+      "action": "add",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-apply-change/SKILL.md",
+      "action": "add",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-explore/SKILL.md",
+      "action": "add",
+      "tool": "openspec"
+    },
+    {
+      "path": ".claude/commands/opsx/explore.md",
+      "action": "delete",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-explore",
+      "action": "add",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-explore/SKILL.md",
+      "action": "delete",
+      "tool": "claude"
+    }
+  ],
+  "notes": [],
+  "failures": []
+}

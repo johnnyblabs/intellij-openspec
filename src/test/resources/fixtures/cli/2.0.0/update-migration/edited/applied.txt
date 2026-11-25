@@ -1,0 +1,15 @@
+Updating 2 tool(s): claude (1.17.0 → 2.0.0), cursor (1.17.0 → 2.0.0)
+
+Replaced 10 unchanged skill copies in tool folders with the one shared copy in .agents/skills.
+Kept 2 skill folders with your own changes: .claude/skills/openspec-explore, .cursor/skills/openspec-explore. Nothing was overwritten. Compare each with .agents/skills and delete yours once you have kept what you need.
+
+✓ Updated: Claude Code, Cursor (v2.0.0)
+Removed: 11 command files (OpenSpec 2.0 installs skills only)
+Kept 1 command file that does not match what OpenSpec generated (likely edited):
+  .claude/commands/opsx/explore.md
+Move anything worth keeping into the skill, then delete by hand.
+Note: 6 more workflows are available (new, continue, ff, bulk-archive, verify, onboard).
+Add them with `openspec config profile`.
+Tools: Claude Code, Cursor
+
+Restart your IDE to refresh skills.

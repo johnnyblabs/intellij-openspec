@@ -1,0 +1,15 @@
+{
+  "home": {},
+  "links": {
+    "project": {
+      ".claude/skills/openspec-explore": "../../.agents/skills/openspec-explore"
+    }
+  },
+  "project": {
+    ".agents/skills/.openspec-target": "@dc2f4f2af7434956",
+    ".agents/skills/openspec-apply-change/SKILL.md": "@930f4fb04784ab09",
+    ".agents/skills/openspec-explore/SKILL.md": "@8ebaf1370e42c7a1",
+    ".claude/commands/opsx/apply.md": "@c9d74dd6e929e649",
+    ".claude/skills/openspec-apply-change/SKILL.md": "@90cebf1396c46b1f"
+  }
+}

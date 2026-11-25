@@ -2,7 +2,7 @@
 
 ## 1. Captures of the real migration
 
-- [ ] 1.1 Add `scripts/capture-update-migration-fixtures.py`, written in the style of the other 2.x scripts (`scripts/lib/openspec_capture.py`, isolated HOME and `XDG_*`, `OPEN_SPEC_INTERACTIVE=0`, stdin closed, paths sanitized to `/fixture/demo-project` and `/fixture/home`, links as data).
+- [x] 1.1 Add `scripts/capture-update-migration-fixtures.py`, written in the style of the other 2.x scripts (`scripts/lib/openspec_capture.py`, isolated HOME and `XDG_*`, `OPEN_SPEC_INTERACTIVE=0`, stdin closed, paths sanitized to `/fixture/demo-project` and `/fixture/home`, links as data).
   - Each case seeds a project with CLI 1.17.0 (plain `init --tools …`, the default core profile), then runs the release under test.
   - Per case it writes to `<v>/update-migration/<case>/`:
     - `plan.json` from `update --dry-run --json`;
@@ -23,7 +23,7 @@
   - Document the family in `fixtures/cli/README.md`, with design.md's table and the further losses.
   - Verify:
     - the captures reproduce the design's table: 2.0.0's `edited/after.json` still holds the edited `.claude` and `.cursor` skill files, and 2.1.x's don't;
-    - 2.1.x `after-2.0.0-kept/plan.json` deletes the kept `.cursor` copy;
+    - 2.1.x `after-2.0.0-kept/plan.json` deletes both kept copies (`.claude` and `.cursor`);
     - `no-git/applied.exit` is 1;
     - `FixtureNoSymlinkHygieneTest` and `DocumentationHygieneTest` pass.
 
@@ -42,7 +42,7 @@
     - Mutation: deriving command paths from file names only turns `nested-commands` red.
 - [ ] 2.2 Add `UpdateMigration.atRiskFiles(projectRoot, plan)` (design decision 2). Verify with a plain test that recreates each capture's `before.json` through `FixtureLayout`:
   - `edited` on 2.1.0 and 2.1.1: exactly the edited `.claude` and `.cursor` `openspec-explore/SKILL.md`; on 2.0.0, nothing;
-  - `after-2.0.0-kept` on 2.1.x: the kept `.cursor` copy;
+  - `after-2.0.0-kept` on 2.1.x: both kept copies;
   - `notes-beside-skill` on 2.1.x: each `notes.md` and no `.DS_Store`;
   - `eve-edited`: the overwritten Eve copy; an unedited Eve copy, equal to the shared copy apart from `allowed-tools`, is not at risk;
   - `narrow-profile` on 2.1.x: the unreleased `openspec-apply-change/SKILL.md`, the known false warning recorded in design Risks;

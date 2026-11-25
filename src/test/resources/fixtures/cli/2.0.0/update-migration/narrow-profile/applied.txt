@@ -1,0 +1,14 @@
+Updating 1 tool(s): claude (1.17.0 → 2.0.0)
+
+Replaced 1 unchanged skill copy in tool folders with the one shared copy in .agents/skills.
+Kept 1 skill folder with your own changes: .claude/skills/openspec-apply-change. Nothing was overwritten. Compare each with .agents/skills and delete yours once you have kept what you need.
+
+✓ Updated: Claude Code (v2.0.0)
+Removed: 1 command file (OpenSpec 2.0 installs skills only)
+Kept 1 command file that does not match what OpenSpec generated (likely edited):
+  .claude/commands/opsx/apply.md
+Move anything worth keeping into the skill, then delete by hand.
+Note: Your custom profile is missing 4 core workflows: propose, update, sync, archive
+Run `openspec config profile` to add them, or `openspec config profile core` to use the core set.
+Tools: Claude Code
+
