@@ -485,6 +485,29 @@ public class UpdatePreviewServiceTest extends BasePlatformTestCase {
         assertEquals(List.of(), keptNotices());
     }
 
+    public void testA210UpdateWithoutGitNamesGitAndTheNetwork() throws IOException {
+        projectBefore("2.1.0", "no-git");
+        service.setSeamsForTest(cli(migrationPlan("2.1.0", "no-git"), appliedRun("2.1.0", "no-git"), null), model -> true);
+        service.setCliVersionForTest("2.1.0");
+
+        service.previewAndApply(UpdatePreviewService.Origin.ACTION, null, r -> {});
+
+        assertEquals(1, messages(NotificationType.WARNING).stream()
+                .filter(m -> m.contains(UpdatePreviewService.GIT_NETWORK_HINT)).count());
+    }
+
+    public void testTheGitHintIsOnlyFor210AndOnlyForGit() {
+        CliRunner.CliResult noGit = appliedRun("2.1.0", "no-git");
+        CliRunner.CliResult readOnly = appliedRun("2.1.0", "read-only-applied");
+        assertEquals("sanity: both captures failed", List.of(1, 1), List.of(noGit.exitCode(), readOnly.exitCode()));
+        assertTrue(UpdatePreviewService.needsGitHint(noGit, "2.1.0"));
+        assertFalse("another failure", UpdatePreviewService.needsGitHint(readOnly, "2.1.0"));
+        assertFalse(UpdatePreviewService.needsGitHint(noGit, "2.1.1"));
+        assertFalse(UpdatePreviewService.needsGitHint(noGit, "2.0.0"));
+        assertFalse(UpdatePreviewService.needsGitHint(noGit, null));
+        assertFalse("a success never gets it", UpdatePreviewService.needsGitHint(appliedRun("2.1.0", "unedited"), "2.1.0"));
+    }
+
     // ---------- The profile switch ----------
 
     public void testOnCli115TheProfileSwitchShowsThePreviewInsteadOfAsking() {

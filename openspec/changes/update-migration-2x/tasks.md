@@ -90,11 +90,11 @@
   - A truncated header yields nothing.
 - [x] 4.2 After an applied update with any report, show one notification listing each path, a link for paths in the project, with the CLI's guidance; a replaced-edits report shows as a warning.
   - Verify with `UpdatePreviewServiceTest`: an applied run whose stdout is `edited/applied.txt` raises one notification carrying those paths, and an `unedited` one raises none.
-- [ ] 4.3 Add the 2.1.0 Git and network sentence to the applied-update failure report (design decision 9).
+- [x] 4.3 Add the 2.1.0 Git and network sentence to the applied-update failure report (design decision 9).
   - Verify with `UpdatePreviewServiceTest`:
     - the captured `2.1.0/update-migration/no-git` run gets the sentence;
     - the same output with the detected version 2.1.1 or 2.0.0 doesn't;
-    - a 2.1.0 failure without the Git text (`update-dry-run/read-only-failure`'s message as the applied output) doesn't.
+    - a 2.1.0 failure without the Git text (the captured `2.1.0/update-migration/read-only-applied` run) doesn't.
 
 ## 5. The one-time migration notice
 

@@ -190,15 +190,31 @@ public final class UpdatePreviewService {
             }
             LOG.info("openspec update finished with exit code " + applied.exitCode());
             KeptNotice kept = keptNotice(applied);
+            boolean gitHint = needsGitHint(applied, detectedVersion());
             ui.run(modality, () -> {
                 onApplied.accept(applied);
                 onFinished.run();
                 if (kept != null) kept.show(project);
+                if (gitHint) reportFailure("openspec update", "openspec update failed. " + GIT_NETWORK_HINT);
             });
             if (applied.isSuccess() && plan.hasNote(UpdatePlanParser.LEGACY_ARTIFACTS)) {
                 offerLegacyCleanup(plan, modality);
             }
         });
+    }
+
+    /** Said when an applied update fails on CLI 2.1.0 for want of Git or the network (2.1.1 installs offline). */
+    static final String GIT_NETWORK_HINT = "OpenSpec CLI 2.1.0 installs skills with Git over the network; check that "
+            + "Git is installed and the network is reachable, or use CLI 2.1.1 or later, which installs offline.";
+
+    /**
+     * Whether a finished update failed the way only 2.1.0 does: the output says Git is needed or the skills couldn't be
+     * fetched. Any other failure, or another release, gets no hint. Package-private for tests.
+     */
+    static boolean needsGitHint(CliRunner.CliResult applied, @Nullable String version) {
+        if (applied.isSuccess() || version == null || !"2.1.0".equals(version.trim())) return false;
+        String out = applied.stdout() + "\n" + applied.stderr();
+        return out.contains("Git is needed") || out.contains("Could not fetch");
     }
 
     /** At most this many files get their own Open action; every path is still listed in the text. */
