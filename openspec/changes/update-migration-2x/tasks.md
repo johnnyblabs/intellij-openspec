@@ -66,7 +66,7 @@
     - the files are read on the background seam;
     - Cancel stays the default.
   - Verify with `UpdatePreviewModelTest`: Apply is disabled with at-risk files until the confirmation, and still disabled with failures.
-- [ ] 3.2 Render the migration in `UpdatePreviewDialog`:
+- [x] 3.2 Render the migration in `UpdatePreviewDialog`:
   - the banner;
   - the red at-risk block (path and action, with design decision 2's wording);
   - the "I've backed up these files" checkbox, which toggles Apply;
@@ -76,7 +76,7 @@
     - a link row's text is `<path> → .agents/skills/<skill>`;
     - Apply follows the checkbox;
     - the messages from `2.1.1/update-dry-run/global-skills-removed.json` render as warning rows, verbatim.
-  - Run the full `uiSmoke` under `caffeinate -dimsu`, a regression run on the installed CLI 1.17.0.
+  - Run the full `uiSmoke` under `caffeinate -dimsu`, a regression run on the installed CLI 1.17.0. Done: 16 of 16 journeys passed.
 
 ## 4. After the update: kept files and the 2.1.0 hint
 
@@ -98,7 +98,7 @@
 
 ## 5. The one-time migration notice
 
-- [ ] 5.1 Add the startup notice (design decision 8). It checks off the UI thread after detection, from the existing startup activity, and offers Update…, which runs the registered Update OpenSpec… action. Showing it records it for the project in `PropertiesComponent`.
+- [x] 5.1 Add the startup notice (design decision 8). It checks off the UI thread after detection, from the existing startup activity, and offers Update…, which runs the registered Update OpenSpec… action. Showing it records it for the project in `PropertiesComponent`.
   - Verify with a light test over the captured layouts:
     - `update-migration/{unedited,edited,nested-commands}/before.json` with CLI 2.0.0 and 2.1.1 shows it once;
     - a second check doesn't show it again;
@@ -126,12 +126,21 @@
   - the README and the marketplace getting-started page, where they describe Update. Neither describes the update preview, so neither changes here; the README overhaul is tracked separately.
   - Record internally (not in public files) the two upstream defects: 2.1 removes unconfirmed skill-folder files with no note, and the released-file set lacks narrow-profile renderings.
   - Verify: `DocumentationHygieneTest`, and the vendor-neutral grep over the staged files.
-- [ ] 7.2 Final checks:
+- [x] 7.2 Final checks:
   - `./gradlew build`;
   - `./gradlew verifyPlugin`;
   - `openspec validate --all --strict`;
   - test-engineer AUDIT and intellij-code-reviewer on the diff, with each finding fixed or recorded.
   - Verify: all four pass, and the review outcome is recorded here.
+  - Outcome:
+    - `./gradlew build` passes; `verifyPlugin` reports all six IDEs compatible, with no new deprecated use; strict validation passes.
+    - intellij-code-reviewer: no errors, one warning, fixed. A kept-file button held its file from when the notice was built; it now looks the file up again when clicked and expires the notice if the file is gone, with a test.
+    - test-engineer AUDIT: pass with nits, all closed:
+      - the Git hint's network half, covered by a new `no-network` capture, which showed 2.1.0 says `Failed to clone`;
+      - an unclassified-case guard in `MigrationNoticeTest`;
+      - `shared-own-skill` in the seeded files;
+      - tests for a command-files-only migration, the rendered terminal hint, detection's closed stdin, paths outside the project, and the singular and coloured report forms.
+    - Every mutation named in this list was run and turned its test red.
 
 ## Workflow follow-up
 
