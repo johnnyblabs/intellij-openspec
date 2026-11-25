@@ -43,7 +43,7 @@ final class Detector2x {
     }
 
     /** What one detection run reads once: the listed tools (with inference) and the tools marked {@code own-files}. */
-    private static final class Context {
+    static final class Context {
         final Path project;
         final DetectionRules rules;
         final List<String> listed;
@@ -102,6 +102,22 @@ final class Detector2x {
         return p.equals(SHARED_ROOT) || p.startsWith(SHARED_ROOT + "/skills");
     }
 
+    /**
+     * Upstream's {@code isListedToolPresent}: a project tool (every one uses the shared skills on 2.x) that the list
+     * names, by upstream's own reading, is present unless it is marked {@code own-files} and has nothing of its own.
+     */
+    static boolean isListedToolPresent(Context ctx, AiTool tool) {
+        String skillsDir = ctx.rules.skillsDir(tool);
+        if (skillsDir == null || ctx.rules.globalSkillsDir(tool) != null || !ctx.listed.contains(tool.id())) return false;
+        return isListedToolPresent(ctx, tool, skillsDir);
+    }
+
+    /** Upstream's {@code hasSkillLinks} for {@code tool}: its link folder holds OpenSpec's link, even as text. */
+    static boolean hasSkillLinks(Context ctx, AiTool tool) {
+        Path linkDir = linkDir(ctx, tool);
+        return linkDir != null && hasSkillLinks(ctx.project, linkDir);
+    }
+
     /** Upstream's {@code isListedToolPresent}, for a tool already known to be listed. */
     private static boolean isListedToolPresent(Context ctx, AiTool tool, String skillsDir) {
         if (!ctx.ownFiles.contains(tool.id())) return true;
@@ -151,7 +167,7 @@ final class Detector2x {
     }
 
     /** Upstream's {@code toolHasAnyConfiguredCommand}: any of the tool's command files exists. */
-    private static boolean hasAnyCommand(Path project, AiTool tool) {
+    static boolean hasAnyCommand(Path project, AiTool tool) {
         if (AiToolRegistry.exploreCommandPath(tool) == null) return false;
         for (String id : COMMAND_IDS) {
             String path = AiToolRegistry.commandPath(tool, id);

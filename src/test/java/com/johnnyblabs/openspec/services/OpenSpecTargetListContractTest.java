@@ -55,8 +55,10 @@ class OpenSpecTargetListContractTest {
                     if (is2x) {
                         assertTrue(detected.containsAll(ids), "every listed tool is detected: " + ids + " vs " + detected);
                         // A case made by init alone sets up exactly the tools it lists. The builtin-add-* cases also
-                        // hold a tool folder the plugin created without the CLI, detected from that folder, not the list.
-                        if (!c.getFileName().toString().startsWith("builtin-add-")) {
+                        // hold a tool folder the plugin created without the CLI, detected from that folder, not the list,
+                        // and own-files-links-removed deletes a listed tool's links after init.
+                        String name = c.getFileName().toString();
+                        if (!name.startsWith("builtin-add-") && !name.equals("own-files-links-removed")) {
                             // Upstream's set-up verdict: Trae CN's folder also makes Trae available, but only the listed
                             // one is set up.
                             assertEquals(configured(c, detected), ids.stream().sorted().toList(), "the listed tools are upstream's verdict");

@@ -41,6 +41,9 @@ package is installed into a scratch prefix (scripts/lib/openspec_capture.py), ne
 
 Usage: scripts/capture-ai-tools-fixtures.py                 (every version from 1.3.0)
        CAPTURE_VERSIONS=2.1.1 scripts/capture-ai-tools-fixtures.py
+       CAPTURE_VERSIONS=1.6.0 CAPTURE_CASES=kimi,kimi-dir-from-1.6 scripts/capture-ai-tools-fixtures.py
+         (only those cases, written beside the release's other captures; its registry and help are left alone,
+          for a release whose registry predates most cases)
 """
 import json
 import shutil
@@ -85,8 +88,8 @@ import(process.argv[1]).then(m => process.stdout.write(JSON.stringify(
 """
 
 # Detection cases: name -> list of steps. ("init", version-or-None, tools) runs a real init with that
-# CLI (None = the newest); ("file", path, content) writes a file; ("rm", path) removes one; ("home-init",
-# tools) runs init so tools with a global skills directory write into the isolated HOME.
+# CLI (None = the newest); ("file", path, content) writes a file; ("rm", path) removes one; ("rmtree", path)
+# removes a folder; ("home-rmtree", path) removes one from the isolated HOME; ("home-init", tools) runs init so tools with a global skills directory write into the isolated HOME.
 CASES = {
     "claude": [("init", None, "claude")],
     # 2.1's new tools: one with a link folder, one reading .agents/skills, the two with unusual folders, MiniMax Code
@@ -109,6 +112,9 @@ CASES = {
     "windsurf-dir-from-1.6": [("init", "1.6.0", "windsurf")],
     "codex": [("init", None, "codex")],
     "codex-dir-from-1.6": [("init", "1.6.0", "codex")],
+    # The older skills folder alone, its commands removed: the CLI still reads it as the tool's (legacySkillsDirs).
+    "codex-skills-only-from-1.6": [("init", "1.6.0", "codex"), ("home-rmtree", ".codex/prompts")],
+    "antigravity-skills-only-from-1.6": [("init", "1.6.0", "antigravity"), ("rmtree", ".agent/workflows")],
     "antigravity": [("init", None, "antigravity")],
     "antigravity-dir-from-1.6": [("init", "1.6.0", "antigravity")],
     "codex-and-antigravity": [("init", None, "codex,antigravity")],
@@ -126,6 +132,8 @@ CASES = {
     "builtin-add-cursor-beside-claude": [("init", None, "claude"), ("file", ".cursor/.keep", "")],
     "builtin-add-codex-list-on-empty": [("file", ".agents/skills/.openspec-target", "codex\n")],
     "builtin-add-codex-folder-beside-claude": [("init", None, "claude"), ("file", ".agents/skills/.keep", "")],
+    # 2.x: a tool the list marks own-files whose own links are gone, its folder kept: detected, not set up.
+    "own-files-links-removed": [("init", None, "claude"), ("rmtree", ".claude/skills"), ("file", ".claude/.keep", "")],
     # A shared folder a 1.17 release wrote, with no list: its skills are released wording, so 2.x infers the owner.
     "agents-unmarked-from-1.17": [("init", "1.17.0", "agents"), ("rm", ".agents/skills/.openspec-target")],
     "codex-unmarked-from-1.17": [("init", "1.17.0", "codex"), ("rm", ".agents/skills/.openspec-target")],
@@ -174,8 +182,12 @@ APPLIES = {
     "skills-lock-agents": ("2.1.0", None),
     "agents-unmarked-from-1.17": ("2.0.0", None),
     "builtin-add-cursor-beside-claude": ("1.17.0", None),
-    "builtin-add-codex-list-on-empty": ("1.17.0", None),
+    # From 1.7.0: before 1.8.0 the CLI's verdict doesn't read the marker, which proves where that rule starts.
+    "builtin-add-codex-list-on-empty": ("1.7.0", None),
+    "codex-skills-only-from-1.6": ("1.7.0", "1.17.999"),
+    "antigravity-skills-only-from-1.6": ("1.7.0", "1.17.999"),
     "builtin-add-codex-folder-beside-claude": ("2.0.0", None),
+    "own-files-links-removed": ("2.0.0", None),
     "codex-unmarked-from-1.17": ("2.0.0", None),
 }
 
@@ -224,13 +236,13 @@ def recorded(path, full_text=False):
     return ""
 
 
-def capture_detection(newest, out_dir):
+def capture_detection(newest, out_dir, only=None):
     pkg = install(newest)
     detect_js = (pkg / "dist/core/available-tools.js").as_uri()
     configured_js = (pkg / "dist/core/shared/index.js").as_uri()
     with tempfile.TemporaryDirectory() as tmp:
         for name, steps in CASES.items():
-            if not applies(name, newest):
+            if not applies(name, newest) or (only is not None and name not in only):
                 continue
             case = Path(tmp) / name
             project, home = case / "project", case / "home"
@@ -250,6 +262,10 @@ def capture_detection(newest, out_dir):
                     f.write_text(step[2])
                 elif step[0] == "rm":
                     (project / step[1]).unlink()
+                elif step[0] == "rmtree":
+                    shutil.rmtree(project / step[1])
+                elif step[0] == "home-rmtree":
+                    shutil.rmtree(home / step[1])
             detected = json.loads(subprocess.run(
                 ["node", "--input-type=module", "-e", DETECT, "--", detect_js, str(project)],
                 env=isolated_env(home), check=True, capture_output=True, text=True).stdout)
@@ -274,6 +290,16 @@ def capture_detection(newest, out_dir):
 
 def main():
     wanted = os.environ.get("CAPTURE_VERSIONS")
+    cases = os.environ.get("CAPTURE_CASES")
+    if cases:
+        only = cases.split(",")
+        unknown = [c for c in only if c not in CASES]
+        if unknown or not wanted or "," in wanted:
+            sys.exit(f"CAPTURE_CASES needs one CAPTURE_VERSIONS release and known cases (unknown: {unknown})")
+        version = wanted
+        print(f"{version}: cases {only}")
+        capture_detection(version, FIXTURES / version, only)
+        return 0
     versions = published_versions()
     if wanted:
         versions = [v for v in versions if v in wanted.split(",")]

@@ -24,7 +24,7 @@ class KnownGapsTest {
             "invocation", Set.of("every-row", "registry-paths"));
 
     static final Set<String> CLOSERS = Set.of("skills-layout-2x", "openspec-target-2x",
-            "init-skills-scope", "update-migration-2x");
+            "init-skills-scope", "update-migration-2x", "detection-1x-release-rules");
 
     @Test
     void everyKeyNamesACaseThatRuns() {

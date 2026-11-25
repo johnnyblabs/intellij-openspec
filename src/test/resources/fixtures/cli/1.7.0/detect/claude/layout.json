@@ -1,0 +1,17 @@
+{
+  "project": {
+    ".claude/commands/opsx/apply.md": "",
+    ".claude/commands/opsx/archive.md": "",
+    ".claude/commands/opsx/explore.md": "",
+    ".claude/commands/opsx/propose.md": "",
+    ".claude/commands/opsx/sync.md": "",
+    ".claude/commands/opsx/update.md": "",
+    ".claude/skills/openspec-apply-change/SKILL.md": "",
+    ".claude/skills/openspec-archive-change/SKILL.md": "",
+    ".claude/skills/openspec-explore/SKILL.md": "",
+    ".claude/skills/openspec-propose/SKILL.md": "",
+    ".claude/skills/openspec-sync-specs/SKILL.md": "",
+    ".claude/skills/openspec-update-change/SKILL.md": ""
+  },
+  "home": {}
+}

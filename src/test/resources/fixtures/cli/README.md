@@ -797,9 +797,15 @@ On 2.1.0 and later a plain `init --tools` installs skills for the whole machine.
 
 ### Configured tools and the tools 2.1 added
 
-Each `detect/<case>/` also has `configured.json`: what upstream's own `getConfiguredTools` (`dist/core/shared/tool-detection.js`) counts as set up there, which `ConfiguredToolsContractTest` holds the plugin's set-up status to on 2.1.x. The 2.1 dumps' `ai-tools.json` gain `agentsByProjectFolder`: the tools sharing an installer project folder (Trae and Trae CN, Qoder and Qoder CN, Zencoder and Zenflow), of which configured detection counts only the first when the tool list names none.
+Each `detect/<case>/` also has `configured.json`: what upstream's own `getConfiguredTools` (`dist/core/shared/tool-detection.js`) counts as set up there, which `ConfiguredToolsContractTest` holds the plugin's set-up status to on 1.6.0, 1.7.0, 1.17.0, 2.0.0, 2.1.0 and 2.1.1. The 2.1 dumps' `ai-tools.json` gain `agentsByProjectFolder`: the tools sharing an installer project folder (Trae and Trae CN, Qoder and Qoder CN, Zencoder and Zenflow), of which configured detection counts only the first when the tool list names none.
 
 Cases for 2.1.0 and later: `goose` (a link folder), `fx` (reads `.agents/skills`), `openclaw` (skills folder `.`), `astrbot` (`data`), `minimax-project` (MiniMax Code's project `.minimax`), and `trae`, `trae-cn`, `qoder`, `qoder-cn` each set up alone, plus `trae-unlisted` and `qoder-unlisted`, set up by 1.17.0, which writes no tool list. `amazon-q-from-1.17` (1.17.0 and later) is Amazon Q set up by 1.17.0: detected there, and by no 2.x release.
+
+`own-files-links-removed` (2.0.0 and later) is `init --tools claude` with `.claude/skills` then removed (the script's `rmtree` step) and the folder kept: the list still marks Claude `own-files`, so it is detected but not set up. `OpenSpecTargetListContractTest` exempts it from its "list equals verdict" check, like the `builtin-add-*` cases.
+
+`1.6.0/detect/` and `1.7.0/detect/` hold only the cases those registries can run (`claude`, `codex`, `kimi`, `antigravity` and the `*-from-1.6` cases), captured with `CAPTURE_VERSIONS=<v> CAPTURE_CASES=<cases> scripts/capture-ai-tools-fixtures.py`, which writes just those cases and leaves the release's registry and help alone. They prove the 1.7 boundary: `.kimi` and `.windsurf` count as set up on 1.6.0 and not on 1.7.0, where Kimi Code and Devin Desktop moved to `.kimi-code` and `.devin`. 1.6.0 still records Devin Desktop as `windsurf`; the tests read it through the alias.
+
+`codex-skills-only-from-1.6` and `antigravity-skills-only-from-1.6` (1.7.0 and 1.17.0) are the 1.6-era Codex and Antigravity set-ups with their commands removed (Codex's HOME prompts by the `home-rmtree` step, Antigravity's `.agent/workflows` by `rmtree`): the older skills folder alone still sets the tool up. `builtin-add-codex-list-on-empty` is also captured on 1.7.0, where it sets up and detects nothing, because the marker rule arrived in 1.8.0. The plugin's 1.x detection follows 1.17 there, so that detection verdict is a `KnownGaps` entry.
 
 ### Links in a detection layout
 

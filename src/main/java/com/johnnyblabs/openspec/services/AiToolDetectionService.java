@@ -4,6 +4,7 @@ import com.intellij.openapi.components.Service;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.johnnyblabs.openspec.settings.OpenSpecSettings;
+import com.johnnyblabs.openspec.util.CliVersion;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -199,47 +200,116 @@ public final class AiToolDetectionService {
     }
 
     /**
-     * Returns the tool status: CONFIGURED (detected, with OpenSpec skills or commands), DETECTED, or AVAILABLE.
+     * Returns the tool status: CONFIGURED (set up, by the CLI's own rule, even when not detected), DETECTED, or AVAILABLE.
      */
     public ToolStatus getToolStatus(String toolName) {
         AiToolRegistry.AiTool tool = AiToolRegistry.byName(toolName);
-        if (tool == null || !scan().contains(tool)) return ToolStatus.AVAILABLE;
-        return statusOfDetected(tool);
+        if (tool == null) return ToolStatus.AVAILABLE;
+        boolean detected = scan().contains(tool);
+        String basePath = project.getBasePath();
+        if (basePath == null) return detected ? ToolStatus.DETECTED : ToolStatus.AVAILABLE;
+        return status(new Verdict(Path.of(basePath)), tool, detected);
     }
 
-    private ToolStatus statusOfDetected(AiToolRegistry.AiTool tool) {
-        String basePath = project.getBasePath();
-        if (basePath != null && !countsInItsFolderGroup(Path.of(basePath), tool)) return ToolStatus.DETECTED;
-        List<File> roots = new ArrayList<>();
-        if (basePath != null && tool.skillsDir() != null) roots.add(new File(basePath, tool.skillsDir()));
-        if (basePath != null) tool.legacySkillsDirs().forEach(d -> roots.add(new File(basePath, d)));
-        // Older directories that only appear as detection paths (.windsurf for Devin Desktop, .kimi for Kimi Code)
-        if (basePath != null) {
+    /**
+     * What one set-up verdict reads once: the release line's rules, which 1.x rules apply (each from the release
+     * that introduced it), and on 2.x the tool list as upstream reads it.
+     */
+    private final class Verdict {
+        final Path base;
+        final DetectionRules rules;
+        /** From 1.7 a 1.6-era folder (.kimi, .windsurf) is only a detection path, not a skills folder. */
+        final boolean detectionPathsAreSkillsFolders;
+        /** From 1.8 a shared skills folder's skills count only for its owner, and the marker's tool counts. */
+        final boolean sharedFolderOwnership;
+        final Detector2x.@Nullable Context listing;
+        /** The tool ids the project's tool list names, as written. */
+        final List<String> listed;
+        /** Each shared skills folder's owner under 1.x rules, reconciled once per folder. */
+        private final Map<String, Optional<AiToolRegistry.AiTool>> owners = new HashMap<>();
+
+        AiToolRegistry.@Nullable AiTool sharedRootOwner(AiToolRegistry.AiTool tool) {
+            return owners.computeIfAbsent(tool.skillsDir(),
+                    d -> Optional.ofNullable(AiToolDetector.sharedRootOwner(base, tool))).orElse(null);
+        }
+
+        Verdict(Path base) {
+            this.base = base;
+            this.rules = rules(base);
+            String version = cliVersion();
+            boolean known = version != null && !version.isBlank();
+            this.detectionPathsAreSkillsFolders = known && !CliVersion.atLeast(version, "1.7.0");
+            this.sharedFolderOwnership = !known || CliVersion.atLeast(version, "1.8.0");
+            this.listing = rules.is2x() ? new Detector2x.Context(base, rules) : null;
+            this.listed = SkillToolList.ids(SkillToolList.read(base));
+        }
+    }
+
+    /**
+     * Upstream's {@code getConfiguredTools} for one tool, so a tool can be set up without being detected. Detected
+     * tools keep the plugin's wider search (home links and folders through {@link SkillLocator}); a tool detection
+     * didn't find counts only from the project, as upstream's verdict does.
+     */
+    private ToolStatus status(Verdict v, AiToolRegistry.AiTool tool, boolean detected) {
+        if (isSetUp(v, tool, detected)) return ToolStatus.CONFIGURED;
+        return detected ? ToolStatus.DETECTED : ToolStatus.AVAILABLE;
+    }
+
+    private boolean isSetUp(Verdict v, AiToolRegistry.AiTool tool, boolean detected) {
+        Path base = v.base;
+        if (!v.rules.knows(tool) || !countsInItsFolderGroup(v.rules, v.listed, tool)) return false;
+        // Whether the skills in the tool's own skills folder are someone else's: on 2.x every project tool's skills
+        // sit in the shared .agents/skills, which counts only through the list; on 1.x a shared folder's owner.
+        boolean sharedSkillsNotItsOwn;
+        if (v.listing != null) {
+            if (Detector2x.isListedToolPresent(v.listing, tool) || Detector2x.hasSkillLinks(v.listing, tool)) return true;
+            sharedSkillsNotItsOwn = ".agents".equals(v.rules.skillsDir(tool));
+        } else if (v.sharedFolderOwnership && tool.skillsDir() != null) {
+            if (tool.id().equals(AiToolDetector.readMarker(base, tool.skillsDir()))) return true;
+            AiToolRegistry.AiTool owner = v.sharedRootOwner(tool);
+            sharedSkillsNotItsOwn = owner != null && !owner.equals(tool);
+        } else {
+            sharedSkillsNotItsOwn = false;
+        }
+        String skillsDir = v.rules.skillsDir(tool);
+        if (skillsDir != null) {
+            File own = base.resolve(skillsDir).toFile();
+            // In a folder tools share, a command counts only at the tool's own command paths, as upstream checks it.
+            boolean commands = isSharedFolder(skillsDir) ? Detector2x.hasAnyCommand(base, tool) : hasOpenSpecCommands(own);
+            if (commands || (!sharedSkillsNotItsOwn && hasOpenSpecSkills(own))) return true;
+        }
+        for (String d : tool.legacySkillsDirs()) {
+            File legacy = base.resolve(d).toFile();
+            // 1.x reads older folders only for the shared folder's owner; 2.x reads them for every tool.
+            if (hasOpenSpecCommands(legacy) || ((v.listing != null || !sharedSkillsNotItsOwn) && hasOpenSpecSkills(legacy))) {
+                return true;
+            }
+        }
+        if (v.detectionPathsAreSkillsFolders) {
+            // Before 1.7, .windsurf and .kimi were Devin Desktop's (then Windsurf's) and Kimi Code's skills folders.
             for (String p : tool.detectionPaths()) {
-                File root = new File(basePath, p.endsWith("/skills") ? p.substring(0, p.length() - "/skills".length()) : p);
-                if (root.isDirectory() && !roots.contains(root)) roots.add(root);
+                File root = base.resolve(p.endsWith("/skills") ? p.substring(0, p.length() - "/skills".length()) : p).toFile();
+                if (root.isDirectory() && hasOpenSpecFiles(root)) return true;
             }
         }
         Path home = home();
-        if (home != null && tool.globalSkillsDir() != null) roots.add(home.resolve(tool.globalSkillsDir()).toFile());
-        for (File root : roots) {
-            if (hasOpenSpecFiles(root)) return ToolStatus.CONFIGURED;
-        }
-        // 2.x: a tool's skills are in the shared .agents/skills (it is listed there) or reached through its link.
-        if (basePath != null && hasLocatedSkill(Path.of(basePath), tool)) return ToolStatus.CONFIGURED;
-        return ToolStatus.DETECTED;
+        String global = v.rules.globalSkillsDir(tool);
+        if (home != null && global != null && hasOpenSpecFiles(home.resolve(global).toFile())) return true;
+        if (!detected) return false;
+        // The shared .agents/skills copy counted above when it is the tool's; SkillLocator finds it for any tool.
+        Path shared = base.resolve(".agents").resolve("skills");
+        boolean skipShared = v.listing != null || sharedSkillsNotItsOwn;
+        return hasLocatedSkill(base, v.listed, tool, located -> !(skipShared && located.startsWith(shared)));
     }
 
     /**
      * CLI 2.1's rule for tools sharing a project folder (Trae and Trae CN): when the tool list doesn't name the tool,
      * it counts as set up only if no other tool of its group is listed and it is the group's first.
      */
-    private boolean countsInItsFolderGroup(Path base, AiToolRegistry.AiTool tool) {
-        DetectionRules rules = rules(base);
+    private static boolean countsInItsFolderGroup(DetectionRules rules, List<String> listed, AiToolRegistry.AiTool tool) {
         if (rules != DetectionRules.V2_1 && rules != DetectionRules.V2_1_1) return true;
         List<AiToolRegistry.AiTool> group = AiToolRegistry.folderGroup(tool);
         if (group.isEmpty()) return true;
-        List<String> listed = SkillToolList.ids(SkillToolList.read(base));
         if (listed.contains(tool.id())) return true;
         return group.stream().noneMatch(t -> listed.contains(t.id())) && group.getFirst().equals(tool);
     }
@@ -269,20 +339,49 @@ public final class AiToolDetectionService {
         return true;
     }
 
-    /** Whether {@link SkillLocator} finds any OpenSpec skill for {@code tool} in the project or the home directory. */
-    private boolean hasLocatedSkill(Path base, AiToolRegistry.AiTool tool) {
-        List<String> listed = SkillToolList.ids(SkillToolList.read(base));
+    /**
+     * Whether {@link SkillLocator} finds an OpenSpec skill for {@code tool} in the project or the home directory that
+     * {@code counts}.
+     */
+    private boolean hasLocatedSkill(Path base, List<String> listed, AiToolRegistry.AiTool tool,
+                                    java.util.function.Predicate<Path> counts) {
         GlobalSkillsCache cache = project.getService(GlobalSkillsCache.class);
         HomeSkills homeSkills = cache != null ? cache.snapshot() : HomeSkills.NONE;
         boolean preferred = tool.equals(WorkflowInvocation.preferredTool(project));
-        return AiToolRegistry.SKILL_NAMES.stream()
-                .anyMatch(skill -> SkillLocator.find(base, listed, homeSkills, tool, skill, preferred) != null);
+        return AiToolRegistry.SKILL_NAMES.stream().anyMatch(skill -> {
+            Path found = SkillLocator.find(base, listed, homeSkills, tool, skill, preferred);
+            return found != null && counts.test(found);
+        });
+    }
+
+    /** Whether more than one registry tool writes to {@code skillsDir} ({@code .agents}, or a regional pair's folder). */
+    private static boolean isSharedFolder(String skillsDir) {
+        return SHARED_FOLDERS.contains(skillsDir);
+    }
+
+    private static final Set<String> SHARED_FOLDERS = sharedFolders();
+
+    private static Set<String> sharedFolders() {
+        Map<String, Integer> count = new HashMap<>();
+        for (AiToolRegistry.AiTool t : AiToolRegistry.all()) {
+            if (t.skillsDir() != null) count.merge(t.skillsDir(), 1, Integer::sum);
+        }
+        Set<String> shared = new HashSet<>();
+        count.forEach((dir, n) -> { if (n > 1) shared.add(dir); });
+        return Set.copyOf(shared);
     }
 
     private static boolean hasOpenSpecFiles(File toolDir) {
+        return hasOpenSpecSkills(toolDir) || hasOpenSpecCommands(toolDir);
+    }
+
+    private static boolean hasOpenSpecSkills(File toolDir) {
         File[] skillFolders = new File(toolDir, "skills").listFiles(f -> f.isDirectory() && f.getName().startsWith("openspec-"));
-        if (skillFolders != null && skillFolders.length > 0) return true;
-        // Command files, where each tool keeps them
+        return skillFolders != null && skillFolders.length > 0;
+    }
+
+    /** Command files, where each tool keeps them. */
+    private static boolean hasOpenSpecCommands(File toolDir) {
         for (String dir : List.of("commands", "command", "prompts", "workflows")) {
             File[] cmdFiles = new File(toolDir, dir).listFiles(f -> f.getName().contains("opsx") || f.getName().contains("openspec"));
             if (cmdFiles != null && cmdFiles.length > 0) return true;
@@ -297,13 +396,17 @@ public final class AiToolDetectionService {
     public List<ToolInfo> getAllToolsWithStatus() {
         List<AiToolRegistry.AiTool> detected = scan();
         String version = cliVersion();
+        String basePath = project.getBasePath();
+        Verdict verdict = basePath != null ? new Verdict(Path.of(basePath)) : null;
         List<ToolInfo> configured = new ArrayList<>();
         List<ToolInfo> found = new ArrayList<>();
         List<ToolInfo> available = new ArrayList<>();
 
         for (AiToolRegistry.AiTool tool : AiToolRegistry.all()) {
             boolean accepted = AiToolRegistry.acceptedBy(tool, version);
-            ToolStatus status = detected.contains(tool) ? statusOfDetected(tool) : ToolStatus.AVAILABLE;
+            boolean isDetected = detected.contains(tool);
+            ToolStatus status = verdict != null ? status(verdict, tool, isDetected)
+                    : isDetected ? ToolStatus.DETECTED : ToolStatus.AVAILABLE;
             if (!accepted && status == ToolStatus.AVAILABLE) continue;
             boolean viaShared = status == ToolStatus.CONFIGURED && project.getBasePath() != null
                     && viaSharedFolder(Path.of(project.getBasePath()), tool);

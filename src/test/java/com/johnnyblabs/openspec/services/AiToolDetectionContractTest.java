@@ -35,8 +35,8 @@ class AiToolDetectionContractTest {
     static final Path CLI = Paths.get("src/test/resources/fixtures/cli");
 
     /** Each release's case count, so a lost case can't shrink the replay unnoticed. */
-    static final Map<String, Integer> CASE_COUNT = Map.of("1.14.3", 30, "1.16.1", 30, "1.17.0", 33,
-            "2.0.0", 39, "2.1.0", 52, "2.1.1", 52);
+    static final Map<String, Integer> CASE_COUNT = Map.of("1.6.0", 8, "1.7.0", 11, "1.14.3", 30, "1.16.1", 30, "1.17.0", 35,
+            "2.0.0", 40, "2.1.0", 53, "2.1.1", 53);
 
     @TempDir
     Path tmp;
@@ -65,7 +65,8 @@ class AiToolDetectionContractTest {
                     JsonObject layout = JsonParser.parseString(Files.readString(c.resolve("layout.json"))).getAsJsonObject();
                     List<String> expected = new ArrayList<>();
                     for (JsonElement id : JsonParser.parseString(Files.readString(c.resolve("detected.json"))).getAsJsonArray()) {
-                        expected.add(id.getAsString());
+                        // 1.6 still called Devin Desktop "windsurf"; the plugin knows it by its later id.
+                        expected.add(SkillToolList.ALIASES.getOrDefault(id.getAsString(), id.getAsString()));
                     }
                     Path project = tmp.resolve(v).resolve(name).resolve("project");
                     Path home = tmp.resolve(v).resolve(name).resolve("home");

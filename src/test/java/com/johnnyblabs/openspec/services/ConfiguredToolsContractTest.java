@@ -22,17 +22,17 @@ import java.util.stream.Stream;
  */
 public class ConfiguredToolsContractTest extends BasePlatformTestCase {
 
-    static final List<String> RELEASES = List.of("2.1.0", "2.1.1");
+    static final List<String> RELEASES = List.of("1.6.0", "1.7.0", "1.17.0", "2.0.0", "2.1.0", "2.1.1");
 
     /**
      * Cases where the plugin's set-up status differs from 2.1's, older than the 2.1 tool registry and out of its scope:
      * a Codex recorded only by the tool list, and 1.6-era Kimi and Windsurf folders, which 2.1 no longer counts. A
      * listed case that starts matching fails, so the entry is removed when it's fixed.
      */
-    static final java.util.Set<String> KNOWN_DIVERGENCES = java.util.Set.of(
-            "builtin-add-codex-list-on-empty", "kimi-dir-from-1.6", "windsurf-dir-from-1.6");
+    static final java.util.Set<String> KNOWN_DIVERGENCES = java.util.Set.of();
 
     private Path home;
+    private int aliased;
 
     @Override
     protected void setUp() throws Exception {
@@ -77,6 +77,7 @@ public class ConfiguredToolsContractTest extends BasePlatformTestCase {
     public void testSetUpToolsAreWhatUpstreamCountsAsConfigured() throws Exception {
         List<String> wrong = new ArrayList<>();
         int checked = 0;
+        aliased = 0;
         for (String v : RELEASES) {
             List<Path> cases;
             try (Stream<Path> s = Files.list(FixtureVersions.CLI.resolve(v).resolve("detect"))) {
@@ -85,7 +86,9 @@ public class ConfiguredToolsContractTest extends BasePlatformTestCase {
             for (Path c : cases) {
                 TreeSet<String> upstream = new TreeSet<>();
                 for (JsonElement e : JsonParser.parseString(Files.readString(c.resolve("configured.json"))).getAsJsonArray()) {
-                    upstream.add(e.getAsString());
+                    // 1.6 still called Devin Desktop "windsurf"; the plugin knows it by its later id.
+                    upstream.add(SkillToolList.ALIASES.getOrDefault(e.getAsString(), e.getAsString()));
+                    if (e.getAsString().equals("windsurf")) aliased++;
                 }
                 TreeSet<String> plugin = configured(v, c);
                 boolean known = KNOWN_DIVERGENCES.contains(c.getFileName().toString());
@@ -96,7 +99,8 @@ public class ConfiguredToolsContractTest extends BasePlatformTestCase {
                 checked++;
             }
         }
-        assertTrue("sanity: cases checked", checked > 40);
+        assertTrue("sanity: cases checked " + checked, checked >= 200);
+        assertTrue("sanity: 1.6.0's own windsurf id is read through the alias", aliased > 0);
         assertTrue("set-up tools that differ from upstream's:\n" + String.join("\n", wrong), wrong.isEmpty());
     }
 }

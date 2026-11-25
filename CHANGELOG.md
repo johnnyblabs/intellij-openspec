@@ -41,6 +41,12 @@
 - **OpenSpec CLI 2.x projects work with every AI tool's skills.** CLI 2.x keeps every tool's skills in one shared `.agents/skills/` folder, with links (or, on Windows, copies) from each tool's own folder. Explore, Revise, Continue and Apply now find the skill there, so a Cursor or GitHub Copilot project hands off to the right tool instead of none. Skills installed for the whole machine, CLI 2.1's default, are found too.
 - **Adding an AI tool without the OpenSpec CLI no longer rewrites what the CLI knows about the project.** Manage AI Tools never writes the CLI's tool list on a project set up by CLI 2.x. Codex and the universal shared-folder tool, which only that list can record, now say the CLI is needed to add them on such a project, or where the shared folder already belongs to another tool. Before, adding one there could leave another tool, such as Codex, no longer detected.
 - **Switching the workflow profile no longer freezes the IDE.** Choosing a profile in the status bar, or applying one in Settings, ran `openspec config profile` on the UI thread, so the IDE stopped responding until the CLI answered, for as long as the CLI timeout if it hung. The switch now runs in the background; Settings still reverts its selection if the switch fails.
+- **Manage AI Tools shows a tool as set up exactly when your OpenSpec CLI counts it as set up.**
+  - A tool the CLI's tool list names counts even before it has a skill of its own.
+  - Where several tools share `.agents/skills`, only the tool that owns the folder counts: on CLI 1.17, a GSD project no longer also shows the universal tool as set up.
+  - Kimi Code's and Devin Desktop's old `.kimi` and `.windsurf` folders count only on CLI 1.6 and earlier. On later CLIs the tool shows as detected, so Manage AI Tools offers to set it up again.
+  - On CLI 2.x, a tool the list marks as having files of its own counts only while it still has them.
+  - A tool the CLI counts as set up is shown as set up even when it isn't detected.
 - **AI tool detection matches the CLI you have installed.** OpenSpec 1.x and 2.x detect tools differently from the same files, and the plugin now follows your CLI's rules. Manage AI Tools shows a 2.x skills-only tool as set up.
 - Closing the OpenSpec tool window, or a project, while the tree was still refreshing no longer reports an internal "Already disposed" error. A refresh that finishes after the tool window is gone is now dropped quietly.
 

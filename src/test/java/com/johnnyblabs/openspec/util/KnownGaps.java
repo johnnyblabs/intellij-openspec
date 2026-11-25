@@ -26,6 +26,8 @@ public final class KnownGaps {
      * ignores) and {@code tool-registry-2x} (the 2.x tool list) closed every gap they owned, so none is open.
      */
     public static final Map<String, String> GAPS = new TreeMap<>(Map.ofEntries(
+            // 1.x detection follows 1.17's rules on every 1.x release; 1.7 had no marker, so the list alone detects nothing.
+            Map.entry("1.7.0/detect/builtin-add-codex-list-on-empty", "detection-1x-release-rules")
     ));
 
     private KnownGaps() {

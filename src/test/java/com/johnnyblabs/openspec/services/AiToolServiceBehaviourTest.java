@@ -81,12 +81,13 @@ public class AiToolServiceBehaviourTest extends BasePlatformTestCase {
                 ToolStatus.AVAILABLE, service().getToolStatus("Zed Agent"));
     }
 
-    public void testOlderDirectoriesStillCountAsConfigured() throws Exception {
+    /** With no CLI detected the newest rules apply: a 1.6-era folder is only a detection path from 1.7 on. */
+    public void testOlderDirectoriesAreDetectedNotSetUpWithNoCli() throws Exception {
         layOut("windsurf-dir-from-1.6");
         layOut("kimi-dir-from-1.6");
 
-        assertEquals(ToolStatus.CONFIGURED, service().getToolStatus("Devin Desktop (formerly Windsurf)"));
-        assertEquals(ToolStatus.CONFIGURED, service().getToolStatus("Kimi Code"));
+        assertEquals(ToolStatus.DETECTED, service().getToolStatus("Devin Desktop (formerly Windsurf)"));
+        assertEquals(ToolStatus.DETECTED, service().getToolStatus("Kimi Code"));
     }
 
     public void testAGlobalToolIsConfiguredFromTheHomeDirectory() throws Exception {

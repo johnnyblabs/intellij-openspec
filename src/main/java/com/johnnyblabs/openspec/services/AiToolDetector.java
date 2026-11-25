@@ -69,6 +69,16 @@ public final class AiToolDetector {
                 .anyMatch(p -> !p.endsWith("/skills") && Files.exists(project.resolve(p)));
     }
 
+    /**
+     * The tool that owns {@code tool}'s skills folder when registry tools share it, or {@code null} when none does:
+     * upstream 1.x's {@code isSharedSkillTargetActive}, which reconciles every tool on that folder.
+     */
+    static @Nullable AiTool sharedRootOwner(Path project, AiTool tool) {
+        if (tool.skillsDir() == null) return null;
+        List<AiTool> sharing = AiToolRegistry.all().stream().filter(t -> tool.skillsDir().equals(t.skillsDir())).toList();
+        return sharing.size() < 2 ? null : reconcile(project, sharing).getFirst();
+    }
+
     /** One owner per skills root that several detected tools share; a tool alone on its root owns it. */
     private static List<AiTool> reconcile(Path project, List<AiTool> tools) {
         Map<String, List<AiTool>> byRoot = new LinkedHashMap<>();
@@ -122,7 +132,8 @@ public final class AiToolDetector {
         return universal != null ? universal : group.getFirst();
     }
 
-    private static @Nullable String readMarker(Path project, String root) {
+    /** The tool id {@code <root>/skills/.openspec-target} names (1.x's one-line marker), or {@code null}. */
+    static @Nullable String readMarker(Path project, String root) {
         try {
             String value = Files.readString(project.resolve(root).resolve("skills").resolve(TARGET_MARKER),
                     StandardCharsets.UTF_8).trim();
