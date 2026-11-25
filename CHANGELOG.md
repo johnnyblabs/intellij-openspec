@@ -4,6 +4,10 @@
 
 ## Unreleased
 
+### Added
+
+- **Settings tells you when your provider no longer lists your saved model.** After you click **Test** under Direct API, a warning under the Model dropdown appears if your provider's own model list doesn't include the selected model. Such a model may have been retired, or the provider may send its requests to another model, billed as that model. Google does this for `gemini-2.5-pro` and `gemini-2.5-flash` from 1 December 2026. The warning appears only once the provider drops the model from its list.
+
 ### Changed
 
 - Every OpenSpec CLI command the plugin runs is now fitted to the CLI version you have installed. If that version doesn't have a command or option the plugin needs, the plugin says which CLI version it needs instead of showing the CLI's "unknown option" error. Each command and option is checked against every supported CLI from 1.3 to 2.1.

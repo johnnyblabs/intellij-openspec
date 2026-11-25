@@ -31,7 +31,7 @@
 
 ## 3. Docs and finish
 
-- [ ] 3.1 Update the CHANGELOG (`## Unreleased`) and the Direct API section of `docs/feature-reference.md`. Verify: `DocumentationHygieneTest`, and the vendor-neutral grep.
+- [x] 3.1 Update the CHANGELOG (`## Unreleased`) and the Direct API section of `docs/feature-reference.md`. Verify: `DocumentationHygieneTest`, and the vendor-neutral grep.
 - [ ] 3.2 Final checks:
   - `./gradlew build`;
   - `./gradlew verifyPlugin`;
