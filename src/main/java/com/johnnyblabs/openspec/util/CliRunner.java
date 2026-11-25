@@ -36,19 +36,8 @@ public final class CliRunner {
         GeneralCommandLine cmd = prepare(project.getService(CliDetectionService.class), project.getBasePath(), args);
 
         try {
-            Process process = cmd.createProcess();
-
-            // Drain both streams concurrently to avoid deadlock on full buffers
-            CompletableFuture<String> stdoutFuture = drainStreamAsync(process.getInputStream());
-            CompletableFuture<String> stderrFuture = drainStreamAsync(process.getErrorStream());
-
-            if (!process.waitFor(timeoutMs, TimeUnit.MILLISECONDS)) {
-                process.destroyForcibly();
-                throw CliException.timeout("OpenSpec CLI command timed out after " + (timeoutMs / 1000) + "s");
-            }
-
             try {
-                return capturedResult(process.exitValue(), stdoutFuture.join(), stderrFuture.join());
+                return runProcess(cmd, timeoutMs);
             } finally {
                 afterFinishedRun(project, args);
             }
@@ -57,6 +46,29 @@ public final class CliRunner {
         } catch (Exception e) {
             throw new CliException("Failed to run OpenSpec CLI: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * Starts {@code cmd}, closes its standard input at once (so a prompt reads end-of-input instead of waiting), drains
+     * both output streams and waits up to {@code timeoutMs}. Package-private for tests.
+     */
+    static CliResult runProcess(GeneralCommandLine cmd, int timeoutMs) throws Exception {
+        Process process = cmd.createProcess();
+        try {
+            process.getOutputStream().close();
+        } catch (java.io.IOException ignored) {
+            // The process may already have exited; nothing waits on its input then.
+        }
+
+        // Drain both streams concurrently to avoid deadlock on full buffers
+        CompletableFuture<String> stdoutFuture = drainStreamAsync(process.getInputStream());
+        CompletableFuture<String> stderrFuture = drainStreamAsync(process.getErrorStream());
+
+        if (!process.waitFor(timeoutMs, TimeUnit.MILLISECONDS)) {
+            process.destroyForcibly();
+            throw CliException.timeout("OpenSpec CLI command timed out after " + (timeoutMs / 1000) + "s");
+        }
+        return capturedResult(process.exitValue(), stdoutFuture.join(), stderrFuture.join());
     }
 
     /**
@@ -135,10 +147,12 @@ public final class CliRunner {
 
     /**
      * Asks the CLI for output the plugin can read and show: no telemetry notice (CLI 1.3–1.9 printed it on stdout,
-     * before the JSON), no update notice (`update` prints it on stdout), and no colour codes in text output.
+     * before the JSON), no update notice (`update` prints it on stdout), and no colour codes in text output. It also
+     * turns prompts off ({@code OPEN_SPEC_INTERACTIVE=0}): no background run can wait for an answer, whatever its stdin.
      */
     public static void applyPlainOutputEnvironment(GeneralCommandLine cmd) {
         Map<String, String> env = cmd.getEnvironment();
+        env.put(CliCommands.NON_INTERACTIVE, "0");
         env.put("OPENSPEC_TELEMETRY", "0");
         env.put("OPENSPEC_NO_UPDATE_CHECK", "1");
         env.put("NO_COLOR", "1");

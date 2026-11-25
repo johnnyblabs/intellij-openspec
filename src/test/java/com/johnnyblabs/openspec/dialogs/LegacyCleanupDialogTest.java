@@ -63,4 +63,19 @@ public class LegacyCleanupDialogTest extends BasePlatformTestCase {
         String html = LegacyCleanupDialog.introHtml("Back up <custom> & things:", false);
         assertTrue(html, html.contains("Back up &lt;custom&gt; &amp; things:"));
     }
+
+    /** On CLI 2.1+ the terminal handoff warns that the CLI's interactive update can ask where to keep the skills. */
+    public void testTheTerminalHintNamesTheQuestions21CanAsk() {
+        UpdateOutputParser.LegacyCleanup block = capture("1.14.3");
+        for (String v : java.util.List.of("2.1.0", "2.1.1")) {
+            LegacyCleanupDialog d = new LegacyCleanupDialog(getProject(), block, v);
+            Disposer.register(getTestRootDisposable(), d.getDisposable());
+            assertEquals(v, LegacyCleanupDialog.TERMINAL_QUESTIONS, d.terminalHintForTest());
+        }
+        for (String v : new String[]{"2.0.0", "1.17.0", null}) {
+            LegacyCleanupDialog d = new LegacyCleanupDialog(getProject(), block, v);
+            Disposer.register(getTestRootDisposable(), d.getDisposable());
+            assertNull(String.valueOf(v), d.terminalHintForTest());
+        }
+    }
 }

@@ -41,9 +41,31 @@ public class LegacyCleanupDialog extends DialogWrapper {
     private final boolean preselect;
     private final List<JCheckBox> checkboxes = new ArrayList<>();
     private String introHtml;
+    private final @Nullable String terminalHint;
+
+    /** Said with the terminal handoff on CLI 2.1+, where an interactive {@code openspec update} can ask two questions. */
+    static final String TERMINAL_QUESTIONS = "In the terminal, OpenSpec 2.1 may ask whether to keep this project's "
+            + "skills in the project or install them globally, or whether to set skills up for this machine.";
+
+    /** The terminal handoff's extra hint for CLI {@code version}, or {@code null} below 2.1.0 or with no CLI. */
+    static @Nullable String terminalHint(@Nullable String version) {
+        return version != null && com.johnnyblabs.openspec.util.CliVersion.atLeast(version, "2.1.0")
+                ? TERMINAL_QUESTIONS : null;
+    }
 
     public LegacyCleanupDialog(Project project, UpdateOutputParser.LegacyCleanup block) {
+        this(project, block, detectedVersion(project));
+    }
+
+    private static @Nullable String detectedVersion(Project project) {
+        var detection = project.getService(com.johnnyblabs.openspec.services.CliDetectionService.class);
+        return detection != null && detection.isAvailable() ? detection.getDetectedVersion() : null;
+    }
+
+    /** As the public constructor, for the CLI {@code cliVersion} (null when none is detected). */
+    LegacyCleanupDialog(Project project, UpdateOutputParser.LegacyCleanup block, @Nullable String cliVersion) {
         super(project, false);
+        this.terminalHint = terminalHint(cliVersion);
         this.project = project;
         this.files = block.files();
         this.guidance = block.guidance();
@@ -72,7 +94,9 @@ public class LegacyCleanupDialog extends DialogWrapper {
         introHtml = introHtml(guidance, preselect);
         panel.add(new JBLabel(introHtml), BorderLayout.NORTH);
         panel.add(new JBScrollPane(list), BorderLayout.CENTER);
-        panel.add(new JBLabel("<html><small>The plugin never runs <code>openspec update --force</code> on your behalf.</small></html>"),
+        panel.add(new JBLabel("<html><small>The plugin never runs <code>openspec update --force</code> on your behalf."
+                        + (terminalHint != null ? "<br>" + StringUtil.escapeXmlEntities(terminalHint) : "")
+                        + "</small></html>"),
                 BorderLayout.SOUTH);
         return panel;
     }
@@ -102,6 +126,11 @@ public class LegacyCleanupDialog extends DialogWrapper {
         }
         html.append("Removal happens through the IDE (single undo step, covered by Local History).</html>");
         return html.toString();
+    }
+
+    @TestOnly
+    @Nullable String terminalHintForTest() {
+        return terminalHint;
     }
 
     @TestOnly

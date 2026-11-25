@@ -21,10 +21,30 @@ class CliRunnerTest {
             assertEquals("0", env.get("FORCE_COLOR"));
             assertEquals("1", env.get("OPENSPEC_NO_UPDATE_CHECK"));
             assertEquals("0", env.get("OPENSPEC_TELEMETRY"));
+            assertEquals("0", env.get("OPEN_SPEC_INTERACTIVE"), "no background run can prompt");
             assertEquals("/usr/local/bin/openspec", cmd.getExePath());
             assertEquals(java.util.List.of("status", "--json"), cmd.getParametersList().getList());
             // Compare Files, not strings: Windows reports this directory as \work.
             assertEquals(new java.io.File("/work"), cmd.getWorkDirectory());
+        }
+
+        /**
+         * A child that reads its standard input gets end-of-input at once: the run closes stdin right after starting it,
+         * so a CLI prompt can't wait for an answer. Without the close this child would block until the timeout.
+         */
+        @Test
+        void aChildReadingStdinSeesEndOfInputAtOnce(@org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp)
+                throws Exception {
+            java.nio.file.Path stub = tmp.resolve("Stub.java");
+            java.nio.file.Files.writeString(stub, "public class Stub { public static void main(String[] a) throws Exception {"
+                    + " System.out.print(System.in.read() == -1 ? \"eof\" : \"data\"); } }");
+            String javaBin = java.nio.file.Path.of(System.getProperty("java.home"), "bin", "java").toString();
+            var cmd = new com.intellij.execution.configurations.GeneralCommandLine(javaBin, stub.toString());
+            long start = System.nanoTime();
+            CliRunner.CliResult result = CliRunner.runProcess(cmd, 30_000);
+            long seconds = (System.nanoTime() - start) / 1_000_000_000L;
+            assertEquals("eof", result.stdout().strip(), result.stderr());
+            assertTrue(seconds < 25, "returned before the timeout: " + seconds + "s");
         }
 
         @Test

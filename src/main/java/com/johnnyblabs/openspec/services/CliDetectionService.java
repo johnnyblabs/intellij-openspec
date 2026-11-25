@@ -553,6 +553,13 @@ public final class CliDetectionService {
                     .redirectOutput(out.toFile())
                     .redirectError(ProcessBuilder.Redirect.DISCARD);
             Process process = builder.start();
+            if (builder.redirectInput() == ProcessBuilder.Redirect.PIPE) {
+                try {
+                    process.getOutputStream().close();  // nothing to say to the CLI; a prompt reads end-of-input
+                } catch (java.io.IOException ignored) {
+                    // already exited
+                }
+            }
             if (!process.waitFor(timeoutMs, TimeUnit.MILLISECONDS)) {
                 process.destroyForcibly();
                 return null;
