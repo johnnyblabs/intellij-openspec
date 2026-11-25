@@ -102,6 +102,15 @@ public class OpenSpecSettingsPanel {
     private JPasswordField apiKeyField;
     private JComboBox<String> aiModelCombo;
     private JBLabel aiTestResultLabel;
+    // Shown when the provider's own complete model list, fetched by Test, doesn't hold the selected model.
+    private JBLabel aiModelHintLabel;
+    // The last list Test fetched; forgotten when the provider, the key or the provider's request settings change,
+    // since the list may no longer describe them.
+    private @org.jetbrains.annotations.Nullable List<String> fetchedModels;
+    private boolean fetchedModelsComplete;
+    // Bumped whenever the fetched list is forgotten, so a fetch started before that (before a provider switch or a
+    // key edit) can't apply its result.
+    private int fetchGeneration;
     // Claude-only: the workspace for keys that aren't scoped to one (sent as anthropic-workspace-id).
     private com.intellij.ui.components.JBTextField aiWorkspaceField;
     private JBLabel aiWorkspaceLabel;
@@ -796,6 +805,8 @@ public class OpenSpecSettingsPanel {
         aiModelCombo.setEditable(true);
 
         aiTestResultLabel = new JBLabel(" ");
+        aiModelHintLabel = warningLabel();
+        aiModelCombo.addActionListener(e -> refreshModelHint());
 
         aiWorkspaceField = new com.intellij.ui.components.JBTextField(30);
         aiWorkspaceField.getEmptyText().setText("wrkspc_\u2026");
@@ -815,6 +826,15 @@ public class OpenSpecSettingsPanel {
         aiOpenAiHelpLabel.setForeground(JBUI.CurrentTheme.ContextHelp.FOREGROUND);
         watchPrefix(aiOpenAiOrgField, aiOpenAiOrgWarning, OpenSpecSettingsPanel::validateOpenAiOrganization);
         watchPrefix(aiOpenAiProjectField, aiOpenAiProjectWarning, OpenSpecSettingsPanel::validateOpenAiProject);
+        for (javax.swing.text.JTextComponent scope : List.of(apiKeyField, aiWorkspaceField, aiOpenAiOrgField,
+                aiOpenAiProjectField)) {
+            scope.getDocument().addDocumentListener(new com.intellij.ui.DocumentAdapter() {
+                @Override
+                protected void textChanged(@org.jetbrains.annotations.NotNull javax.swing.event.DocumentEvent e) {
+                    forgetFetchedModels();
+                }
+            });
+        }
 
         JPanel panel = FormBuilder.createFormBuilder()
                 .addComponent(helpLabel)
@@ -830,6 +850,7 @@ public class OpenSpecSettingsPanel {
                 .addComponentToRightColumn(aiOpenAiProjectWarning)
                 .addComponentToRightColumn(aiOpenAiHelpLabel)
                 .addLabeledComponent(new JBLabel("Model:"), aiModelCombo)
+                .addComponentToRightColumn(aiModelHintLabel)
                 .addComponent(aiTestResultLabel)
                 .getPanel();
         panel.setBorder(IdeBorderFactory.createTitledBorder("Direct API"));
@@ -913,6 +934,8 @@ public class OpenSpecSettingsPanel {
         aiOpenAiHelpLabel.setVisible(openAi);
         updatePrefixWarning(aiOpenAiOrgField, aiOpenAiOrgWarning, OpenSpecSettingsPanel::validateOpenAiOrganization);
         updatePrefixWarning(aiOpenAiProjectField, aiOpenAiProjectWarning, OpenSpecSettingsPanel::validateOpenAiProject);
+        // A list fetched for the previous provider says nothing about this one.
+        forgetFetchedModels();
         aiModelCombo.removeAllItems();
         for (String model : provider.getModels()) {
             aiModelCombo.addItem(model);
@@ -974,9 +997,10 @@ public class OpenSpecSettingsPanel {
             return;
         }
 
-        new SwingWorker<List<String>, Void>() {
+        final int generation = fetchGeneration;
+        new SwingWorker<DirectApiService.ModelList, Void>() {
             @Override
-            protected List<String> doInBackground() throws Exception {
+            protected DirectApiService.ModelList doInBackground() throws Exception {
                 // Credential store I/O is blocking (@RequiresBackgroundThread) — do it here, off the EDT.
                 String key = uiKey;
                 if (key != null && !key.isBlank() && !key.equals(API_KEY_MASK)) {
@@ -987,15 +1011,22 @@ public class OpenSpecSettingsPanel {
                 }
                 // Validate the key by listing the account's models — a free GET, no token cost — and
                 // return them to populate the selector. Network I/O runs here, off the EDT.
-                return apiService.listModels(provider, key, requestSettings);
+                return apiService.listModelPage(provider, key, requestSettings);
             }
 
             @Override
             protected void done() {
                 // done() runs on the EDT, so the combo mutation below is EDT-safe.
+                if (generation != fetchGeneration) {
+                    // The provider, key or request settings changed while the list was fetched, so this result
+                    // describes something the form no longer shows.
+                    aiTestResultLabel.setText(" ");
+                    return;
+                }
                 try {
-                    List<String> models = get();
-                    applyModelOptions(provider, models, true);
+                    DirectApiService.ModelList page = get();
+                    List<String> models = page.ids();
+                    applyModelOptions(provider, models, true, page.complete());
                     // A 200 with no models means the key is valid but nothing was returned — applyModelOptions
                     // shows the static defaults, so say that rather than the misleading "0 models".
                     aiTestResultLabel.setText(models.isEmpty()
@@ -1007,7 +1038,7 @@ public class OpenSpecSettingsPanel {
                     aiTestResultLabel.setText("Failed: " + testFailureMessage(cause));
                     aiTestResultLabel.setForeground(JBColor.RED);
                     // Never leave the selector empty — fall back to the static list, keeping the selection.
-                    applyModelOptions(provider, null, false);
+                    applyModelOptions(provider, null, false, false);
                 }
             }
         }.execute();
@@ -1132,14 +1163,48 @@ public class OpenSpecSettingsPanel {
      * Applies a resolved model list to the editable Model selector, preserving the user's current
      * selection (see {@link AiModelOptions}). Call on the EDT — it mutates the combo.
      */
-    private void applyModelOptions(AiProvider provider, List<String> fetched, boolean fetchOk) {
+    private void applyModelOptions(AiProvider provider, List<String> fetched, boolean fetchOk, boolean complete) {
         AiModelOptions.Resolution resolution =
                 AiModelOptions.resolve(fetched, fetchOk, provider.getModels(), getAiModel());
+        // Record the list before repopulating: removeAllItems/addItem fire selection events that refresh the hint.
+        // A failed fetch records nothing, so the static fallback never judges a model.
+        fetchedModels = fetchOk && fetched != null ? List.copyOf(fetched) : null;
+        fetchedModelsComplete = fetchOk && complete;
         aiModelCombo.removeAllItems();
         for (String model : resolution.options()) {
             aiModelCombo.addItem(model);
         }
         aiModelCombo.setSelectedItem(resolution.selection());
+        // setSelectedItem fires the combo's action event, which refreshes the hint too; this keeps it explicit.
+        refreshModelHint();
+    }
+
+    /** Forgets the last fetched list, and so the hint, once it may no longer describe the provider and key. */
+    private void forgetFetchedModels() {
+        fetchGeneration++;
+        fetchedModels = null;
+        fetchedModelsComplete = false;
+        refreshModelHint();
+    }
+
+    /** Shows the hint while the provider's complete fetched list doesn't hold the selected model. EDT only. */
+    private void refreshModelHint() {
+        if (aiModelHintLabel == null) {
+            return;
+        }
+        AiProvider provider = getSelectedProvider();
+        String model = getAiModel();
+        boolean show = AiModelOptions.notListed(provider, model, fetchedModels, fetchedModels != null,
+                fetchedModelsComplete);
+        aiModelHintLabel.setText(show ? modelNotListedHint(model, provider) : " ");
+        aiModelHintLabel.setVisible(show);
+    }
+
+    /** The hint's wording. It names no replacement: providers' own pages disagree on what replaces a model. */
+    static String modelNotListedHint(String model, AiProvider provider) {
+        return model.trim() + " isn't in " + provider.getDisplayName() + "'s current model list for this key. "
+                + "It may have been retired, or the provider may route its requests to another model. "
+                + "Choose a model from the list.";
     }
 
     // --- Public accessors ---
@@ -1392,6 +1457,26 @@ public class OpenSpecSettingsPanel {
     }
 
     @TestOnly
+    /** Clicks Test. */
+    void clickTestForTest() {
+        testApiConnection();
+    }
+
+    /** The model hint's text while it's shown, else null. */
+    @org.jetbrains.annotations.Nullable String modelHintTextForTest() {
+        return aiModelHintLabel.isVisible() ? aiModelHintLabel.getText() : null;
+    }
+
+    /** The selector's first option. */
+    String firstModelForTest() {
+        return aiModelCombo.getItemCount() == 0 ? null : aiModelCombo.getItemAt(0);
+    }
+
+    /** The Test result line. */
+    String testResultTextForTest() {
+        return aiTestResultLabel.getText();
+    }
+
     void clickRefreshSchemasForTest() {
         refreshSchemasButton.doClick();
     }

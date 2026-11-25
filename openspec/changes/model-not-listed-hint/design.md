@@ -37,14 +37,14 @@ It is a plain, platform-free function. `listModels` reports completeness alongsi
 
 ### 2. The hint is a label by the Model field, driven by the last fetch
 
-- **What it holds:** the panel keeps the last successful fetch's list, its completeness, and the provider it was fetched for, or nothing.
+- **What it holds:** the panel keeps the last successful fetch's list and its completeness, or nothing.
 - **When it updates:**
   - `applyModelOptions` records the list first (or nothing on a failed fetch), then repopulates the combo, then refreshes the hint. Repopulating fires selection events, so the order matters.
   - A selection listener on the Model combo refreshes the hint too.
 - **When it clears:**
   - a provider switch (`onProviderChanged`, which also covers `setAiProvider` and reset);
   - an edit to the key, Workspace, Org or Project fields.
-- **A fetch that finishes late:** the worker's `done()` returns early when the selected provider is no longer the one it fetched for, so a slow fetch can't judge another provider's model.
+- **A fetch that finishes late:** forgetting the list bumps a fetch generation. The worker's `done()` returns early when the generation changed since Test started, so a fetch from before a provider switch or a key edit can't apply its result.
 - **Where it runs:** both calls already run on the UI thread, so no new threading is needed.
 - **Appearance:** the label uses the panel's existing comment style and a warning colour, with the wording from the proposal.
 

@@ -143,7 +143,7 @@ class DirectApiFlowStructuralGuardTest {
         assertTrue(worker >= 0, "testApiConnection must run its work in a SwingWorker");
         // Test now validates the key by listing models — and the fetch runs in the worker, not on the
         // EDT before it. The old token-costing test-prompt (testConnection) must be gone.
-        assertTrue(body.contains("apiService.listModels("), "Test must validate by listing models");
+        assertTrue(body.contains("apiService.listModelPage("), "Test must validate by listing models");
         // The Workspace ID is read from the form (on the EDT, before the worker), validated so an invalid
         // value is never sent, and passed into the worker's listModels call.
         int workspaceRead = body.indexOf("getAiWorkspaceId()");
@@ -154,10 +154,12 @@ class DirectApiFlowStructuralGuardTest {
         // provider's settings as typed are what the worker sends.
         int formRead = body.indexOf("formRequestSettings(provider)");
         assertTrue(formRead >= 0 && formRead < worker, "Test must read the form's provider settings before the worker");
-        assertTrue(body.substring(worker).contains("listModels(provider, key, requestSettings)"),
-                "the worker must pass the form's provider settings to listModels");
-        assertFalse(body.substring(0, worker).contains("listModels("),
+        assertTrue(body.substring(worker).contains("listModelPage(provider, key, requestSettings)"),
+                "the worker must pass the form's provider settings to listModelPage");
+        assertFalse(body.substring(0, worker).contains("listModelPage("),
                 "the models fetch must not run on the EDT before the worker");
+        assertFalse(body.substring(0, worker).contains("listModels("),
+                "nor the list-only fetch");
         assertFalse(body.contains(".testConnection("),
                 "the token-costing test-prompt must be replaced by the free list-models GET");
         // Combo population is factored into applyModelOptions (called from done(), on the EDT); the
@@ -319,10 +321,10 @@ class DirectApiFlowStructuralGuardTest {
 
     @Test
     void listModels_warmsSessionCacheOnSuccess() throws IOException {
-        String body = methodBody(read(SERVICE), "public java.util.List<String> listModels(");
+        String body = methodBody(read(SERVICE), "public ModelList listModelPage(");
         int okCheck = body.indexOf("statusCode() != 200");
         int cacheWrite = body.indexOf("discoveredModels.put(");
-        assertTrue(cacheWrite >= 0, "listModels must warm the session cache");
+        assertTrue(cacheWrite >= 0, "listModelPage, which listModels delegates to, must warm the session cache");
         assertTrue(okCheck >= 0 && cacheWrite > okCheck,
                 "the cache write must be on the success path (after the non-200 throw)");
     }

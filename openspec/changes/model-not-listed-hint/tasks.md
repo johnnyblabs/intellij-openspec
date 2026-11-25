@@ -16,7 +16,7 @@
 
 ## 2. The hint in Settings
 
-- [ ] 2.1 Add the hint label by the Model field in `OpenSpecSettingsPanel`, driven by the last successful fetch for the selected provider and refreshed on selection changes (design decision 2).
+- [x] 2.1 Add the hint label by the Model field in `OpenSpecSettingsPanel`, driven by the last successful fetch for the selected provider and refreshed on selection changes (design decision 2).
   - Verify with a light test through the panel's existing fetch path, with a seam returning the captured Gemini list:
     - selecting `gemini-2.5-pro` shows the hint with its wording;
     - selecting a listed model hides it;
@@ -24,8 +24,10 @@
     - a fresh panel with no fetch shows none;
     - switching provider after a fetch clears it;
     - editing the key or the Workspace field clears it;
-    - a fetch finishing after a provider switch doesn't apply.
+    - a fetch finishing after a provider switch doesn't apply;
+    - a fetch finishing after a key edit doesn't apply.
   - Run `verifyPlugin`.
+  - Outcome: 10 mutations were run on the panel, and 8 turned the tests red. Two survived because they were redundant: a provider check in the Test callback (the fetch generation covers it) and a "fetched for this provider" field (a provider switch already clears the list). Both were removed, and the generation's two mutations turn the tests red. The explicit hint refresh after the selector is refilled survives by design: the selector's own selection event refreshes it too.
 
 ## 3. Docs and finish
 
