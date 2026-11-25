@@ -80,9 +80,8 @@
 ## 5. Verification and docs
 
 - [x] 5.1 `./gradlew build` and `./gradlew verifyPlugin` (new `LocalFileSystem` watch and refresh references).
-- [ ] 5.2 runIde check in IDEA and one non-IDEA IDE:
-  - a store project shows the store's tree;
-  - an external change appears;
-  - inspections fire on a store spec.
+- [x] 5.2 Check in IDEA and in a non-IDEA IDE that a store project works and that inspections fire on a store spec:
+  - IDEA: the uiSmoke journeys `aProjectPointingAtAStoreShowsTheStore` (tree, outside change, broken and fixed pointer) and `inspectionsRunOnAStoreSpec` (the keyword inspection fires on a spec in the store, outside the project) pass.
+  - Non-IDEA: a free PyCharm can't be booted by the test framework (its 2024.2 Community download is the Professional build, which needs a licence). The risk was a bundled highlighting filter that skips non-project files, so the 2024.2 builds were scanned instead. IntelliJ IDEA Community registers four language-specific filters (Java, Kotlin, Maven archetypes) and the journey passes with them. PyCharm registers none, so nothing there can silence an inspection on a store spec.
 - [x] 5.3 CHANGELOG (Unreleased) and `docs/feature-reference.md`. Note that WSL-hosted stores are unsupported.
 - [x] 5.4 `openspec validate --all --strict` on the branch.

@@ -91,6 +91,24 @@ class OpenSpecUiSmokeTest {
     @Remote("com.intellij.ui.content.Content")
     interface ContentRef
 
+    @Remote("com.intellij.openapi.vfs.LocalFileSystem")
+    interface LocalFileSystemRef {
+        fun getInstance(): LocalFileSystemRef
+        fun refreshAndFindFileByPath(path: String): VirtualFileRef?
+    }
+
+    @Remote("com.intellij.openapi.vfs.VirtualFile")
+    interface VirtualFileRef
+
+    @Remote("com.intellij.openapi.fileEditor.FileEditorManager")
+    interface FileEditorManagerRef {
+        fun getInstance(project: Project): FileEditorManagerRef
+        fun openFile(file: VirtualFileRef, focusEditor: Boolean): Array<FileEditorRef>
+    }
+
+    @Remote("com.intellij.openapi.fileEditor.FileEditor")
+    interface FileEditorRef
+
     /**
      * What the IDE does when the user switches back to it: apply the outside changes the file watcher flagged.
      * The Starter IDE's window is never activated, so a journey calls it where a user would return to the IDE.
@@ -466,27 +484,18 @@ class OpenSpecUiSmokeTest {
         org.junit.jupiter.api.Assumptions.assumeTrue(cliAtLeast(cliVersion, 1, 5)) {
             "the store-root journey needs OpenSpec CLI 1.5+ on the host (found: $cliVersion)"
         }
-        val base = Files.createTempDirectory("openspec-ui-smoke-store-root-").toRealPath()
-        val xdgData = Files.createDirectories(base.resolve("machine/data"))
-        val xdgConfig = Files.createDirectories(base.resolve("machine/config"))
-        val store = base.resolve("stores/demo")
-        val setup = ProcessBuilder("openspec", "store", "setup", "demo", "--path", store.toString(), "--no-init-git", "--json")
-            .apply {
-                environment()["XDG_DATA_HOME"] = xdgData.toString()
-                environment()["XDG_CONFIG_HOME"] = xdgConfig.toString()
-            }
-            .redirectErrorStream(true).start()
-        check(setup.waitFor() == 0) { "store setup failed: ${setup.inputStream.bufferedReader().readText()}" }
+        val seeded = seedStoreProject()
+        val store = seeded.store
+        val xdgData = seeded.xdgData
+        val xdgConfig = seeded.xdgConfig
+        val app = seeded.app
+        val pointer = app.resolve("openspec/config.yaml")
         val change = store.resolve("openspec/changes/store-add-farewell")
         Files.createDirectories(change.resolve("specs/greeting"))
         Files.writeString(change.resolve("proposal.md"), "## Why\n\nThe demo app never says goodbye.\n")
         Files.writeString(change.resolve("specs/greeting/spec.md"),
             "## ADDED Requirements\n\n### Requirement: Say goodbye\nThe app SHALL say goodbye.\n\n" +
                 "#### Scenario: Farewell\n- **WHEN** the user leaves\n- **THEN** the app says goodbye\n")
-
-        val app = Files.createDirectories(base.resolve("app"))
-        val pointer = Files.createDirectories(app.resolve("openspec")).resolve("config.yaml")
-        Files.writeString(pointer, "store: demo\n")
 
         val context = newContext(app).apply {
             applyVMOptionsPatch {
@@ -533,6 +542,68 @@ class OpenSpecUiSmokeTest {
         }
         // The user's real OpenSpec data stayed out of it: the store was registered only in the isolated registry.
         assertTrue(Files.readString(xdgData.resolve("openspec/stores/registry.yaml")).contains("demo"))
+    }
+
+    /** A store `demo` set up by the host CLI under isolated XDG folders, and a project that only points at it. */
+    private class StoreProject(val base: Path, val app: Path, val store: Path, val xdgData: Path, val xdgConfig: Path)
+
+    private fun seedStoreProject(): StoreProject {
+        val base = Files.createTempDirectory("openspec-ui-smoke-store-root-").toRealPath()
+        val xdgData = Files.createDirectories(base.resolve("machine/data"))
+        val xdgConfig = Files.createDirectories(base.resolve("machine/config"))
+        val store = base.resolve("stores/demo")
+        val setup = ProcessBuilder("openspec", "store", "setup", "demo", "--path", store.toString(), "--no-init-git", "--json")
+            .apply {
+                environment()["XDG_DATA_HOME"] = xdgData.toString()
+                environment()["XDG_CONFIG_HOME"] = xdgConfig.toString()
+            }
+            .redirectErrorStream(true).start()
+        check(setup.waitFor() == 0) { "store setup failed: ${setup.inputStream.bufferedReader().readText()}" }
+        val app = Files.createDirectories(base.resolve("app"))
+        Files.writeString(Files.createDirectories(app.resolve("openspec")).resolve("config.yaml"), "store: demo\n")
+        return StoreProject(base, app, store, xdgData, xdgConfig)
+    }
+
+    /**
+     * The plugin's inspections run on a spec that lives in the store, outside the project (and so outside its
+     * content roots). The IDE's highlighting rules skip library files, and a bundled highlighting filter could skip
+     * non-project ones; this proves neither silences a store spec in IntelliJ IDEA.
+     */
+    @Test
+    fun inspectionsRunOnAStoreSpec() {
+        val cliVersion = hostCliVersion()
+        org.junit.jupiter.api.Assumptions.assumeTrue(cliAtLeast(cliVersion, 1, 5)) {
+            "the store-spec inspection journey needs OpenSpec CLI 1.5+ on the host (found: $cliVersion)"
+        }
+        val seeded = seedStoreProject()
+        val spec = seeded.store.resolve("openspec/specs/keywordless/spec.md")
+        Files.createDirectories(spec.parent)
+        Files.writeString(spec,
+            "# Keywordless\n\n## Purpose\nA store spec whose requirement has no RFC 2119 keyword.\n\n" +
+                "## Requirements\n\n### Requirement: Keywordless\nThe body has no keyword.\n\n" +
+                "#### Scenario: T\n- **WHEN** x\n- **THEN** y\n")
+
+        val context = newContext(seeded.app).apply {
+            applyVMOptionsPatch {
+                withEnv("XDG_DATA_HOME", seeded.xdgData.toString())
+                withEnv("XDG_CONFIG_HOME", seeded.xdgConfig.toString())
+            }
+        }
+        context.runIdeWithDriver().useDriverAndCloseIde {
+            waitForIndicators(5.minutes)
+            val project = singleProject()
+            withContext(OnDispatcher.EDT) {
+                val file = utility(LocalFileSystemRef::class).getInstance().refreshAndFindFileByPath(spec.toString())
+                    ?: error("the store spec isn't visible to the IDE: $spec")
+                utility(FileEditorManagerRef::class).getInstance(project).openFile(file, true)
+            }
+            withContext(OnDispatcher.EDT) { getToolWindow("Problems View").show() }
+            ideFrame {
+                waitUntil("the keyword inspection fires on the store's spec", timeout = 2.minutes) {
+                    hasText("Requirement must contain SHALL or MUST")
+                }
+            }
+        }
     }
 
     // ---- Journey 6 — store health follows CLI 1.6 semantics ----------------------
