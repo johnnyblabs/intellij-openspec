@@ -88,13 +88,14 @@
   - `docs/feature-reference.md`: validation, including that the built-in validator follows the detected or target CLI release;
   - `docs/openspec-support.md`, where it describes validation parity for 1.16 and 2.x.
   - Verify: `DocumentationHygieneTest`, and the vendor-neutral grep.
-- [ ] 5.2 Final checks:
+- [x] 5.2 Final checks:
   - `./gradlew build`;
   - `./gradlew verifyPlugin`;
   - `openspec validate --all --strict`;
   - a full `uiSmoke` under `caffeinate -dimsu`;
   - test-engineer AUDIT and intellij-code-reviewer on the diff, with each finding fixed or recorded here.
   - Verify: all pass, and the outcome is recorded.
+  - Results: `./gradlew build` passes; `verifyPlugin` reports all six IDEs compatible, with the same deprecated uses as before (none new); `openspec validate --all --strict` passes; the full `uiSmoke` passes 16 of 16.
   - Review outcome:
     - intellij-code-reviewer: no errors; two warnings, both fixed. The target release is read once and cached, not from the jar for every file; and a run follows one release snapshot (`BuiltInValidator.following`) for its rules and its strict flip, so detection finishing mid-run can't split them.
     - test-engineer AUDIT: pass with nits, fixed as follows:
