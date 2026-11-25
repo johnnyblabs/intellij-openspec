@@ -28,6 +28,9 @@ public class SpecTreeModel {
 
     private final Project project;
 
+    /** Leads the tree's hint when the project's store can't be used. */
+    public static final String STORE_PROBLEM_PREFIX = "The OpenSpec store can't be used: ";
+
     public SpecTreeModel(Project project) {
         this.project = project;
     }
@@ -36,7 +39,14 @@ public class SpecTreeModel {
         DefaultMutableTreeNode root = new DefaultMutableTreeNode("OpenSpec");
 
         if (!OpenSpecFileUtil.isOpenSpecProject(project)) {
-            String hint = "No openspec/ directory found — click Initialize to set up.";
+            // A project pointing at a store that can't be used is set up: say why, not "initialize".
+            com.johnnyblabs.openspec.root.OpenSpecRootResolver resolver =
+                    com.johnnyblabs.openspec.root.OpenSpecRootResolver.getInstance(project);
+            com.johnnyblabs.openspec.root.RootResolution.Problem problem =
+                    resolver == null ? null : resolver.snapshot().problem();
+            String hint = problem != null
+                    ? STORE_PROBLEM_PREFIX + GettingStartedPanel.problemText(problem)
+                    : "No openspec/ directory found — click Initialize to set up.";
             root.add(new DefaultMutableTreeNode(
                     new TreeNodeData(hint, TreeNodeType.HINT, null, null, null, hint)));
             return new DefaultTreeModel(root);

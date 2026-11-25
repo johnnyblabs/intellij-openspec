@@ -30,7 +30,7 @@ Everything the resolution needs is a file, so it can be reproduced without the C
 - Showing a local tree and a store tree together. Upstream treats them as mutually exclusive, so this would be off-model.
 - A plugin-side choice of store, or `--store` from the UI.
 - Attaching the store to the project model (content root or library).
-- Suppressing the non-project write prompt, store-naming wording, and a uiSmoke journey. These belong to the second change.
+- Suppressing the non-project write prompt, and store-naming wording. These belong to the second change.
 - Referenced stores (`context.members`).
 - WSL-hosted stores where the IDE and the CLI see different registries.
 
@@ -133,7 +133,8 @@ The layouts also cover the cases a store pointer can go wrong in: no store regis
 - **Drift if upstream changes the rules.** Mitigation: the capture script runs at every CLI bump, and the contract test fails on any difference.
 - **A large mechanical diff (about 56 sites).** Mitigation: the facade lands first with no behavior change. The rest moves in surface batches, each covered by its tests, and the hygiene test catches stragglers.
 - **Unwatchable roots** (network drive, inotify limit) show changes only after Refresh. That is acceptable; Refresh re-resolves.
-- **Inspections on non-project files in other IDEs** depend on there being no `ProblemHighlightFilter` that suppresses them. Mitigation: check in runIde for a non-IDEA IDE before release; the second change adds the uiSmoke journey.
+- **Inspections on non-project files in other IDEs** depend on there being no `ProblemHighlightFilter` that suppresses them. Mitigation: check in a non-IDEA IDE before release.
+- **Outside changes to a store** appear as a project file's do: when the user returns to the IDE, through the platform's window-activation sync. The store-root uiSmoke journey proves that end to end. It does not prove the watch itself, since that sync also re-reads folders nobody watches; the watch only flags changes sooner. The resolver also loads a newly resolved store tree into the VFS once, because the VFS reports changes only under loaded folders and a store isn't indexed.
 - **WSL:** the IDE's registry differs from a WSL CLI's. Out of scope; documented as unsupported.
 - **The plugin-core 1.9 scenario** says the plugin gates CLI invocation on the on-disk `openspec/` root. That remains true with the resolved root read as that root, so no delta is needed.
 

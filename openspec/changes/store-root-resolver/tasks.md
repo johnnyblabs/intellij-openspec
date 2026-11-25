@@ -75,6 +75,8 @@
   - `snapshot()` refreshes;
   - a surface keeps a hand-built path.
 
+- [x] 4.7 uiSmoke journey `aProjectPointingAtAStoreShowsTheStore`: isolated XDG data and config, store set up by the host CLI (1.5+, skipped below), project with only a pointer. It checks the store's change lists, a change made outside the IDE appears when the user returns to the IDE (platform sync, not Refresh), a pointer to an unregistered store makes the tree explain it, and fixing the pointer brings the store back. The tree's no-root hint names the store problem instead of offering init.
+
 ## 5. Verification and docs
 
 - [x] 5.1 `./gradlew build` and `./gradlew verifyPlugin` (new `LocalFileSystem` watch and refresh references).

@@ -6,6 +6,7 @@ import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VfsUtil;
+import com.intellij.openapi.vfs.VfsUtilCore;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.vfs.VirtualFileManager;
 import com.intellij.openapi.vfs.newvfs.BulkFileListener;
@@ -146,9 +147,14 @@ public final class OpenSpecRootResolver implements Disposable {
         Path openspecDir = resolution.openspecDir();
         if (openspecDir != null) {
             dir = lfs.refreshAndFindFileByNioFile(openspecDir);
-            // Load a newly resolved tree once, so its files raise events; an unchanged root needs no full refresh.
+            // A newly resolved tree is refreshed and loaded once. The VFS reports a change only under folders whose
+            // contents it has loaded; a project's files load through indexing, but a store outside the project isn't
+            // indexed, so without this a change made in the store outside the IDE never arrives.
             VirtualFile before = snapshot.openspecDir();
-            if (dir != null && !dir.equals(before)) VfsUtil.markDirtyAndRefresh(false, true, true, dir);
+            if (dir != null && !dir.equals(before)) {
+                VfsUtil.markDirtyAndRefresh(false, true, true, dir);
+                VfsUtilCore.iterateChildrenRecursively(dir, null, file -> true);
+            }
         }
         RootResolver.Inputs in = inputs.apply(null);
         Path registry = in.dataPaths().storeRegistryFile();
@@ -165,6 +171,7 @@ public final class OpenSpecRootResolver implements Disposable {
         synchronized (this) {
             live = !disposed;
         }
+        if (!same(old, next)) LOG.info("OpenSpec root: " + next.kind() + " " + resolution.root() + " (" + resolution.source() + ")");
         if (!same(old, next) && live && !project.isDisposed()) {
             project.getMessageBus().syncPublisher(TOPIC).rootChanged(next);
         }
@@ -186,7 +193,12 @@ public final class OpenSpecRootResolver implements Disposable {
         List<String> flat = List.of(sys(registry.getParent()), sys(globalConfig.getParent()));
         synchronized (this) {
             if (disposed) return;
+            Set<LocalFileSystem.WatchRequest> before = watches;
             watches = lfs.replaceWatchedRoots(watches, recursive, flat);
+            if (!watches.equals(before)) {
+                LOG.info("OpenSpec root watches: recursive " + recursive + ", flat " + flat + " -> "
+                        + watches.stream().map(LocalFileSystem.WatchRequest::getRootPath).toList());
+            }
         }
     }
 

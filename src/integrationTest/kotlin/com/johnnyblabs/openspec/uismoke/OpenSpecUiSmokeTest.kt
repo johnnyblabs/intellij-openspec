@@ -91,6 +91,16 @@ class OpenSpecUiSmokeTest {
     @Remote("com.intellij.ui.content.Content")
     interface ContentRef
 
+    /**
+     * What the IDE does when the user switches back to it: apply the outside changes the file watcher flagged.
+     * The Starter IDE's window is never activated, so a journey calls it where a user would return to the IDE.
+     */
+    @Remote("com.intellij.ide.SaveAndSyncHandler")
+    interface SaveAndSyncHandlerRef {
+        fun getInstance(): SaveAndSyncHandlerRef
+        fun scheduleRefresh()
+    }
+
     /** Programmatic action fire — physical robot clicks don't land in this environment. */
     @Remote("com.intellij.openapi.actionSystem.impl.ActionButton")
     interface ActionButtonRef {
@@ -439,6 +449,90 @@ class OpenSpecUiSmokeTest {
         check(Files.isDirectory(projectPath.resolve("openspec/changes/demo-add-farewell"))) {
             "change directory was moved despite cancelling the archive"
         }
+    }
+
+    // ---- Journey — a project whose specs live in a store ------------------------------
+
+    /**
+     * A project whose `openspec/config.yaml` holds only `store: demo` shows the store's changes, picks up a change
+     * made in the store outside the IDE (the store's tree is watched though it lies outside the project), explains
+     * a pointer to a store that isn't registered instead of offering init, and returns to the store when the
+     * pointer is fixed. The IDE and every CLI it runs use ISOLATED OpenSpec machine folders (XDG data and config),
+     * so the user's real store registry and default store are never touched. Needs a host CLI with stores (1.5+).
+     */
+    @Test
+    fun aProjectPointingAtAStoreShowsTheStore() {
+        val cliVersion = hostCliVersion()
+        org.junit.jupiter.api.Assumptions.assumeTrue(cliAtLeast(cliVersion, 1, 5)) {
+            "the store-root journey needs OpenSpec CLI 1.5+ on the host (found: $cliVersion)"
+        }
+        val base = Files.createTempDirectory("openspec-ui-smoke-store-root-").toRealPath()
+        val xdgData = Files.createDirectories(base.resolve("machine/data"))
+        val xdgConfig = Files.createDirectories(base.resolve("machine/config"))
+        val store = base.resolve("stores/demo")
+        val setup = ProcessBuilder("openspec", "store", "setup", "demo", "--path", store.toString(), "--no-init-git", "--json")
+            .apply {
+                environment()["XDG_DATA_HOME"] = xdgData.toString()
+                environment()["XDG_CONFIG_HOME"] = xdgConfig.toString()
+            }
+            .redirectErrorStream(true).start()
+        check(setup.waitFor() == 0) { "store setup failed: ${setup.inputStream.bufferedReader().readText()}" }
+        val change = store.resolve("openspec/changes/store-add-farewell")
+        Files.createDirectories(change.resolve("specs/greeting"))
+        Files.writeString(change.resolve("proposal.md"), "## Why\n\nThe demo app never says goodbye.\n")
+        Files.writeString(change.resolve("specs/greeting/spec.md"),
+            "## ADDED Requirements\n\n### Requirement: Say goodbye\nThe app SHALL say goodbye.\n\n" +
+                "#### Scenario: Farewell\n- **WHEN** the user leaves\n- **THEN** the app says goodbye\n")
+
+        val app = Files.createDirectories(base.resolve("app"))
+        val pointer = Files.createDirectories(app.resolve("openspec")).resolve("config.yaml")
+        Files.writeString(pointer, "store: demo\n")
+
+        val context = newContext(app).apply {
+            applyVMOptionsPatch {
+                withEnv("XDG_DATA_HOME", xdgData.toString())
+                withEnv("XDG_CONFIG_HOME", xdgConfig.toString())
+            }
+        }
+        context.runIdeWithDriver().useDriverAndCloseIde {
+            waitForIndicators(5.minutes)
+            withContext(OnDispatcher.EDT) { getToolWindow("OpenSpec").show() }
+            val returnToIde = { utility(SaveAndSyncHandlerRef::class).getInstance().scheduleRefresh() }
+
+            ideFrame {
+                // Stop 1: the store's change, not Getting Started (the app has no specs or changes of its own).
+                waitUntil("the Browse tree lists the store's change", timeout = 2.minutes) {
+                    hasText("store-add-farewell")
+                }
+
+                // Stop 2: a change made in the store outside the IDE appears without a manual refresh.
+                val outside = store.resolve("openspec/changes/store-made-outside")
+                Files.createDirectories(outside)
+                Files.writeString(outside.resolve("proposal.md"), "## Why\n\nMade outside the IDE.\n")
+                // The store lies outside the project, so only the resolver's watch gets its change flagged for this sync.
+                waitUntil("a change made in the store outside the IDE appears when the user returns", timeout = 2.minutes) {
+                    returnToIde()
+                    hasText("store-made-outside")
+                }
+
+                // Stop 3: a pointer to an unregistered store is explained, not offered init.
+                Files.writeString(pointer, "store: ghost\n")
+                waitUntil("the tree explains the unusable store", timeout = 2.minutes) {
+                    returnToIde()
+                    hasSubtext("store can't be used")
+                }
+                check(!hasText("store-add-farewell")) { "the store's change is still listed under a broken pointer" }
+
+                // Stop 4: fixing the pointer brings the store back.
+                Files.writeString(pointer, "store: demo\n")
+                waitUntil("the store's changes return once the pointer is fixed", timeout = 2.minutes) {
+                    returnToIde()
+                    hasText("store-add-farewell")
+                }
+            }
+        }
+        // The user's real OpenSpec data stayed out of it: the store was registered only in the isolated registry.
+        assertTrue(Files.readString(xdgData.resolve("openspec/stores/registry.yaml")).contains("demo"))
     }
 
     // ---- Journey 6 — store health follows CLI 1.6 semantics ----------------------

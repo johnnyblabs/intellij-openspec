@@ -12,7 +12,8 @@ Every plugin surface assumes the OpenSpec root is `<project>/openspec`. Since CL
 - **Changes in a store are watched.** The resolved root is watched for file changes even when it lies outside the project, and the resolver re-resolves when the pointer, the global config or the registry changes. Refresh also re-resolves.
 - **A hygiene test keeps it that way.** A test fails on a hard-coded `openspec` root path outside the resolver and an allow-list.
 - **Fixes a refresh inside file-event handling.** Today the root lookup can force a synchronous file-system refresh from inside file-change callbacks and action updates when no `openspec/` exists. The resolver's lookup never refreshes.
-- **Out of scope (second change):** suppressing the "file does not belong to the project" prompt when editing store files, store-naming wording in the tree, panels and prompts, and a UI smoke journey.
+- **A UI smoke journey proves it in a real IDE.** A project pointing at a store set up by the real CLI shows the store's change, picks up a change made in the store outside the IDE when the user returns to it, explains a pointer to an unregistered store, and recovers when it's fixed, all with isolated OpenSpec machine folders.
+- **Out of scope (second change):** suppressing the "file does not belong to the project" prompt when editing store files, and store-naming wording in the tree, panels and prompts.
 
 ## Capabilities
 
@@ -22,7 +23,9 @@ Every plugin surface assumes the OpenSpec root is `<project>/openspec`. Since CL
 
 ### Modified Capabilities
 
-None. Existing capabilities keep their requirements; they now operate on the resolved root, which equals `<project>/openspec` for every project with a local planning tree. Two kinds of project that show as not set up today will resolve a root, as the CLI already does: one opened inside a larger OpenSpec repo, and one with no `openspec/` on a machine with a default store.
+- `ui-smoke-journeys`: a store-root journey joins the suite.
+
+Other existing capabilities keep their requirements; they now operate on the resolved root, which equals `<project>/openspec` for every project with a local planning tree. Two kinds of project that show as not set up today will resolve a root, as the CLI already does: one opened inside a larger OpenSpec repo, and one with no `openspec/` on a machine with a default store.
 
 ## Impact
 
