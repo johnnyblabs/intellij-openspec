@@ -9,10 +9,10 @@ An IDE-native client for the [OpenSpec](https://github.com/fission-ai/openspec) 
 
 **Features:**
 
-- **Changes browser & Change Deltas pane** — a master/detail Changes tree beside a pane that shows what the selected change will add, modify or remove in your specs, for the change or any of its artifacts, with the CLI's Validate verdict for that change and a legend of what archive does with each operation, with content-aware spec search through Search Everywhere (over requirement and scenario text), artifact-status badges on tree icons (a change whose artifacts are complete and whose tasks are all done gets a check mark and an "all tasks done" cue, so finished work stands out)
+- **Changes browser & Change Deltas pane** — a Changes tree beside a pane that shows what the selected change will add, modify or remove in your specs, with its Validate verdict. Artifact-status badges and task counts on the tree show where each change stands, and Search Everywhere searches requirement and scenario text
 - **Validation you can navigate** — real-time editor inspections and quick-fixes matching the OpenSpec CLI's own parser, plus a Validate action (from the toolbar or the Project View context menu, scoped to the clicked change or spec) whose results render grouped by file with clickable file:line links and per-severity coloring
 - **Change lifecycle** — create, implement, verify, and archive OpenSpec changes from a dedicated tool window, with schema-aware completeness gates and task-level progress. With OpenSpec CLI 1.5 or later, archiving runs through your CLI's own rules, and a refusal shows the CLI's reason and suggested fix
-- **Works with your AI tooling** — detects the AI coding tools OpenSpec supports (87 on OpenSpec 2.1) (Claude Code, GitHub Copilot, Cursor, Gemini CLI, and more), the way the OpenSpec CLI detects them, and hands generation off to the one you already use, or calls the Anthropic, OpenAI, or Google APIs directly with your own key
+- **Works with your AI tooling** — detects the AI coding tools OpenSpec supports (87 on OpenSpec 2.1, including Claude Code, GitHub Copilot, Cursor and Gemini CLI), the way the OpenSpec CLI detects them, and hands generation off to the one you already use, or calls the Anthropic, OpenAI, or Google APIs directly with your own key
 - **Schema authoring** — fork, create, and validate custom workflow schemas, with template editing and resolution-provenance tags straight from the CLI
 - **Stores & worksets** — browse and manage the OpenSpec CLI 1.5 coordination model, with health diagnostics and graceful support back to the 1.4 workspace model
 - **Setup wizard** — guided onboarding for new and existing projects; the plugin works with or without the OpenSpec CLI installed and degrades gracefully
@@ -21,6 +21,41 @@ Compatible with IntelliJ IDEA, PyCharm, GoLand, WebStorm, RubyMine, and the rest
 <!-- Plugin description end -->
 
 > **Maintenance: Living** — updated as part of every relevant change. See the [documentation index](docs/README.md) for the full doc map and each doc's maintenance class.
+
+---
+
+## How it fits together
+
+The plugin is a client for OpenSpec, not a replacement. It runs your OpenSpec CLI when one is installed, falls back to built-in checks when none is, and hands the writing to the AI tool you already use, or to a model API with your own key.
+
+```mermaid
+flowchart LR
+    subgraph IDE["JetBrains IDE"]
+        P["OpenSpec plugin<br/>tool window · inspections · actions"]
+    end
+    P -- "runs" --> CLI["OpenSpec CLI<br/>1.3.0 – 2.1.x"]
+    P -. "no CLI installed" .-> BI["Built-in fallback<br/>validator · spec sync"]
+    CLI --> FS[("openspec/<br/>specs · changes")]
+    BI --> FS
+    P -- "hands off a prompt<br/>or /openspec-* skill" --> AI["Your AI tool<br/>Claude Code, Copilot, Cursor, …"]
+    P -- "Direct API, your key" --> API["Anthropic · OpenAI · Google"]
+    AI --> FS
+```
+
+## The change lifecycle
+
+Every change follows OpenSpec's lifecycle. The plugin puts each step one click away and shows where a change stands.
+
+```mermaid
+flowchart LR
+    E(["Explore"]) -.-> PR["Propose<br/>proposal · specs · design · tasks"]
+    PR --> V{"Validate"}
+    V -- "issues" --> PR
+    V -- "clean" --> AP["Apply<br/>implement the tasks"]
+    AP --> VE["Verify"]
+    VE --> AR["Archive<br/>deltas merged into the specs"]
+    AR --> S[("openspec/specs")]
+```
 
 ---
 
@@ -37,6 +72,8 @@ Compatible with IntelliJ IDEA, PyCharm, GoLand, WebStorm, RubyMine, and the rest
 
 ## Installation
 
+### The plugin
+
 Install from the [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/30678-openspec) (search for **OpenSpec**), or build from source:
 
 ```bash
@@ -46,11 +83,11 @@ cd intellij-openspec
 # Install from: build/distributions/OpenSpec-*.zip
 ```
 
-**Requirements:** IntelliJ IDEA 2024.2+ (Community or Ultimate), Java 21 JDK for building from source.
+**Requirements:** a JetBrains IDE 2024.2 or later; a Java 21 JDK to build from source.
 
-**OpenSpec CLI (optional):** The plugin works without the CLI via its built-in fallback paths, and AI-tool detection (every tool your OpenSpec CLI supports) is plugin-side — it works on any CLI, or none. **Supported CLI: 1.3.0 through 2.1.x** (see the canonical [Version support](docs/openspec-support.md#version-support) block for the full per-version support list). The plugin tracks the CLI's evolving model per version: on **1.4.x** it surfaces the legacy coordination layer (workspaces, context stores, and initiatives, plus the `workspace-planning` schema) that exists in the `[1.4.0, 1.5.0)` window; on **1.5.0+** it surfaces the current **store/workset** model that replaced it. On **1.6.x**, **1.7.x**, **1.8.x**, **1.9.x**, **1.10.x**, **1.11.x**, and **1.12.x** that coordination model is unchanged; **1.7.x**, **1.8.x**, **1.9.x**, **1.10.x**, **1.11.x**, and **1.12.x** support is additive — the plugin recognizes the CLI's new optional change-metadata (`skip_specs`, plus 1.8's `retire_capabilities`) and config fields (`operations`, `defaultStore`, plus 1.8's `githubCopilot`) and the additive `status --json` fields, all tolerated without new gates. **1.8** also relaxed one built-in check to stay in step with the CLI: when the CLI isn't installed, a requirement that has a body but no `SHALL`/`MUST` is a non-failing warning in default validation (strict still fails it), matching OpenSpec 1.8's default. **1.9** is a strict additive superset of 1.8 — its default and strict validation verdicts are byte-identical, so 1.9 support needed no built-in change. **1.10** is likewise a strict additive superset of 1.9 — its validation engine is byte-identical in source and its verdicts are unchanged, so 1.10 support also needed no built-in change (1.10 is the first two-digit minor, so the plugin's numeric version comparison is tested to order 1.10.0 above 1.9.0). **1.11** is an additive, safe-direction superset of 1.10 — its verdicts over the parity corpus are byte-identical to 1.8, and its one new validation rule (a spec whose `## Purpose` is still a placeholder is now a warning, a failure under strict) only makes the CLI stricter, so 1.11 support also needed no built-in change and the new rule is locked by a positive-control fixture. **1.12** is the same shape — an additive, safe-direction superset of 1.11 with unchanged verdicts; its one new diagnostic (an informational "archive would refuse this delta" note when a change's delta targets a not-yet-existing spec) never affects the verdict and is already surfaced at the correct severity, so 1.12 support also needed no built-in change. **1.13** keeps the verdicts unchanged but made the CLI more permissive in two places the plugin now mirrors. `RENAMED`/`REMOVED` delta entries may use any bullet (`-`, `*`, `+`), and the built-in validator, the editor inspection and spec sync all accept them. Task progress counts every task style the CLI counts (`*`, `+`, `1.`, `[ x ]`, …), so the plugin's numbers match the CLI's. A rejected item id also no longer reads as a passing validation. **1.14** reworded the legacy-cleanup notice that `openspec update` prints. The plugin recognizes both wordings, and since 1.14 warns to back up custom content first, its cleanup review starts with no files ticked. Its new output fields are ignored, and its new warnings (an unrecognized `.openspec.yaml` key, a very long requirement, text that archiving would drop) only fail under strict, so the built-in fallback leaves them to the CLI. **1.15** keeps the validation verdicts and output of 1.14, and its new standalone binary (installable without Node.js) reports its version the same way as the npm install. Its new `update --dry-run` lets the plugin's **Update** show what it will change and apply it only when you agree. **1.16** keeps the validation verdicts of 1.15 and adds a warning for a scenario that's missing its WHEN/GIVEN or THEN step, which fails only under strict; the plugin shows the CLI's verdict. A `config.yaml` the CLI can't parse or read is reported as an error, not a pass. **1.17** changes only how `openspec update` cleans up old generated files; everything the plugin reads is unchanged. Note that **OpenSpec CLI 1.5.0 replaced the coordination commands and the `workspace-planning` schema with a store/workset model**; on 1.5.0+ the plugin stops calling the removed commands and instead shows the new model in the Coordination tab — your registered **stores** (with id, root, and health) and your local **worksets** (with their member folders), sourced from the CLI with a built-in fallback that reads OpenSpec's global data directory. Any surviving pre-1.5 state appears in a muted, read-only "Legacy (pre-1.5)" group. With CLI 1.5.0+ the IDE also offers store/workset **write actions** — creating or registering a store, revealing a workset's member folders, and creating or removing stores/worksets (store Remove is a guarded, destructive delete) — all delegating to the CLI; the plugin never migrates state — it only reflects what the CLI owns. The surface is language-agnostic and works across the JetBrains IDE family. Users on CLI 1.0, 1.1, or 1.2 will see a one-time startup notification recommending upgrade — the plugin continues to function but features that require the CLI are disabled.
+### The OpenSpec CLI (optional)
 
-Install the CLI with any of OpenSpec's [install routes](https://openspec.dev/docs/installation):
+The plugin works without the CLI: its built-in validator and spec sync follow OpenSpec 2.1.1's rules, and AI-tool detection is plugin-side. Install the CLI for everything else (the CLI's own validation verdicts, archive, update, stores and worksets) with any of OpenSpec's [install routes](https://openspec.dev/docs/installation):
 
 ```bash
 # Standalone installer (no Node.js needed), macOS and Linux:
@@ -62,9 +99,26 @@ npm install -g @fission-ai/openspec@latest   # needs Node.js 22.20+
 brew install openspec                        # macOS and Linux
 ```
 
-**Keep one copy of the CLI.** If you install it a second way, for example the standalone installer after an earlier npm install, your terminal runs whichever comes first in PATH, while the plugin uses the first copy it finds. Upgrade the copy you have the way you installed it: re-run the installer (or `openspec install`), `npm install -g @fission-ai/openspec@latest`, or `brew upgrade openspec`. To make the plugin use a specific copy, set **Settings → Tools → OpenSpec → CLI Path**. The plugin's **Update** action runs `openspec update`, which refreshes your project's instruction files; it doesn't upgrade the CLI.
+**Keep one copy of the CLI.** If you install it a second way, your terminal runs whichever comes first in PATH, while the plugin uses the first copy it finds. Upgrade the copy you have the way you installed it: re-run the installer (or `openspec install`), `npm install -g @fission-ai/openspec@latest`, or `brew upgrade openspec`. To pick a specific copy, set **Settings → Tools → OpenSpec → CLI Path**. The plugin's **Update** action runs `openspec update`, which refreshes your project's skills; it doesn't upgrade the CLI.
 
-**Windows note:** npm installs the launcher as `openspec.cmd` (not bare `openspec`). The plugin auto-detects it from `%APPDATA%\npm\` and `%LOCALAPPDATA%\npm\`, plus winget shims. OpenSpec's standalone binary (1.15+, no Node.js needed) is found where its installer puts it: `~/.local/bin/openspec` on macOS and Linux, `%LOCALAPPDATA%\Programs\openspec\openspec.exe` on Windows. After installing the standalone CLI on Windows, restart the IDE: the installer adds itself to your user PATH, which an IDE that's already running doesn't see, so until then the plugin keeps any copy it found before. If auto-detect misses your install, set the manual path in **Settings → Tools → OpenSpec → CLI Path** to the full `.cmd` location, e.g. `C:\Users\<you>\AppData\Roaming\npm\openspec.cmd`.
+**Windows note:** npm installs the launcher as `openspec.cmd`, which the plugin finds in `%APPDATA%\npm\` and `%LOCALAPPDATA%\npm\`, plus winget shims. The standalone binary is found where its installer puts it: `~/.local/bin/openspec` on macOS and Linux, `%LOCALAPPDATA%\Programs\openspec\openspec.exe` on Windows. After installing the standalone CLI on Windows, restart the IDE so it sees the new PATH. If auto-detect misses your install, set **CLI Path** to the full location, e.g. `C:\Users\<you>\AppData\Roaming\npm\openspec.cmd`.
+
+---
+
+## Supported OpenSpec CLI versions
+
+**Supported: 1.3.0 through 2.1.x, targeting 2.1.1.** Plugin X.Y supports CLI releases up to X.Y.x, and each new CLI minor gets its own plugin release. The full per-version contract is in [OpenSpec client coverage → Version support](docs/openspec-support.md#version-support).
+
+| CLI | What the plugin does |
+|-----|----------------------|
+| **2.0.x – 2.1.x** | OpenSpec 2's skills-only layout: skills in `.agents/skills`, linked from each tool's folder, for the project or the whole machine. Update previews the 1.x → 2.x migration. Validation and archive follow each release. [2.x note](docs/cli-versions/2.x.md) |
+| **1.15.x – 1.17.x** | Update shows what it will change before applying it. The standalone binary (no Node.js) is detected. |
+| **1.5.x – 1.14.x** | Stores and worksets in the Coordination tab, with health and write actions. The built-in validator follows each release's rules. |
+| **1.4.x** | The legacy coordination model: workspaces, context stores and initiatives. |
+| **1.3.x** | The minimum: the change lifecycle and validation, without coordination. |
+| **No CLI** | Spec browsing, the lifecycle tool window, and the built-in validator and spec sync, following 2.1.1. |
+| **Below 1.3.0** | A one-time upgrade notice; CLI features are off and the built-in paths take over. |
+| **Newer than 2.1.x** | Keeps working, with no warning, until the plugin release for that CLI line. |
 
 ---
 
