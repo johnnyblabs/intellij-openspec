@@ -18,6 +18,8 @@ An IDE-native client for the [OpenSpec](https://github.com/fission-ai/openspec) 
 - **Setup wizard** — guided onboarding for new and existing projects; the plugin works with or without the OpenSpec CLI installed and degrades gracefully
 
 Compatible with IntelliJ IDEA, PyCharm, GoLand, WebStorm, RubyMine, and the rest of the JetBrains IDE family, 2024.2 and later. Spec browsing and validation are fully language-agnostic.
+
+Works with OpenSpec CLI 1.3.0 through 2.1.x, targeting 2.1.1, or with no CLI installed.
 <!-- Plugin description end -->
 
 > **Maintenance: Living** — updated as part of every relevant change. See the [documentation index](docs/README.md) for the full doc map and each doc's maintenance class.

@@ -62,6 +62,24 @@ class ReadmeHygieneTest {
     }
 
     @Test
+    void theMarketplaceDescriptionAndMatrixStateTheTargetCliLine() {
+        String range = "1.3.0 through " + targetLine() + ", targeting " + target();
+        String readme = read(root().resolve("README.md"));
+        int start = readme.indexOf("<!-- Plugin description -->");
+        int end = readme.indexOf("<!-- Plugin description end -->");
+        assertTrue(start >= 0 && end > start, "README lost its plugin-description markers");
+        assertTrue(readme.substring(start, end).contains(range),
+                "the Marketplace description (README's plugin-description block) should say " + range);
+        assertTrue(read(root().resolve("docs/feature-comparison-matrix.md")).contains(range),
+                "the feature comparison matrix should say " + range);
+    }
+
+    /** The target's CLI line, e.g. "2.1.1" → "2.1.x". */
+    private static String targetLine() {
+        return target().replaceFirst("^(\\d+\\.\\d+)\\..*$", "$1") + ".x";
+    }
+
+    @Test
     void theReadmesRelativeLinksAndAnchorsResolve() {
         Path root = root();
         String readme = read(root.resolve("README.md"));
