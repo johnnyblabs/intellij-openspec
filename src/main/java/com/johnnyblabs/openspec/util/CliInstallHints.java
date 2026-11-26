@@ -11,6 +11,14 @@ package com.johnnyblabs.openspec.util;
  */
 public final class CliInstallHints {
 
+    /**
+     * The Node.js version the npm package requires: {@code engines.node} is {@code >=22.20.0} from CLI 2.1.0 (it was
+     * 22.12.0 in 1.16). One hint is shown whatever CLI is installed, so it states the floor of the newest line the
+     * plugin supports.
+     */
+    static final String NPM_NODE_FLOOR = "22.20";
+
+
     /** Upstream's installation page, which covers every route (the README Quick Start links here too). */
     public static final String INSTALL_DOCS_URL = "https://openspec.dev/docs/installation";
     /** The label of every link or action that opens {@link #INSTALL_DOCS_URL}. */
@@ -48,7 +56,7 @@ public final class CliInstallHints {
     public static String html(boolean isWindows) {
         StringBuilder sb = new StringBuilder()
                 .append("Install with: <code>").append(escape(standaloneCommand(isWindows))).append("</code> (no Node.js needed)")
-                .append(", or <code>").append(NPM).append("</code> (needs Node.js 22.12 or later)");
+                .append(", or <code>").append(NPM).append("</code> (needs Node.js ").append(NPM_NODE_FLOOR).append(" or later)");
         if (!isWindows) {
             sb.append(", or <code>").append(BREW).append("</code>");
         }

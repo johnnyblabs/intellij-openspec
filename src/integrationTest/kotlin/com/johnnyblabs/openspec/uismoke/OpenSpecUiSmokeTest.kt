@@ -371,6 +371,97 @@ class OpenSpecUiSmokeTest {
         }
     }
 
+    /** A CLI release from the capture cache (scripts/install-cli-matrix.py), or a failure saying how to get it. */
+    private fun cachedCli(version: String): Path {
+        val cache = System.getenv("OSP_CAPTURE_CACHE")?.takeIf { it.isNotBlank() }?.let { Path.of(it) }
+            ?: Path.of(System.getProperty("java.io.tmpdir"), "osp-capture-pkgs")
+        val bin = cache.resolve("$version/node_modules/.bin/openspec")
+        check(Files.isExecutable(bin)) { "this journey needs CLI $version at $bin: run scripts/install-cli-matrix.py" }
+        return bin
+    }
+
+    /** Runs {@code cli} in {@code dir} with the throwaway {@code home}; fails with its output on a non-zero exit. */
+    private fun runCli(cli: Path, dir: Path, home: Path, vararg args: String) {
+        val p = ProcessBuilder(listOf(cli.toString()) + args).directory(dir.toFile()).redirectErrorStream(true)
+            .apply {
+                environment()["HOME"] = home.toString()
+                environment()["XDG_CONFIG_HOME"] = home.resolve(".config").toString()
+                environment()["XDG_DATA_HOME"] = home.resolve(".local/share").toString()
+                environment()["OPENSPEC_TELEMETRY"] = "0"
+            }.start()
+        p.outputStream.close()
+        val out = p.inputStream.bufferedReader().readText()
+        check(p.waitFor() == 0) { "openspec ${args.joinToString(" ")} failed: $out" }
+    }
+
+    /** A project whose plugin settings point at {@code cli}. */
+    private fun projectUsing(cli: Path, prefix: String): Path {
+        val project = Files.createTempDirectory(prefix)
+        Files.createDirectories(project.resolve(".idea"))
+        Files.writeString(project.resolve(".idea/openspec.xml"), """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <project version="4">
+              <component name="OpenSpecSettings">
+                <option name="cliPath" value="$cli" />
+              </component>
+            </project>
+        """.trimIndent() + "\n")
+        return project
+    }
+
+    private fun isolatedHome(context: com.intellij.ide.starter.ide.IDETestContext, home: Path) = context.apply {
+        applyVMOptionsPatch {
+            withEnv("HOME", home.toString())
+            withEnv("XDG_CONFIG_HOME", home.resolve(".config").toString())
+            withEnv("XDG_DATA_HOME", home.resolve(".local/share").toString())
+            withEnv("XDG_STATE_HOME", home.resolve(".local/state").toString())
+            withEnv("OPENSPEC_TELEMETRY", "0")
+        }
+    }
+
+    /**
+     * The CLI 2.x layout, on CLI 2.1.1 from the capture cache: a project set up with project-scoped skills shows them
+     * in the project, and GitHub Copilot (which has no folder of its own) as set up through the shared `.agents`
+     * skills; a project set up by CLI 1.17.0 gets the OpenSpec 2 migration banner in the update preview, which is
+     * cancelled. Throwaway home and XDG folders, so the machine's own skills are never touched.
+     */
+    @Test
+    fun cli2xLayoutShowsSharedSkillsAndTheMigration() {
+        val cli = cachedCli("2.1.1")
+        val home = Files.createTempDirectory("openspec-ui-smoke-2x-home-")
+
+        val shared = projectUsing(cli, "openspec-ui-smoke-2x-")
+        runCli(cli, shared, home, "init", "--tools", "claude,github-copilot", "--scope", "project")
+        isolatedHome(newContext(shared), home).runIdeWithDriver().useDriverAndCloseIde {
+            waitForIndicators(5.minutes)
+            invokeAction("OpenSpec.ManageTools", now = false)
+            val dialog = ui.x { byTitle("Manage AI Tools") }
+            waitUntil("Manage AI Tools open", timeout = 2.minutes) { dialog.present() }
+            waitUntil("the skills are in the project", timeout = 2.minutes) {
+                dialog.hasSubtext("Skills: in this project (.agents/skills)")
+            }
+            waitUntil("Copilot is set up through the shared skills", timeout = 2.minutes) {
+                dialog.hasSubtext("via shared .agents skills")
+            }
+            withContext(OnDispatcher.EDT) { cast(dialog.component, WindowRef::class).dispose() }
+        }
+
+        val legacy = projectUsing(cli, "openspec-ui-smoke-1x-")
+        runCli(cachedCli("1.17.0"), legacy, home, "init", "--tools", "claude")
+        val before = tree(legacy.resolve(".claude"))
+        isolatedHome(newContext(legacy), home).runIdeWithDriver().useDriverAndCloseIde {
+            waitForIndicators(5.minutes)
+            invokeAction("OpenSpec.Update", now = false)
+            val preview = ui.x { byTitle(UPDATE_PREVIEW_TITLE) }
+            waitUntil("the update preview opens", timeout = 3.minutes) { preview.present() }
+            waitUntil("the OpenSpec 2 migration banner shows", timeout = 1.minutes) {
+                preview.x { byAccessibleName("OpenSpec 2 migration") }.present()
+            }
+            withContext(OnDispatcher.EDT) { cast(preview.component, WindowRef::class).dispose() }
+        }
+        check(tree(legacy.resolve(".claude")) == before) { "cancelling the preview changed the 1.x project" }
+    }
+
     private fun notificationContents(driver: Driver): List<String> {
         val project = driver.singleProject()
         return driver.utility(ActionCenterRef::class)

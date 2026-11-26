@@ -63,6 +63,26 @@ class CliInstallHintsTest {
     }
 
     @Test
+    void theNpmRouteNamesNode2220TheFloorSinceCli21() {
+        for (boolean windows : new boolean[]{false, true}) {
+            String html = CliInstallHints.html(windows);
+            assertTrue(html.contains("needs Node.js 22.20 or later"), html);
+            assertFalse(html.contains("22.12"), "the 1.16 floor, wrong since CLI 2.1.0: " + html);
+        }
+    }
+
+    @Test
+    void theNodeFloorIsTheTargetReleasesEnginesNode() throws java.io.IOException {
+        // Captured with `npm view @fission-ai/openspec@<target> engines --json`: {"node": ">=22.20.0"}.
+        String target = PluginVersions.targetCliVersion();
+        String engines = java.nio.file.Files.readString(
+                java.nio.file.Path.of("src/test/resources/fixtures/cli", target, "engines.json"));
+        String node = com.google.gson.JsonParser.parseString(engines).getAsJsonObject().get("node").getAsString();
+        assertEquals(node.replaceFirst("^>=", "").replaceFirst("\\.0$", ""), CliInstallHints.NPM_NODE_FLOOR,
+                "the npm hint states the target release's engines.node");
+    }
+
+    @Test
     void notificationTextNamesTheRoutesButNoCommand() {
         for (boolean windows : new boolean[]{false, true}) {
             String text = CliInstallHints.notificationText(windows);

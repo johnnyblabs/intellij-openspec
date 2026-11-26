@@ -46,6 +46,12 @@ public class NestedCapabilitySyncContractTest extends BasePlatformTestCase {
         Project project = mock(Project.class);
         when(project.getBasePath()).thenReturn(base.toString());
         when(project.getService(BuiltInValidator.class)).thenReturn(getProject().getService(BuiltInValidator.class));
+        // The archive output was captured on CLI 1.15.0: sync follows that release, not whatever the plugin targets.
+        com.johnnyblabs.openspec.services.CliDetectionService detection =
+                mock(com.johnnyblabs.openspec.services.CliDetectionService.class);
+        when(detection.isAvailable()).thenReturn(true);
+        when(detection.getDetectedVersion()).thenReturn("1.15.0");
+        when(project.getService(com.johnnyblabs.openspec.services.CliDetectionService.class)).thenReturn(detection);
         service = new SpecSyncService(project);
     }
 

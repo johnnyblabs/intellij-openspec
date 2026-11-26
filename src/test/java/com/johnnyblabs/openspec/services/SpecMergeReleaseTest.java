@@ -94,11 +94,11 @@ public class SpecMergeReleaseTest extends BasePlatformTestCase {
             assertEquals(captured("2.1.0", "new-cap-purpose", "newcap/main-after.md"), projected(sync));
 
             CliDetectionTestSupport.fakeUnavailable(detection);
-            // The target release predates 2.1.1 today; when it reaches 2.1.1, expect archive-2.1.1's capture here.
-            assertFalse("target moved past 2.1.1: compare with archive-2.1.1/new-cap-purpose instead",
+            // With no CLI, sync follows the target release, which is 2.1.1 or later: the 2.1.1 layout.
+            assertTrue("the target predates 2.1.1: compare with archive-2.1.0/new-cap-purpose instead",
                     com.johnnyblabs.openspec.validation.ValidationRelease.has(PluginVersions.targetCliVersion(),
                             com.johnnyblabs.openspec.validation.ValidationRelease.NEW_SPEC_LAYOUT));
-            assertEquals(captured("2.1.0", "new-cap-purpose", "newcap/main-after.md"), projected(sync));
+            assertEquals(captured("2.1.1", "new-cap-purpose", "newcap/main-after.md"), projected(sync));
         } finally {
             FileUtil.delete(base.resolve("openspec").toFile());
         }

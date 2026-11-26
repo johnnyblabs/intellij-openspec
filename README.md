@@ -58,7 +58,7 @@ curl -fsSL https://openspec.dev/cli/install.sh | sh
 # Windows (PowerShell):
 irm https://openspec.dev/cli/install.ps1 | iex
 # Or with a package manager:
-npm install -g @fission-ai/openspec@latest   # needs Node.js 22.12+
+npm install -g @fission-ai/openspec@latest   # needs Node.js 22.20+
 brew install openspec                        # macOS and Linux
 ```
 

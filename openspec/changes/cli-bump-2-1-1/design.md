@@ -27,10 +27,11 @@
 
 `openspecTargetVersion=2.1.1`, guarded by `TargetVersionSingleSourceTest`. 2.1.1 is already in the version guards and every release-iterating contract test, so no new captures are needed.
 
-**Effect without a CLI:** the built-in validator, the CLI-less merge and CLI-less tool detection now follow 2.1.1 instead of 1.17.0.
+**Effect without a CLI:** the built-in validator, the CLI-less merge and the command fitting now follow 2.1.1 instead of 1.17.0.
 - Two validation rules newly apply: MODIFIED growth past 500 characters, and delta front matter.
 - New main specs gain a blank line after `## Purpose`, as 2.1.1's archive writes them.
-- Tool detection uses the 2.1 rules.
+- `init` keeps `--scope project`, available since 2.1.0.
+- Tool detection is unchanged: with no CLI it decides the layout from disk, never from the target.
 
 **Fallout:** tests that assume the 1.17.0 target with no CLI are found by running the suite, and are fixed to state their release explicitly.
 
@@ -38,7 +39,7 @@
 
 ### D2. The install hint's Node floor
 
-`CliInstallHints` says "Node.js 22.20 or later" for the npm route, matching `engines.node` since 2.1.0. One hint is shown regardless of the installed CLI, so it states the newest supported floor.
+`CliInstallHints` says "Node.js 22.20 or later" for the npm route, matching `engines.node` since 2.1.0. One hint is shown regardless of the installed CLI, so it states the newest supported floor. The floor is held to the target release's `engines.node`, captured with `npm view` into `fixtures/cli/<target>/engines.json`.
 
 ### D3. This repository's own update
 

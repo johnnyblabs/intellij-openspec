@@ -22,7 +22,15 @@ import static org.mockito.Mockito.*;
  */
 class ExploreInstructionsTest {
 
-    private static final Path FIXTURES = AiToolRegistryContractTest.FIXTURES.resolve(AiToolRegistryContractTest.TARGET)
+    /**
+     * The 1.x release these captures come from. They cover 1.x delivery (skills, commands or both) and the /opsx command
+     * files, which CLI 2.x retired, so they don't follow the plugin's target; 2.x lookups are covered by the skills
+     * layout tests.
+     */
+    private static final String ONE_X = "1.17.0";
+
+
+    private static final Path FIXTURES = AiToolRegistryContractTest.FIXTURES.resolve(ONE_X)
             .resolve("explore");
 
     @TempDir Path project;
@@ -196,6 +204,22 @@ class ExploreInstructionsTest {
 
         assertTrue(text.contains("I can capture this as a change"), "the explore-only profile's own handoff");
         assertFalse(text.contains("/opsx:propose"), "no handoff to a workflow the profile doesn't install");
+    }
+
+    @Test
+    void onCli21TheSharedSkillsOwnHandoffReachesThePrompt() throws IOException {
+        // CLI 2.x keeps the skill once in .agents/skills and links Claude's folder to it, so Claude reads it through
+        // .claude/skills; its handoff wording changed from 1.17's.
+        Path captured = AiToolRegistryContractTest.FIXTURES.resolve("2.1.1").resolve("explore/claude-skill-explore-only.md");
+        Path target = project.resolve(".claude/skills/openspec-explore/SKILL.md");
+        Files.createDirectories(target.getParent());
+        Files.copy(captured, target);
+        service.setCandidateToolsForTest(() -> List.of(tool("claude")));
+
+        String text = service.loadInstructions().text();
+
+        assertTrue(text.contains("Would you like me to capture this as a change?"), "2.1.1's own handoff");
+        assertFalse(text.contains("/opsx:"), "2.x has no /opsx commands");
     }
 
     @Test

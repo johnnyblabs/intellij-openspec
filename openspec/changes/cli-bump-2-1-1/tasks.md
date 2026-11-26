@@ -2,17 +2,17 @@
 
 ## 1. Target
 
-- [ ] 1.1 `openspecTargetVersion=2.1.1`; `TargetVersionSingleSourceTest` green (D1).
-- [ ] 1.2 Run the full suite. Fix tests that assumed the 1.17.0 target with no CLI so they state their release explicitly, and list the behavior each fix reflects (D1).
+- [x] 1.1 `openspecTargetVersion=2.1.1`; `TargetVersionSingleSourceTest` green (D1).
+- [x] 1.2 Run the full suite. Fix tests that assumed the 1.17.0 target with no CLI so they state their release explicitly, and list the behavior each fix reflects (D1).
 
 ## 2. Code
 
-- [ ] 2.1 `CliInstallHints` says Node.js 22.20 or later for npm, with a test that fails on the old floor (D2).
+- [x] 2.1 `CliInstallHints` says Node.js 22.20 or later for npm, with a test that fails on the old floor (D2).
 
 ## 3. This repository
 
-- [ ] 3.1 Install CLI 2.1.1 globally (pinned) so `openspec --version` equals the target. Run `openspec update` and commit the layout move separately (D3).
-- [ ] 3.2 Revise the CLAUDE.md restore recipe for `.agents/skills/` and the links, and prove it on a scratch clone. Confirm the custom skills are untouched and the `.claude/commands` tests pass.
+- [x] 3.1 Install CLI 2.1.1 globally (pinned) so `openspec --version` equals the target. Run `openspec update` and commit the layout move separately (D3).
+- [x] 3.2 Revise the CLAUDE.md restore recipe for `.agents/skills/` and the links, and prove it on a scratch clone. Confirm the custom skills are untouched and the `.claude/commands` tests pass.
 
 ## 4. UI smoke
 

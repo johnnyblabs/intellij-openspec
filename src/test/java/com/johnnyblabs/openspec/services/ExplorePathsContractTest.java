@@ -16,7 +16,15 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class ExplorePathsContractTest {
 
-    private static final Path DIR = AiToolRegistryContractTest.FIXTURES.resolve(AiToolRegistryContractTest.TARGET)
+    /**
+     * The 1.x release these captures come from. They cover 1.x delivery (skills, commands or both) and the /opsx command
+     * files, which CLI 2.x retired, so they don't follow the plugin's target; 2.x lookups are covered by the skills
+     * layout tests.
+     */
+    private static final String ONE_X = "1.17.0";
+
+
+    private static final Path DIR = AiToolRegistryContractTest.FIXTURES.resolve(ONE_X)
             .resolve("explore");
 
     /** Tool id to the project files ("P") and HOME files ("H") init wrote for one delivery mode. */
@@ -29,7 +37,7 @@ class ExplorePathsContractTest {
     /** The tools the target CLI has, whose explore files this capture records (2.1's tools came later). */
     private static java.util.List<AiTool> targetTools() {
         return AiToolRegistry.all().stream()
-                .filter(t -> AiToolRegistry.acceptedBy(t, AiToolRegistryContractTest.TARGET)).toList();
+                .filter(t -> AiToolRegistry.acceptedBy(t, ONE_X)).toList();
     }
 
     private static Listing listing(String delivery) throws IOException {
