@@ -13,8 +13,8 @@ set -e
 OUTPUT_DIR="docs/screenshots"
 mkdir -p "$OUTPUT_DIR"
 
-# Marketplace set, numbered in upload order (docs/marketplace-page.md). Capture 11 LAST —
-# the cleanup flow stops re-raising once resolved.
+# Marketplace set, numbered in upload order (docs/marketplace-page.md). Capture 11 LAST,
+# and cancel its preview, so the demo project stays on 1.x.
 SHOTS=(
     "01-spec-browser:Hero — a spec open in the editor beside the Browse tree, workflow chips and the change's deltas"
     "02-change-deltas:Browse tab — a change selected in the tree with its consolidated, badged spec deltas (ADDED/MODIFIED/REMOVED/RENAMED) in the preview pane, grouped by capability"
@@ -26,13 +26,13 @@ SHOTS=(
     "08-validation-quickfix:keyword-in-header spec.md with the keyword-placement inspection, after Validate"
     "09-validation-console:Console tab — a failed Validate run grouped by file, colored by severity"
     "10-coordination-stores:Coordination tab — Stores with store-doctor health, Worksets with members, health strip, Full-tier toolbar actions"
-    "11-update-legacy-cleanup:Update OpenSpec's legacy file cleanup notice over the IDE"
+    "11-update-migration-preview:Update OpenSpec's preview of a 1.x project, with the OpenSpec 2 migration banner"
 )
 
 # Shots where a popup/dialog is the frontmost window: window-id capture would
 # snap only the popup, so capture the fixed screen region of the IDE frame
 # (positioned at 50,50 sized 1280x800 by the resize step above) instead.
-REGION_SHOTS="06-regenerate-note 07-revise-change 08-validation-quickfix 11-update-legacy-cleanup"
+REGION_SHOTS="06-regenerate-note 07-revise-change 08-validation-quickfix 11-update-migration-preview"
 
 echo "=== OpenSpec Screenshot Capture ==="
 echo "Make sure IntelliJ IDEA is running with the OpenSpec plugin loaded."

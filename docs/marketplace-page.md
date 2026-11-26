@@ -47,7 +47,7 @@ The tour shots live in [`docs/screenshots/`](screenshots/) — regenerate them w
 8. **Validation + quick-fix** (`08-validation-quickfix`) — inspection highlighting on a spec with the Validate result
 9. **Validation console** (`09-validation-console`) — a failed run grouped by file, colored by severity
 10. **Coordination** (`10-coordination-stores`) — stores with health, worksets and their members
-11. **Safe upgrades** (`11-update-legacy-cleanup`) — Update OpenSpec offering to clean up legacy files
+11. **Safe upgrades** (`11-update-migration-preview`) — Update OpenSpec's preview of what it will change, here moving a 1.x project's AI-tool files to OpenSpec 2's shared skills
 
 **Tips:**
 - Use the default IntelliJ light theme (most recognizable on the marketplace)

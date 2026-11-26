@@ -43,9 +43,9 @@ import kotlin.time.Duration.Companion.seconds
  * shot names); docs/marketplace-page.md gives the upload order. Where the tour differs from a hand capture:
  *  - 08: captures the inspection highlighting + Console results WITHOUT the Alt+Enter
  *    intention popup (driving the popup remotely is deferred).
- *  - 11: captures the sticky cleanup notification over the IDE, not the opened review
- *    dialog (notification-action invocation is deferred).
- *  - 06, 07: the plugin's own dialogs are built and filled remotely and shown non-modally,
+ *  - 11: captures the update preview with its OpenSpec 2 migration banner, then cancels it,
+ *    so nothing is migrated.
+ *  - 06, 07, 11: the plugin's own dialogs are built and filled remotely and shown non-modally,
  *    and their capture is drawn over the frame where the dialog sits.
  *
  * Requirements: a GUI session (AWT Robot screen capture — grant Screen Recording to the
@@ -175,13 +175,23 @@ class MarketplaceScreenshotTour {
             .inputStream.bufferedReader().readText().trim().lines().lastOrNull()
     }.getOrNull()
 
-    /** Runs the host `openspec` CLI with the isolated data dir; returns combined output. */
-    private fun hostCli(xdg: Path, workDir: Path, vararg args: String): String {
+    /** The isolated home, config and data folders the host CLI and the tour IDE share, so the machine's own are untouched. */
+    private fun isolatedEnv(home: Path, xdg: Path) = mapOf(
+        "HOME" to home.toString(),
+        "XDG_CONFIG_HOME" to home.resolve(".config").toString(),
+        "XDG_DATA_HOME" to xdg.toString(),
+        "XDG_STATE_HOME" to home.resolve(".local/state").toString(),
+        "OPENSPEC_TELEMETRY" to "0",
+    )
+
+    /** Runs the host `openspec` CLI with the isolated folders; returns combined output. */
+    private fun hostCli(env: Map<String, String>, workDir: Path, vararg args: String): String {
         val proc = ProcessBuilder("openspec", *args)
             .directory(workDir.toFile())
             .redirectErrorStream(true)
-            .apply { environment()["XDG_DATA_HOME"] = xdg.toString() }
+            .apply { environment().putAll(env) }
             .start()
+        proc.outputStream.close()
         return proc.inputStream.bufferedReader().readText().also { proc.waitFor() }
     }
 
@@ -220,13 +230,17 @@ class MarketplaceScreenshotTour {
         val cliVersion = hostCliVersion()
         org.junit.jupiter.api.Assumptions.assumeTrue(
             cliVersion != null && Regex("""^(\d+)\.(\d+)""").find(cliVersion)?.destructured
-                ?.let { (maj, min) -> maj.toInt() > 1 || (maj.toInt() == 1 && min.toInt() >= 6) } == true
-        ) { "screenshot tour needs OpenSpec CLI 1.6+ on the host (found: $cliVersion)" }
+                ?.let { (maj, min) -> maj.toInt() > 2 || (maj.toInt() == 2 && min.toInt() >= 1) } == true
+        ) { "screenshot tour needs OpenSpec CLI 2.1+ on the host (found: $cliVersion)" }
 
         // ---- Pre-boot seeding: everything the shots need, no in-IDE prep -------------
         val projectPath = freshDemoProject()
         val base = Files.createTempDirectory("openspec-shot-state-")
         val xdg = Files.createDirectories(base.resolve("xdg-data"))
+        val env = isolatedEnv(Files.createDirectories(base.resolve("home")), xdg)
+        // The profile's workflows: core plus update, so Revise Change (shot 07) has the agent's update skill to hand off.
+        hostCli(env, base, "config", "set", "profile", "custom")
+        hostCli(env, base, "config", "set", "workflows", """["propose","explore","apply","update","sync","archive"]""")
 
         // 1.6 register needs: a config.yaml, a git history, and --yes on a never-a-store root.
         Files.writeString(projectPath.resolve("openspec/config.yaml"), "schema: spec-driven\n")
@@ -263,31 +277,35 @@ class MarketplaceScreenshotTour {
             ### Requirement: Legacy widget
             The legacy widget is retired.
             """.trimIndent() + "\n")
-        // Claude Code's explore and update workflows, so Explore (shot 04) and Revise Change (shot 07) hand off a real
-        // /opsx: command. The demo is a 1.x-era project, so these are the files CLI 1.17.0 generated (testData), not
-        // this repository's own, which follow CLI 2.x and have no commands. The demo project's own AI-tool files are
-        // kept as they are for shot 11's legacy cleanup.
-        val generated = outputDir.parent.parent.resolve("src/integrationTest/testData/claude-1.17.0")
-        for (file in listOf("commands/opsx/explore.md", "commands/opsx/update.md",
-                "skills/openspec-explore/SKILL.md", "skills/openspec-update-change/SKILL.md")) {
-            val dest = projectPath.resolve(".claude/$file")
-            Files.createDirectories(dest.parent)
-            Files.copy(generated.resolve(file), dest, StandardCopyOption.REPLACE_EXISTING)
+        // Claude Code set up by the host CLI 2.x, as a user of this plugin gets it: skills in .agents/skills, linked
+        // from .claude/skills. Explore (shot 04) and Revise Change (shot 07) hand off /openspec-explore and
+        // /openspec-update-change. It is set up in a scratch project and copied in, because init would also move the
+        // demo's 1.x Junie files to 2.x, and those are what the update preview (shot 11) shows migrating.
+        val claudeSetup = Files.createDirectories(base.resolve("claude-setup"))
+        val initOutput = hostCli(env, claudeSetup, "init", "--tools", "claude", "--scope", "project", ".")
+        check(Files.isDirectory(claudeSetup.resolve(".agents/skills/openspec-update-change"))) {
+            "init didn't set up Claude's skills: $initOutput"
         }
+        // cp -R keeps the .claude/skills links as links.
+        ProcessBuilder("cp", "-R", claudeSetup.resolve(".agents").toString(), claudeSetup.resolve(".claude").toString(),
+            projectPath.toString()).redirectErrorStream(true).start().apply { inputStream.readAllBytes(); check(waitFor() == 0) }
+        check(Files.isSymbolicLink(projectPath.resolve(".claude/skills/openspec-explore"))) { "Claude's 2.x skills not set up" }
+        // Ignoring .idea keeps the IDE's "project settings can be added to Git" balloon out of the shots.
+        Files.writeString(projectPath.resolve(".gitignore"), ".idea/\n")
         git(projectPath, "init", "-q")
         git(projectPath, "-c", "user.email=demo@example.com", "-c", "user.name=Demo", "add", "-A")
         git(projectPath, "-c", "user.email=demo@example.com", "-c", "user.name=Demo",
             "commit", "-qm", "seed")
         val platformStore = base.resolve("demo-platform-store")
-        hostCli(xdg, base, "store", "setup", "demo-platform", "--path", platformStore.toString())
-        hostCli(xdg, projectPath, "store", "register", projectPath.toString(), "--yes")
-        hostCli(xdg, base, "workset", "create", "demo-workset",
+        hostCli(env, base, "store", "setup", "demo-platform", "--path", platformStore.toString())
+        hostCli(env, projectPath, "store", "register", projectPath.toString(), "--yes")
+        hostCli(env, base, "workset", "create", "demo-workset",
             "--member", projectPath.toString(), "--member", platformStore.toString())
 
         Files.createDirectories(outputDir)
 
         val context = newContext(projectPath).apply {
-            applyVMOptionsPatch { withEnv("XDG_DATA_HOME", xdg.toString()) }
+            applyVMOptionsPatch { env.forEach { (k, v) -> withEnv(k, v) } }
         }
         context.runIdeWithDriver().useDriverAndCloseIde {
             waitForIndicators(5.minutes)
@@ -388,6 +406,20 @@ class MarketplaceScreenshotTour {
             }
             ideFrame { waitUntil("Browse tree renders") { hasText("Changes") } }
 
+            fun expireNotifications() {
+                withContext(OnDispatcher.EDT) {
+                    utility(ActionCenterRef::class).getNotifications(project).forEach { it.expire() }
+                }
+            }
+            // The demo's 1.x Junie files raise the plugin's "OpenSpec 2" migration notice at startup. Shot 11 tells that
+            // story, so clear the notice once it has shown, rather than have it cover the chips in every shot.
+            runCatching {
+                waitUntil("the OpenSpec 2 notice", timeout = 1.minutes) {
+                    utility(ActionCenterRef::class).getNotifications(project).any { it.getContent().contains("OpenSpec 2") }
+                }
+            }
+            expireNotifications()
+
             // Maximize the OpenSpec tool window for the headline shot so the master/detail (tree +
             // rendered preview) fills the frame instead of being crammed into the side dock.
             // Best-effort: if the platform API differs, fall back to the default docked layout.
@@ -458,19 +490,12 @@ class MarketplaceScreenshotTour {
             waitUntil("editor settles") { !isCodeAnalysisRunning(project) }
             snap("05-change-workflow")
 
-            fun expireNotifications() {
-                withContext(OnDispatcher.EDT) {
-                    utility(ActionCenterRef::class).getNotifications(project).forEach { it.expire() }
-                }
-            }
-
-            // Fills the note of the dialog titled `title`, captures it over the IDE, then cancels it.
-            fun snapNoteDialog(name: String, title: String, note: String) {
+            // Captures the dialog titled `title` over the IDE once `ready` holds for it, then cancels it.
+            fun snapDialog(name: String, title: String, timeout: Duration = 90.seconds,
+                           ready: (com.intellij.driver.sdk.ui.components.UiComponent) -> Unit = {}) {
                 val dialog = ui.x { byTitle(title) }
-                waitUntil("'$title' shows") { dialog.present() }
-                withContext(OnDispatcher.EDT) {
-                    cast(dialog.x { byClass("JBTextArea") }.component, TextComponentRef::class).setText(note)
-                }
+                waitUntil("'$title' shows", timeout) { dialog.present() }
+                ready(dialog)
                 val window = cast(dialog.component, WindowRef::class)
                 snap(name, java.awt.Rectangle(window.getX(), window.getY(), window.getWidth(), window.getHeight()))
                 withContext(OnDispatcher.EDT) {
@@ -479,6 +504,14 @@ class MarketplaceScreenshotTour {
                 waitUntil("'$title' closes") { dialog.notPresent() }
             }
 
+            // Fills the note of the dialog titled `title`, captures it over the IDE, then cancels it.
+            fun snapNoteDialog(name: String, title: String, note: String) = snapDialog(name, title) { dialog ->
+                withContext(OnDispatcher.EDT) {
+                    cast(dialog.x { byClass("JBTextArea") }.component, TextComponentRef::class).setText(note)
+                }
+            }
+
+            expireNotifications()
             // 06 — Regenerate with a note: a done chip's right-click → Regenerate, over the proposal.
             withContext(OnDispatcher.EDT) {
                 val chip = cast(ui.x { and(byClass("JBLabel"), byVisibleText("proposal")) }.component,
@@ -496,12 +529,13 @@ class MarketplaceScreenshotTour {
             snapNoteDialog("06-regenerate-note", "Regenerate proposal",
                 "Say the farewell is shown once per session, and only after the user has signed in.")
 
+            expireNotifications()
             // 07 — Revise Change: the note the agent's own update workflow gets with the change.
             invokeAction("OpenSpec.ReviseChange", now = false)
             snapNoteDialog("07-revise-change", "Revise Change: demo-add-farewell",
                 "The farewell should be configurable: add a setting to turn it off.")
 
-            // 04 — Explore: a topic in, and the /opsx:explore handoff copied for the agent, before any change exists.
+            // 04 — Explore: a topic in, and the /openspec-explore handoff copied for the agent, before any change exists.
             expireNotifications()
             withContext(OnDispatcher.EDT) {
                 utility(ExploreContextActionRef::class)
@@ -556,24 +590,16 @@ class MarketplaceScreenshotTour {
             }
             snap("09-validation-console")
 
-            // 11 — update cleanup: sticky notification over the IDE (captured LAST; the
-            // flow stops re-raising once resolved).
+            // 11 — the update preview on a project with 1.x files: the OpenSpec 2 migration banner, then Cancel, so
+            // nothing is migrated.
             selectToolWindowContent("Browse")
             expireNotifications()
             invokeAction("OpenSpec.Update", now = false)
-            // CLI 1.15+ shows the update preview first; apply it to reach the cleanup notice.
-            if (hostCliVersion()?.let { v -> Regex("""^(\d+)\.(\d+)""").find(v)?.destructured
-                    ?.let { (maj, min) -> maj.toInt() > 1 || (maj.toInt() == 1 && min.toInt() >= 15) } } == true) {
-                waitUntil("update preview", timeout = 3.minutes) {
-                    ui.x { byTitle("OpenSpec Update Preview") }.present()
+            snapDialog("11-update-migration-preview", "OpenSpec Update Preview", timeout = 3.minutes) { preview ->
+                waitUntil("the OpenSpec 2 migration banner shows") {
+                    preview.x { byAccessibleName("OpenSpec 2 migration") }.present()
                 }
-                ui.x { byTitle("OpenSpec Update Preview") }.x { byAccessibleName("Apply") }.click(null)
             }
-            waitUntil("cleanup review notification", timeout = 3.minutes) {
-                utility(ActionCenterRef::class).getNotifications(project)
-                    .any { it.getContent().contains("legacy file(s)") }
-            }
-            snap("11-update-legacy-cleanup")
         }
 
         // Sanity: every emitted PNG must be non-trivial AND distinct. Without macOS
@@ -581,7 +607,7 @@ class MarketplaceScreenshotTour {
         // large enough to pass a size check but byte-identical across all shots.
         val emitted = listOf("01-spec-browser", "02-change-deltas", "03-tree-badges", "04-explore-first-step",
             "05-change-workflow", "06-regenerate-note", "07-revise-change", "08-validation-quickfix",
-            "09-validation-console", "10-coordination-stores", "11-update-legacy-cleanup")
+            "09-validation-console", "10-coordination-stores", "11-update-migration-preview")
         val small = emitted.filter { Files.size(outputDir.resolve("$it.png")) < 50_000 }
         check(small.isEmpty()) { "suspiciously small captures (blank?): $small" }
         val distinctSizes = emitted.map { Files.size(outputDir.resolve("$it.png")) }.distinct()
