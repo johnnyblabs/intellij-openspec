@@ -66,6 +66,10 @@ The project SHALL maintain a small suite of automated UI smoke journeys that dri
 - **WHEN** the smoke suite, on a host CLI at 1.5+, opens a spec that lives in a store outside the project and whose requirement has no RFC 2119 keyword
 - **THEN** it SHALL assert the missing-keyword inspection reports it in the Problems view, proving the IDE's highlighting rules don't skip a store spec; on a host CLI below 1.5 the journey SHALL be skipped, not failed
 
+#### Scenario: CLI 2.x layout journey
+- **WHEN** the smoke suite, on CLI 2.1.1 from the capture cache, initializes a project with project-scoped skills and opens Manage AI Tools
+- **THEN** it SHALL assert a tool reads as set up through the shared `.agents` folder, and that a project set up by CLI 1.17.0 shows the migration banner in the update preview; when CLI 2.1.1 isn't in the capture cache the journey SHALL fail with how to install it, not be skipped
+
 ### Requirement: Smoke journeys never gate ordinary PRs
 
 The UI smoke workflow SHALL run on manual dispatch only. It SHALL NOT be a required check on ordinary pull requests, and SHALL NOT run on a release tag push. The release gate SHALL be the maintainer's local `caffeinate -dimsu ./gradlew uiSmoke` run with real rendered-frame passes, before the release tag is pushed. The CI ui-smoke workflow SHALL NOT be relied on as the release gate.
