@@ -115,7 +115,7 @@ class OpenSpecUpdateActionTest {
 
                 assertTrue(presentation.isVisible());
                 assertTrue(presentation.isEnabled());
-                assertEquals("Refresh generated skills and commands from the installed CLI (openspec update)",
+                assertEquals("Refresh the OpenSpec skills (and, on CLI 1.x, commands) your AI tools use, from the installed CLI (openspec update)",
                         presentation.getDescription());
             }
         }

@@ -20,7 +20,7 @@ import org.jetbrains.annotations.NotNull;
 public class OpenSpecUpdateAction extends OpenSpecCliAction {
 
     private static final String CLI_REQUIRED_DESCRIPTION = "Install OpenSpec CLI to use this action";
-    private static final String STANDARD_DESCRIPTION = "Refresh generated skills and commands from the installed CLI (openspec update)";
+    private static final String STANDARD_DESCRIPTION = "Refresh the OpenSpec skills (and, on CLI 1.x, commands) your AI tools use, from the installed CLI (openspec update)";
 
     @Override
     public void actionPerformed(@NotNull AnActionEvent e) {

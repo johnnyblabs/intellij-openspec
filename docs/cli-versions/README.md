@@ -12,6 +12,7 @@ These analyses are the **epistemic base** for the plugin's version support — s
 | 1.7 | [1.7.md](1.7.md) | 1.6 → 1.7 delta (additive superset: `skip_specs`, `status --json` `requires` edges, `operations.guidance`, `defaultStore`, static `SKILL.md` publish) |
 | 1.16 | [1.16.md](1.16.md) | 1.15 → 1.16 delta (validation fixes: broken `config.yaml` fails, inline-backtick code is not a fence, unspaced delta headers; scenario-step warning; installer and Node.js 22.12 floor) |
 | 1.17 | [1.17.md](1.17.md) | 1.16.1 → 1.17 delta (`openspec update` cleanup only: unedited old files removed without `--force`; command files deprecated for 2.0) |
+| 2.x | [2.x.md](2.x.md) | 1.17 → 2.0/2.1 delta (skills only, the shared `.agents/skills` layout with links, machine-wide skills by default in 2.1, the update migration) |
 
 *Planned backfill: `1.5.md` (1.4 → 1.5 — stores/worksets replace the coordination model) and `1.6.md` (1.5 → 1.6 — store "healthy-empty" health + the `update-change` workflow). For the full version×availability grid across 1.3.x–1.7.x, see the [Workflow availability matrix](../openspec-support.md#workflow-availability-matrix-cli-13x--17x).*
 

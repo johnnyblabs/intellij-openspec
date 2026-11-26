@@ -12,6 +12,8 @@
 
 ### Changed
 
+- **The plugin supports OpenSpec CLI 1.3.0 through 2.1.x and targets 2.1.1.** Each plugin minor now follows the CLI line it supports, up to that line. With no CLI installed, Validate and Sync Specs follow 2.1.1: a MODIFIED requirement that grows past 500 characters is a warning, a delta spec may start with YAML front matter, and a new main spec has a blank line after `## Purpose`.
+- **The npm install hint says Node.js 22.20 or later**, which OpenSpec CLI 2.1 and later require. It said 22.12.
 - **Propose now does what OpenSpec's `propose` does: describe what you want to build, and you get a change with every artifact it needs before you implement.**
   - **With Direct API**, the plugin creates the change and generates its proposal, specs, design and tasks from your description, then stops, ready to implement. The tool window shows the generation.
   - **With Clipboard or Editor Tab**, it hands your description to your AI tool's own propose workflow (`/openspec-propose …`, `$openspec-propose …` in Codex), which picks the name, asks what it needs and writes the artifacts.

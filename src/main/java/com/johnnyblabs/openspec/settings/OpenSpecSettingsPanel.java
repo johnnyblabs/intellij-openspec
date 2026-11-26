@@ -199,7 +199,7 @@ public class OpenSpecSettingsPanel {
         profileLabelPanel.add(new JBLabel("Workflow profile:"));
         profileLabelPanel.add(ContextHelpLabel.createWithLink(
                 "Workflow profile",
-                "Workflow profiles control which OpenSpec commands are installed for your AI tools. " +
+                "Workflow profiles control which OpenSpec workflows are installed for your AI tools. " +
                         "Core ships a small essential set to keep AI context windows lean. " +
                         "To use additional workflows, click \"Customize workflows…\" — " +
                         "the OpenSpec CLI will show you what's available. " +

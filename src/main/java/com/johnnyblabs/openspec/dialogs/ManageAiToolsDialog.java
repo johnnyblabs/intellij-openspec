@@ -362,7 +362,7 @@ public class ManageAiToolsDialog extends DialogWrapper {
             case CONFIGURED -> {
                 if (!cliAvailable) yield null;
                 JButton btn = new JButton("Update");
-                btn.setToolTipText("Refresh OpenSpec skill and command files");
+                btn.setToolTipText("Refresh this tool's OpenSpec skills (and, on CLI 1.x, command files)");
                 btn.addActionListener(e -> updateTool(tool, btn));
                 yield btn;
             }

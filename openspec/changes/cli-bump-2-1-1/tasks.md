@@ -16,11 +16,11 @@
 
 ## 4. UI smoke
 
-- [ ] 4.1 The 2.x layout journey on CLI 2.1.1 from the capture cache (D4).
+- [x] 4.1 The 2.x layout journey on CLI 2.1.1 from the capture cache (D4).
 
 ## 5. Docs and verification
 
-- [ ] 5.1 "OpenSpec CLI 1.3.0 through 2.1.x" on the README, `openspec-support.md`, marketplace page, feature reference and comparison matrix. Add a `docs/cli-versions/2.x.md` note with a mermaid diagram of the 1.x → 2.x skills layout, and a CHANGELOG entry naming the CLI-less behavior that now follows 2.1.1.
+- [x] 5.1 "OpenSpec CLI 1.3.0 through 2.1.x" on the README, `openspec-support.md`, marketplace page, feature reference and comparison matrix. Add a `docs/cli-versions/2.x.md` note with a mermaid diagram of the 1.x → 2.x skills layout, and a CHANGELOG entry naming the CLI-less behavior that now follows 2.1.1.
 - [ ] 5.2 Retake the affected screenshots (Manage AI Tools, migration preview) with the screenshot tour.
-- [ ] 5.3 Workflow ↔ UI parity audit against 2.1.1 (D5), with gaps filed.
+- [x] 5.3 Workflow ↔ UI parity audit against 2.1.1 (D5), with gaps filed. No core workflow is unreachable. Gaps filed for the next release: Continue's reach, Verify archiving on OK, Verify's non-Direct-API handoff; capability retirement was already tracked. Stale "commands" copy fixed here.
 - [ ] 5.4 `./gradlew build`, `./gradlew verifyPlugin`, the full `caffeinate -dimsu ./gradlew uiSmoke`, and `openspec validate --all --strict`.

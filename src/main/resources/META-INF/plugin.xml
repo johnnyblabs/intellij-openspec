@@ -218,7 +218,7 @@
             <action id="OpenSpec.Update"
                     class="com.johnnyblabs.openspec.actions.OpenSpecUpdateAction"
                     text="Update OpenSpec…"
-                    description="Refresh generated skills and commands from the installed CLI (openspec update)"
+                    description="Refresh the OpenSpec skills (and, on CLI 1.x, commands) your AI tools use, from the installed CLI (openspec update)"
                     icon="AllIcons.Actions.Download"/>
             <action id="OpenSpec.ManageTools"
                     class="com.johnnyblabs.openspec.actions.OpenSpecManageToolsAction"
