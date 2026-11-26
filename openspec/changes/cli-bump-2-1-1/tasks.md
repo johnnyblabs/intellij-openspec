@@ -21,6 +21,6 @@
 ## 5. Docs and verification
 
 - [x] 5.1 "OpenSpec CLI 1.3.0 through 2.1.x" on the README, `openspec-support.md`, marketplace page, feature reference and comparison matrix. Add a `docs/cli-versions/2.x.md` note with a mermaid diagram of the 1.x → 2.x skills layout, and a CHANGELOG entry naming the CLI-less behavior that now follows 2.1.1.
-- [ ] 5.2 Retake the affected screenshots (Manage AI Tools, migration preview) with the screenshot tour.
+- [x] 5.2 The screenshot tour runs on this repository's 2.x layout again: it copies CLI 1.17.0's generated `/opsx` files from `src/integrationTest/testData/claude-1.17.0`, not this repository's. Its shots still tell the 1.x story (an `/opsx` handoff, and a real 2.1.1 migration where the legacy-cleanup review used to be), so retaking them for 2.x moved to its own tracker entry, and the committed screenshots stay until then.
 - [x] 5.3 Workflow ↔ UI parity audit against 2.1.1 (D5), with gaps filed. No core workflow is unreachable. Gaps filed for the next release: Continue's reach, Verify archiving on OK, Verify's non-Direct-API handoff; capability retirement was already tracked. Stale "commands" copy fixed here.
 - [ ] 5.4 `./gradlew build`, `./gradlew verifyPlugin`, the full `caffeinate -dimsu ./gradlew uiSmoke`, and `openspec validate --all --strict`.

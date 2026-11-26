@@ -264,13 +264,15 @@ class MarketplaceScreenshotTour {
             The legacy widget is retired.
             """.trimIndent() + "\n")
         // Claude Code's explore and update workflows, so Explore (shot 04) and Revise Change (shot 07) hand off a real
-        // /opsx: command. The demo project's own AI-tool files are kept as they are for shot 11's legacy cleanup.
-        val repoRoot = outputDir.parent.parent
+        // /opsx: command. The demo is a 1.x-era project, so these are the files CLI 1.17.0 generated (testData), not
+        // this repository's own, which follow CLI 2.x and have no commands. The demo project's own AI-tool files are
+        // kept as they are for shot 11's legacy cleanup.
+        val generated = outputDir.parent.parent.resolve("src/integrationTest/testData/claude-1.17.0")
         for (file in listOf("commands/opsx/explore.md", "commands/opsx/update.md",
                 "skills/openspec-explore/SKILL.md", "skills/openspec-update-change/SKILL.md")) {
             val dest = projectPath.resolve(".claude/$file")
             Files.createDirectories(dest.parent)
-            Files.copy(repoRoot.resolve(".claude/$file"), dest, StandardCopyOption.REPLACE_EXISTING)
+            Files.copy(generated.resolve(file), dest, StandardCopyOption.REPLACE_EXISTING)
         }
         git(projectPath, "init", "-q")
         git(projectPath, "-c", "user.email=demo@example.com", "-c", "user.name=Demo", "add", "-A")
