@@ -134,7 +134,7 @@ public class ReviseChangeActionTest extends BasePlatformTestCase {
 
         assertEquals("Revise Change...", text);
         assertTrue(revise, revise.contains("proposal, specs, design and tasks"));
-        assertTrue(update, update.contains("Refresh generated skills and commands"));
+        assertTrue(update, update.contains("Refresh the OpenSpec skills"));
         assertFalse("the two descriptions must tell the actions apart", revise.equals(update));
     }
 
