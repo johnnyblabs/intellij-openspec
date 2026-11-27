@@ -14,7 +14,7 @@
 ## 3. Verification
 
 - [x] 3.1 Merged coverage equals the single-suite figure on the same tree (D4).
-- [ ] 3.2 The workflow passes on a manual dispatch of the branch; `build`'s test step is shorter.
+- [x] 3.2 The workflow passes on the branch (its pull request ran the branch's workflow, so no manual dispatch was needed); `build`'s test step is shorter: 3m 40s, from about 8m 15s.
 - [x] 3.3 Mutation: an untagged fixture class turns the guard red.
 
 ## 4. Docs

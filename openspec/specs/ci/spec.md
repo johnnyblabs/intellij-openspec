@@ -5,25 +5,13 @@ Continuous integration for build, test, plugin verification, signing, and releas
 
 ## Requirements
 
-### Requirement: Dual-job pipeline
-
-The CI pipeline SHALL run two parallel jobs on every push to main and on every pull request targeting main: a **build** job (compile, test, and optionally sign) and a **verify** job (Plugin Verifier compatibility checks). The jobs SHALL have no dependency on each other and SHALL run concurrently.
-
-#### Scenario: PR triggers both jobs
-- **WHEN** a pull request targets main
-- **THEN** the pipeline SHALL start both the build and verify jobs in parallel
-
-#### Scenario: Push to main triggers both jobs
-- **WHEN** code is pushed to main
-- **THEN** the pipeline SHALL start both the build and verify jobs in parallel
-
 ### Requirement: Build job
 
-The build job SHALL compile the project, run the full test suite, and upload test results as a build artifact. On the main branch, the build job SHALL additionally sign the plugin and upload the signed artifact.
+The build job SHALL compile the project, run the `test` suite (every test except the CLI-fixture suite and the real-CLI matrix), and upload its test results and coverage data as build artifacts. On the main branch, the build job SHALL additionally sign the plugin and upload the signed artifact.
 
 #### Scenario: Build and test
 - **WHEN** the build job runs
-- **THEN** it SHALL execute `gradle build`, run all tests, and upload test results regardless of pass or fail
+- **THEN** it SHALL execute `gradle build` without `cliFixtureTest` and without the coverage floor, which the coverage job enforces, and upload its test results and coverage data regardless of pass or fail
 
 #### Scenario: Signing on main
 - **WHEN** the build job runs on the main branch
@@ -151,11 +139,11 @@ The CI pipeline SHALL declare a top-level `concurrency:` block in every workflow
 
 ### Requirement: Test coverage regression floor
 
-The build SHALL enforce a JaCoCo coverage regression floor, wired into `check`, covering the instruction, line and branch counters. Each minimum SHALL be set just below the recorded baseline, and the baseline (measured value and date) SHALL be recorded with the floor. The floor SHALL be ratcheted upward as coverage improves and SHALL NOT be lowered without a recorded justification.
+The build SHALL enforce a JaCoCo coverage regression floor, wired into `check`, covering the instruction, line and branch counters, measured over the `test` and CLI-fixture suites together. In CI the coverage job enforces it. Each minimum SHALL be set just below the recorded baseline, and the baseline (measured value and date) SHALL be recorded with the floor. The floor SHALL be ratcheted upward as coverage improves and SHALL NOT be lowered without a recorded justification.
 
 #### Scenario: Regression below the floor fails the build
 - **WHEN** a change reduces measured coverage for a governed counter below its configured minimum
-- **THEN** `jacocoTestCoverageVerification` SHALL fail, and because it is wired into `check`, `./gradlew build` (and CI) SHALL fail
+- **THEN** `jacocoTestCoverageVerification` SHALL fail, and because it is wired into `check`, `./gradlew build` SHALL fail, as SHALL CI's coverage job
 
 #### Scenario: Branch coverage is governed
 - **WHEN** the coverage floor is evaluated
@@ -324,3 +312,35 @@ The build SHALL check the plugin's CLI argument record against each captured rel
 - **WHEN** the maintainer runs the optional local CLI matrix task
 - **THEN** every argument builder SHALL run against the real CLI package of each boundary release, in an isolated home with telemetry off, and the task SHALL fail on any unknown-option or unknown-command error
 - **AND** the task SHALL NOT be part of the default build
+
+### Requirement: CI jobs
+
+On every pull request targeting main, the pipeline SHALL run a **build** job and a **cli-fixtures** job in parallel, and a **coverage** job after both. On every push to main it SHALL also run the **verify** job (Plugin Verifier), which a pull request gets only on manual dispatch. Each job SHALL report on every pull request, so it can be a required check.
+
+#### Scenario: Pull request
+- **WHEN** a pull request targets main
+- **THEN** build and cli-fixtures SHALL run in parallel, and coverage SHALL run once both finish
+
+#### Scenario: Push to main
+- **WHEN** code is pushed to main
+- **THEN** build, cli-fixtures and coverage SHALL run as on a pull request, and verify SHALL run in parallel with them
+
+#### Scenario: Bypass-only pull request
+- **WHEN** a pull request touches only bypass paths (OpenSpec content, agent configuration, hooks)
+- **THEN** every job SHALL report success without building
+
+### Requirement: CLI-fixture test suite
+
+Plain-JUnit test classes that replay captured CLI releases SHALL form their own suite, `cliFixtureTest`, run with the same classpath, JVM arguments and coverage agent as `test`, which SHALL exclude them. `check` SHALL run both suites. A test SHALL fail when such a class is not in the suite.
+
+#### Scenario: Local build runs both suites
+- **WHEN** a developer runs `./gradlew build`
+- **THEN** both `test` and `cliFixtureTest` SHALL run, and the coverage floor SHALL read both suites' data
+
+#### Scenario: An untagged fixture class fails the guard
+- **WHEN** a plain-JUnit test class reads captured CLI releases without the CLI-fixture suite's tag
+- **THEN** the guard test in `test` SHALL fail and name the class
+
+#### Scenario: The pre-push gate runs both suites
+- **WHEN** pushed commits touch `src/`
+- **THEN** the pre-push hook SHALL run `test` and `cliFixtureTest`
