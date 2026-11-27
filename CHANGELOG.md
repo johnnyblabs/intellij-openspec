@@ -10,6 +10,7 @@
 
 ### Changed
 
+- **Verify reports and no longer archives when you click OK.** From the Verify menu action and the tool window's Verify button, the dialog's main button is now **Close**, as OpenSpec's verify workflow never archives. To archive from there, click **Archive…** ("Archive anyway…" while tasks are open), which appears only when your profile includes `archive` and is disabled when validation fails. Archive itself still checks the change first and archives on OK.
 - **The plugin supports OpenSpec CLI 1.3.0 through 2.2.x and targets 2.2.0.** With no CLI installed, Validate and Sync Specs follow 2.2.0, whose rules are 2.1.1's, so nothing changes for you.
 
 ## v2.1.0
