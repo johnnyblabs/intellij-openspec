@@ -17,7 +17,7 @@ Machine paths are replaced with <W>. The world is built in a fresh temp director
 directories, so the real global OpenSpec state is untouched.
 
 Usage: CAPTURE_VERSION=2.1.1 scripts/capture-store-root.py   (a release installed into scratch, never npx)
-       CAPTURE_VERSIONS=1.5.0,1.7.0,1.15.0,2.0.0,2.1.0,2.1.1 scripts/capture-store-root.py
+       CAPTURE_VERSIONS=1.5.0,1.7.0,1.15.0,2.0.0,2.1.0,2.1.1,2.2.0 scripts/capture-store-root.py
 """
 import json
 import os
@@ -31,7 +31,7 @@ REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
 from openspec_capture import cli, integrity, isolated_env, assert_sanitized  # noqa: E402
 
-DEFAULT_VERSIONS = "1.5.0,1.7.0,1.15.0,2.0.0,2.1.0,2.1.1"
+DEFAULT_VERSIONS = "1.5.0,1.7.0,1.15.0,2.0.0,2.1.0,2.1.1,2.2.0"
 
 SPEC = """# cap-a Specification
 

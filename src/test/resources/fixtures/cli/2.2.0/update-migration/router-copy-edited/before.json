@@ -1,0 +1,26 @@
+{
+  "home": {},
+  "project": {
+    ".agents/skills/.openspec-target": "@8a823aa6bd0323f0",
+    ".agents/skills/openspec-apply-change/SKILL.md": "@a8933b263ab01b4c",
+    ".agents/skills/openspec-archive-change/SKILL.md": "@8ea5eb23ac050a78",
+    ".agents/skills/openspec-explore/SKILL.md": "@8eb7074d34277cf0",
+    ".agents/skills/openspec-propose/SKILL.md": "@e353e74472fdef44",
+    ".agents/skills/openspec-sync-specs/SKILL.md": "@75556d2ca6989252",
+    ".agents/skills/openspec-update-change/SKILL.md": "@ca7ef061078b2260",
+    ".agents/skills/openspec/SKILL.md": "@d1a7bc41fef98ad9",
+    ".agents/skills/openspec/references/answers.md": "@ffa8c242ba1a5cea",
+    ".agents/skills/openspec/references/where-things-stand.md": "@7abd5d2b62a3818a",
+    ".agents/skills/openspec/references/without-skills.md": "@43bb917fb50249b0",
+    "agent/skills/openspec-apply-change/SKILL.md": "@2241ed05b38756e0",
+    "agent/skills/openspec-archive-change/SKILL.md": "@a8a4685b5671c89c",
+    "agent/skills/openspec-explore/SKILL.md": "@5df2050dc3e71709",
+    "agent/skills/openspec-propose/SKILL.md": "@b56f63bee36e3be5",
+    "agent/skills/openspec-sync-specs/SKILL.md": "@ba314f514ccbf669",
+    "agent/skills/openspec-update-change/SKILL.md": "@8df0aae406da5f0f",
+    "agent/skills/openspec/SKILL.md": "@d37a7bd083492af7",
+    "agent/skills/openspec/references/answers.md": "@6ecccab541974bf2",
+    "agent/skills/openspec/references/where-things-stand.md": "@7abd5d2b62a3818a",
+    "agent/skills/openspec/references/without-skills.md": "@43bb917fb50249b0"
+  }
+}

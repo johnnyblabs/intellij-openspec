@@ -1,0 +1,954 @@
+{
+  "cliVersion": "2.2.0",
+  "skillsPackage": "1.8.1",
+  "skipped": [
+    "agents",
+    "atomcode",
+    "codeassistant",
+    "costrict",
+    "dsh",
+    "easycode",
+    "gigacode",
+    "gsd",
+    "oh-my-pi",
+    "veai"
+  ],
+  "entries": [
+    {
+      "base": "absolute",
+      "path": "/Applications/MiniMax Code.app",
+      "tickable": false,
+      "why": "outside the home folder, so not checked by the plugin"
+    },
+    {
+      "base": "absolute",
+      "path": "/Applications/ZCode.app",
+      "tickable": false,
+      "why": "outside the home folder, so not checked by the plugin"
+    },
+    {
+      "base": "absolute",
+      "path": "/etc/codex",
+      "tickable": false,
+      "why": "outside the home folder, so not checked by the plugin"
+    },
+    {
+      "base": "cwd",
+      "path": ".codebuddy",
+      "tickable": false,
+      "why": "a project path; the plugin's own project detection covers it"
+    },
+    {
+      "base": "cwd",
+      "path": ".continue",
+      "tickable": false,
+      "why": "a project path; the plugin's own project detection covers it"
+    },
+    {
+      "base": "cwd",
+      "path": ".jazz",
+      "tickable": false,
+      "why": "a project path; the plugin's own project detection covers it"
+    },
+    {
+      "base": "cwd",
+      "path": ".promptscript",
+      "tickable": false,
+      "why": "a project path; the plugin's own project detection covers it"
+    },
+    {
+      "base": "cwd",
+      "path": ".replit",
+      "tickable": false,
+      "why": "a project path; the plugin's own project detection covers it"
+    },
+    {
+      "base": "cwd",
+      "path": "agent",
+      "tickable": false,
+      "why": "a project path; the plugin's own project detection covers it"
+    },
+    {
+      "base": "cwd",
+      "path": "data/skills",
+      "tickable": false,
+      "why": "a project path; the plugin's own project detection covers it"
+    },
+    {
+      "base": "cwd",
+      "path": "promptscript.yaml",
+      "tickable": false,
+      "why": "a project path; the plugin's own project detection covers it"
+    },
+    {
+      "base": "home",
+      "path": ".adal",
+      "agents": [
+        "adal"
+      ],
+      "tools": [
+        "adal"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".aider-desk",
+      "agents": [
+        "aider-desk"
+      ],
+      "tools": [
+        "aider-desk"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".astrbot",
+      "agents": [
+        "astrbot"
+      ],
+      "tools": [
+        "astrbot"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".augment",
+      "agents": [
+        "augment"
+      ],
+      "tools": [
+        "auggie"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".autohand",
+      "agents": [
+        "autohand-code"
+      ],
+      "tools": [
+        "autohand-code"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".bob",
+      "agents": [
+        "bob"
+      ],
+      "tools": [
+        "bob"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".claude",
+      "agents": [
+        "claude-code"
+      ],
+      "tools": [
+        "claude"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".clawdbot",
+      "agents": [
+        "openclaw"
+      ],
+      "tools": [
+        "openclaw"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".cline",
+      "agents": [
+        "cline"
+      ],
+      "tools": [
+        "cline"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".codeartsdoer",
+      "agents": [
+        "codearts-agent"
+      ],
+      "tools": [
+        "codeartsagent"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".codebuddy",
+      "agents": [
+        "codebuddy"
+      ],
+      "tools": [
+        "codebuddy"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".codeium/windsurf",
+      "agents": [
+        "windsurf"
+      ],
+      "tools": [],
+      "tickable": false,
+      "why": "its agent maps to no OpenSpec tool"
+    },
+    {
+      "base": "home",
+      "path": ".codemaker",
+      "agents": [
+        "codemaker"
+      ],
+      "tools": [
+        "codemaker"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".codestudio",
+      "agents": [
+        "codestudio"
+      ],
+      "tools": [
+        "codestudio"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".codex",
+      "agents": [
+        "codex"
+      ],
+      "tools": [
+        "codex"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".commandcode",
+      "agents": [
+        "command-code"
+      ],
+      "tools": [
+        "command-code"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".config/crush",
+      "agents": [
+        "crush"
+      ],
+      "tools": [
+        "crush"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".config/kimchi",
+      "agents": [
+        "kimchi"
+      ],
+      "tools": [
+        "kimchi"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".continue",
+      "agents": [
+        "continue"
+      ],
+      "tools": [
+        "continue"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".copilot",
+      "agents": [
+        "github-copilot"
+      ],
+      "tools": [
+        "github-copilot"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".cursor",
+      "agents": [
+        "cursor"
+      ],
+      "tools": [
+        "cursor"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".deepagents",
+      "agents": [
+        "deepagents"
+      ],
+      "tools": [
+        "deepagents"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".dexto",
+      "agents": [
+        "dexto"
+      ],
+      "tools": [
+        "dexto"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".factory",
+      "agents": [
+        "droid"
+      ],
+      "tools": [
+        "factory"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".firebender",
+      "agents": [
+        "firebender"
+      ],
+      "tools": [
+        "firebender"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".forge",
+      "agents": [
+        "forgecode"
+      ],
+      "tools": [
+        "forgecode"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".fx",
+      "agents": [
+        "fx"
+      ],
+      "tools": [
+        "fx"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".gemini",
+      "agents": [
+        "gemini-cli"
+      ],
+      "tools": [
+        "gemini"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".gemini/antigravity",
+      "agents": [
+        "antigravity"
+      ],
+      "tools": [
+        "antigravity"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".gemini/antigravity-cli",
+      "agents": [
+        "antigravity-cli"
+      ],
+      "tools": [
+        "antigravity-cli"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".grok",
+      "agents": [
+        "grok"
+      ],
+      "tools": [
+        "grok"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".hermes",
+      "agents": [
+        "hermes-agent"
+      ],
+      "tools": [
+        "hermes"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".iflow",
+      "agents": [
+        "iflow-cli"
+      ],
+      "tools": [
+        "iflow"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".inferencesh",
+      "agents": [
+        "inference-sh"
+      ],
+      "tools": [
+        "inference-sh"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".jazz",
+      "agents": [
+        "jazz"
+      ],
+      "tools": [
+        "jazz"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".junie",
+      "agents": [
+        "junie"
+      ],
+      "tools": [
+        "junie"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".kilo",
+      "agents": [
+        "kilo"
+      ],
+      "tools": [
+        "kilocode"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".kilocode",
+      "agents": [
+        "kilo"
+      ],
+      "tools": [
+        "kilocode"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".kimi",
+      "agents": [
+        "kimi-code-cli"
+      ],
+      "tools": [
+        "kimi"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".kimi-code",
+      "agents": [
+        "kimi-code-cli"
+      ],
+      "tools": [
+        "kimi"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".kiro",
+      "agents": [
+        "kiro-cli"
+      ],
+      "tools": [
+        "kiro"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".kode",
+      "agents": [
+        "kode"
+      ],
+      "tools": [
+        "kode"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".lingma",
+      "agents": [
+        "lingma"
+      ],
+      "tools": [
+        "lingma"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".loaf",
+      "agents": [
+        "loaf"
+      ],
+      "tools": [
+        "loaf"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".mcpjam",
+      "agents": [
+        "mcpjam"
+      ],
+      "tools": [
+        "mcpjam"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".minimax",
+      "agents": [
+        "minimax-code"
+      ],
+      "tools": [
+        "minimax-code"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".moltbot",
+      "agents": [
+        "openclaw"
+      ],
+      "tools": [
+        "openclaw"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".moxby",
+      "agents": [
+        "moxby"
+      ],
+      "tools": [
+        "moxby"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".mux",
+      "agents": [
+        "mux"
+      ],
+      "tools": [
+        "mux"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".neovate",
+      "agents": [
+        "neovate"
+      ],
+      "tools": [
+        "neovate"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".ona",
+      "agents": [
+        "ona"
+      ],
+      "tools": [
+        "ona"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".openclaw",
+      "agents": [
+        "openclaw"
+      ],
+      "tools": [
+        "openclaw"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".openhands",
+      "agents": [
+        "openhands"
+      ],
+      "tools": [
+        "openhands"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".pi/agent",
+      "agents": [
+        "pi"
+      ],
+      "tools": [
+        "pi"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".pochi",
+      "agents": [
+        "pochi"
+      ],
+      "tools": [
+        "pochi"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".posit/assistant",
+      "agents": [
+        "posit-assistant"
+      ],
+      "tools": [
+        "posit-assistant"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".positai",
+      "agents": [
+        "posit-assistant"
+      ],
+      "tools": [
+        "posit-assistant"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".qoder",
+      "agents": [
+        "qoder"
+      ],
+      "tools": [
+        "qoder"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".qoder-cn",
+      "agents": [
+        "qoder-cn"
+      ],
+      "tools": [
+        "qoder-cn"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".qwen",
+      "agents": [
+        "qwen-code"
+      ],
+      "tools": [
+        "qwen"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".reasonix",
+      "agents": [
+        "reasonix"
+      ],
+      "tools": [
+        "reasonix"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".roo",
+      "agents": [
+        "roo"
+      ],
+      "tools": [
+        "roocode"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".rovodev",
+      "agents": [
+        "rovodev"
+      ],
+      "tools": [
+        "rovodev"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".sarvam",
+      "agents": [
+        "sarvam-code"
+      ],
+      "tools": [
+        "sarvam-code"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".snowflake/cortex",
+      "agents": [
+        "cortex"
+      ],
+      "tools": [
+        "cortex"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".tabnine",
+      "agents": [
+        "tabnine-cli"
+      ],
+      "tools": [
+        "tabnine-cli"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".terramind",
+      "agents": [
+        "terramind"
+      ],
+      "tools": [
+        "terramind"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".tinycloud",
+      "agents": [
+        "tinycloud"
+      ],
+      "tools": [
+        "tinycloud"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".trae",
+      "agents": [
+        "trae"
+      ],
+      "tools": [
+        "trae"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".trae-cn",
+      "agents": [
+        "trae-cn"
+      ],
+      "tools": [
+        "trae-cn"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".vibe",
+      "agents": [
+        "mistral-vibe"
+      ],
+      "tools": [
+        "vibe"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".warp",
+      "agents": [
+        "warp"
+      ],
+      "tools": [
+        "warp"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".zcode",
+      "agents": [
+        "zcode"
+      ],
+      "tools": [
+        "zcode"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "home",
+      "path": ".zencoder",
+      "agents": [
+        "zencoder",
+        "zenflow"
+      ],
+      "tools": [
+        "zencoder",
+        "zenflow"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "configHome",
+      "path": "amp",
+      "agents": [
+        "amp"
+      ],
+      "tools": [
+        "amp"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "configHome",
+      "path": "devin",
+      "agents": [
+        "devin"
+      ],
+      "tools": [
+        "devin"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "configHome",
+      "path": "goose",
+      "agents": [
+        "goose"
+      ],
+      "tools": [
+        "goose"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "configHome",
+      "path": "opencode",
+      "agents": [
+        "opencode"
+      ],
+      "tools": [
+        "opencode"
+      ],
+      "tickable": true
+    },
+    {
+      "base": "configHome",
+      "path": "zed",
+      "agents": [
+        "zed"
+      ],
+      "tools": [
+        "zed"
+      ],
+      "tickable": true
+    }
+  ]
+}

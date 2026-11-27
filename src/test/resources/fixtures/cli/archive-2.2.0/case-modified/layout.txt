@@ -1,0 +1,2 @@
+changes/archive: (empty)
+openspec/archive exists: False

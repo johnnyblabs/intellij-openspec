@@ -1,0 +1,15 @@
+{
+  "archive": null,
+  "root": {
+    "path": "/fixture",
+    "source": "nearest"
+  },
+  "status": [
+    {
+      "severity": "error",
+      "code": "archive_validation_failed",
+      "message": "Validation failed for change 'c1'.",
+      "fix": "Run openspec validate c1 for details, fix the errors, or rerun with --no-validate."
+    }
+  ]
+}

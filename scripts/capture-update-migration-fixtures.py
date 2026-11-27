@@ -121,6 +121,36 @@ def eve_from_210(project, home, v):
     run(cli("2.1.0") + ["init", "--tools", "eve", "--scope", "project", "."], project, home)
 
 
+def _router_release(v):
+    if key(v) < key("2.2.0"):
+        raise Skip("the router skill arrived in 2.2.0")
+
+
+def router_from_211(project, home, v):
+    """A 2.1.1 project updated by a release with the router: the router and its tool-folder link are added."""
+    _router_release(v)
+    run(cli("2.1.1") + ["init", "--tools", "claude", "--scope", "project", "."], project, home)
+
+
+def router_unedited(project, home, v):
+    """The router as the release wrote it: nothing of it is planned (the at-risk negative)."""
+    _router_release(v)
+    run(cli(v) + ["init", "--tools", "claude", "--scope", "project", "."], project, home)
+
+
+def router_reference_edited(project, home, v):
+    """An edited router reference in the shared folder: the update repairs (overwrites) it."""
+    router_unedited(project, home, v)
+    append(project, ".agents/skills/openspec/references/answers.md")
+
+
+def router_copy_edited(project, home, v):
+    """Eve gets copies, not links: an edited router reference in its own folder is overwritten in place."""
+    _router_release(v)
+    run(cli(v) + ["init", "--tools", "eve", "--scope", "project", "."], project, home)
+    append(project, "agent/skills/openspec/references/answers.md")
+
+
 def profile_shrink(project, home, v):
     """A 2.x project whose profile drops workflows: shared skills are deleted, tagged openspec."""
     scope = ["--scope", "project"] if key(v) >= key("2.1.0") else []
@@ -193,6 +223,10 @@ CASES = {
     "after-2.0.0-kept": after_200_kept,
     "eve-edited": eve_edited,
     "eve-from-2.1.0": eve_from_210,
+    "router-from-2.1.1": router_from_211,
+    "router-unedited": router_unedited,
+    "router-reference-edited": router_reference_edited,
+    "router-copy-edited": router_copy_edited,
     "profile-shrink": profile_shrink,
     "profile-empty": profile_empty,
     "command-left-in-place": command_left_in_place,

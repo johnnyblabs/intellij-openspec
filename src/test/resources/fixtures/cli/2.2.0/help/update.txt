@@ -1,0 +1,9 @@
+Usage: openspec update [options] [path]
+
+Update OpenSpec instruction files
+
+Options:
+  --force     Force update even when tools are up to date
+  --dry-run   Report what the update would change without writing anything
+  --json      With --dry-run, print the planned changes as JSON
+  -h, --help  display help for command

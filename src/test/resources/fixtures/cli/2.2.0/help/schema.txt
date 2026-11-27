@@ -1,0 +1,14 @@
+Usage: openspec schema [options] [command]
+
+Manage workflow schemas [experimental]
+
+Options:
+  -h, --help                      display help for command
+
+Commands:
+  which [options] [name]          Show where a schema resolves from
+  validate [options] [name]       Validate a schema structure and templates
+  fork [options] <source> [name]  Copy an existing schema to project for
+                                  customization
+  init [options] <name>           Create a new project-local schema
+  help [command]                  display help for command

@@ -1,0 +1,6 @@
+Amazon Q Developer is no longer supported: it can't load skills, and AWS is retiring it in favor of Kiro. Set up Kiro instead: openspec init --tools kiro
+  Removed 11 OpenSpec files from .amazonq/.
+  Kept 1 file in .amazonq/ that differs from what OpenSpec generated (likely edited); delete it when you're done:
+    .amazonq/prompts/opsx-apply.md
+No configured tools found.
+Run "openspec init" to set up tools.

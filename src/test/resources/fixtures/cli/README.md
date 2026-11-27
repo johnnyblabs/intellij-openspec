@@ -932,9 +932,19 @@ Real CLI **2.1.1** captures (released 2026-11-19, `dist.integrity` `sha512-GQv1x
 
 `1.17.0/errors/init-scope-project.*` (exit 1, `unknown option '--scope'`) was captured alongside, by `scripts/capture-cli-generation.py`.
 
+## `2.2.0/` — the router skill
+
+Real CLI **2.2.0** captures (released 2026-11-24, `dist.integrity` `sha512-tSLMp9NhjF8zqNI53lZcaeVOFxE25pmMA7WZDsHZbK1Rds4R6nXeCm3mSxvBN1DdiDbKPBHuEkoJrBzF3PVacA==`), captured 2026-11-27 with every script that captured 2.1.1, from the shared scratch cache (`scripts/lib`), never a pinned `npx`. `archive-2.2.0/` is the same set as `archive-2.1.1/`. Every family matches 2.1.1's apart from:
+
+- **The router.** 2.2.0 installs an `openspec` skill with every profile that has workflows: `.agents/skills/openspec/SKILL.md` and `references/{answers,where-things-stand,without-skills}.md`, plus a link in each tool folder (`.claude/skills/openspec`). It is a skill, not a workflow: `workflows.json` and `workflow-invocations.json` are 2.1.1's, and upstream appends `openspec` to `OPENSPEC_SKILL_NAMES`. So the update plans in `update-migration/` and `update-dry-run/` gain the router's `add` rows, tagged `openspec`, and `skills-scope/` and `detect/` layouts hold the router's files.
+- `durationMs` in the parity-corpus runs. The verdicts are 2.1.1's on all four corpora.
+- The version stamps, and the `dist.integrity` in `store-root/world.json`.
+
+`src/main/resources/openspec/released-skill-fingerprints.txt` and `machine-tool-markers.txt` were rewritten from 2.2.0 and changed only in their header line (the same 2867 fingerprints). `src/main/resources/openspec/router-reference-fingerprints.txt` is new: the fingerprints of the router's `references/*.md` as 2.2.0's own `expectedSkillFiles` generates them, written by `scripts/capture-router-references.py`. Upstream's released set covers `SKILL.md` files only, and the update preview needs them to tell an untouched reference from an edited one. `engines.json` is the package's `engines` (`node >=22.20.0`, as 2.1.1). `errors/` holds the `init-*` cases only, as 2.1.1.
+
 ## `2.x/update-migration/` — what a 2.x `update` does to a project an earlier release set up
 
-From `scripts/capture-update-migration-fixtures.py`, on 2.0.0, 2.1.0 and 2.1.1. Each case is seeded by CLI 1.17.0 (plain `init`, the core profile) unless it says otherwise. The release under test then runs `update --dry-run --json` (`plan.json`, `plan.exit`), `update --dry-run --force --json` (`plan-force.json`) and `update` (`applied.txt`, `applied.exit`, `applied.stderr` when non-empty). Both dry runs are checked to write nothing.
+From `scripts/capture-update-migration-fixtures.py`, on 2.0.0, 2.1.0, 2.1.1 and 2.2.0. Each case is seeded by CLI 1.17.0 (plain `init`, the core profile) unless it says otherwise. The release under test then runs `update --dry-run --json` (`plan.json`, `plan.exit`), `update --dry-run --force --json` (`plan-force.json`) and `update` (`applied.txt`, `applied.exit`, `applied.stderr` when non-empty). Both dry runs are checked to write nothing.
 
 `before.json` and `after.json` are the project and HOME before the dry runs and after the applied run, in the detect format with links as data; the `openspec/` tree is left out. File contents are stored once per release in `update-migration/texts.json`, keyed by the first 16 hex digits of their sha256, and a layout value `"@<key>"` names one. `FixtureLayout.materialize(..., texts)` resolves them.
 
@@ -949,6 +959,10 @@ From `scripts/capture-update-migration-fixtures.py`, on 2.0.0, 2.1.0 and 2.1.1. 
 | `after-2.0.0-kept` (2.1.x) | `edited`, then updated by 2.0.0 | 2.1 deletes both copies 2.0.0 kept, with no marker add in the plan |
 | `eve-edited` (2.1.1) | Eve set up by 2.1.1, its `agent/skills/openspec-explore/SKILL.md` edited | an edited copy written in place of a link is overwritten: an `update` in the plan |
 | `eve-from-2.1.0` (2.1.1) | Eve set up by 2.1.0, untouched | unedited Eve copies refreshed in place: `update`s that are not edits |
+| `router-from-2.1.1` (2.2.0) | set up by 2.1.1 (`--scope project`, Claude), untouched | the router's four files and the `.claude/skills/openspec` link are added |
+| `router-unedited` (2.2.0) | set up by 2.2.0, untouched | nothing of the router is planned: the at-risk negative |
+| `router-reference-edited` (2.2.0) | set up by 2.2.0, `.agents/skills/openspec/references/answers.md` edited | the edited reference alone is planned as an `update`, which repairs (overwrites) it |
+| `router-copy-edited` (2.2.0) | Eve set up by 2.2.0, `agent/skills/openspec/references/answers.md` edited | the edited copy is overwritten in place: an `update` tagged `eve` |
 | `profile-shrink` | set up by the release under test, then the profile cut to `propose` and `explore` | shared skills and their links deleted, tagged `openspec` |
 | `profile-empty` | the same with no workflows | the marker `.agents/skills/.openspec-target` deleted too |
 | `command-left-in-place` | as `unedited`, with `.claude/commands/opsx/` made read-only | `Left N command files in place because they could not be read or removed:` |

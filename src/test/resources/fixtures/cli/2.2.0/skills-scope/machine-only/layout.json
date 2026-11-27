@@ -1,0 +1,15 @@
+{
+  "home": {
+    ".agents/skills/openspec-apply-change/SKILL.md": "",
+    ".agents/skills/openspec-archive-change/SKILL.md": "",
+    ".agents/skills/openspec-explore/SKILL.md": "",
+    ".agents/skills/openspec-propose/SKILL.md": "",
+    ".agents/skills/openspec-sync-specs/SKILL.md": "",
+    ".agents/skills/openspec-update-change/SKILL.md": "",
+    ".agents/skills/openspec/SKILL.md": "",
+    ".agents/skills/openspec/references/answers.md": "",
+    ".agents/skills/openspec/references/where-things-stand.md": "",
+    ".agents/skills/openspec/references/without-skills.md": ""
+  },
+  "project": {}
+}

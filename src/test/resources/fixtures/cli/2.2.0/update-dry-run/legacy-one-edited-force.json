@@ -1,0 +1,126 @@
+{
+  "changes": [
+    {
+      "path": ".agents/skills/.openspec-target",
+      "action": "add",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-apply-change/SKILL.md",
+      "action": "add",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-archive-change/SKILL.md",
+      "action": "add",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-explore/SKILL.md",
+      "action": "add",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-propose/SKILL.md",
+      "action": "add",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-sync-specs/SKILL.md",
+      "action": "add",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-update-change/SKILL.md",
+      "action": "add",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec/references/answers.md",
+      "action": "add",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec/references/where-things-stand.md",
+      "action": "add",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec/references/without-skills.md",
+      "action": "add",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec/SKILL.md",
+      "action": "add",
+      "tool": "openspec"
+    },
+    {
+      "path": ".claude/commands/openspec/apply.md",
+      "action": "delete",
+      "tool": "openspec"
+    },
+    {
+      "path": ".claude/commands/openspec/archive.md",
+      "action": "delete",
+      "tool": "openspec"
+    },
+    {
+      "path": ".claude/commands/openspec/proposal.md",
+      "action": "delete",
+      "tool": "openspec"
+    },
+    {
+      "path": ".claude/skills/openspec",
+      "action": "add",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-apply-change",
+      "action": "add",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-archive-change",
+      "action": "add",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-explore",
+      "action": "add",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-propose",
+      "action": "add",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-sync-specs",
+      "action": "add",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-update-change",
+      "action": "add",
+      "tool": "claude"
+    },
+    {
+      "path": "AGENTS.md",
+      "action": "update",
+      "tool": "openspec"
+    },
+    {
+      "path": "CLAUDE.md",
+      "action": "update",
+      "tool": "openspec"
+    },
+    {
+      "path": "openspec/AGENTS.md",
+      "action": "delete",
+      "tool": "openspec"
+    }
+  ],
+  "notes": [],
+  "failures": []
+}

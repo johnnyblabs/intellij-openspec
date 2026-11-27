@@ -1,0 +1,141 @@
+amp P .agents/skills/openspec-update-change/SKILL.md
+antigravity P .agents/skills/openspec-update-change/SKILL.md
+atomcode P .agents/skills/openspec-update-change/SKILL.md
+auggie P .agents/skills/openspec-update-change/SKILL.md
+auggie P .augment/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+bob P .agents/skills/openspec-update-change/SKILL.md
+bob P .bob/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+claude P .agents/skills/openspec-update-change/SKILL.md
+claude P .claude/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+cline P .agents/skills/openspec-update-change/SKILL.md
+command-code P .agents/skills/openspec-update-change/SKILL.md
+command-code P .commandcode/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+codeartsagent P .agents/skills/openspec-update-change/SKILL.md
+codeartsagent P .codeartsdoer/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+codex P .agents/skills/openspec-update-change/SKILL.md
+dsh P .agents/skills/openspec-update-change/SKILL.md
+devin P .agents/skills/openspec-update-change/SKILL.md
+devin P .devin/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+forgecode P .agents/skills/openspec-update-change/SKILL.md
+forgecode P .forge/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+codebuddy P .agents/skills/openspec-update-change/SKILL.md
+codebuddy P .codebuddy/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+codestudio P .agents/skills/openspec-update-change/SKILL.md
+codestudio P .codestudio/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+continue P .agents/skills/openspec-update-change/SKILL.md
+continue P .continue/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+costrict P .agents/skills/openspec-update-change/SKILL.md
+crush P .agents/skills/openspec-update-change/SKILL.md
+crush P .crush/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+cursor P .agents/skills/openspec-update-change/SKILL.md
+easycode P .agents/skills/openspec-update-change/SKILL.md
+factory P .agents/skills/openspec-update-change/SKILL.md
+gemini P .agents/skills/openspec-update-change/SKILL.md
+github-copilot P .agents/skills/openspec-update-change/SKILL.md
+gigacode P .agents/skills/openspec-update-change/SKILL.md
+grok P .agents/skills/openspec-update-change/SKILL.md
+grok P .grok/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+gsd P .agents/skills/openspec-update-change/SKILL.md
+hermes P .agents/skills/openspec-update-change/SKILL.md
+hermes P .hermes/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+iflow P .agents/skills/openspec-update-change/SKILL.md
+iflow P .iflow/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+junie P .agents/skills/openspec-update-change/SKILL.md
+junie P .junie/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+kilocode P .agents/skills/openspec-update-change/SKILL.md
+kimi P .agents/skills/openspec-update-change/SKILL.md
+kiro P .agents/skills/openspec-update-change/SKILL.md
+kiro P .kiro/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+lingma P .agents/skills/openspec-update-change/SKILL.md
+lingma P .lingma/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+minimax-code P .agents/skills/openspec-update-change/SKILL.md
+minimax-code P .minimax/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+vibe P .agents/skills/openspec-update-change/SKILL.md
+vibe P .vibe/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+oh-my-pi P .agents/skills/openspec-update-change/SKILL.md
+opencode P .agents/skills/openspec-update-change/SKILL.md
+pi P .agents/skills/openspec-update-change/SKILL.md
+codeassistant P .agents/skills/openspec-update-change/SKILL.md
+qoder P .agents/skills/openspec-update-change/SKILL.md
+qoder P .qoder/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+qwen P .agents/skills/openspec-update-change/SKILL.md
+qwen P .qwen/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+rovodev P .agents/skills/openspec-update-change/SKILL.md
+rovodev P .rovodev/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+roocode P .agents/skills/openspec-update-change/SKILL.md
+roocode P .roo/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+trae P .agents/skills/openspec-update-change/SKILL.md
+trae P .trae/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+veai P .agents/skills/openspec-update-change/SKILL.md
+warp P .agents/skills/openspec-update-change/SKILL.md
+zed P .agents/skills/openspec-update-change/SKILL.md
+zcode P .agents/skills/openspec-update-change/SKILL.md
+zcode P .zcode/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+agents P .agents/skills/openspec-update-change/SKILL.md
+aider-desk P .agents/skills/openspec-update-change/SKILL.md
+aider-desk P .aider-desk/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+antigravity-cli P .agents/skills/openspec-update-change/SKILL.md
+astrbot P .agents/skills/openspec-update-change/SKILL.md
+astrbot P data/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+autohand-code P .agents/skills/openspec-update-change/SKILL.md
+autohand-code P .autohand/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+openclaw P .agents/skills/openspec-update-change/SKILL.md
+openclaw P skills/openspec-update-change -> ../.agents/skills/openspec-update-change
+codemaker P .agents/skills/openspec-update-change/SKILL.md
+codemaker P .codemaker/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+cortex P .agents/skills/openspec-update-change/SKILL.md
+cortex P .cortex/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+deepagents P .agents/skills/openspec-update-change/SKILL.md
+dexto P .agents/skills/openspec-update-change/SKILL.md
+eve P .agents/skills/openspec-update-change/SKILL.md
+eve P agent/skills/openspec-update-change/SKILL.md
+firebender P .agents/skills/openspec-update-change/SKILL.md
+fx P .agents/skills/openspec-update-change/SKILL.md
+goose P .agents/skills/openspec-update-change/SKILL.md
+goose P .goose/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+inference-sh P .agents/skills/openspec-update-change/SKILL.md
+inference-sh P .inferencesh/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+jazz P .agents/skills/openspec-update-change/SKILL.md
+jazz P .jazz/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+kimchi P .agents/skills/openspec-update-change/SKILL.md
+kimchi P .kimchi/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+kode P .agents/skills/openspec-update-change/SKILL.md
+kode P .kode/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+loaf P .agents/skills/openspec-update-change/SKILL.md
+mcpjam P .agents/skills/openspec-update-change/SKILL.md
+mcpjam P .mcpjam/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+moxby P .agents/skills/openspec-update-change/SKILL.md
+moxby P .moxby/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+mux P .agents/skills/openspec-update-change/SKILL.md
+mux P .mux/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+openhands P .agents/skills/openspec-update-change/SKILL.md
+openhands P .openhands/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+ona P .agents/skills/openspec-update-change/SKILL.md
+ona P .ona/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+posit-assistant P .agents/skills/openspec-update-change/SKILL.md
+posit-assistant P .posit/assistant/skills/openspec-update-change -> ../../../.agents/skills/openspec-update-change
+qoder-cn P .agents/skills/openspec-update-change/SKILL.md
+qoder-cn P .qoder/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+replit P .agents/skills/openspec-update-change/SKILL.md
+reasonix P .agents/skills/openspec-update-change/SKILL.md
+reasonix P .reasonix/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+sarvam-code P .agents/skills/openspec-update-change/SKILL.md
+tabnine-cli P .agents/skills/openspec-update-change/SKILL.md
+tabnine-cli P .tabnine/agent/skills/openspec-update-change -> ../../../.agents/skills/openspec-update-change
+terramind P .agents/skills/openspec-update-change/SKILL.md
+terramind P .terramind/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+tinycloud P .agents/skills/openspec-update-change/SKILL.md
+tinycloud P .tinycloud/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+trae-cn P .agents/skills/openspec-update-change/SKILL.md
+trae-cn P .trae/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+zencoder P .agents/skills/openspec-update-change/SKILL.md
+zencoder P .zencoder/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+zenflow P .agents/skills/openspec-update-change/SKILL.md
+zenflow P .zencoder/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+neovate P .agents/skills/openspec-update-change/SKILL.md
+neovate P .neovate/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+pochi P .agents/skills/openspec-update-change/SKILL.md
+pochi P .pochi/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+promptscript P .agents/skills/openspec-update-change/SKILL.md
+adal P .adal/skills/openspec-update-change -> ../../.agents/skills/openspec-update-change
+adal P .agents/skills/openspec-update-change/SKILL.md

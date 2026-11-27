@@ -1,0 +1,9 @@
+Updating 2 tool(s): claude (1.17.0 → 2.2.0), codex (1.17.0 → 2.2.0)
+
+
+✓ Updated: Claude Code, Codex (v2.2.0)
+Removed: 6 command files (OpenSpec 2.0 installs skills only)
+Note: 6 more workflows are available (new, continue, ff, bulk-archive, verify, onboard).
+Add them with `openspec config profile`.
+Tools: Claude Code, Codex
+

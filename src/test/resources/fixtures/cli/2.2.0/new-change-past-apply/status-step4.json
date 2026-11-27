@@ -1,0 +1,118 @@
+{
+  "changeName": "retro-demo",
+  "schemaName": "with-retro",
+  "planningHome": {
+    "kind": "repo",
+    "root": "/fixture/demo-project",
+    "changesDir": "/fixture/demo-project/openspec/changes",
+    "defaultSchema": "spec-driven"
+  },
+  "changeRoot": "/fixture/demo-project/openspec/changes/retro-demo",
+  "artifactPaths": {
+    "proposal": {
+      "outputPath": "proposal.md",
+      "resolvedOutputPath": "/fixture/demo-project/openspec/changes/retro-demo/proposal.md",
+      "existingOutputPaths": [
+        "/fixture/demo-project/openspec/changes/retro-demo/proposal.md"
+      ]
+    },
+    "specs": {
+      "outputPath": "specs/**/*.md",
+      "resolvedOutputPath": "/fixture/demo-project/openspec/changes/retro-demo/specs/**/*.md",
+      "existingOutputPaths": [
+        "/fixture/demo-project/openspec/changes/retro-demo/specs/demo/spec.md"
+      ]
+    },
+    "design": {
+      "outputPath": "design.md",
+      "resolvedOutputPath": "/fixture/demo-project/openspec/changes/retro-demo/design.md",
+      "existingOutputPaths": [
+        "/fixture/demo-project/openspec/changes/retro-demo/design.md"
+      ]
+    },
+    "tasks": {
+      "outputPath": "tasks.md",
+      "resolvedOutputPath": "/fixture/demo-project/openspec/changes/retro-demo/tasks.md",
+      "existingOutputPaths": [
+        "/fixture/demo-project/openspec/changes/retro-demo/tasks.md"
+      ]
+    },
+    "retro": {
+      "outputPath": "retro.md",
+      "resolvedOutputPath": "/fixture/demo-project/openspec/changes/retro-demo/retro.md",
+      "existingOutputPaths": []
+    }
+  },
+  "isPlanningComplete": false,
+  "isComplete": false,
+  "applyRequires": [
+    "tasks"
+  ],
+  "nextSteps": [
+    "Run openspec instructions retro --change \"retro-demo\" --json before writing that artifact."
+  ],
+  "actionContext": {
+    "mode": "repo-local",
+    "sourceOfTruth": "repo",
+    "planningArtifacts": [
+      "proposal",
+      "specs",
+      "design",
+      "tasks",
+      "retro"
+    ],
+    "linkedContext": [],
+    "allowedEditRoots": [
+      "/fixture/demo-project"
+    ],
+    "requiresAffectedAreaSelection": false,
+    "constraints": [
+      "Repo-local change artifacts and implementation edits are scoped to this project."
+    ]
+  },
+  "artifacts": [
+    {
+      "id": "proposal",
+      "outputPath": "proposal.md",
+      "status": "done",
+      "requires": []
+    },
+    {
+      "id": "specs",
+      "outputPath": "specs/**/*.md",
+      "status": "done",
+      "requires": [
+        "proposal"
+      ]
+    },
+    {
+      "id": "design",
+      "outputPath": "design.md",
+      "status": "done",
+      "requires": [
+        "proposal"
+      ]
+    },
+    {
+      "id": "tasks",
+      "outputPath": "tasks.md",
+      "status": "done",
+      "requires": [
+        "specs",
+        "design"
+      ]
+    },
+    {
+      "id": "retro",
+      "outputPath": "retro.md",
+      "status": "ready",
+      "requires": [
+        "tasks"
+      ]
+    }
+  ],
+  "root": {
+    "path": "/fixture/demo-project",
+    "source": "nearest"
+  }
+}

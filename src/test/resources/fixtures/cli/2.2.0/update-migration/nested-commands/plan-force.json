@@ -1,0 +1,221 @@
+{
+  "changes": [
+    {
+      "path": ".agents/skills/.openspec-target",
+      "action": "add",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-apply-change/SKILL.md",
+      "action": "add",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-archive-change/SKILL.md",
+      "action": "add",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-explore/SKILL.md",
+      "action": "add",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-propose/SKILL.md",
+      "action": "add",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-sync-specs/SKILL.md",
+      "action": "add",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-update-change/SKILL.md",
+      "action": "add",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec/references/answers.md",
+      "action": "add",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec/references/where-things-stand.md",
+      "action": "add",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec/references/without-skills.md",
+      "action": "add",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec/SKILL.md",
+      "action": "add",
+      "tool": "openspec"
+    },
+    {
+      "path": ".claude/commands/opsx/apply.md",
+      "action": "delete",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/commands/opsx/archive.md",
+      "action": "delete",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/commands/opsx/explore.md",
+      "action": "delete",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/commands/opsx/propose.md",
+      "action": "delete",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/commands/opsx/sync.md",
+      "action": "delete",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/commands/opsx/update.md",
+      "action": "delete",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec",
+      "action": "add",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-apply-change",
+      "action": "add",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-apply-change/SKILL.md",
+      "action": "delete",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-archive-change",
+      "action": "add",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-archive-change/SKILL.md",
+      "action": "delete",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-explore",
+      "action": "add",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-explore/SKILL.md",
+      "action": "delete",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-propose",
+      "action": "add",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-propose/SKILL.md",
+      "action": "delete",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-sync-specs",
+      "action": "add",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-sync-specs/SKILL.md",
+      "action": "delete",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-update-change",
+      "action": "add",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/skills/openspec-update-change/SKILL.md",
+      "action": "delete",
+      "tool": "claude"
+    },
+    {
+      "path": ".gemini/commands/opsx/apply.toml",
+      "action": "delete",
+      "tool": "gemini"
+    },
+    {
+      "path": ".gemini/commands/opsx/archive.toml",
+      "action": "delete",
+      "tool": "gemini"
+    },
+    {
+      "path": ".gemini/commands/opsx/explore.toml",
+      "action": "delete",
+      "tool": "gemini"
+    },
+    {
+      "path": ".gemini/commands/opsx/propose.toml",
+      "action": "delete",
+      "tool": "gemini"
+    },
+    {
+      "path": ".gemini/commands/opsx/sync.toml",
+      "action": "delete",
+      "tool": "gemini"
+    },
+    {
+      "path": ".gemini/commands/opsx/update.toml",
+      "action": "delete",
+      "tool": "gemini"
+    },
+    {
+      "path": ".gemini/skills/openspec-apply-change/SKILL.md",
+      "action": "delete",
+      "tool": "openspec"
+    },
+    {
+      "path": ".gemini/skills/openspec-archive-change/SKILL.md",
+      "action": "delete",
+      "tool": "openspec"
+    },
+    {
+      "path": ".gemini/skills/openspec-explore/SKILL.md",
+      "action": "delete",
+      "tool": "openspec"
+    },
+    {
+      "path": ".gemini/skills/openspec-propose/SKILL.md",
+      "action": "delete",
+      "tool": "openspec"
+    },
+    {
+      "path": ".gemini/skills/openspec-sync-specs/SKILL.md",
+      "action": "delete",
+      "tool": "openspec"
+    },
+    {
+      "path": ".gemini/skills/openspec-update-change/SKILL.md",
+      "action": "delete",
+      "tool": "openspec"
+    },
+    {
+      "path": "~/.config/openspec/config.json",
+      "action": "add",
+      "tool": "openspec"
+    }
+  ],
+  "notes": [],
+  "failures": []
+}

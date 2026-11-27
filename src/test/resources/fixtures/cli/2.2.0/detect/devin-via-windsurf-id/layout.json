@@ -1,0 +1,27 @@
+{
+  "project": {
+    ".agents/skills/.openspec-target": "devin own-files\n",
+    ".agents/skills/openspec-apply-change/SKILL.md": "",
+    ".agents/skills/openspec-archive-change/SKILL.md": "",
+    ".agents/skills/openspec-explore/SKILL.md": "",
+    ".agents/skills/openspec-propose/SKILL.md": "",
+    ".agents/skills/openspec-sync-specs/SKILL.md": "",
+    ".agents/skills/openspec-update-change/SKILL.md": "",
+    ".agents/skills/openspec/SKILL.md": "",
+    ".agents/skills/openspec/references/answers.md": "",
+    ".agents/skills/openspec/references/where-things-stand.md": "",
+    ".agents/skills/openspec/references/without-skills.md": ""
+  },
+  "home": {},
+  "links": {
+    "project": {
+      ".devin/skills/openspec": "../../.agents/skills/openspec",
+      ".devin/skills/openspec-apply-change": "../../.agents/skills/openspec-apply-change",
+      ".devin/skills/openspec-archive-change": "../../.agents/skills/openspec-archive-change",
+      ".devin/skills/openspec-explore": "../../.agents/skills/openspec-explore",
+      ".devin/skills/openspec-propose": "../../.agents/skills/openspec-propose",
+      ".devin/skills/openspec-sync-specs": "../../.agents/skills/openspec-sync-specs",
+      ".devin/skills/openspec-update-change": "../../.agents/skills/openspec-update-change"
+    }
+  }
+}

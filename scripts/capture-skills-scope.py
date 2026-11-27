@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Capture how CLI 2.1's init decides the skills scope, and what the plugin reads back.
 
-Writes, for each release in RELEASES (2.1.0 and 2.1.1, plus 2.0.0 for the environment check):
+Writes, for each release in RELEASES (2.1.0, 2.1.1 and 2.2.0, plus 2.0.0 for the environment check):
 
     fixtures/cli/<v>/skills-scope/remembered-config.yaml    the config upstream's own rememberProjectSkills writes
     fixtures/cli/<v>/skills-scope/config-team.yaml          the input config with an invalid skillsScope
@@ -33,7 +33,7 @@ from openspec_capture import cli, isolated_env, key, package, require_git_and_ne
     write_fixture  # noqa: E402
 
 FIXTURES = Path(__file__).resolve().parent.parent / "src/test/resources/fixtures/cli"
-RELEASES = ["2.0.0", "2.1.0", "2.1.1"]
+RELEASES = ["2.0.0", "2.1.0", "2.1.1", "2.2.0"]
 NOTE_RELEASES = ["1.17.0"]  # setup notes only: the last 1.x line, for Hermes's 1.x note
 RESOURCE = Path(__file__).resolve().parent.parent / "src/main/resources/openspec/machine-tool-markers.txt"
 

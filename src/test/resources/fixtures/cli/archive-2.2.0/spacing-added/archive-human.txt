@@ -1,0 +1,6 @@
+Task status: ✓ Complete
+
+Specs to update:
+  demo: update
+demo ADDED failed for header "### Requirement: Works  well" - "### Requirement: Works well" already exists and differs only in case or spacing; use MODIFIED with that exact header to change it, or choose a distinct name
+Aborted. No files were changed.

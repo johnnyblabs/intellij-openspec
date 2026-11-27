@@ -1,0 +1,10 @@
+Updating 2 tool(s): claude (1.17.0 → 2.2.0), cursor (1.17.0 → 2.2.0)
+
+
+✓ Updated: Claude Code, Cursor (v2.2.0)
+Removed: 12 command files (OpenSpec 2.0 installs skills only)
+Note: 6 more workflows are available (new, continue, ff, bulk-archive, verify, onboard).
+Add them with `openspec config profile`.
+Tools: Claude Code, Cursor
+
+Restart your IDE to refresh skills.

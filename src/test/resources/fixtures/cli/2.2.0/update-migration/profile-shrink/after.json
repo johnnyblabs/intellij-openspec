@@ -1,0 +1,19 @@
+{
+  "home": {},
+  "links": {
+    "project": {
+      ".claude/skills/openspec": "../../.agents/skills/openspec",
+      ".claude/skills/openspec-explore": "../../.agents/skills/openspec-explore",
+      ".claude/skills/openspec-propose": "../../.agents/skills/openspec-propose"
+    }
+  },
+  "project": {
+    ".agents/skills/.openspec-target": "@9eb39cc4d5fabe9a",
+    ".agents/skills/openspec-explore/SKILL.md": "@8eb7074d34277cf0",
+    ".agents/skills/openspec-propose/SKILL.md": "@e353e74472fdef44",
+    ".agents/skills/openspec/SKILL.md": "@d1a7bc41fef98ad9",
+    ".agents/skills/openspec/references/answers.md": "@ffa8c242ba1a5cea",
+    ".agents/skills/openspec/references/where-things-stand.md": "@7abd5d2b62a3818a",
+    ".agents/skills/openspec/references/without-skills.md": "@43bb917fb50249b0"
+  }
+}

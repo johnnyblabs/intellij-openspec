@@ -1,0 +1,1189 @@
+{
+  "version": "2.2.0",
+  "tools": [
+    {
+      "name": "Amp",
+      "value": "amp",
+      "available": true,
+      "successLabel": "Amp",
+      "skillsDir": ".agents",
+      "detectionPaths": [
+        ".amp",
+        ".agents/skills"
+      ]
+    },
+    {
+      "name": "Antigravity",
+      "value": "antigravity",
+      "available": true,
+      "successLabel": "Antigravity",
+      "skillsDir": ".agents",
+      "legacySkillsDirs": [
+        ".agent"
+      ],
+      "detectionPaths": [
+        ".agent",
+        ".agents/workflows"
+      ],
+      "requiresIdeRestart": true
+    },
+    {
+      "name": "AtomCode",
+      "value": "atomcode",
+      "available": true,
+      "successLabel": "AtomCode",
+      "skillsDir": ".atomcode",
+      "setupNote": "Skills are in the universal skills folder. If your tool needs its own folder, see https://github.com/Fission-AI/OpenSpec/blob/main/docs-lab/reference/supported-tools.md#link-another-tool"
+    },
+    {
+      "name": "Auggie (Augment CLI)",
+      "value": "auggie",
+      "available": true,
+      "successLabel": "Auggie",
+      "skillsDir": ".augment"
+    },
+    {
+      "name": "IBM Bob",
+      "value": "bob",
+      "available": true,
+      "successLabel": "IBM Bob",
+      "skillsDir": ".bob"
+    },
+    {
+      "name": "Claude Code",
+      "value": "claude",
+      "available": true,
+      "successLabel": "Claude Code",
+      "skillsDir": ".claude"
+    },
+    {
+      "name": "Cline",
+      "value": "cline",
+      "available": true,
+      "successLabel": "Cline",
+      "skillsDir": ".cline",
+      "requiresIdeRestart": true
+    },
+    {
+      "name": "Command Code",
+      "value": "command-code",
+      "available": true,
+      "successLabel": "Command Code",
+      "skillsDir": ".commandcode"
+    },
+    {
+      "name": "CodeArts",
+      "value": "codeartsagent",
+      "available": true,
+      "successLabel": "CodeArts",
+      "skillsDir": ".codeartsdoer"
+    },
+    {
+      "name": "Codex",
+      "value": "codex",
+      "available": true,
+      "successLabel": "Codex",
+      "skillsDir": ".agents",
+      "legacySkillsDirs": [
+        ".codex"
+      ],
+      "detectionPaths": [
+        ".agents/skills",
+        ".codex/skills"
+      ]
+    },
+    {
+      "name": "DeepSeek Harness",
+      "value": "dsh",
+      "available": true,
+      "successLabel": "DeepSeek Harness",
+      "skillsDir": ".dsh",
+      "setupNote": "Skills are in the universal skills folder. If your tool needs its own folder, see https://github.com/Fission-AI/OpenSpec/blob/main/docs-lab/reference/supported-tools.md#link-another-tool"
+    },
+    {
+      "name": "Devin Desktop (formerly Windsurf)",
+      "value": "devin",
+      "available": true,
+      "successLabel": "Devin Desktop",
+      "skillsDir": ".devin",
+      "detectionPaths": [
+        ".devin",
+        ".windsurf"
+      ],
+      "requiresIdeRestart": true
+    },
+    {
+      "name": "ForgeCode",
+      "value": "forgecode",
+      "available": true,
+      "successLabel": "ForgeCode",
+      "skillsDir": ".forge"
+    },
+    {
+      "name": "CodeBuddy Code (CLI)",
+      "value": "codebuddy",
+      "available": true,
+      "successLabel": "CodeBuddy Code",
+      "skillsDir": ".codebuddy"
+    },
+    {
+      "name": "Code Studio",
+      "value": "codestudio",
+      "available": true,
+      "successLabel": "Code Studio",
+      "skillsDir": ".codestudio",
+      "requiresIdeRestart": true
+    },
+    {
+      "name": "Continue",
+      "value": "continue",
+      "available": true,
+      "successLabel": "Continue (VS Code / JetBrains / Cli)",
+      "skillsDir": ".continue",
+      "requiresIdeRestart": true
+    },
+    {
+      "name": "CoStrict",
+      "value": "costrict",
+      "available": true,
+      "successLabel": "CoStrict",
+      "skillsDir": ".cospec",
+      "requiresIdeRestart": true,
+      "setupNote": "Skills are in the universal skills folder. If your tool needs its own folder, see https://github.com/Fission-AI/OpenSpec/blob/main/docs-lab/reference/supported-tools.md#link-another-tool"
+    },
+    {
+      "name": "Crush",
+      "value": "crush",
+      "available": true,
+      "successLabel": "Crush",
+      "skillsDir": ".crush"
+    },
+    {
+      "name": "Cursor",
+      "value": "cursor",
+      "available": true,
+      "successLabel": "Cursor",
+      "skillsDir": ".cursor",
+      "requiresIdeRestart": true
+    },
+    {
+      "name": "EasyCode",
+      "value": "easycode",
+      "available": true,
+      "successLabel": "EasyCode",
+      "skillsDir": ".easycode",
+      "setupNote": "Skills are in the universal skills folder. If your tool needs its own folder, see https://github.com/Fission-AI/OpenSpec/blob/main/docs-lab/reference/supported-tools.md#link-another-tool"
+    },
+    {
+      "name": "Factory Droid",
+      "value": "factory",
+      "available": true,
+      "successLabel": "Factory Droid",
+      "skillsDir": ".factory"
+    },
+    {
+      "name": "Gemini CLI",
+      "value": "gemini",
+      "available": true,
+      "successLabel": "Gemini CLI",
+      "skillsDir": ".gemini"
+    },
+    {
+      "name": "GitHub Copilot",
+      "value": "github-copilot",
+      "available": true,
+      "successLabel": "GitHub Copilot",
+      "skillsDir": ".github",
+      "detectionPaths": [
+        ".github/copilot-instructions.md",
+        ".github/instructions",
+        ".github/workflows/copilot-setup-steps.yml",
+        ".github/prompts",
+        ".github/agents",
+        ".github/skills",
+        ".github/.mcp.json"
+      ],
+      "requiresIdeRestart": true
+    },
+    {
+      "name": "GigaCode",
+      "value": "gigacode",
+      "available": true,
+      "successLabel": "GigaCode",
+      "skillsDir": ".gigacode",
+      "setupNote": "Skills are in the universal skills folder. If your tool needs its own folder, see https://github.com/Fission-AI/OpenSpec/blob/main/docs-lab/reference/supported-tools.md#link-another-tool"
+    },
+    {
+      "name": "Grok Build",
+      "value": "grok",
+      "available": true,
+      "successLabel": "Grok Build",
+      "skillsDir": ".grok"
+    },
+    {
+      "name": "GSD",
+      "value": "gsd",
+      "available": true,
+      "successLabel": "GSD",
+      "skillsDir": ".agents",
+      "detectionPaths": [
+        ".gsd"
+      ],
+      "setupNote": "Skills are in the universal skills folder. If your tool needs its own folder, see https://github.com/Fission-AI/OpenSpec/blob/main/docs-lab/reference/supported-tools.md#link-another-tool"
+    },
+    {
+      "name": "Hermes Agent",
+      "value": "hermes",
+      "available": true,
+      "successLabel": "Hermes Agent",
+      "skillsDir": ".hermes",
+      "detectionPaths": [
+        ".hermes",
+        "HERMES.md",
+        ".hermes.md"
+      ],
+      "setupNote": "Hermes loads this project's .hermes/skills only once you trust the repo: run `hermes skills trust` in this project (Hermes v2026.6.5 or later). On older versions, add this project's .hermes/skills directory to skills.external_dirs in ~/.hermes/config.yaml instead."
+    },
+    {
+      "name": "iFlow",
+      "value": "iflow",
+      "available": true,
+      "successLabel": "iFlow",
+      "skillsDir": ".iflow"
+    },
+    {
+      "name": "Junie",
+      "value": "junie",
+      "available": true,
+      "successLabel": "Junie",
+      "skillsDir": ".junie",
+      "requiresIdeRestart": true
+    },
+    {
+      "name": "Kilo Code",
+      "value": "kilocode",
+      "available": true,
+      "successLabel": "Kilo Code",
+      "skillsDir": ".kilocode",
+      "requiresIdeRestart": true
+    },
+    {
+      "name": "Kimi Code",
+      "value": "kimi",
+      "available": true,
+      "successLabel": "Kimi Code",
+      "skillsDir": ".kimi-code",
+      "detectionPaths": [
+        ".kimi-code",
+        ".kimi"
+      ]
+    },
+    {
+      "name": "Kiro",
+      "value": "kiro",
+      "available": true,
+      "successLabel": "Kiro",
+      "skillsDir": ".kiro",
+      "requiresIdeRestart": true
+    },
+    {
+      "name": "Lingma",
+      "value": "lingma",
+      "available": true,
+      "successLabel": "Lingma",
+      "skillsDir": ".lingma",
+      "requiresIdeRestart": true
+    },
+    {
+      "name": "MiniMax Code",
+      "value": "minimax-code",
+      "available": true,
+      "successLabel": "MiniMax Code",
+      "skillsDir": ".minimax"
+    },
+    {
+      "name": "Mistral Vibe",
+      "value": "vibe",
+      "available": true,
+      "successLabel": "Mistral Vibe",
+      "skillsDir": ".vibe"
+    },
+    {
+      "name": "Oh My Pi",
+      "value": "oh-my-pi",
+      "available": true,
+      "successLabel": "Oh My Pi",
+      "skillsDir": ".omp",
+      "setupNote": "Skills are in the universal skills folder. If your tool needs its own folder, see https://github.com/Fission-AI/OpenSpec/blob/main/docs-lab/reference/supported-tools.md#link-another-tool"
+    },
+    {
+      "name": "OpenCode",
+      "value": "opencode",
+      "available": true,
+      "successLabel": "OpenCode",
+      "skillsDir": ".opencode"
+    },
+    {
+      "name": "Pi",
+      "value": "pi",
+      "available": true,
+      "successLabel": "Pi",
+      "skillsDir": ".pi"
+    },
+    {
+      "name": "SourceCraft Code Assistant",
+      "value": "codeassistant",
+      "available": true,
+      "successLabel": "SourceCraft Code Assistant",
+      "skillsDir": ".codeassistant",
+      "setupNote": "Skills are in the universal skills folder. If your tool needs its own folder, see https://github.com/Fission-AI/OpenSpec/blob/main/docs-lab/reference/supported-tools.md#link-another-tool"
+    },
+    {
+      "name": "Qoder",
+      "value": "qoder",
+      "available": true,
+      "successLabel": "Qoder",
+      "skillsDir": ".qoder",
+      "requiresIdeRestart": true
+    },
+    {
+      "name": "Qwen Code",
+      "value": "qwen",
+      "available": true,
+      "successLabel": "Qwen Code",
+      "skillsDir": ".qwen"
+    },
+    {
+      "name": "Rovo Dev CLI",
+      "value": "rovodev",
+      "available": true,
+      "successLabel": "Rovo Dev CLI",
+      "skillsDir": ".rovodev",
+      "detectionPaths": [
+        ".rovodev/skills",
+        ".rovodev"
+      ]
+    },
+    {
+      "name": "Zoo Code",
+      "value": "roocode",
+      "available": true,
+      "successLabel": "Zoo Code",
+      "skillsDir": ".roo",
+      "requiresIdeRestart": true
+    },
+    {
+      "name": "Trae",
+      "value": "trae",
+      "available": true,
+      "successLabel": "Trae",
+      "skillsDir": ".trae",
+      "requiresIdeRestart": true
+    },
+    {
+      "name": "Veai",
+      "value": "veai",
+      "available": true,
+      "successLabel": "Veai",
+      "skillsDir": ".veai",
+      "setupNote": "Skills are in the universal skills folder. If your tool needs its own folder, see https://github.com/Fission-AI/OpenSpec/blob/main/docs-lab/reference/supported-tools.md#link-another-tool"
+    },
+    {
+      "name": "Warp",
+      "value": "warp",
+      "available": true,
+      "successLabel": "Warp",
+      "skillsDir": ".warp",
+      "detectionPaths": [
+        ".warp",
+        "WARP.md"
+      ]
+    },
+    {
+      "name": "Zed Agent",
+      "value": "zed",
+      "available": true,
+      "successLabel": "Zed Agent",
+      "skillsDir": ".agents",
+      "detectionPaths": [
+        ".zed",
+        ".agents/skills"
+      ]
+    },
+    {
+      "name": "ZCode",
+      "value": "zcode",
+      "available": true,
+      "successLabel": "ZCode",
+      "skillsDir": ".zcode"
+    },
+    {
+      "name": "Other / Universal (shared .agents skills)",
+      "value": "agents",
+      "available": true,
+      "successLabel": "shared .agents skills",
+      "skillsDir": ".agents",
+      "detectionPaths": [
+        ".agents/skills"
+      ],
+      "searchAliases": [
+        "universal",
+        "other",
+        "generic",
+        "custom",
+        "proprietary",
+        "unlisted",
+        "unsupported",
+        "vendor-neutral",
+        "agents.md"
+      ]
+    },
+    {
+      "value": "aider-desk",
+      "name": "AiderDesk",
+      "available": true,
+      "successLabel": "AiderDesk",
+      "skillsDir": ".aider-desk",
+      "detectionPaths": [
+        ".aider-desk/skills"
+      ]
+    },
+    {
+      "value": "antigravity-cli",
+      "name": "Antigravity CLI",
+      "available": true,
+      "successLabel": "Antigravity CLI",
+      "skillsDir": ".agents",
+      "detectionPaths": [
+        ".agents/skills"
+      ]
+    },
+    {
+      "value": "astrbot",
+      "name": "AstrBot",
+      "available": true,
+      "successLabel": "AstrBot",
+      "skillsDir": "data",
+      "detectionPaths": [
+        "data/skills"
+      ]
+    },
+    {
+      "value": "autohand-code",
+      "name": "Autohand Code CLI",
+      "available": true,
+      "successLabel": "Autohand Code CLI",
+      "skillsDir": ".autohand",
+      "detectionPaths": [
+        ".autohand/skills"
+      ]
+    },
+    {
+      "value": "openclaw",
+      "name": "OpenClaw",
+      "available": true,
+      "successLabel": "OpenClaw",
+      "skillsDir": ".",
+      "detectionPaths": [
+        "skills"
+      ]
+    },
+    {
+      "value": "codemaker",
+      "name": "Codemaker",
+      "available": true,
+      "successLabel": "Codemaker",
+      "skillsDir": ".codemaker",
+      "detectionPaths": [
+        ".codemaker/skills"
+      ]
+    },
+    {
+      "value": "cortex",
+      "name": "Cortex Code",
+      "available": true,
+      "successLabel": "Cortex Code",
+      "skillsDir": ".cortex",
+      "detectionPaths": [
+        ".cortex/skills"
+      ]
+    },
+    {
+      "value": "deepagents",
+      "name": "Deep Agents",
+      "available": true,
+      "successLabel": "Deep Agents",
+      "skillsDir": ".agents",
+      "detectionPaths": [
+        ".agents/skills"
+      ]
+    },
+    {
+      "value": "dexto",
+      "name": "Dexto",
+      "available": true,
+      "successLabel": "Dexto",
+      "skillsDir": ".agents",
+      "detectionPaths": [
+        ".agents/skills"
+      ]
+    },
+    {
+      "value": "eve",
+      "name": "Eve",
+      "available": true,
+      "successLabel": "Eve",
+      "skillsDir": "agent",
+      "detectionPaths": [
+        "agent/skills"
+      ]
+    },
+    {
+      "value": "firebender",
+      "name": "Firebender",
+      "available": true,
+      "successLabel": "Firebender",
+      "skillsDir": ".agents",
+      "detectionPaths": [
+        ".agents/skills"
+      ]
+    },
+    {
+      "value": "fx",
+      "name": "fx",
+      "available": true,
+      "successLabel": "fx",
+      "skillsDir": ".agents",
+      "detectionPaths": [
+        ".agents/skills"
+      ]
+    },
+    {
+      "value": "goose",
+      "name": "Goose",
+      "available": true,
+      "successLabel": "Goose",
+      "skillsDir": ".goose",
+      "detectionPaths": [
+        ".goose/skills"
+      ]
+    },
+    {
+      "value": "inference-sh",
+      "name": "inference.sh",
+      "available": true,
+      "successLabel": "inference.sh",
+      "skillsDir": ".inferencesh",
+      "detectionPaths": [
+        ".inferencesh/skills"
+      ]
+    },
+    {
+      "value": "jazz",
+      "name": "Jazz",
+      "available": true,
+      "successLabel": "Jazz",
+      "skillsDir": ".jazz",
+      "detectionPaths": [
+        ".jazz/skills"
+      ]
+    },
+    {
+      "value": "kimchi",
+      "name": "Kimchi",
+      "available": true,
+      "successLabel": "Kimchi",
+      "skillsDir": ".kimchi",
+      "detectionPaths": [
+        ".kimchi/skills"
+      ]
+    },
+    {
+      "value": "kode",
+      "name": "Kode",
+      "available": true,
+      "successLabel": "Kode",
+      "skillsDir": ".kode",
+      "detectionPaths": [
+        ".kode/skills"
+      ]
+    },
+    {
+      "value": "loaf",
+      "name": "Loaf",
+      "available": true,
+      "successLabel": "Loaf",
+      "skillsDir": ".agents",
+      "detectionPaths": [
+        ".agents/skills"
+      ]
+    },
+    {
+      "value": "mcpjam",
+      "name": "MCPJam",
+      "available": true,
+      "successLabel": "MCPJam",
+      "skillsDir": ".mcpjam",
+      "detectionPaths": [
+        ".mcpjam/skills"
+      ]
+    },
+    {
+      "value": "moxby",
+      "name": "Moxby",
+      "available": true,
+      "successLabel": "Moxby",
+      "skillsDir": ".moxby",
+      "detectionPaths": [
+        ".moxby/skills"
+      ]
+    },
+    {
+      "value": "mux",
+      "name": "Mux",
+      "available": true,
+      "successLabel": "Mux",
+      "skillsDir": ".mux",
+      "detectionPaths": [
+        ".mux/skills"
+      ]
+    },
+    {
+      "value": "openhands",
+      "name": "OpenHands",
+      "available": true,
+      "successLabel": "OpenHands",
+      "skillsDir": ".openhands",
+      "detectionPaths": [
+        ".openhands/skills"
+      ]
+    },
+    {
+      "value": "ona",
+      "name": "Ona",
+      "available": true,
+      "successLabel": "Ona",
+      "skillsDir": ".ona",
+      "detectionPaths": [
+        ".ona/skills"
+      ]
+    },
+    {
+      "value": "posit-assistant",
+      "name": "Posit Assistant",
+      "available": true,
+      "successLabel": "Posit Assistant",
+      "skillsDir": ".posit/assistant",
+      "detectionPaths": [
+        ".posit/assistant/skills"
+      ]
+    },
+    {
+      "value": "qoder-cn",
+      "name": "Qoder CN",
+      "available": true,
+      "successLabel": "Qoder CN",
+      "skillsDir": ".qoder",
+      "detectionPaths": [
+        ".qoder/skills"
+      ]
+    },
+    {
+      "value": "replit",
+      "name": "Replit",
+      "available": true,
+      "successLabel": "Replit",
+      "skillsDir": ".agents",
+      "detectionPaths": [
+        ".agents/skills"
+      ]
+    },
+    {
+      "value": "reasonix",
+      "name": "Reasonix",
+      "available": true,
+      "successLabel": "Reasonix",
+      "skillsDir": ".reasonix",
+      "detectionPaths": [
+        ".reasonix/skills"
+      ]
+    },
+    {
+      "value": "sarvam-code",
+      "name": "Sarvam Code",
+      "available": true,
+      "successLabel": "Sarvam Code",
+      "skillsDir": ".agents",
+      "detectionPaths": [
+        ".agents/skills"
+      ]
+    },
+    {
+      "value": "tabnine-cli",
+      "name": "Tabnine CLI",
+      "available": true,
+      "successLabel": "Tabnine CLI",
+      "skillsDir": ".tabnine/agent",
+      "detectionPaths": [
+        ".tabnine/agent/skills"
+      ]
+    },
+    {
+      "value": "terramind",
+      "name": "Terramind",
+      "available": true,
+      "successLabel": "Terramind",
+      "skillsDir": ".terramind",
+      "detectionPaths": [
+        ".terramind/skills"
+      ]
+    },
+    {
+      "value": "tinycloud",
+      "name": "Tinycloud",
+      "available": true,
+      "successLabel": "Tinycloud",
+      "skillsDir": ".tinycloud",
+      "detectionPaths": [
+        ".tinycloud/skills"
+      ]
+    },
+    {
+      "value": "trae-cn",
+      "name": "Trae CN",
+      "available": true,
+      "successLabel": "Trae CN",
+      "skillsDir": ".trae",
+      "detectionPaths": [
+        ".trae/skills"
+      ]
+    },
+    {
+      "value": "zencoder",
+      "name": "Zencoder",
+      "available": true,
+      "successLabel": "Zencoder",
+      "skillsDir": ".zencoder",
+      "detectionPaths": [
+        ".zencoder/skills"
+      ]
+    },
+    {
+      "value": "zenflow",
+      "name": "Zenflow",
+      "available": true,
+      "successLabel": "Zenflow",
+      "skillsDir": ".zencoder",
+      "detectionPaths": [
+        ".zencoder/skills"
+      ]
+    },
+    {
+      "value": "neovate",
+      "name": "Neovate",
+      "available": true,
+      "successLabel": "Neovate",
+      "skillsDir": ".neovate",
+      "detectionPaths": [
+        ".neovate/skills"
+      ]
+    },
+    {
+      "value": "pochi",
+      "name": "Pochi",
+      "available": true,
+      "successLabel": "Pochi",
+      "skillsDir": ".pochi",
+      "detectionPaths": [
+        ".pochi/skills"
+      ]
+    },
+    {
+      "value": "promptscript",
+      "name": "PromptScript",
+      "available": true,
+      "successLabel": "PromptScript",
+      "skillsDir": ".agents",
+      "detectionPaths": [
+        ".agents/skills"
+      ]
+    },
+    {
+      "value": "adal",
+      "name": "AdaL",
+      "available": true,
+      "successLabel": "AdaL",
+      "skillsDir": ".adal",
+      "detectionPaths": [
+        ".adal/skills"
+      ]
+    }
+  ],
+  "aliases": {
+    "windsurf": "devin"
+  },
+  "effective": {
+    "amp": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "antigravity": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "atomcode": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "auggie": {
+      "skills": ".agents/skills",
+      "linkDir": ".augment/skills"
+    },
+    "bob": {
+      "skills": ".agents/skills",
+      "linkDir": ".bob/skills"
+    },
+    "claude": {
+      "skills": ".agents/skills",
+      "linkDir": ".claude/skills"
+    },
+    "cline": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "command-code": {
+      "skills": ".agents/skills",
+      "linkDir": ".commandcode/skills"
+    },
+    "codeartsagent": {
+      "skills": ".agents/skills",
+      "linkDir": ".codeartsdoer/skills"
+    },
+    "codex": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "dsh": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "devin": {
+      "skills": ".agents/skills",
+      "linkDir": ".devin/skills"
+    },
+    "forgecode": {
+      "skills": ".agents/skills",
+      "linkDir": ".forge/skills"
+    },
+    "codebuddy": {
+      "skills": ".agents/skills",
+      "linkDir": ".codebuddy/skills"
+    },
+    "codestudio": {
+      "skills": ".agents/skills",
+      "linkDir": ".codestudio/skills"
+    },
+    "continue": {
+      "skills": ".agents/skills",
+      "linkDir": ".continue/skills"
+    },
+    "costrict": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "crush": {
+      "skills": ".agents/skills",
+      "linkDir": ".crush/skills"
+    },
+    "cursor": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "easycode": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "factory": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "gemini": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "github-copilot": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "gigacode": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "grok": {
+      "skills": ".agents/skills",
+      "linkDir": ".grok/skills"
+    },
+    "gsd": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "hermes": {
+      "skills": ".agents/skills",
+      "linkDir": ".hermes/skills"
+    },
+    "iflow": {
+      "skills": ".agents/skills",
+      "linkDir": ".iflow/skills"
+    },
+    "junie": {
+      "skills": ".agents/skills",
+      "linkDir": ".junie/skills"
+    },
+    "kilocode": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "kimi": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "kiro": {
+      "skills": ".agents/skills",
+      "linkDir": ".kiro/skills"
+    },
+    "lingma": {
+      "skills": ".agents/skills",
+      "linkDir": ".lingma/skills"
+    },
+    "minimax-code": {
+      "skills": ".agents/skills",
+      "linkDir": ".minimax/skills"
+    },
+    "vibe": {
+      "skills": ".agents/skills",
+      "linkDir": ".vibe/skills"
+    },
+    "oh-my-pi": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "opencode": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "pi": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "codeassistant": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "qoder": {
+      "skills": ".agents/skills",
+      "linkDir": ".qoder/skills"
+    },
+    "qwen": {
+      "skills": ".agents/skills",
+      "linkDir": ".qwen/skills"
+    },
+    "rovodev": {
+      "skills": ".agents/skills",
+      "linkDir": ".rovodev/skills"
+    },
+    "roocode": {
+      "skills": ".agents/skills",
+      "linkDir": ".roo/skills"
+    },
+    "trae": {
+      "skills": ".agents/skills",
+      "linkDir": ".trae/skills"
+    },
+    "veai": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "warp": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "zed": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "zcode": {
+      "skills": ".agents/skills",
+      "linkDir": ".zcode/skills"
+    },
+    "agents": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "aider-desk": {
+      "skills": ".agents/skills",
+      "linkDir": ".aider-desk/skills"
+    },
+    "antigravity-cli": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "astrbot": {
+      "skills": ".agents/skills",
+      "linkDir": "data/skills"
+    },
+    "autohand-code": {
+      "skills": ".agents/skills",
+      "linkDir": ".autohand/skills"
+    },
+    "openclaw": {
+      "skills": ".agents/skills",
+      "linkDir": "skills"
+    },
+    "codemaker": {
+      "skills": ".agents/skills",
+      "linkDir": ".codemaker/skills"
+    },
+    "cortex": {
+      "skills": ".agents/skills",
+      "linkDir": ".cortex/skills"
+    },
+    "deepagents": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "dexto": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "eve": {
+      "skills": ".agents/skills",
+      "linkDir": "agent/skills"
+    },
+    "firebender": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "fx": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "goose": {
+      "skills": ".agents/skills",
+      "linkDir": ".goose/skills"
+    },
+    "inference-sh": {
+      "skills": ".agents/skills",
+      "linkDir": ".inferencesh/skills"
+    },
+    "jazz": {
+      "skills": ".agents/skills",
+      "linkDir": ".jazz/skills"
+    },
+    "kimchi": {
+      "skills": ".agents/skills",
+      "linkDir": ".kimchi/skills"
+    },
+    "kode": {
+      "skills": ".agents/skills",
+      "linkDir": ".kode/skills"
+    },
+    "loaf": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "mcpjam": {
+      "skills": ".agents/skills",
+      "linkDir": ".mcpjam/skills"
+    },
+    "moxby": {
+      "skills": ".agents/skills",
+      "linkDir": ".moxby/skills"
+    },
+    "mux": {
+      "skills": ".agents/skills",
+      "linkDir": ".mux/skills"
+    },
+    "openhands": {
+      "skills": ".agents/skills",
+      "linkDir": ".openhands/skills"
+    },
+    "ona": {
+      "skills": ".agents/skills",
+      "linkDir": ".ona/skills"
+    },
+    "posit-assistant": {
+      "skills": ".agents/skills",
+      "linkDir": ".posit/assistant/skills"
+    },
+    "qoder-cn": {
+      "skills": ".agents/skills",
+      "linkDir": ".qoder/skills"
+    },
+    "replit": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "reasonix": {
+      "skills": ".agents/skills",
+      "linkDir": ".reasonix/skills"
+    },
+    "sarvam-code": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "tabnine-cli": {
+      "skills": ".agents/skills",
+      "linkDir": ".tabnine/agent/skills"
+    },
+    "terramind": {
+      "skills": ".agents/skills",
+      "linkDir": ".terramind/skills"
+    },
+    "tinycloud": {
+      "skills": ".agents/skills",
+      "linkDir": ".tinycloud/skills"
+    },
+    "trae-cn": {
+      "skills": ".agents/skills",
+      "linkDir": ".trae/skills"
+    },
+    "zencoder": {
+      "skills": ".agents/skills",
+      "linkDir": ".zencoder/skills"
+    },
+    "zenflow": {
+      "skills": ".agents/skills",
+      "linkDir": ".zencoder/skills"
+    },
+    "neovate": {
+      "skills": ".agents/skills",
+      "linkDir": ".neovate/skills"
+    },
+    "pochi": {
+      "skills": ".agents/skills",
+      "linkDir": ".pochi/skills"
+    },
+    "promptscript": {
+      "skills": ".agents/skills",
+      "linkDir": null
+    },
+    "adal": {
+      "skills": ".agents/skills",
+      "linkDir": ".adal/skills"
+    }
+  },
+  "agentsByProjectFolder": {
+    ".qoder/skills": [
+      "qoder",
+      "qoder-cn"
+    ],
+    ".trae/skills": [
+      "trae",
+      "trae-cn"
+    ],
+    ".zencoder/skills": [
+      "zencoder",
+      "zenflow"
+    ]
+  }
+}

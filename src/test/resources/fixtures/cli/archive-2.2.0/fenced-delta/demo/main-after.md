@@ -1,0 +1,36 @@
+# demo Specification
+
+## Purpose
+Demo capability used to capture archive merge behavior in fixtures.
+
+## Requirements
+
+### Requirement: Works
+The system SHALL work.
+
+#### Scenario: It works
+- **WHEN** used
+- **THEN** it works
+
+### Requirement: Other
+The system SHALL do other things.
+
+#### Scenario: Other works
+- **WHEN** used
+- **THEN** other works
+
+### Requirement: Documented
+The system SHALL document deltas.
+
+Example delta:
+
+```markdown
+## ADDED Requirements
+
+### Requirement: Phantom
+The system SHALL not exist.
+```
+
+#### Scenario: Documents
+- **WHEN** used
+- **THEN** it documents

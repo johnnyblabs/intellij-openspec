@@ -1,0 +1,16 @@
+{
+  "changes": [
+    {
+      "path": ".agents/skills/openspec/references/answers.md",
+      "action": "update",
+      "tool": "openspec"
+    },
+    {
+      "path": "~/.config/openspec/config.json",
+      "action": "add",
+      "tool": "openspec"
+    }
+  ],
+  "notes": [],
+  "failures": []
+}

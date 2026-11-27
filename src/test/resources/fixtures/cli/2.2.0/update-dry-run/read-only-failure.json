@@ -1,0 +1,66 @@
+{
+  "changes": [
+    {
+      "path": ".agents/skills/openspec-apply-change/SKILL.md",
+      "action": "update",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-archive-change/SKILL.md",
+      "action": "update",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-explore/SKILL.md",
+      "action": "update",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-propose/SKILL.md",
+      "action": "update",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-sync-specs/SKILL.md",
+      "action": "update",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-update-change/SKILL.md",
+      "action": "update",
+      "tool": "openspec"
+    },
+    {
+      "path": ".claude/commands/opsx/apply.md",
+      "action": "delete",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/commands/opsx/archive.md",
+      "action": "delete",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/commands/opsx/explore.md",
+      "action": "delete",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/commands/opsx/propose.md",
+      "action": "delete",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/commands/opsx/sync.md",
+      "action": "delete",
+      "tool": "claude"
+    },
+    {
+      "path": ".claude/commands/opsx/update.md",
+      "action": "delete",
+      "tool": "claude"
+    }
+  ],
+  "notes": [],
+  "failures": []
+}

@@ -1,0 +1,17 @@
+{
+  "project": {
+    ".qoder/commands/opsx/apply.md": "",
+    ".qoder/commands/opsx/archive.md": "",
+    ".qoder/commands/opsx/explore.md": "",
+    ".qoder/commands/opsx/propose.md": "",
+    ".qoder/commands/opsx/sync.md": "",
+    ".qoder/commands/opsx/update.md": "",
+    ".qoder/skills/openspec-apply-change/SKILL.md": "",
+    ".qoder/skills/openspec-archive-change/SKILL.md": "",
+    ".qoder/skills/openspec-explore/SKILL.md": "",
+    ".qoder/skills/openspec-propose/SKILL.md": "",
+    ".qoder/skills/openspec-sync-specs/SKILL.md": "",
+    ".qoder/skills/openspec-update-change/SKILL.md": ""
+  },
+  "home": {}
+}

@@ -1,0 +1,121 @@
+{
+  "changes": [
+    {
+      "path": ".agent/skills/openspec-apply-change/SKILL.md",
+      "action": "delete",
+      "tool": "antigravity"
+    },
+    {
+      "path": ".agent/skills/openspec-archive-change/SKILL.md",
+      "action": "delete",
+      "tool": "antigravity"
+    },
+    {
+      "path": ".agent/skills/openspec-explore/SKILL.md",
+      "action": "delete",
+      "tool": "antigravity"
+    },
+    {
+      "path": ".agent/skills/openspec-propose/SKILL.md",
+      "action": "delete",
+      "tool": "antigravity"
+    },
+    {
+      "path": ".agent/skills/openspec-sync-specs/SKILL.md",
+      "action": "delete",
+      "tool": "antigravity"
+    },
+    {
+      "path": ".agent/skills/openspec-update-change/SKILL.md",
+      "action": "delete",
+      "tool": "antigravity"
+    },
+    {
+      "path": ".agent/workflows/opsx-apply.md",
+      "action": "delete",
+      "tool": "earlier-release"
+    },
+    {
+      "path": ".agent/workflows/opsx-archive.md",
+      "action": "delete",
+      "tool": "earlier-release"
+    },
+    {
+      "path": ".agent/workflows/opsx-explore.md",
+      "action": "delete",
+      "tool": "earlier-release"
+    },
+    {
+      "path": ".agent/workflows/opsx-propose.md",
+      "action": "delete",
+      "tool": "earlier-release"
+    },
+    {
+      "path": ".agent/workflows/opsx-sync.md",
+      "action": "delete",
+      "tool": "earlier-release"
+    },
+    {
+      "path": ".agent/workflows/opsx-update.md",
+      "action": "delete",
+      "tool": "earlier-release"
+    },
+    {
+      "path": ".agents/skills/.openspec-target",
+      "action": "add",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-apply-change/SKILL.md",
+      "action": "add",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-archive-change/SKILL.md",
+      "action": "add",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-explore/SKILL.md",
+      "action": "add",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-propose/SKILL.md",
+      "action": "add",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-sync-specs/SKILL.md",
+      "action": "add",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec-update-change/SKILL.md",
+      "action": "add",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec/references/answers.md",
+      "action": "add",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec/references/where-things-stand.md",
+      "action": "add",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec/references/without-skills.md",
+      "action": "add",
+      "tool": "openspec"
+    },
+    {
+      "path": ".agents/skills/openspec/SKILL.md",
+      "action": "add",
+      "tool": "openspec"
+    }
+  ],
+  "notes": [],
+  "failures": []
+}

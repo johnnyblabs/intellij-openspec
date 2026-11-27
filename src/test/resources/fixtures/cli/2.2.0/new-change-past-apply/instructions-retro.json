@@ -1,0 +1,33 @@
+{
+  "changeName": "retro-demo",
+  "artifactId": "retro",
+  "schemaName": "with-retro",
+  "changeDir": "/fixture/demo-project/openspec/changes/retro-demo",
+  "planningHome": {
+    "kind": "repo",
+    "root": "/fixture/demo-project",
+    "changesDir": "/fixture/demo-project/openspec/changes",
+    "defaultSchema": "spec-driven"
+  },
+  "outputPath": "retro.md",
+  "resolvedOutputPath": "/fixture/demo-project/openspec/changes/retro-demo/retro.md",
+  "existingOutputPaths": [
+    "/fixture/demo-project/openspec/changes/retro-demo/retro.md"
+  ],
+  "description": "A retrospective, written after the tasks",
+  "instruction": "Write a short retrospective.\n",
+  "template": "# Design\n\n## Context\n\n<!-- Current state and constraints that shape the approach. See proposal.md for motivation - don't restate it -->\n\n## Goals / Non-Goals\n\n**Goals:**\n<!-- What this design aims to achieve -->\n\n**Non-Goals:**\n<!-- What is explicitly out of scope -->\n\n## Decisions\n\n<!-- Key design decisions with rationale and alternatives considered -->\n\n## Risks / Trade-offs\n\n<!-- Known risks and trade-offs -->\n",
+  "dependencies": [
+    {
+      "id": "tasks",
+      "done": true,
+      "path": "tasks.md",
+      "description": "Implementation checklist with trackable tasks"
+    }
+  ],
+  "unlocks": [],
+  "root": {
+    "path": "/fixture/demo-project",
+    "source": "nearest"
+  }
+}
