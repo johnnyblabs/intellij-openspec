@@ -34,7 +34,7 @@ The plugin SHALL provide a Verify action driven by the resolved workflow schema 
 
 #### Scenario: Partial tasks count as not-done
 - **WHEN** `tasks.md` contains in-progress checkboxes written as `- [~]`
-- **THEN** Verify SHALL count each `- [~]` toward the total task count and treat it as not-done (reported as not done, but not blocking archive: an in-progress change is archived through Verify's "Archive anyway" action), and SHALL NOT exclude it from either the completed or the total count
+- **THEN** Verify SHALL count each `- [~]` toward the total task count and treat it as not-done (reported as not done, but not blocking archive: an in-progress change can still be archived anyway), and SHALL NOT exclude it from either the completed or the total count
 - **AND** the completeness finding SHALL account for in-progress tasks distinctly (e.g. reporting an in-progress count) rather than dropping them silently
 
 #### Scenario: Correctness and coherence — semantic and language-agnostic
@@ -56,11 +56,7 @@ The plugin SHALL provide a Verify action driven by the resolved workflow schema 
 
 ### Requirement: Verification report
 
-The plugin SHALL display verification results in the three-state Verify dialog with per-category
-sections (Completeness, Validation, Spec Sync), each finding shown with its severity. The archive
-gate SHALL be driven by the three-state classification: only a hard validation **BLOCK** disables
-archiving; an **IN PROGRESS** change (incomplete tasks, structurally valid) is archivable-anyway
-(soft, bypassable), and a **READY** change archives directly.
+The plugin SHALL display verification results in the three-state Verify dialog with per-category sections (Completeness, Validation, Spec Sync), each finding shown with its severity. The archive gate SHALL follow the three-state classification: only a hard validation **BLOCK** prevents archiving; an **IN PROGRESS** change is archivable anyway (soft, bypassable); a **READY** change is archivable. Verify itself SHALL NOT archive.
 
 #### Scenario: Report display
 - **WHEN** verification completes
@@ -68,30 +64,30 @@ archiving; an **IN PROGRESS** change (incomplete tasks, structurally valid) is a
 
 #### Scenario: Archive gate
 - **WHEN** the result classifies as BLOCKED (a validation error)
-- **THEN** the plugin SHALL prevent archiving (OK disabled) and show the count of blocking issues
+- **THEN** the plugin SHALL prevent archiving (the archiving button disabled) and show the count of blocking issues
 - **AND WHEN** the result classifies as IN PROGRESS (incomplete tasks only)
-- **THEN** the plugin SHALL still permit archiving via an "Archive anyway" action rather than blocking, without rendering the change as an error
+- **THEN** the plugin SHALL still permit archiving through an action labelled "Archive anyway" (or "Archive anyway…" in the report form) rather than blocking, without rendering the change as an error
 
 #### Scenario: Clean report
 - **WHEN** no issues are found
-- **THEN** the plugin SHALL display a "ready to archive" state with an enabled Archive action
+- **THEN** the plugin SHALL display a "ready to archive" state with an enabled archiving action ("Archive", or "Archive…" in the report form when the profile includes `archive`)
 
 ### Requirement: Single Verify surface with three archive-readiness states
 
-The plugin SHALL expose one pre-archive Verify surface: a single tool-window button, the `OpenSpec.Verify` menu action and the Archive pre-flight SHALL run the identical check, with no separate Compliance surface. The check SHALL fold completeness, validation and spec-sync into one result, classified as READY, IN PROGRESS or BLOCKED to mirror upstream `openspec archive`. The two gate conditions SHALL be distinguished by an intrinsic hard or soft property, not by error count.
+The plugin SHALL expose one pre-archive Verify check: a single tool-window button, the `OpenSpec.Verify` menu action and the Archive pre-flight SHALL run it identically, with no separate Compliance surface. The check SHALL fold completeness, validation and spec-sync into one result, classified as READY, IN PROGRESS or BLOCKED to mirror upstream `openspec archive`. The two gate conditions SHALL be distinguished by an intrinsic hard or soft property, not by error count.
 
 #### Scenario: Ready to archive
 - **WHEN** the check finds no errors and no incomplete work
-- **THEN** the Verify dialog SHALL show a green "ready to archive" header and its OK button SHALL read "Archive" and be enabled
+- **THEN** the Verify dialog SHALL show a green "ready to archive" header, and its archiving button ("Archive" in the pre-flight, "Archive…" in the report form) SHALL be enabled
 
 #### Scenario: In progress — soft, bypassable task gate
 - **WHEN** the change is structurally valid but has incomplete tasks (the `archive_tasks_incomplete` analogue)
 - **THEN** the Verify dialog SHALL show a **neutral** (non-red) "In Progress — N incomplete task(s) remain" header
-- **AND** its OK button SHALL read "Archive anyway" and remain **enabled**, mirroring upstream's bypassable `--yes` gate — a valid-but-unfinished change SHALL NOT be rendered as an error/blocked
+- **AND** its archiving button SHALL read "Archive anyway" (pre-flight) or "Archive anyway…" (report form) and remain **enabled**, mirroring upstream's bypassable `--yes` gate — a valid-but-unfinished change SHALL NOT be rendered as an error/blocked
 
 #### Scenario: Blocked — hard validation gate
 - **WHEN** the check finds a validation error (the `archive_validation_failed` analogue)
-- **THEN** the Verify dialog SHALL show a red "Validation failed — archive blocked" header and its OK button SHALL be **disabled** (the only state that blocks archive)
+- **THEN** the Verify dialog SHALL show a red "Validation failed — archive blocked" header and its archiving button SHALL be **disabled** (the only state that blocks archive)
 
 #### Scenario: Hard block dominates soft
 - **WHEN** a change has both incomplete tasks and a validation error
@@ -103,7 +99,18 @@ The plugin SHALL expose one pre-archive Verify surface: a single tool-window but
 
 #### Scenario: One surface everywhere
 - **WHEN** the user runs Verify from the tool-window button, the `OpenSpec.Verify` menu action, or by archiving
-- **THEN** all three SHALL run the same check and present the same three-state Verify dialog, whose OK archives the change (enabled for READY and bypassable IN PROGRESS, disabled for a hard BLOCK)
+- **THEN** all three SHALL run the same check and present the same three-state Verify dialog
+- **AND** from the Archive action the dialog SHALL be the archive pre-flight, whose OK archives the change; from the two Verify entry points it SHALL be the report form, whose OK reads "Close" and never archives
+
+#### Scenario: Verify reports without archiving
+- **WHEN** the user runs Verify from the tool-window button or the `OpenSpec.Verify` menu action
+- **THEN** the dialog's default button SHALL read "Close", be enabled in every state, and close without archiving, as upstream's verify workflow does not archive
+
+#### Scenario: Archive hand-off follows the profile
+- **WHEN** the report form is shown and the active profile includes the `archive` workflow
+- **THEN** it SHALL offer a separate "Archive…" button ("Archive anyway…" for an in-progress change, disabled when blocked) that archives through the caller's archive step
+- **AND WHEN** the active profile does not include `archive`
+- **THEN** the report form SHALL offer no archiving button
 
 #### Scenario: Verify status chip
 - **WHEN** the workflow panel's Verify status indicator reflects a result
