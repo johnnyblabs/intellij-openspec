@@ -1,0 +1,10 @@
+Task status: ✓ Complete
+
+Specs to update:
+  foo: update
+
+Validation errors in rebuilt spec for foo (will not write changes):
+  ✗ Spec must have at least one requirement
+  ⚠ Purpose section is too brief (less than 50 characters)
+  → 'foo' declares retire_capabilities, but the spec holds content the merge cannot safely account for and deleting the file would take with it: "| a | b |", "|---|---|", "| 1 | 2 |". Move it into `## Purpose` or a canonical requirement, or delete the spec by hand.
+Aborted. No files were changed.

@@ -1,0 +1,9 @@
+Task status: ✓ Complete
+
+Specs to update:
+  foo: update
+Retiring openspec/specs/foo/spec.md: all requirements removed.
+   If it was committed, restore it with: git checkout HEAD -- ":(top)openspec/specs/foo/spec.md"
+Totals: + 0, ~ 0, - 1, → 0
+Specs updated successfully.
+Change 'c' archived as '<DATE>-c'.

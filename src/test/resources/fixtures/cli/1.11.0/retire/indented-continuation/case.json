@@ -1,0 +1,6 @@
+{
+  "spec": "# foo Specification\n\n## Purpose\nFoo does things.\n\n## Requirements\n\n### Requirement: Foo works\nThe system SHALL foo.\n\n#### Scenario: foo\n- **WHEN** x\n  and more of x\n- **THEN** y\n",
+  "delta": "## REMOVED Requirements\n\n### Requirement: Foo works\n**Reason**: gone\n**Migration**: none\n",
+  "metadata": "schema: spec-driven\ncreated: 2026-11-27\nretire_capabilities: true\n",
+  "extra": {}
+}

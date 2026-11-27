@@ -1,0 +1,15 @@
+{
+  "archive": null,
+  "root": {
+    "path": "/fixture",
+    "source": "nearest"
+  },
+  "status": [
+    {
+      "severity": "error",
+      "code": "archive_spec_validation_failed",
+      "message": "Rebuilt spec for 'foo' failed validation. No files were changed.",
+      "fix": "'foo' declares retire_capabilities, but the spec holds content the merge cannot safely account for and deleting the file would take with it: \"and more of x\". Move it into `## Purpose` or a canonical requirement, or delete the spec by hand."
+    }
+  ]
+}

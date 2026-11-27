@@ -1,0 +1,21 @@
+{
+  "archive": {
+    "change": "c",
+    "archivedAs": "<DATE>-c",
+    "path": "/fixture/openspec/changes/archive/<DATE>-c",
+    "specsUpdated": true,
+    "totals": {
+      "added": 0,
+      "modified": 0,
+      "removed": 1,
+      "renamed": 0
+    },
+    "warnings": [
+      "foo - capability retired; deleted the main spec (all requirements removed, declared by retire_capabilities) at openspec/specs/foo/spec.md. Its section(s) went with it: Purpose. If it was committed, restore it with: git checkout HEAD -- \":(top)openspec/specs/foo/spec.md\""
+    ]
+  },
+  "root": {
+    "path": "/fixture",
+    "source": "nearest"
+  }
+}
