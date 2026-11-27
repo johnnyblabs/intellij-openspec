@@ -6,6 +6,7 @@
 
 ### Added
 
+- **Verify hands the full check to your AI tool outside Direct API.** In Clipboard and Editor Tab modes, Verify's report now has a **Verify with \<tool\>…** button. It hands your AI tool its verify workflow for the change (for example `/openspec-verify-change my-change`), which checks correctness and coherence as well as completeness. Before, those modes reported correctness and coherence as "not assessed" and stopped there. If no tool has the verify workflow, the button says what's missing and offers Update.
 - **OpenSpec CLI 2.2's `openspec` skill is recognized.** CLI 2.2 installs an `openspec` skill beside the workflow skills: ask your agent for it (`/openspec`) when you aren't sure which step comes next, and it says where your changes stand and hands off to the right workflow. The plugin counts it as one of OpenSpec's skills. The update preview shows its link in each tool folder as a link, and names an edited file of it, such as one of its `references/`, before the update overwrites it.
 
 ### Changed
