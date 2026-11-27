@@ -22,8 +22,8 @@ import java.util.List;
 /**
  * The Verify menu action — the same pre-archive readiness check as the tool-window Verify button and
  * the Archive pre-flight, so "Verify" means one thing everywhere. Shows the three-state
- * {@link VerifyDialog}; its OK archives the change (enabled for READY and bypassable IN_PROGRESS,
- * disabled for a hard validation BLOCK).
+ * {@link VerifyDialog} as a report: its OK closes, as upstream's verify workflow never archives. When the profile
+ * includes {@code archive}, its separate Archive… button hands off to the archive step.
  */
 public class OpenSpecVerifyAction extends OpenSpecBaseAction {
 
@@ -60,9 +60,12 @@ public class OpenSpecVerifyAction extends OpenSpecBaseAction {
                 ArchiveReadinessService readinessService = project.getService(ArchiveReadinessService.class);
                 ArchiveReadinessResult result = readinessService.verify(changeName);
                 boolean hasDeltaSpecs = project.getService(SpecSyncService.class).hasDeltaSpecs(changeName);
+                boolean archiveOffered = VerifyDialog.archiveOffered(project);
 
                 ApplicationManager.getApplication().invokeLater(() -> {
-                    if (new VerifyDialog(project, result).showAndGet()) {
+                    VerifyDialog dialog = VerifyDialog.report(project, result, archiveOffered);
+                    dialog.show();
+                    if (VerifyDialog.archiveRequested(dialog.getExitCode())) {
                         archiveChange(project, changeService, target, hasDeltaSpecs);
                     }
                 });

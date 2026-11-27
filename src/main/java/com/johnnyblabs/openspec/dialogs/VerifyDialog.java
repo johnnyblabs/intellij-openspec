@@ -20,41 +20,119 @@ import java.util.List;
 
 /**
  * The single pre-archive <em>Verify</em> dialog (upstream's word — the plugin's former "Compliance
- * Pre-Flight"). It renders the three native archive-readiness states from {@link ArchiveReadinessResult}:
+ * Pre-Flight"). It renders the three native archive-readiness states from {@link ArchiveReadinessResult}
+ * (READY green, IN_PROGRESS <b>neutral</b>, never red, BLOCKED red), in one of two {@link Form}s:
  * <ul>
- *   <li>{@code READY} — green "ready to archive"; OK = <b>Archive</b>, enabled.</li>
- *   <li>{@code IN_PROGRESS} — <b>neutral</b> (Information icon, foreground color, NOT red)
- *       "in progress … archive anyway"; OK = <b>Archive anyway</b>, <b>enabled</b> — matching
- *       upstream's soft, bypassable {@code --yes} task gate.</li>
- *   <li>{@code BLOCKED} — red "validation failed"; OK = <b>Archive</b>, <b>disabled</b> — the only
- *       hard block.</li>
+ *   <li>{@link Form#REPORT}, from Verify: OK reads <b>Close</b> and never archives, because upstream's verify
+ *       workflow doesn't. When the profile includes {@code archive}, a separate <b>Archive…</b> button
+ *       ("Archive anyway…" while tasks are open, disabled when blocked) closes with {@link #ARCHIVE_EXIT_CODE}.</li>
+ *   <li>{@link Form#ARCHIVE_PREFLIGHT}, from Archive: OK reads <b>Archive</b> ("Archive anyway" while tasks are
+ *       open) and is disabled only for a hard validation block, mirroring upstream's bypassable {@code --yes} task
+ *       gate.</li>
  * </ul>
  */
 public class VerifyDialog extends DialogWrapper {
 
-    private final ArchiveReadinessResult result;
+    /** Which job the dialog does: report on a change, or confirm an archive the user asked for. */
+    public enum Form { REPORT, ARCHIVE_PREFLIGHT }
 
+    /** The exit code of the report form's Archive… button. */
+    public static final int ARCHIVE_EXIT_CODE = NEXT_USER_EXIT_CODE;
+
+    private final ArchiveReadinessResult result;
+    private final Form form;
+    private final boolean archiveOffered;
+
+    /** The Archive action's pre-flight: OK archives. */
     public VerifyDialog(@NotNull Project project, @NotNull ArchiveReadinessResult result) {
+        this(project, result, Form.ARCHIVE_PREFLIGHT, true);
+    }
+
+    /** Verify's report: OK closes; {@code archiveOffered} (the profile includes {@code archive}) adds Archive…. */
+    public static VerifyDialog report(@NotNull Project project, @NotNull ArchiveReadinessResult result,
+                                      boolean archiveOffered) {
+        return new VerifyDialog(project, result, Form.REPORT, archiveOffered);
+    }
+
+    private VerifyDialog(@NotNull Project project, @NotNull ArchiveReadinessResult result, Form form,
+                         boolean archiveOffered) {
         super(project, false);
         this.result = result;
+        this.form = form;
+        this.archiveOffered = archiveOffered;
 
         setTitle("Verify — " + result.getChangeName());
-        setOKButtonText(okButtonText(result));
+        setOKButtonText(okButtonText(form, result));
         setCancelButtonText("Cancel");
 
         init();
 
-        // Only a genuine (hard) validation block disables Archive. An in-progress change is
-        // archivable-anyway, mirroring the upstream `--yes` bypass — do not disable it.
-        if (result.isHardBlocked()) {
-            setOKActionEnabled(false);
-        }
+        setOKActionEnabled(okEnabled(form, result));
     }
 
     /**
-     * The OK-button label for a result. IN_PROGRESS reads "Archive anyway" (the bypassable soft
+     * Whether the report offers Archive…: the active profile includes {@code archive}. With no profile service, as in a
+     * project without OpenSpec configured, it does, as {@code OpenSpecBaseAction} leaves a workflow ungated. It may
+     * read the profile from the CLI on first use: call it off the UI thread.
+     */
+    public static boolean archiveOffered(@NotNull Project project) {
+        return archiveOffered(project.getService(com.johnnyblabs.openspec.services.WorkflowProfileService.class));
+    }
+
+    /** {@link #archiveOffered(Project)} for a given profile service, or {@code null} for none. */
+    static boolean archiveOffered(@Nullable com.johnnyblabs.openspec.services.WorkflowProfileService profile) {
+        return profile == null || profile.isWorkflowEnabled("archive");
+    }
+
+    /** Whether a report closed with {@code exitCode} asks the caller to archive: only its Archive… button does. */
+    public static boolean archiveRequested(int exitCode) {
+        return exitCode == ARCHIVE_EXIT_CODE;
+    }
+
+    /** The OK label: "Close" for a report; for the pre-flight, {@link #okButtonText(ArchiveReadinessResult)}. */
+    static String okButtonText(Form form, ArchiveReadinessResult result) {
+        return form == Form.REPORT ? "Close" : okButtonText(result);
+    }
+
+    /** OK is always enabled on a report; on the pre-flight only a hard validation block disables it. */
+    static boolean okEnabled(Form form, ArchiveReadinessResult result) {
+        return form == Form.REPORT || !result.isHardBlocked();
+    }
+
+    /**
+     * The report's Archive… label, or {@code null} when there is no such button: not a report, or the profile has no
+     * {@code archive}. "Archive anyway…" while tasks are open. Enablement is {@link #archiveEnabled}.
+     */
+    static @Nullable String archiveButtonText(Form form, ArchiveReadinessResult result, boolean archiveOffered) {
+        if (form != Form.REPORT || !archiveOffered) return null;
+        return result.classify() == ArchiveReadinessResult.ArchiveReadiness.IN_PROGRESS
+                ? "Archive anyway…" : "Archive…";
+    }
+
+    /** The report's Archive… button is disabled only for a hard validation block. */
+    static boolean archiveEnabled(ArchiveReadinessResult result) {
+        return !result.isHardBlocked();
+    }
+
+    @Override
+    protected Action @NotNull [] createActions() {
+        if (form != Form.REPORT) return super.createActions();
+        String archive = archiveButtonText(form, result, archiveOffered);
+        if (archive == null) return new Action[] {getOKAction()};
+        Action archiveAction = new DialogWrapperAction(archive) {
+            @Override
+            protected void doAction(java.awt.event.ActionEvent e) {
+                close(ARCHIVE_EXIT_CODE);
+            }
+        };
+        archiveAction.setEnabled(archiveEnabled(result));
+        return new Action[] {archiveAction, getOKAction()};
+    }
+
+    /**
+     * The pre-flight's OK label for a result. IN_PROGRESS reads "Archive anyway" (the bypassable soft
      * gate); every other state reads "Archive". Pure so the dialog's contract is unit-testable
-     * without a running IDE. Enablement is separate: OK is disabled iff {@link ArchiveReadinessResult#isHardBlocked()}.
+     * without a running IDE. Enablement is separate: {@link #okEnabled}.
      */
     static String okButtonText(ArchiveReadinessResult result) {
         return result.classify() == ArchiveReadinessResult.ArchiveReadiness.IN_PROGRESS

@@ -53,6 +53,24 @@ class ArchiveOffEdtHygieneTest {
         }
     }
 
+    /**
+     * Verify's two entry points show the report and archive only on its Archive… exit code, never on OK (upstream's
+     * verify workflow doesn't archive). The Archive action keeps the pre-flight, whose OK archives.
+     */
+    @Test
+    void verifyEntryPointsArchiveOnlyThroughTheReportsArchiveButton() throws IOException {
+        for (String file : List.of("actions/OpenSpecVerifyAction.java", "toolwindow/WorkflowActionPanel.java")) {
+            String code = stripComments(Files.readString(ModalityCallScanner.mainSource(file)));
+            assertTrue(code.contains("VerifyDialog.report(project, result, archiveOffered)"), file + " must show the report");
+            assertTrue(code.contains("VerifyDialog.archiveRequested(dialog.getExitCode())"),
+                    file + " must archive only on the Archive… exit code");
+            assertFalse(code.contains("new VerifyDialog(") || code.contains("VerifyDialog(project, result).showAndGet()"),
+                    file + " must not use the pre-flight, whose OK archives");
+        }
+        String archive = stripComments(Files.readString(ModalityCallScanner.mainSource("actions/OpenSpecArchiveAction.java")));
+        assertTrue(archive.contains("new VerifyDialog(project, result)"), "Archive keeps the pre-flight");
+    }
+
     private static String stripComments(String code) {
         return code.replaceAll("(?s)/\\*.*?\\*/", "").replaceAll("//[^\\n]*", "");
     }

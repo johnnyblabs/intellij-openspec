@@ -2134,13 +2134,16 @@ public class WorkflowActionPanel extends JPanel {
                         project.getService(com.johnnyblabs.openspec.services.ArchiveReadinessService.class);
                 com.johnnyblabs.openspec.model.ArchiveReadinessResult result =
                         readinessService.verify(changeName);
+                boolean archiveOffered = com.johnnyblabs.openspec.dialogs.VerifyDialog.archiveOffered(project);
 
                 ApplicationManager.getApplication().invokeLater(() -> {
                     applyVerifyStatus(result);
-                    // The dialog's OK archives (enabled for READY and bypassable IN_PROGRESS,
-                    // disabled for a hard validation BLOCK), so Verify flows to archive from one surface.
-                    if (new com.johnnyblabs.openspec.dialogs.VerifyDialog(project, result).showAndGet()) {
-                        onArchive();
+                    // A report: OK closes, as upstream's verify never archives. Its Archive… button (only when the
+                    // profile includes archive) hands off to the archive step; the open-task question was its label.
+                    var dialog = com.johnnyblabs.openspec.dialogs.VerifyDialog.report(project, result, archiveOffered);
+                    dialog.show();
+                    if (com.johnnyblabs.openspec.dialogs.VerifyDialog.archiveRequested(dialog.getExitCode())) {
+                        onArchive(true);
                     }
                 });
             }
@@ -2158,10 +2161,15 @@ public class WorkflowActionPanel extends JPanel {
     }
 
     private void onArchive() {
+        onArchive(false);
+    }
+
+    /** {@code openTasksConfirmed}: the user already chose to archive with tasks open (Verify's "Archive anyway…"). */
+    private void onArchive(boolean openTasksConfirmed) {
         if (activeChangeName == null) return;
         // Open tasks don't block archive, as the CLI does; warn and let the user choose. This is the panel's own check,
         // not the Verify action, which is gated on a workflow the core profile doesn't include.
-        if (hasTasksRemaining && Messages.showOkCancelDialog(project,
+        if (hasTasksRemaining && !openTasksConfirmed && Messages.showOkCancelDialog(project,
                 "\"" + activeChangeName + "\" still has open tasks. Archive it anyway?",
                 "Archive", "Archive anyway", "Cancel", Messages.getWarningIcon()) != Messages.OK) {
             return;
