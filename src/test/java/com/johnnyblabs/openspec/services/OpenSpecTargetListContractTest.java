@@ -122,6 +122,20 @@ class OpenSpecTargetListContractTest {
                 SkillToolList.parse("\r\n  claude   own-files  \r\n\r\n\tcodex\r\n"));
     }
 
+    /**
+     * A real 2.0.0 marker with a {@code keep} line ({@code detect/user-skill-kept}: {@code init} over a user's own
+     * {@code openspec-explore} keeps it and records that). The keep line names a skill, not a tool, so it is skipped.
+     */
+    @Test
+    void aCaptured200KeepLineIsSkippedAndTheToolKept() throws IOException {
+        Path layout = FixtureVersions.CLI.resolve("2.0.0/detect/user-skill-kept/layout.json");
+        String marker = com.google.gson.JsonParser.parseString(Files.readString(layout)).getAsJsonObject()
+                .getAsJsonObject("project").get(".agents/skills/" + SkillToolList.FILE).getAsString();
+        assertTrue(marker.lines().anyMatch(l -> l.startsWith("keep ")), "sanity: the capture holds a keep line: " + marker);
+
+        assertEquals(List.of(new Entry("claude", true)), SkillToolList.parse(marker));
+    }
+
     /** Defensive input the CLI doesn't write today (every capture writes {@code devin}): an older id, an unknown one. */
     @Test
     void aliasesResolveAndUnknownIdsAndKeepLinesAreSkipped() {

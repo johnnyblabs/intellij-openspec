@@ -214,15 +214,50 @@ class ChangeDeltasContractTest {
     @Nested
     class ChangeDeltasV1_14 {
 
-        private static final String SHOW = "/fixtures/cli/1.14.3/additive-shapes/show-change.json";
-
         private String capture() {
-            try (InputStream is = ChangeDeltasContractTest.class.getResourceAsStream(SHOW)) {
-                assertNotNull(is, "Fixture not found: " + SHOW);
+            return capture("1.14.3");
+        }
+
+        /** {@code show c --type change --json} over the additive-shapes project, as {@code version} wrote it. */
+        private String capture(String version) {
+            String show = "/fixtures/cli/" + version + "/additive-shapes/show-change.json";
+            try (InputStream is = ChangeDeltasContractTest.class.getResourceAsStream(show)) {
+                assertNotNull(is, "Fixture not found: " + show);
                 return new String(is.readAllBytes(), StandardCharsets.UTF_8);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
+        }
+
+        /**
+         * The same project on every release from 1.3.0: 1.3.0 writes requirement and scenario objects with no
+         * {@code name}, 1.14 and later add it. The parser reads only text and rawText, so every release parses alike.
+         */
+        @org.junit.jupiter.params.ParameterizedTest
+        @org.junit.jupiter.params.provider.ValueSource(strings = {"1.3.0", "1.14.3", "2.0.0", "2.1.1", "2.2.0"})
+        void parsesTheSameDeltasOnEveryRelease(String version) {
+            String json = capture(version);
+            com.google.gson.JsonObject raw = com.google.gson.JsonParser.parseString(json).getAsJsonObject();
+            com.google.gson.JsonArray rawDeltas = raw.getAsJsonArray("deltas");
+            com.google.gson.JsonObject rawReq0 = rawDeltas.get(0).getAsJsonObject().getAsJsonObject("requirement");
+            boolean named = !version.equals("1.3.0");
+            assertEquals(named, rawReq0.has("name"), version + ": requirement.name is written from 1.14");
+            assertEquals(named, rawReq0.getAsJsonArray("scenarios").get(0).getAsJsonObject().has("name"),
+                    version + ": scenarios[].name is written from 1.14");
+
+            ChangeDeltaModel model = ChangeDeltaModel.parse(json);
+
+            assertEquals(List.of(OperationType.ADDED, OperationType.MODIFIED),
+                    model.deltas().stream().map(Delta::operation).toList(), version);
+            for (int i = 0; i < rawDeltas.size(); i++) {
+                com.google.gson.JsonObject rawReq = rawDeltas.get(i).getAsJsonObject().getAsJsonObject("requirement");
+                Delta d = model.deltas().get(i);
+                assertEquals(rawReq.get("text").getAsString(), d.requirement().text(), version);
+                assertEquals(rawReq.getAsJsonArray("scenarios").get(0).getAsJsonObject().get("rawText").getAsString(),
+                        d.requirement().scenarios().get(0).rawText(), version);
+            }
+            assertEquals(ChangeDeltaModel.parse(capture("1.14.3")).deltas(), model.deltas(),
+                    version + ": the parsed deltas are the same as 1.14.3's");
         }
 
         @Test

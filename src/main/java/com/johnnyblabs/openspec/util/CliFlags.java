@@ -43,6 +43,8 @@ public final class CliFlags {
         command("validate", "1.3.0").flag("--all").value("--type").flag("--json").flag("--strict");
         command("show", "1.3.0").value("--type").flag("--json");
         command("archive", "1.3.0").flag("--yes").flag("--json", "1.5.0").flag("--skip-specs");
+        // `list --specs` accepts --json from 1.3.0 but prints text before 1.7.0 (1.3.0: "Specs:" lines, exit 0). Safe:
+        // ExploreContextService.LIST_SPECS_FLOOR (1.7.0) routes older releases to its own file walk instead.
         command("list", "1.3.0").flag("--specs").flag("--json");
         command("status", "1.3.0").value("--change").flag("--json");
         command("instructions", "1.3.0").value("--change").flag("--json");

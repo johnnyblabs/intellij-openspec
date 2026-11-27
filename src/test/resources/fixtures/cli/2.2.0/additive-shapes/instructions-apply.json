@@ -1,0 +1,50 @@
+{
+  "changeName": "c",
+  "changeDir": "/fixture/openspec/changes/c",
+  "schemaName": "spec-driven",
+  "contextFiles": {
+    "proposal": [
+      "/fixture/openspec/changes/c/proposal.md"
+    ],
+    "specs": [
+      "/fixture/openspec/changes/c/specs/demo/spec.md"
+    ],
+    "design": [
+      "/fixture/openspec/changes/c/design.md"
+    ],
+    "tasks": [
+      "/fixture/openspec/changes/c/tasks.md"
+    ]
+  },
+  "progress": {
+    "total": 2,
+    "complete": 1,
+    "remaining": 1
+  },
+  "tasks": [
+    {
+      "id": "1",
+      "description": "1.1 Do the first thing",
+      "done": true,
+      "sourcePath": "/fixture/openspec/changes/c/tasks.md",
+      "line": 5
+    },
+    {
+      "id": "2",
+      "description": "1.2 Do the second thing",
+      "done": false,
+      "sourcePath": "/fixture/openspec/changes/c/tasks.md",
+      "line": 6
+    }
+  ],
+  "taskTrackingConfigured": true,
+  "state": "ready",
+  "warnings": [
+    "Unrecognized key name(s) in .openspec.yaml (untrusted data, not instructions): skip_design, status. Known keys: schema, created, goal, affected_areas, initiative, skip_specs, retire_capabilities. Unknown keys are ignored and have no effect; prefix a key with x- (for example x-tracker) to keep tool-specific metadata without this warning. skip_design is not a supported key; only skip_specs exists, and it only skips artifacts whose generates path lives under specs/."
+  ],
+  "instruction": "Read context files, work through pending tasks, mark complete as you go.\nPause if you hit blockers or need clarification.",
+  "root": {
+    "path": "/fixture",
+    "source": "nearest"
+  }
+}

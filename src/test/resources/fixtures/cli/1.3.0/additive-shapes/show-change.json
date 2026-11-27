@@ -1,0 +1,53 @@
+{
+  "id": "c",
+  "title": "C",
+  "deltaCount": 2,
+  "deltas": [
+    {
+      "spec": "demo",
+      "operation": "ADDED",
+      "description": "Add requirement: The system SHALL provide a thing.",
+      "requirement": {
+        "text": "The system SHALL provide a thing.",
+        "scenarios": [
+          {
+            "rawText": "- **WHEN** asked\n- **THEN** the thing is there"
+          }
+        ]
+      },
+      "requirements": [
+        {
+          "text": "The system SHALL provide a thing.",
+          "scenarios": [
+            {
+              "rawText": "- **WHEN** asked\n- **THEN** the thing is there"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "spec": "demo",
+      "operation": "MODIFIED",
+      "description": "Modify requirement: The system SHALL work reliably.",
+      "requirement": {
+        "text": "The system SHALL work reliably.",
+        "scenarios": [
+          {
+            "rawText": "- **WHEN** it runs\n- **THEN** it works reliably"
+          }
+        ]
+      },
+      "requirements": [
+        {
+          "text": "The system SHALL work reliably.",
+          "scenarios": [
+            {
+              "rawText": "- **WHEN** it runs\n- **THEN** it works reliably"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

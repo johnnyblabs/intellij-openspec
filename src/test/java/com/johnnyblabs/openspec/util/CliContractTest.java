@@ -1492,58 +1492,76 @@ class CliContractTest {
     @Nested
     class AdditiveShapesToleranceContractV1_14 {
 
-        private com.google.gson.JsonObject raw(String name) {
-            return com.google.gson.JsonParser.parseString(fixture114("additive-shapes/" + name)).getAsJsonObject();
+        /** The additive-shapes project captured on each release that writes these keys (scripts/capture-additive-shapes.py). */
+        private com.google.gson.JsonObject raw(String version, String name) {
+            return com.google.gson.JsonParser.parseString(shapes(version, name)).getAsJsonObject();
         }
 
+        private String shapes(String version, String name) {
+            return loadFixture(version + "/additive-shapes/" + name);
+        }
+
+        @org.junit.jupiter.params.ParameterizedTest
+        @org.junit.jupiter.params.provider.ValueSource(strings = {"1.14.3", "2.0.0", "2.1.1", "2.2.0"})
+        void statusWithWarningsParsesTheDagAsBefore(String version) {
+            com.google.gson.JsonObject raw = raw(version, "status.json");
+            assertFalse(raw.getAsJsonArray("warnings").isEmpty(), version + ": capture must carry the 1.14 warnings[] key");
+            assertStatusParses(version, raw);
+        }
+
+        /** 1.3.0's status predates planningHome, actionContext and warnings; the parser reads the DAG all the same. */
         @Test
-        void statusWithWarningsParsesTheDagAsBefore() {
-            com.google.gson.JsonObject raw = raw("status.json");
-            assertFalse(raw.getAsJsonArray("warnings").isEmpty(), "capture must carry the 1.14 warnings[] key");
+        void theOlderStatusShapeOf130ParsesTheDag() {
+            com.google.gson.JsonObject raw = raw("1.3.0", "status.json");
+            assertFalse(raw.has("planningHome") || raw.has("warnings"), "sanity: 1.3.0 writes the older shape");
+            assertStatusParses("1.3.0", raw);
+        }
 
-            ChangeArtifactDag dag = CliOutputParser.parseChangeStatus(fixture114("additive-shapes/status.json"));
+        private void assertStatusParses(String version, com.google.gson.JsonObject raw) {
+            ChangeArtifactDag dag = CliOutputParser.parseChangeStatus(shapes(version, "status.json"));
 
-            assertEquals(raw.get("changeName").getAsString(), dag.getChangeName());
-            assertEquals(raw.get("schemaName").getAsString(), dag.getSchemaName());
-            assertEquals(raw.get("isComplete").getAsBoolean(), dag.isComplete());
+            assertEquals(raw.get("changeName").getAsString(), dag.getChangeName(), version);
+            assertEquals(raw.get("schemaName").getAsString(), dag.getSchemaName(), version);
+            assertEquals(raw.get("isComplete").getAsBoolean(), dag.isComplete(), version);
             com.google.gson.JsonArray rawArtifacts = raw.getAsJsonArray("artifacts");
-            assertEquals(rawArtifacts.size(), dag.getArtifacts().size());
+            assertEquals(rawArtifacts.size(), dag.getArtifacts().size(), version);
             for (var el : rawArtifacts) {
                 com.google.gson.JsonObject a = el.getAsJsonObject();
                 assertEquals(ArtifactStatus.valueOf(a.get("status").getAsString().toUpperCase(java.util.Locale.ROOT)),
-                        byId(dag, a.get("id").getAsString()).status(), a.get("id").getAsString());
+                        byId(dag, a.get("id").getAsString()).status(), version + " " + a.get("id").getAsString());
             }
         }
 
-        @Test
-        void artifactInstructionsWithWarningsParseAsBefore() {
-            com.google.gson.JsonObject raw = raw("instructions-proposal.json");
-            assertFalse(raw.getAsJsonArray("warnings").isEmpty(), "capture must carry the 1.14 warnings[] key");
+        @org.junit.jupiter.params.ParameterizedTest
+        @org.junit.jupiter.params.provider.ValueSource(strings = {"1.14.3", "2.0.0", "2.1.1", "2.2.0"})
+        void artifactInstructionsWithWarningsParseAsBefore(String version) {
+            com.google.gson.JsonObject raw = raw(version, "instructions-proposal.json");
+            assertFalse(raw.getAsJsonArray("warnings").isEmpty(), version + ": capture must carry the 1.14 warnings[] key");
 
-            ArtifactInstruction inst = CliOutputParser.parseArtifactInstruction(
-                    fixture114("additive-shapes/instructions-proposal.json"));
+            ArtifactInstruction inst = CliOutputParser.parseArtifactInstruction(shapes(version, "instructions-proposal.json"));
 
-            assertEquals(raw.get("changeName").getAsString(), inst.changeName());
-            assertEquals(raw.get("artifactId").getAsString(), inst.artifactId());
-            assertEquals(raw.get("instruction").getAsString(), inst.instruction());
-            assertEquals(raw.get("template").getAsString(), inst.template());
-            assertEquals(raw.getAsJsonArray("unlocks").size(), inst.unlocks().size());
+            assertEquals(raw.get("changeName").getAsString(), inst.changeName(), version);
+            assertEquals(raw.get("artifactId").getAsString(), inst.artifactId(), version);
+            assertEquals(raw.get("instruction").getAsString(), inst.instruction(), version);
+            assertEquals(raw.get("template").getAsString(), inst.template(), version);
+            assertEquals(raw.getAsJsonArray("unlocks").size(), inst.unlocks().size(), version);
         }
 
-        @Test
-        void applyTaskCountsMatchThePluginsOwnTaskGrammar() {
+        @org.junit.jupiter.params.ParameterizedTest
+        @org.junit.jupiter.params.provider.ValueSource(strings = {"1.14.3", "2.0.0", "2.1.1", "2.2.0"})
+        void applyTaskCountsMatchThePluginsOwnTaskGrammar(String version) {
             // The plugin has no `instructions apply` reader; it counts tasks from tasks.md itself. The new
             // tasks[].sourcePath/line keys are therefore inert, and this cross-checks the plugin's count against
             // the CLI's own progress for the same tasks.md.
-            com.google.gson.JsonObject raw = raw("instructions-apply.json");
+            com.google.gson.JsonObject raw = raw(version, "instructions-apply.json");
             com.google.gson.JsonObject task0 = raw.getAsJsonArray("tasks").get(0).getAsJsonObject();
-            assertTrue(task0.has("sourcePath") && task0.has("line"), "capture must carry the 1.14 task location keys");
+            assertTrue(task0.has("sourcePath") && task0.has("line"), version + ": capture must carry the 1.14 task location keys");
             com.google.gson.JsonObject progress = raw.getAsJsonObject("progress");
 
             int[] counted = TaskLines.count(fixture114("additive-shapes/openspec/changes/c/tasks.md"));
 
-            assertEquals(progress.get("complete").getAsInt(), counted[0]);
-            assertEquals(progress.get("total").getAsInt(), counted[1]);
+            assertEquals(progress.get("complete").getAsInt(), counted[0], version);
+            assertEquals(progress.get("total").getAsInt(), counted[1], version);
         }
     }
 }
