@@ -58,38 +58,6 @@ The plugin SHALL display a context menu when the user right-clicks a pipeline ch
 - **WHEN** the user right-clicks a GENERATING pipeline chip
 - **THEN** the context menu SHALL show "Cancel"
 
-### Requirement: Compact icon action bar
-
-The plugin SHALL display a compact row of icon buttons below the pipeline chips for change-specific workflow actions only: Apply, Compliance, Verify, Sync Specs, Archive, and an overflow menu (⋯). The icon bar SHALL NOT include creation actions (Fast-Forward, Start New Change). A muted label at its left edge SHALL show the active change name, anchoring the icons to that change.
-
-#### Scenario: Icon bar contents
-- **WHEN** the pipeline card is displayed for an active change
-- **THEN** the icon bar SHALL show the active change name as a muted label, followed by Apply, Compliance, Verify, Sync Specs, Archive, and overflow menu icons
-
-#### Scenario: Icon bar excludes creation actions
-- **WHEN** the icon bar is rendered
-- **THEN** Fast-Forward and Start New Change SHALL NOT appear in the icon bar
-
-#### Scenario: Change name badge
-- **WHEN** the icon bar is displayed
-- **THEN** a muted label showing the active change name SHALL appear at the left edge of the icon bar
-
-#### Scenario: Apply button enabled state
-- **WHEN** all artifacts are complete
-- **THEN** the Apply icon SHALL be enabled with tooltip "Apply: <change-name>"
-
-#### Scenario: Apply button disabled state
-- **WHEN** artifacts are not all complete
-- **THEN** the Apply icon SHALL be disabled with tooltip "Apply (complete all artifacts first)"
-
-#### Scenario: Compliance button enabled state
-- **WHEN** all artifacts are complete
-- **THEN** the Compliance icon SHALL be enabled with tooltip "Compliance: <change-name>"
-
-#### Scenario: Compliance button disabled state
-- **WHEN** artifacts are not all complete
-- **THEN** the Compliance icon SHALL be disabled with tooltip "Compliance (complete all artifacts first)"
-
 ### Requirement: Status strip
 The plugin SHALL display a single-line status strip below the icon bar showing compliance status, task progress (if tasks exist), and delivery mode. The status strip SHALL span the full width of the panel. During Generate All, the status strip SHALL show generation progress and elapsed time.
 
@@ -259,3 +227,43 @@ A DONE chip's right-click menu SHALL offer "Show Local History", which opens the
 #### Scenario: Nothing to show
 - **WHEN** the artifact's file doesn't exist, Local History doesn't track it, or the IDE has no Local History view
 - **THEN** the menu SHALL NOT include "Show Local History"
+
+### Requirement: Icon action bar buttons
+
+The plugin SHALL display a compact row of icon buttons below the pipeline chips for change-specific workflow actions only: Revise, Continue (only when the profile includes `continue`), Apply, Verify, Sync Specs and Archive. The icon bar SHALL NOT include creation actions (Fast-Forward, Start New Change). A muted label at its left edge SHALL show the active change name, anchoring the icons to that change.
+
+#### Scenario: Icon bar contents
+- **WHEN** the pipeline card is displayed for an active change
+- **THEN** the icon bar SHALL show the active change name as a muted label, followed by Revise, Continue (when the profile includes `continue`), Apply, Verify, Sync Specs and Archive icons
+
+#### Scenario: Icon bar excludes creation actions
+- **WHEN** the icon bar is rendered
+- **THEN** Fast-Forward and Start New Change SHALL NOT appear in the icon bar
+
+#### Scenario: Change name badge
+- **WHEN** the icon bar is displayed
+- **THEN** a muted label showing the active change name SHALL appear at the left edge of the icon bar
+
+#### Scenario: Apply button enabled state
+- **WHEN** the artifacts Apply needs are complete
+- **THEN** the Apply icon SHALL be enabled with tooltip "Apply: <change-name>"
+
+#### Scenario: Apply button disabled state
+- **WHEN** an artifact Apply needs is not complete
+- **THEN** the Apply icon SHALL be disabled with tooltip "Apply (finish the artifacts it needs first)"
+
+#### Scenario: Verify button enabled state
+- **WHEN** all artifacts are complete
+- **THEN** the Verify icon SHALL be enabled with tooltip "Verify: <change-name>"
+
+#### Scenario: Verify button disabled state
+- **WHEN** artifacts are not all complete
+- **THEN** the Verify icon SHALL be disabled with tooltip "Verify (complete all artifacts first)"
+
+#### Scenario: Continue button follows the profile
+- **WHEN** the profile does not include `continue`
+- **THEN** the icon bar SHALL NOT show a Continue icon
+
+#### Scenario: Continue button state
+- **WHEN** the profile includes `continue`
+- **THEN** the Continue icon SHALL be enabled with tooltip "Continue: <change-name>" while the change has a ready artifact, and disabled with tooltip "Continue (all artifacts done)" once every artifact is done
