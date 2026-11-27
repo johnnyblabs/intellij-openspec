@@ -487,6 +487,27 @@ public class WorkflowActionPanel extends JPanel {
         }
     }
 
+    /** Background work this panel started and hasn't finished, so tests can wait for exactly that instead of a fixed time. */
+    private final java.util.concurrent.atomic.AtomicInteger pooledInFlight = new java.util.concurrent.atomic.AtomicInteger();
+
+    /** Runs {@code work} on a pooled thread, counted in {@link #pooledInFlight}. */
+    private void onPool(Runnable work) {
+        pooledInFlight.incrementAndGet();
+        ApplicationManager.getApplication().executeOnPooledThread(() -> {
+            try {
+                work.run();
+            } finally {
+                pooledInFlight.decrementAndGet();
+            }
+        });
+    }
+
+    /** Whether no background work this panel started is still running; for tests. */
+    @org.jetbrains.annotations.TestOnly
+    boolean idleForTest() {
+        return pooledInFlight.get() == 0;
+    }
+
     /** The Continue icon button; package-private for tests. */
     JButton continueIconButtonForTest() {
         return continueIconButton;
@@ -524,7 +545,7 @@ public class WorkflowActionPanel extends JPanel {
     }
 
     public void refresh() {
-        ApplicationManager.getApplication().executeOnPooledThread(() -> {
+        onPool(() -> {
             ChangeService changeService = project.getService(ChangeService.class);
             List<Change> active = changeService.getActiveChanges();
             String[] names = active.stream().map(Change::getName).toArray(String[]::new);
@@ -824,7 +845,7 @@ public class WorkflowActionPanel extends JPanel {
         if (configured && !warm && provider != AiProvider.NONE && modelFetchTriggered.add(provider)) {
             com.intellij.openapi.application.ModalityState modality =
                     com.intellij.openapi.application.ModalityState.stateForComponent(this);
-            ApplicationManager.getApplication().executeOnPooledThread(() -> {
+            onPool(() -> {
                 String key = AiCredentialStore.getApiKey(provider);
                 com.johnnyblabs.openspec.ai.ProviderRequestSettings requestSettings =
                         com.johnnyblabs.openspec.ai.ProviderRequestSettings.from(settings);
@@ -896,7 +917,7 @@ public class WorkflowActionPanel extends JPanel {
     // --- Pipeline ---
 
     private void refreshForChange(String changeName) {
-        ApplicationManager.getApplication().executeOnPooledThread(() -> refreshForChangeOnPool(changeName));
+        onPool(() -> refreshForChangeOnPool(changeName));
     }
 
     private void refreshForChangeOnPool(String changeName) {
@@ -1065,7 +1086,7 @@ public class WorkflowActionPanel extends JPanel {
             return;
         }
         String changeName = activeChangeName;
-        ApplicationManager.getApplication().executeOnPooledThread(() -> {
+        onPool(() -> {
             com.johnnyblabs.openspec.services.SpecSyncService syncService =
                     project.getService(com.johnnyblabs.openspec.services.SpecSyncService.class);
             hasDeltaSpecs = syncService.hasDeltaSpecs(changeName);
@@ -1560,7 +1581,7 @@ public class WorkflowActionPanel extends JPanel {
         String changeName = activeChangeName;
         String changeDir = com.johnnyblabs.openspec.util.OpenSpecFileUtil.openspecPath(project) + "/changes/" + changeName;
 
-        ApplicationManager.getApplication().executeOnPooledThread(() -> {
+        onPool(() -> {
             String tasksContent = null;
             try {
                 Path tasksPath = Path.of(changeDir, "tasks.md");
@@ -1616,7 +1637,7 @@ public class WorkflowActionPanel extends JPanel {
         DeliveryMode mode = getSelectedDeliveryMode();
         String toolName = getSelectedToolName();
 
-        ApplicationManager.getApplication().executeOnPooledThread(() -> {
+        onPool(() -> {
             // Clipboard and editor tab send the short handoff when the selected tool has the apply command or skill,
             // as Explore does; otherwise the full prompt.
             String shortHandoff = mode == DeliveryMode.DIRECT_API ? null
@@ -1718,7 +1739,7 @@ public class WorkflowActionPanel extends JPanel {
     }
 
     private void onTaskFileChanged(String changeName, String changeDir) {
-        ApplicationManager.getApplication().executeOnPooledThread(() -> {
+        onPool(() -> {
             try {
                 String content = Files.readString(Path.of(changeDir, "tasks.md"));
                 int[] counts = ApplyPromptBuilder.countTasks(content);
@@ -2161,7 +2182,7 @@ public class WorkflowActionPanel extends JPanel {
      * as the request, as OpenSpec's ff workflow uses it; it isn't kept, so later generations don't carry it.
      */
     void startFastForwardGeneration(String changeName, String description, @Nullable Runnable afterGenerated) {
-        ApplicationManager.getApplication().executeOnPooledThread(() -> {
+        onPool(() -> {
             refreshForChangeOnPool(changeName);
             // The run names its change, so a tree refresh that reselects another change meanwhile can't redirect it.
             ApplicationManager.getApplication().invokeLater(() -> onGenerateAll(changeName, description, true, afterGenerated),
@@ -2912,7 +2933,7 @@ public class WorkflowActionPanel extends JPanel {
             }
         };
 
-        ApplicationManager.getApplication().executeOnPooledThread(() -> {
+        onPool(() -> {
             ArtifactOrchestrationService orchestration = project.getService(ArtifactOrchestrationService.class);
             DirectApiService apiService = project.getService(DirectApiService.class);
             orchestration.generateAllRemaining(changeName, apiService, listener, request, untilApplyReady);

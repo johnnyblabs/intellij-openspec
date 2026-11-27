@@ -18,6 +18,8 @@ import java.util.Set;
 
 import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -64,12 +66,10 @@ public class MoreWorkflowsHintTest extends OpenSpecIntegrationTestBase {
         DefaultTreeModel model = new DefaultTreeModel(new DefaultMutableTreeNode("OpenSpec"));
         OpenSpecToolWindowPanel panel = new OpenSpecToolWindowPanel(getProject(), () -> model);
         Disposer.register(getTestRootDisposable(), panel);
-        long end = System.currentTimeMillis() + 3_000;
-        while (System.currentTimeMillis() < end) {
-            PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
-            Thread.sleep(20);
-        }
+        // Wait for the panel's refresh (which reads the profile) to finish, then check: a stronger negative than a fixed wait.
+        PanelStatusTestSupport.awaitIdle(panel.workflowPanelForTest());
 
+        verify(profile, atLeastOnce()).workflowsBeyondCore();
         assertFalse(panel.workflowPanelForTest().moreWorkflowsLabelForTest().isVisible());
     }
 }

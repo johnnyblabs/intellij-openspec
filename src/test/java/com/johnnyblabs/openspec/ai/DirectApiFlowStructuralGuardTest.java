@@ -225,8 +225,13 @@ class DirectApiFlowStructuralGuardTest {
 
     @Test
     void modelSelectorFetch_runsOffTheEdt_warmFirst() throws IOException {
-        String body = methodBody(read(WORKFLOW), "private void populateModelSelector()");
-        int pooled = body.indexOf("executeOnPooledThread(");
+        String workflow = read(WORKFLOW);
+        String body = methodBody(workflow, "private void populateModelSelector()");
+        // The panel's background work goes through onPool, which counts it (tests wait for it) and must itself hop to
+        // a pooled thread.
+        assertTrue(methodBody(workflow, "private void onPool(").contains("executeOnPooledThread("),
+                "the panel's onPool must run its work on a pooled thread");
+        int pooled = body.indexOf("onPool(");
         assertTrue(pooled >= 0, "populateModelSelector must hop to a pooled thread for the network fetch");
         // Warm-first: the per-session cache is consulted before any fetch (one fetch per session).
         int cacheRead = body.indexOf("getDiscoveredModels(");

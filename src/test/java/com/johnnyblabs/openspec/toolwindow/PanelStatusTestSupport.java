@@ -66,4 +66,22 @@ final class PanelStatusTestSupport {
             throw new RuntimeException(e);
         }
     }
+
+    /**
+     * Waits until {@code panel} has no background work in flight and the event queue holds nothing that starts more:
+     * idle across consecutive event-queue drains. Bounded at ten seconds; replaces a fixed sleep in teardown.
+     */
+    static void awaitIdle(WorkflowActionPanel panel) throws InterruptedException {
+        long end = System.currentTimeMillis() + 10_000;
+        int quiet = 0;
+        while (quiet < 3 && System.currentTimeMillis() < end) {
+            com.intellij.testFramework.PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
+            if (panel.idleForTest()) {
+                quiet++;
+            } else {
+                quiet = 0;
+            }
+            Thread.sleep(10);
+        }
+    }
 }

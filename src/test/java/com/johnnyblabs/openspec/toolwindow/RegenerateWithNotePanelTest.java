@@ -138,11 +138,7 @@ public class RegenerateWithNotePanelTest extends OpenSpecIntegrationTestBase {
             if (workflowPanel != null) workflowPanel.disposeForTest();
             // A write refreshes the panel on a pooled thread. Let those refreshes finish against the fed status before
             // the seam is reset (PanelStatusTestSupport does that when the test's disposable is disposed).
-            long end = System.currentTimeMillis() + 1_500;
-            while (System.currentTimeMillis() < end) {
-                PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
-                Thread.sleep(50);
-            }
+            if (workflowPanel != null) PanelStatusTestSupport.awaitIdle(workflowPanel);
             if (changeDir != null) {
                 deleteTree(changeDir.getParent());
                 // Tell the VFS now, while the root is still allowed, so no later refresh in another test reports it.

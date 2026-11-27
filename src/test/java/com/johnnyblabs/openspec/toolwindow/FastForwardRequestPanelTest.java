@@ -113,11 +113,7 @@ public class FastForwardRequestPanelTest extends OpenSpecIntegrationTestBase {
     protected void tearDown() throws Exception {
         try {
             if (workflowPanel != null) workflowPanel.disposeForTest();
-            long end = System.currentTimeMillis() + 1_500;
-            while (System.currentTimeMillis() < end) {
-                PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
-                Thread.sleep(50);
-            }
+            if (workflowPanel != null) PanelStatusTestSupport.awaitIdle(workflowPanel);
             if (changeDir != null) {
                 deleteTree(changeDir.getParent());
                 LocalFileSystem.getInstance().refreshNioFiles(List.of(changeDir.getParent()), false, true, null);
