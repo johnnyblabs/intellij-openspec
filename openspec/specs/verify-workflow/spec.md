@@ -54,6 +54,15 @@ The plugin SHALL provide a Verify action driven by the resolved workflow schema 
 - **THEN** the artifact-level check SHALL come from the CLI status DAG (`openspec status --change <name> --json`, schema-aware) when available
 - **AND** the task-checkbox check SHALL come from parsing `tasks.md` locally
 
+#### Scenario: Agent verify hand-off outside Direct API
+- **WHEN** the delivery mode is Clipboard or Editor Tab and the Verify report is shown
+- **THEN** it SHALL offer a "Verify with <tool>…" button that hands the tool's verify invocation and the change name to that tool in the active mode, as Continue hands off its workflow, so the agent assesses completeness, correctness and coherence
+- **AND** with Direct API it SHALL offer no such button
+
+#### Scenario: Verify skill not installed
+- **WHEN** no AI tool in the project has the verify skill or command and the report is shown outside Direct API
+- **THEN** the button SHALL read "Verify with your AI tool…", and clicking it SHALL say the verify workflow is missing and offer Update
+
 ### Requirement: Verification report
 
 The plugin SHALL display verification results in the three-state Verify dialog with per-category sections (Completeness, Validation, Spec Sync), each finding shown with its severity. The archive gate SHALL follow the three-state classification: only a hard validation **BLOCK** prevents archiving; an **IN PROGRESS** change is archivable anyway (soft, bypassable); a **READY** change is archivable. Verify itself SHALL NOT archive.
