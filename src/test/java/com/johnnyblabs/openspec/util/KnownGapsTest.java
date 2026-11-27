@@ -1,5 +1,7 @@
 package com.johnnyblabs.openspec.util;
 
+import com.johnnyblabs.openspec.CliFixtureSuite;
+
 import org.junit.jupiter.api.Test;
 import org.opentest4j.AssertionFailedError;
 
@@ -16,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Every {@link KnownGaps} entry names a case that runs. A mistyped key never matches a test, so its gap would never
  * be checked and would linger after the gap closed; this test fails on it instead.
  */
+@CliFixtureSuite
 class KnownGapsTest {
 
     /** The case names each family's contract test passes to {@link KnownGaps#check}, beyond per-capture names. */

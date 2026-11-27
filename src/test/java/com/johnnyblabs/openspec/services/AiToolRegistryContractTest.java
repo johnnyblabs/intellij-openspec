@@ -1,5 +1,7 @@
 package com.johnnyblabs.openspec.services;
 
+import com.johnnyblabs.openspec.CliFixtureSuite;
+
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -29,6 +31,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * 2.x registry yet, the case is a {@link KnownGaps} entry. Checks of upstream against itself (its help text against
  * its registry) run for every release that has the capture.
  */
+@CliFixtureSuite
 class AiToolRegistryContractTest {
 
     static final Path FIXTURES = Paths.get("src/test/resources/fixtures/cli");

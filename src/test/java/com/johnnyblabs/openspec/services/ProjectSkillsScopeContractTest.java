@@ -1,5 +1,7 @@
 package com.johnnyblabs.openspec.services;
 
+import com.johnnyblabs.openspec.CliFixtureSuite;
+
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.johnnyblabs.openspec.util.FixtureLayout;
@@ -23,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * The scope verdict over layouts the real CLI left: each captured init, recreated on disk with its home folder, reads
  * as in the project, only on the machine, or neither, as the CLI put the skills.
  */
+@CliFixtureSuite
 class ProjectSkillsScopeContractTest {
 
     @TempDir

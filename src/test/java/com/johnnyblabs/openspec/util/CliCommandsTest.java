@@ -1,5 +1,7 @@
 package com.johnnyblabs.openspec.util;
 
+import com.johnnyblabs.openspec.CliFixtureSuite;
+
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Method;
@@ -13,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * matrix test proves the arguments are accepted; this one pins which arguments they are, so a changed flag order,
  * a dropped {@code --json} or a lost branch is a named failure.
  */
+@CliFixtureSuite
 class CliCommandsTest {
 
     /** Builder name → every command line it can produce here, as built (before any release is applied). */

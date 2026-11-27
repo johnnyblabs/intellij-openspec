@@ -1,5 +1,7 @@
 package com.johnnyblabs.openspec.services;
 
+import com.johnnyblabs.openspec.CliFixtureSuite;
+
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.johnnyblabs.openspec.util.FixtureLayout;
@@ -25,6 +27,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * the applied update; the expected answer is worked out from those, not typed in: the files the case's seed made the
  * user's own that the update then removed or changed. On 2.0.0, which keeps them, that is nothing.
  */
+@CliFixtureSuite
 class UpdateMigrationAtRiskContractTest {
 
     /** What each case's seed made the user's own (see the capture script). */

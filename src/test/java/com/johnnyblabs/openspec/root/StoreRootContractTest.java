@@ -1,5 +1,7 @@
 package com.johnnyblabs.openspec.root;
 
+import com.johnnyblabs.openspec.CliFixtureSuite;
+
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -27,6 +29,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * for that scenario's phase, and the resolver must report the same root path, source, store id and problem code,
  * judged by the captured release's rules.
  */
+@CliFixtureSuite
 class StoreRootContractTest {
 
     private static final String WORLD = "store-root/world.json";

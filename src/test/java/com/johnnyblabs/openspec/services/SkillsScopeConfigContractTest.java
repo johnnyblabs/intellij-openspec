@@ -1,5 +1,7 @@
 package com.johnnyblabs.openspec.services;
 
+import com.johnnyblabs.openspec.CliFixtureSuite;
+
 import com.johnnyblabs.openspec.model.OpenSpecConfig;
 import com.johnnyblabs.openspec.model.OpenSpecConfig.SkillsScope;
 import com.johnnyblabs.openspec.util.FixtureVersions;
@@ -22,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * upstream's own {@code rememberProjectSkills} writes records the project scope, and an invalid value (which 2.1
  * warns about while applying the rest of the config) records nothing and still loads cleanly.
  */
+@CliFixtureSuite
 class SkillsScopeConfigContractTest {
 
     static final List<String> RELEASES = List.of("2.1.0", "2.1.1", "2.2.0");

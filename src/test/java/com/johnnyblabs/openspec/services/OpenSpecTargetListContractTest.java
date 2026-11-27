@@ -1,5 +1,7 @@
 package com.johnnyblabs.openspec.services;
 
+import com.johnnyblabs.openspec.CliFixtureSuite;
+
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -23,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Each 2.x case with a list sets up exactly the tools it lists, every one with its files present, so upstream's own
  * detection verdict is the list's content; a 1.x file is the single id of the tool that rendered the shared folder.
  */
+@CliFixtureSuite
 class OpenSpecTargetListContractTest {
 
     static final Set<String> REQUIRED = Set.of("1.14.3", "1.16.1", "1.17.0", "2.0.0", "2.1.0", "2.1.1", "2.2.0");

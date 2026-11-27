@@ -1,5 +1,7 @@
 package com.johnnyblabs.openspec.scaffolding;
 
+import com.johnnyblabs.openspec.CliFixtureSuite;
+
 import com.johnnyblabs.openspec.util.CliRunner;
 import com.johnnyblabs.openspec.util.FixtureVersions;
 import org.junit.jupiter.api.Test;
@@ -14,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * The warning for a failed CLI init, built from what the real CLI printed: 2.1.0 with no Git on PATH (reason on
  * stdout, tool on stderr), and 2.1.1 refusing a machine-wide init in the home folder (reason on stderr only).
  */
+@CliFixtureSuite
 class FailedInitNoticeContractTest {
 
     static CliRunner.CliResult captured(String version, String name) throws IOException {

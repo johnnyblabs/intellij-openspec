@@ -102,7 +102,9 @@ dependencies {
 
 tasks.test {
     // The real-CLI matrix needs installed CLI packages and minutes per release; it runs only as cliMatrix.
-    useJUnitPlatform { excludeTags("cli-matrix") }
+    // The CLI-fixture contract tests (@CliFixtureSuite) run as their own suite, cliFixtureTest, which CI runs in
+    // parallel; `check` runs both, so a local build checks everything.
+    useJUnitPlatform { excludeTags("cli-matrix", "cli-fixtures") }
     javaLauncher = javaToolchains.launcherFor {
         languageVersion = JavaLanguageVersion.of(21)
     }
@@ -129,6 +131,47 @@ tasks.test {
     finalizedBy(tasks.jacocoTestReport)
 }
 
+// The plain-JUnit tests that replay captured CLI releases (@CliFixtureSuite). Same classes, classpath (the instrumented
+// code), JVM arguments, toolchain, isolated machine folders and JaCoCo agent as `test`, so their coverage merges with it.
+val cliFixtureTest by tasks.registering(Test::class) {
+    description = "Runs the CLI-fixture contract tests (tag cli-fixtures), which replay captured CLI releases."
+    group = "verification"
+    val unit = tasks.test.get()
+    testClassesDirs = unit.testClassesDirs
+    classpath = files({ unit.classpath })
+    // The platform's arguments (sandbox, IDE home, platform), resolved at execution so late additions count. Not
+    // `test`'s JaCoCo agent: this task has its own, writing cliFixtureTest.exec; two agents abort the JVM.
+    jvmArgumentProviders.add(CommandLineArgumentProvider {
+        unit.jvmArgumentProviders.filterNot { it.javaClass.name.endsWith("\$JacocoAgent") }
+            .flatMap { it.asArguments() }
+    })
+    systemProperties(unit.systemProperties)
+    useJUnitPlatform { includeTags("cli-fixtures") }
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+    configure<JacocoTaskExtension> {
+        isIncludeNoLocationClasses = true
+        excludes = listOf("jdk.internal.*")
+    }
+    testLogging {
+        events("failed")
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+    }
+    val machine = layout.buildDirectory.dir("test-machine").get().asFile
+    environment("XDG_CONFIG_HOME", machine.resolve("config").path)
+    environment("XDG_DATA_HOME", machine.resolve("data").path)
+    environment("XDG_STATE_HOME", machine.resolve("state").path)
+    environment("APPDATA", machine.resolve("AppData/Roaming").path)
+    environment("LOCALAPPDATA", machine.resolve("AppData/Local").path)
+    mustRunAfter(tasks.test)
+    finalizedBy(tasks.jacocoTestReport)
+}
+
+tasks.check {
+    dependsOn(cliFixtureTest)
+}
+
 // Optional local release gate, not part of `check`: runs every invocation the plugin can make (CliCommands)
 // against the real CLI package of each swept release, in an isolated HOME, and fails on any of the CLI parser's
 // argument errors (lines starting "error: "), on a hung run, or on a swept release that isn't installed. Install the packages first: scripts/install-cli-matrix.py, then
@@ -151,8 +194,17 @@ val cliMatrix by tasks.registering(Test::class) {
     outputs.upToDateWhen { false }
 }
 
+// Coverage is the two suites together: `test` and `cliFixtureTest` write their own execution data, and the report and
+// the floor read both (whichever exist: CI's coverage job downloads them from the two test jobs).
+val coverageData = files(
+    layout.buildDirectory.file("jacoco/test.exec"),
+    layout.buildDirectory.file("jacoco/cliFixtureTest.exec"),
+).filter { it.exists() }
+
 tasks.jacocoTestReport {
     dependsOn(tasks.test)
+    mustRunAfter(cliFixtureTest)
+    executionData.setFrom(coverageData)
     // Use instrumented classes — IntelliJ Platform's instrumentCode task
     // modifies bytecode (null-checks, assertions), so JaCoCo must report
     // against the same classes the test JVM actually loaded.
@@ -276,9 +328,9 @@ tasks.jacocoTestReport {
 // tested against six releases' captures, plus the platform store tests; the 2.x changes merged since the last raise
 // added theirs. Measured 0.7630/0.7466/0.6582; floors held ~0.01 below.
 tasks.jacocoTestCoverageVerification {
-    dependsOn(tasks.test)
-    // Match the report: instrumented classes + the test JVM's execution data.
-    executionData.setFrom(layout.buildDirectory.file("jacoco/test.exec"))
+    dependsOn(tasks.test, cliFixtureTest)
+    // Match the report: instrumented classes + both suites' execution data.
+    executionData.setFrom(coverageData)
     classDirectories.setFrom(
         fileTree(layout.buildDirectory.dir("instrumented/instrumentCode")) {
             exclude("**/META-INF/**")
@@ -382,7 +434,7 @@ sonar {
         property("sonar.projectKey", "intellij-openspec")
         property("sonar.projectName", "intellij-openspec")
         property("sonar.coverage.jacoco.xmlReportPaths", "build/reports/jacoco/test/jacocoTestReport.xml")
-        property("sonar.junit.reportPaths", "build/test-results/test")
+        property("sonar.junit.reportPaths", "build/test-results/test,build/test-results/cliFixtureTest")
     }
 }
 

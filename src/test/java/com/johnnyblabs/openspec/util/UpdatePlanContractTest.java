@@ -1,5 +1,7 @@
 package com.johnnyblabs.openspec.util;
 
+import com.johnnyblabs.openspec.CliFixtureSuite;
+
 import com.johnnyblabs.openspec.util.UpdatePlanParser.Change;
 import com.johnnyblabs.openspec.util.UpdatePlanParser.Failed;
 import com.johnnyblabs.openspec.util.UpdatePlanParser.Plan;
@@ -27,6 +29,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * The release-wide tests run over every captured release ({@link FixtureVersions}); the others pin the behaviour of
  * the release named in their fixture path.
  */
+@CliFixtureSuite
 class UpdatePlanContractTest {
 
     /** Releases with a captured update-dry-run set, and how many cases each holds; each must be present. */

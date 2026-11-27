@@ -91,9 +91,11 @@ jobs:
         if: steps.gate.outputs.source == 'true'
         run: java -version && gradle --version
 
+      # The CLI-fixture suite runs in the cli-fixtures job, in parallel; the coverage job enforces the floor over
+      # both suites' data, so this job skips both.
       - name: Build and Test
         if: steps.gate.outputs.source == 'true'
-        run: gradle build
+        run: gradle build -x cliFixtureTest -x jacocoTestCoverageVerification
 
       - name: Upload test results
         uses: https://code.forgejo.org/forgejo/upload-artifact@v4
@@ -102,18 +104,12 @@ jobs:
           name: test-results
           path: build/test-results/test/
 
-      # Reports coverage + JUnit results to the analysis server. Runs after Build
-      # and Test so the JaCoCo XML + test results exist. Host/token come from CI
-      # secrets — no internal host is hardcoded (safe for the public mirror).
-      # main only: the server keeps a single branch, so a PR analysis would overwrite
-      # main's snapshot with unmerged code. Non-blocking like the Dependency-Track step:
-      # `|| echo` keeps server downtime from ever reddening the build.
-      - name: SonarQube analysis
-        if: steps.gate.outputs.source == 'true' && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-        run: gradle sonar || echo "SonarQube analysis skipped (non-fatal)"
-        env:
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      - name: Upload coverage data
+        uses: https://code.forgejo.org/forgejo/upload-artifact@v4
+        if: steps.gate.outputs.source == 'true'
+        with:
+          name: coverage-test
+          path: build/jacoco/test.exec
 
       # Generates the CycloneDX SBOM (build/reports/bom.json) and uploads it to the
       # dependency-analysis server for CVE/license visibility. Non-blocking: `if: always()`
@@ -147,6 +143,159 @@ jobs:
         with:
           name: intellij-openspec
           path: build/distributions/*-signed.zip
+
+  # The plain-JUnit tests that replay captured CLI releases (@CliFixtureSuite), in parallel with build.
+  cli-fixtures:
+    runs-on: java-21
+    env:
+      JAVA_TOOL_OPTIONS: -Djava.awt.headless=true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # A PR that touches only the bypass paths below (OpenSpec content, agent config, hooks)
+      # reports success without building. The bypass list mirrors the push trigger's paths-ignore.
+      # Docs (docs/**, README, CHANGELOG) are NOT bypassed: DocumentationHygieneTest validates them.
+      # If the diff cannot be read, the gate fails safe and runs the full build.
+      - name: Decide whether the build is needed
+        id: gate
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "source=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if ! files=$(git diff --name-only "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}"); then
+            echo "Could not read the PR diff; running the full build."
+            echo "source=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          source=false
+          while IFS= read -r f; do
+            case "$f" in
+              openspec/*|CLAUDE.md|.claude/*|.githooks/*|.gitignore|LICENSE|.forgejo/workflows/ui-smoke.yaml) ;;
+              *) source=true; break ;;
+            esac
+          done <<< "$files"
+          echo "Source-relevant change: $source"
+          echo "source=$source" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Gradle dependencies
+        if: steps.gate.outputs.source == 'true'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-build-${{ hashFiles('**/*.gradle.kts', 'gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: gradle-build-
+
+      - name: CLI-fixture tests
+        if: steps.gate.outputs.source == 'true'
+        run: gradle cliFixtureTest -x jacocoTestReport
+
+      - name: Upload test results
+        uses: https://code.forgejo.org/forgejo/upload-artifact@v4
+        if: always() && steps.gate.outputs.source == 'true'
+        with:
+          name: test-results-cli-fixtures
+          path: build/test-results/cliFixtureTest/
+
+      - name: Upload coverage data
+        uses: https://code.forgejo.org/forgejo/upload-artifact@v4
+        if: steps.gate.outputs.source == 'true'
+        with:
+          name: coverage-cli-fixtures
+          path: build/jacoco/cliFixtureTest.exec
+
+  # The coverage floor over both suites together, once both have passed.
+  coverage:
+    needs: [build, cli-fixtures]
+    runs-on: java-21
+    env:
+      JAVA_TOOL_OPTIONS: -Djava.awt.headless=true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # A PR that touches only the bypass paths below (OpenSpec content, agent config, hooks)
+      # reports success without building. The bypass list mirrors the push trigger's paths-ignore.
+      # Docs (docs/**, README, CHANGELOG) are NOT bypassed: DocumentationHygieneTest validates them.
+      # If the diff cannot be read, the gate fails safe and runs the full build.
+      - name: Decide whether the build is needed
+        id: gate
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "source=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if ! files=$(git diff --name-only "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}"); then
+            echo "Could not read the PR diff; running the full build."
+            echo "source=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          source=false
+          while IFS= read -r f; do
+            case "$f" in
+              openspec/*|CLAUDE.md|.claude/*|.githooks/*|.gitignore|LICENSE|.forgejo/workflows/ui-smoke.yaml) ;;
+              *) source=true; break ;;
+            esac
+          done <<< "$files"
+          echo "Source-relevant change: $source"
+          echo "source=$source" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Gradle dependencies
+        if: steps.gate.outputs.source == 'true'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-build-${{ hashFiles('**/*.gradle.kts', 'gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: gradle-build-
+
+      - name: Download coverage data
+        if: steps.gate.outputs.source == 'true'
+        uses: https://code.forgejo.org/forgejo/download-artifact@v4
+        with:
+          pattern: coverage-*
+          path: build/jacoco/
+          merge-multiple: true
+
+      - name: Download test results
+        if: steps.gate.outputs.source == 'true' && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: https://code.forgejo.org/forgejo/download-artifact@v4
+        with:
+          name: test-results
+          path: build/test-results/test/
+
+      - name: Download CLI-fixture test results
+        if: steps.gate.outputs.source == 'true' && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: https://code.forgejo.org/forgejo/download-artifact@v4
+        with:
+          name: test-results-cli-fixtures
+          path: build/test-results/cliFixtureTest/
+
+      - name: Coverage floor
+        if: steps.gate.outputs.source == 'true'
+        run: |
+          ls -la build/jacoco/
+          test -f build/jacoco/test.exec && test -f build/jacoco/cliFixtureTest.exec
+          gradle jacocoTestReport jacocoTestCoverageVerification -x test -x cliFixtureTest
+
+      # Reports coverage + JUnit results to the analysis server. Runs after the merged
+      # JaCoCo report, with both suites' test results. Host/token come from CI
+      # secrets — no internal host is hardcoded (safe for the public mirror).
+      # main only: the server keeps a single branch, so a PR analysis would overwrite
+      # main's snapshot with unmerged code. Non-blocking like the Dependency-Track step:
+      # `|| echo` keeps server downtime from ever reddening the build.
+      - name: SonarQube analysis
+        if: steps.gate.outputs.source == 'true' && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        run: gradle sonar || echo "SonarQube analysis skipped (non-fatal)"
+        env:
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   verify:
     # The Plugin Verifier is heavy (downloads ~19.5 GB of IDE distributions) and runs on a SHARED

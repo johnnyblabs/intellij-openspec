@@ -1,5 +1,7 @@
 package com.johnnyblabs.openspec.services;
 
+import com.johnnyblabs.openspec.CliFixtureSuite;
+
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.johnnyblabs.openspec.services.SkillSpot.Shape;
@@ -24,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * text) need no link support and run on every host; the link shapes run where a directory link can be made, are
  * skipped with the reason on Windows without link support, and fail on any other host that can't make one.
  */
+@CliFixtureSuite
 class SkillFolderShapeTest {
 
     static final Set<String> REQUIRED = Set.of("2.0.0", "2.1.1", "2.2.0");

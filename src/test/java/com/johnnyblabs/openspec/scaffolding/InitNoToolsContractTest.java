@@ -1,5 +1,7 @@
 package com.johnnyblabs.openspec.scaffolding;
 
+import com.johnnyblabs.openspec.CliFixtureSuite;
+
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.johnnyblabs.openspec.util.FixtureVersions;
@@ -17,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * The setup wizard's init with no tool detected, {@code init --tools none --scope project}, as the real 2.1 CLI ran
  * it: accepted, with no skills written anywhere (none in the project, none for the machine).
  */
+@CliFixtureSuite
 class InitNoToolsContractTest {
 
     @TestFactory

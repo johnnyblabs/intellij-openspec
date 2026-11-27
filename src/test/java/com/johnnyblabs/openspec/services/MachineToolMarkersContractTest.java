@@ -1,5 +1,7 @@
 package com.johnnyblabs.openspec.services;
 
+import com.johnnyblabs.openspec.CliFixtureSuite;
+
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -22,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * the newest release: the same tickable entries both ways, and each one, alone on a fresh home folder, ticks exactly
  * the tools the installer reported for it.
  */
+@CliFixtureSuite
 class MachineToolMarkersContractTest {
 
     static final String NEWEST = "2.2.0";

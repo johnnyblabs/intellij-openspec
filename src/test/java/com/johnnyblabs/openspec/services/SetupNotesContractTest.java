@@ -1,5 +1,7 @@
 package com.johnnyblabs.openspec.services;
 
+import com.johnnyblabs.openspec.CliFixtureSuite;
+
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -22,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * The plugin's setup notes equal the {@code setupNote} of every tool in every captured registry, and its universal
  * set is the one the CLI's installer forms (the tools the skills-scope capture records as skipped).
  */
+@CliFixtureSuite
 class SetupNotesContractTest {
 
     @Test

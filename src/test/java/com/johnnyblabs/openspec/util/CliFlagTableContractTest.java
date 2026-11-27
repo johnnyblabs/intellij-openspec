@@ -1,5 +1,7 @@
 package com.johnnyblabs.openspec.util;
 
+import com.johnnyblabs.openspec.CliFixtureSuite;
+
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
@@ -18,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Both directions count: a table that allows a flag the release lacks would send "unknown option", and one that
  * refuses a flag the release has would turn a working action off.
  */
+@CliFixtureSuite
 class CliFlagTableContractTest {
 
     /** Every supported line's sweep; a missing one fails instead of shrinking the check. */

@@ -1,5 +1,7 @@
 package com.johnnyblabs.openspec.services;
 
+import com.johnnyblabs.openspec.CliFixtureSuite;
+
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -26,6 +28,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * generated skills and on a BOM, CRLF, {@code generatedBy} and one-character edits of them). The shipped set must equal
  * each release's set, by count and digest.
  */
+@CliFixtureSuite
 class ReleasedSkillFingerprintsContractTest {
 
     /** Releases whose vectors must exist, so deleting a capture can't shrink the check. */

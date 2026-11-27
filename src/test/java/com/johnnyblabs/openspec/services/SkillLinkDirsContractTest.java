@@ -1,5 +1,7 @@
 package com.johnnyblabs.openspec.services;
 
+import com.johnnyblabs.openspec.CliFixtureSuite;
+
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -19,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * {@code effective.linkDir} upstream's {@code skill-paths.js} reports ({@code ai-tools.json}), and to the {@code linkPath}
  * of every row of the invocation matrix, which records what {@code init} actually linked.
  */
+@CliFixtureSuite
 class SkillLinkDirsContractTest {
 
     static final Set<String> REQUIRED = Set.of("2.0.0", "2.1.0", "2.1.1", "2.2.0");

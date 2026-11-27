@@ -17,10 +17,13 @@ Thanks for your interest in contributing! This guide covers everything you need 
 ```bash
 git clone https://github.com/johnnyblabs/intellij-openspec.git
 cd intellij-openspec
-./gradlew build        # Compile and run tests
+./gradlew build        # Compile, run both test suites and check the coverage floor
 ./gradlew runIde       # Launch sandboxed IDE with the plugin
-./gradlew test         # Run tests only
+./gradlew test         # Run the main suite only
+./gradlew cliFixtureTest  # Run the CLI-fixture suite only
 ```
+
+The tests are two suites. `cliFixtureTest` holds the plain-JUnit contract tests that replay captured CLI releases, marked `@CliFixtureSuite`; `test` holds everything else. `./gradlew build` runs both and measures coverage over both, and CI runs them as parallel jobs. Mark a new plain-JUnit test that reads `FixtureVersions` with `@CliFixtureSuite`; `CliFixtureSuiteGuardTest` fails until you do.
 
 Or use the Makefile shortcuts: `make build`, `make test`, `make install`.
 

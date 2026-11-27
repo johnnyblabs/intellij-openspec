@@ -1,5 +1,7 @@
 package com.johnnyblabs.openspec.services;
 
+import com.johnnyblabs.openspec.CliFixtureSuite;
+
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.johnnyblabs.openspec.util.FixtureLayout;
@@ -20,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * {@link MigrationNotice#applies} over the captured projects before and after each real 2.x update
  * ({@code <version>/update-migration/<case>/{before,after}.json}).
  */
+@CliFixtureSuite
 class MigrationNoticeTest {
 
     /** The cases a 1.x release set up with tool-folder skill copies: a 2.x CLI should offer the migration. */

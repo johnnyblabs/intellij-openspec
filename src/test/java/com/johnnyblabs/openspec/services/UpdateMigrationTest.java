@@ -1,5 +1,7 @@
 package com.johnnyblabs.openspec.services;
 
+import com.johnnyblabs.openspec.CliFixtureSuite;
+
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.johnnyblabs.openspec.services.UpdateMigration.Kind;
@@ -27,6 +29,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * {@link UpdateMigration}'s reading of real plans: what 2.0.0, 2.1.0 and 2.1.1 planned for projects earlier releases
  * set up ({@code update-migration/}), and the dry-run captures that share part of the shape.
  */
+@CliFixtureSuite
 class UpdateMigrationTest {
 
     static final List<String> RELEASES_2X = List.of("2.0.0", "2.1.0", "2.1.1", "2.2.0");

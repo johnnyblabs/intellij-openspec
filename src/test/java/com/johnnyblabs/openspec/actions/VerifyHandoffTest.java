@@ -1,5 +1,7 @@
 package com.johnnyblabs.openspec.actions;
 
+import com.johnnyblabs.openspec.CliFixtureSuite;
+
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -19,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Verify's hand-off to the agent's verify skill, outside Direct API, against every release's captured invocations: the
  * button follows the delivery mode, and the hand-off is the tool's own verify invocation with the change name.
  */
+@CliFixtureSuite
 class VerifyHandoffTest {
 
     private static WorkflowInvocation.Found claude() {

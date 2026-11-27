@@ -1,5 +1,7 @@
 package com.johnnyblabs.openspec.services;
 
+import com.johnnyblabs.openspec.CliFixtureSuite;
+
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.johnnyblabs.openspec.services.AiToolRegistry.AiTool;
@@ -30,6 +32,7 @@ import static org.junit.jupiter.api.Assertions.*;
  *   <li>a tool the add didn't refuse is then detected.</li>
  * </ul>
  */
+@CliFixtureSuite
 class BuiltInAddContractTest {
 
     static final Set<String> REQUIRED = Set.of("1.14.3", "1.16.1", "1.17.0", "2.0.0", "2.1.0", "2.1.1", "2.2.0");

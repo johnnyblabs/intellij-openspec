@@ -1,5 +1,7 @@
 package com.johnnyblabs.openspec.util;
 
+import com.johnnyblabs.openspec.CliFixtureSuite;
+
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
@@ -29,6 +31,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * lists. Help is read through {@link CliHelp}, never through {@link CliFlags}, so a mistake in the table can't hide
  * here. This is the test that fails when a newer-only flag would reach an older CLI.
  */
+@CliFixtureSuite
 class CliArgsVersionMatrixTest {
 
     /**

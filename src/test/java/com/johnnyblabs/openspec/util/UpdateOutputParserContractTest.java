@@ -1,5 +1,7 @@
 package com.johnnyblabs.openspec.util;
 
+import com.johnnyblabs.openspec.CliFixtureSuite;
+
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
@@ -25,6 +27,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * claude tool (skills-only delivery at 1.6; junie still ships legacy command files that
  * update immediately flags). See {@code fixtures/cli/README.md}.
  */
+@CliFixtureSuite
 class UpdateOutputParserContractTest {
 
     private static String loadFixture(String name) {

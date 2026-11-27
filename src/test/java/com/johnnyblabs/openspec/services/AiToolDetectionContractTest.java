@@ -1,5 +1,7 @@
 package com.johnnyblabs.openspec.services;
 
+import com.johnnyblabs.openspec.CliFixtureSuite;
+
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -30,6 +32,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * platform can't make links, which upstream's existence checks treat the same. 2.x cases the plugin doesn't handle
  * yet are {@link KnownGaps} entries.
  */
+@CliFixtureSuite
 class AiToolDetectionContractTest {
 
     static final Path CLI = Paths.get("src/test/resources/fixtures/cli");

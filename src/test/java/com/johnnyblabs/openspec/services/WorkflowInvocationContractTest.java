@@ -1,5 +1,7 @@
 package com.johnnyblabs.openspec.services;
 
+import com.johnnyblabs.openspec.CliFixtureSuite;
+
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -36,6 +38,7 @@ import static org.mockito.Mockito.when;
  * yet is one {@link KnownGaps} entry for the whole release, closed when every row matches. The check of upstream's
  * matrix against what a real init wrote compares upstream with itself, so it runs for every release and always passes.
  */
+@CliFixtureSuite
 class WorkflowInvocationContractTest {
 
     private static final String TARGET = AiToolRegistryContractTest.TARGET;

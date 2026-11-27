@@ -1,5 +1,7 @@
 package com.johnnyblabs.openspec.services;
 
+import com.johnnyblabs.openspec.CliFixtureSuite;
+
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -23,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * core set is what the default profile enables, so a divergence silently disables or offers the wrong actions. The
  * fixture is captured from the real CLI package by {@code scripts/capture-workflow-ids.py}.
  */
+@CliFixtureSuite
 class CoreWorkflowsContractTest {
 
     /** Every release with a captured workflow set; a missing capture fails instead of shrinking the matrix. */

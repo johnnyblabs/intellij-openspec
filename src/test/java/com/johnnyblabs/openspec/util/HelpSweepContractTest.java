@@ -1,5 +1,7 @@
 package com.johnnyblabs.openspec.util;
 
+import com.johnnyblabs.openspec.CliFixtureSuite;
+
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -22,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * lines against. These tests keep that record whole: every supported line has a sweep, every index entry points at a
  * help text that exists and is that command's, and a missing command is recorded rather than silently absent.
  */
+@CliFixtureSuite
 class HelpSweepContractTest {
 
     static final Path CLI = Paths.get("src/test/resources/fixtures/cli");

@@ -1,5 +1,7 @@
 package com.johnnyblabs.openspec.model;
 
+import com.johnnyblabs.openspec.CliFixtureSuite;
+
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.johnnyblabs.openspec.util.FixtureVersions;
@@ -26,6 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
  * new text (and that {@link RegenerationNotePromptTest} covers the capture), then record the release as a new
  * baseline rather than editing a fixture.
  */
+@CliFixtureSuite
 class ArtifactInstructionsVersionStabilityTest {
 
     static final String BASELINE = "1.17.0";
