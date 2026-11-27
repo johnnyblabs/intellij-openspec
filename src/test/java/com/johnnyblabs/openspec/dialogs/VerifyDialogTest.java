@@ -110,6 +110,12 @@ class VerifyDialogTest {
         assertNotEquals(com.intellij.openapi.ui.DialogWrapper.OK_EXIT_CODE, VerifyDialog.ARCHIVE_EXIT_CODE);
         assertNotEquals(com.intellij.openapi.ui.DialogWrapper.CANCEL_EXIT_CODE, VerifyDialog.ARCHIVE_EXIT_CODE);
         assertTrue(VerifyDialog.archiveRequested(VerifyDialog.ARCHIVE_EXIT_CODE));
+        assertNotEquals(VerifyDialog.ARCHIVE_EXIT_CODE, VerifyDialog.HANDOFF_EXIT_CODE);
+        assertNotEquals(com.intellij.openapi.ui.DialogWrapper.OK_EXIT_CODE, VerifyDialog.HANDOFF_EXIT_CODE);
+        assertTrue(VerifyDialog.handoffRequested(VerifyDialog.HANDOFF_EXIT_CODE));
+        assertFalse(VerifyDialog.handoffRequested(VerifyDialog.ARCHIVE_EXIT_CODE), "Archive… is not the hand-off");
+        assertFalse(VerifyDialog.handoffRequested(com.intellij.openapi.ui.DialogWrapper.OK_EXIT_CODE), "Close hands nothing off");
+        assertFalse(VerifyDialog.archiveRequested(VerifyDialog.HANDOFF_EXIT_CODE), "the hand-off never archives");
         assertFalse(VerifyDialog.archiveRequested(com.intellij.openapi.ui.DialogWrapper.OK_EXIT_CODE));
         assertFalse(VerifyDialog.archiveRequested(com.intellij.openapi.ui.DialogWrapper.CANCEL_EXIT_CODE));
     }

@@ -61,9 +61,12 @@ class ArchiveOffEdtHygieneTest {
     void verifyEntryPointsArchiveOnlyThroughTheReportsArchiveButton() throws IOException {
         for (String file : List.of("actions/OpenSpecVerifyAction.java", "toolwindow/WorkflowActionPanel.java")) {
             String code = stripComments(Files.readString(ModalityCallScanner.mainSource(file)));
-            assertTrue(code.contains("VerifyDialog.report(project, result, archiveOffered)"), file + " must show the report");
+            assertTrue(code.contains("VerifyDialog.report(project, result, archiveOffered"), file + " must show the report");
             assertTrue(code.contains("VerifyDialog.archiveRequested(dialog.getExitCode())"),
                     file + " must archive only on the Archive… exit code");
+            assertTrue(code.contains("VerifyDialog.handoffRequested(dialog.getExitCode())")
+                            && code.contains("VerifyHandoff.deliver(project, changeName, agent)"),
+                    file + " must hand off to the agent's verify skill only on the hand-off exit code");
             assertFalse(code.contains("new VerifyDialog(") || code.contains("VerifyDialog(project, result).showAndGet()"),
                     file + " must not use the pre-flight, whose OK archives");
         }

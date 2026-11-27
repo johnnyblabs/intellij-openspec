@@ -2135,15 +2135,20 @@ public class WorkflowActionPanel extends JPanel {
                 com.johnnyblabs.openspec.model.ArchiveReadinessResult result =
                         readinessService.verify(changeName);
                 boolean archiveOffered = com.johnnyblabs.openspec.dialogs.VerifyDialog.archiveOffered(project);
+                var agent = com.johnnyblabs.openspec.actions.VerifyHandoff.resolve(project);
 
                 ApplicationManager.getApplication().invokeLater(() -> {
                     applyVerifyStatus(result);
                     // A report: OK closes, as upstream's verify never archives. Its Archive… button (only when the
                     // profile includes archive) hands off to the archive step; the open-task question was its label.
-                    var dialog = com.johnnyblabs.openspec.dialogs.VerifyDialog.report(project, result, archiveOffered);
+                    // Outside Direct API, "Verify with <tool>…" hands the change to the agent's verify skill.
+                    var dialog = com.johnnyblabs.openspec.dialogs.VerifyDialog.report(project, result, archiveOffered,
+                            agent.label());
                     dialog.show();
                     if (com.johnnyblabs.openspec.dialogs.VerifyDialog.archiveRequested(dialog.getExitCode())) {
                         onArchive(true);
+                    } else if (com.johnnyblabs.openspec.dialogs.VerifyDialog.handoffRequested(dialog.getExitCode())) {
+                        com.johnnyblabs.openspec.actions.VerifyHandoff.deliver(project, changeName, agent);
                     }
                 });
             }

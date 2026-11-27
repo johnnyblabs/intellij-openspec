@@ -23,7 +23,8 @@ import java.util.List;
  * The Verify menu action — the same pre-archive readiness check as the tool-window Verify button and
  * the Archive pre-flight, so "Verify" means one thing everywhere. Shows the three-state
  * {@link VerifyDialog} as a report: its OK closes, as upstream's verify workflow never archives. When the profile
- * includes {@code archive}, its separate Archive… button hands off to the archive step.
+ * includes {@code archive}, its separate Archive… button hands off to the archive step. Outside Direct API, its
+ * "Verify with <tool>…" button hands the change to the agent's verify skill ({@link VerifyHandoff}).
  */
 public class OpenSpecVerifyAction extends OpenSpecBaseAction {
 
@@ -61,12 +62,15 @@ public class OpenSpecVerifyAction extends OpenSpecBaseAction {
                 ArchiveReadinessResult result = readinessService.verify(changeName);
                 boolean hasDeltaSpecs = project.getService(SpecSyncService.class).hasDeltaSpecs(changeName);
                 boolean archiveOffered = VerifyDialog.archiveOffered(project);
+                VerifyHandoff.Target agent = VerifyHandoff.resolve(project);
 
                 ApplicationManager.getApplication().invokeLater(() -> {
-                    VerifyDialog dialog = VerifyDialog.report(project, result, archiveOffered);
+                    VerifyDialog dialog = VerifyDialog.report(project, result, archiveOffered, agent.label());
                     dialog.show();
                     if (VerifyDialog.archiveRequested(dialog.getExitCode())) {
                         archiveChange(project, changeService, target, hasDeltaSpecs);
+                    } else if (VerifyDialog.handoffRequested(dialog.getExitCode())) {
+                        VerifyHandoff.deliver(project, changeName, agent);
                     }
                 });
             }

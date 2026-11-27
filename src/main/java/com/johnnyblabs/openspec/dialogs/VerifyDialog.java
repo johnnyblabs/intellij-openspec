@@ -38,28 +38,35 @@ public class VerifyDialog extends DialogWrapper {
 
     /** The exit code of the report form's Archive… button. */
     public static final int ARCHIVE_EXIT_CODE = NEXT_USER_EXIT_CODE;
+    /** The exit code of the report form's "Verify with <tool>…" hand-off button. */
+    public static final int HANDOFF_EXIT_CODE = NEXT_USER_EXIT_CODE + 1;
 
     private final ArchiveReadinessResult result;
     private final Form form;
     private final boolean archiveOffered;
+    private final @Nullable String handoffLabel;
 
     /** The Archive action's pre-flight: OK archives. */
     public VerifyDialog(@NotNull Project project, @NotNull ArchiveReadinessResult result) {
-        this(project, result, Form.ARCHIVE_PREFLIGHT, true);
+        this(project, result, Form.ARCHIVE_PREFLIGHT, true, null);
     }
 
-    /** Verify's report: OK closes; {@code archiveOffered} (the profile includes {@code archive}) adds Archive…. */
+    /**
+     * Verify's report: OK closes; {@code archiveOffered} (the profile includes {@code archive}) adds Archive…; a
+     * {@code handoffLabel} (outside Direct API) adds the hand-off to the agent's verify skill.
+     */
     public static VerifyDialog report(@NotNull Project project, @NotNull ArchiveReadinessResult result,
-                                      boolean archiveOffered) {
-        return new VerifyDialog(project, result, Form.REPORT, archiveOffered);
+                                      boolean archiveOffered, @Nullable String handoffLabel) {
+        return new VerifyDialog(project, result, Form.REPORT, archiveOffered, handoffLabel);
     }
 
     private VerifyDialog(@NotNull Project project, @NotNull ArchiveReadinessResult result, Form form,
-                         boolean archiveOffered) {
+                         boolean archiveOffered, @Nullable String handoffLabel) {
         super(project, false);
         this.result = result;
         this.form = form;
         this.archiveOffered = archiveOffered;
+        this.handoffLabel = form == Form.REPORT ? handoffLabel : null;
 
         setTitle("Verify — " + result.getChangeName());
         setOKButtonText(okButtonText(form, result));
@@ -87,6 +94,11 @@ public class VerifyDialog extends DialogWrapper {
     /** Whether a report closed with {@code exitCode} asks the caller to archive: only its Archive… button does. */
     public static boolean archiveRequested(int exitCode) {
         return exitCode == ARCHIVE_EXIT_CODE;
+    }
+
+    /** Whether a report closed with {@code exitCode} asks the caller to hand off to the agent's verify skill. */
+    public static boolean handoffRequested(int exitCode) {
+        return exitCode == HANDOFF_EXIT_CODE;
     }
 
     /** The OK label: "Close" for a report; for the pre-flight, {@link #okButtonText(ArchiveReadinessResult)}. */
@@ -117,16 +129,25 @@ public class VerifyDialog extends DialogWrapper {
     @Override
     protected Action @NotNull [] createActions() {
         if (form != Form.REPORT) return super.createActions();
+        java.util.List<Action> actions = new java.util.ArrayList<>();
+        if (handoffLabel != null) actions.add(closingAction(handoffLabel, HANDOFF_EXIT_CODE));
         String archive = archiveButtonText(form, result, archiveOffered);
-        if (archive == null) return new Action[] {getOKAction()};
-        Action archiveAction = new DialogWrapperAction(archive) {
+        if (archive != null) {
+            Action archiveAction = closingAction(archive, ARCHIVE_EXIT_CODE);
+            archiveAction.setEnabled(archiveEnabled(result));
+            actions.add(archiveAction);
+        }
+        actions.add(getOKAction());
+        return actions.toArray(new Action[0]);
+    }
+
+    private Action closingAction(String label, int exitCode) {
+        return new DialogWrapperAction(label) {
             @Override
             protected void doAction(java.awt.event.ActionEvent e) {
-                close(ARCHIVE_EXIT_CODE);
+                close(exitCode);
             }
         };
-        archiveAction.setEnabled(archiveEnabled(result));
-        return new Action[] {archiveAction, getOKAction()};
     }
 
     /**
