@@ -34,7 +34,13 @@ final class PanelStatusTestSupport {
      */
     static void feedCapturedStatus(Project project, String changeName, Disposable disposable,
                                    Function<String, String> instructions) {
-        String status = fixture("1.7.0/status-complete.json").replace("\"demo-change\"", "\"" + changeName + "\"");
+        feedCapturedStatus(project, changeName, disposable, "1.7.0/status-complete.json", instructions);
+    }
+
+    /** Feeds the captured status {@code statusFixture} (under {@code fixtures/cli/}) for {@code changeName}. */
+    static void feedCapturedStatus(Project project, String changeName, Disposable disposable, String statusFixture,
+                                   Function<String, String> instructions) {
+        String status = fixture(statusFixture).replace("\"demo-change\"", "\"" + changeName + "\"");
         ArtifactOrchestrationService orchestration = project.getService(ArtifactOrchestrationService.class);
         orchestration.setStatusCliForTest((p, cliArgs) -> {
             String[] args = cliArgs.requested().toArray(String[]::new);

@@ -728,6 +728,8 @@ public class OpenSpecToolWindowPanel extends JPanel implements DataProvider, Dis
             case CHANGE, CHANGE_DONE, CHANGE_ARCHIVE_READY -> {
                 contextMenu.add(ActionManager.getInstance().getAction("OpenSpec.ExploreChange"));
                 contextMenu.add(ActionManager.getInstance().getAction("OpenSpec.ReviseChange"));
+                // Continue creates the next artifact, so it sits with the artifact actions, before implementing.
+                contextMenu.add(ActionManager.getInstance().getAction("OpenSpec.Continue"));
                 contextMenu.addSeparator();
                 contextMenu.add(ActionManager.getInstance().getAction("OpenSpec.Apply"));
                 contextMenu.add(ActionManager.getInstance().getAction("OpenSpec.Archive"));

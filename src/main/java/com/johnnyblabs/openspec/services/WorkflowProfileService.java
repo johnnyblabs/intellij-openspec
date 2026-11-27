@@ -161,6 +161,23 @@ public final class WorkflowProfileService {
         return hasChangedSinceLastRefresh;
     }
 
+    /**
+     * The active profile's workflows outside the core set of the CLI it was resolved for, when the profile is
+     * {@code custom}; empty otherwise. May run the CLI on first use: call it off the UI thread.
+     */
+    public Set<String> workflowsBeyondCore() {
+        Set<String> active = getActiveWorkflows();
+        return beyondCore(getActiveProfileName(), active, coreWorkflows(resolvedForCli));
+    }
+
+    /** {@link #workflowsBeyondCore()} for a given profile, its workflows and the core set, in the profile's order. */
+    static Set<String> beyondCore(@Nullable String profileName, Set<String> active, Set<String> core) {
+        if (!"custom".equals(profileName)) return Set.of();
+        java.util.LinkedHashSet<String> beyond = new java.util.LinkedHashSet<>(active);
+        beyond.removeAll(core);
+        return java.util.Collections.unmodifiableSet(beyond);
+    }
+
     private synchronized void ensureLoaded() {
         if (activeWorkflows != null) return;
         Snapshot snapshot = resolve();
@@ -266,7 +283,7 @@ public final class WorkflowProfileService {
         return version != null && version.strip().matches("\\d+\\.\\d+.*");
     }
 
-    private static Set<String> ordered(String... workflows) {
+    static Set<String> ordered(String... workflows) {
         return Collections.unmodifiableSet(new LinkedHashSet<>(List.of(workflows)));
     }
 

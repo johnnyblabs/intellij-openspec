@@ -122,6 +122,13 @@ public class WorkflowActionPanel extends JPanel {
 
     // Icon action bar
     private final JButton reviseIconButton;
+    private final JButton continueIconButton;
+    /** Whether the profile includes {@code continue}; read on the refresh's pooled thread, shown on the EDT. */
+    private volatile boolean continueOffered;
+    /** The custom profile's workflows beyond core, for the "No changes yet" hint; read off the EDT. */
+    private volatile Set<String> workflowsBeyondCore = Set.of();
+    /** The installed "No changes yet" card's hint line, for custom profiles with more workflows. */
+    private final JBLabel moreWorkflowsLabel = moreWorkflowsHintLabel();
     private final JButton applyIconButton;
     private final JButton verifyIconButton;
     private final JButton syncSpecsIconButton;
@@ -237,6 +244,10 @@ public class WorkflowActionPanel extends JPanel {
         reviseIconButton = new ChangeDataButton(AllIcons.Actions.Edit);
         configureIconButton(reviseIconButton, REVISE_TOOLTIP, this::onReviseChange);
         reviseIconButton.setEnabled(false);
+        continueIconButton = new ChangeDataButton(AllIcons.Actions.Resume);
+        configureIconButton(continueIconButton, "Continue", this::onContinue);
+        continueIconButton.setEnabled(false);
+        continueIconButton.setVisible(false);
         applyIconButton = createIconButton(AllIcons.Actions.Execute, "Apply", this::onApplyTasks);
         verifyIconButton = createIconButton(AllIcons.Actions.ProjectWideAnalysisOn, "Verify", this::onVerify);
         syncSpecsIconButton = createIconButton(AllIcons.Actions.Download, "Sync Specs", this::onSyncSpecs);
@@ -252,6 +263,7 @@ public class WorkflowActionPanel extends JPanel {
         JPanel iconButtons = new JPanel(new FlowLayout(FlowLayout.RIGHT, JBUI.scale(2), 0));
         iconButtons.setOpaque(false);
         iconButtons.add(reviseIconButton);
+        iconButtons.add(continueIconButton);
         iconButtons.add(applyIconButton);
         iconButtons.add(verifyIconButton);
         iconButtons.add(syncSpecsIconButton);
@@ -389,7 +401,7 @@ public class WorkflowActionPanel extends JPanel {
         contentCards.setOpaque(false);
 
         // Card 1: No changes
-        JPanel noChangesCard = buildNoChangesCard();
+        JPanel noChangesCard = buildNoChangesCard(moreWorkflowsLabel);
         contentCards.add(noChangesCard, CARD_NO_CHANGES);
 
         // The selected change exists, but the CLI rejected it (shows the CLI's reason, never "No changes yet")
@@ -467,6 +479,19 @@ public class WorkflowActionPanel extends JPanel {
         }
     }
 
+    /** Runs Continue for the panel's change through the action, launched from the button whose context names it. */
+    private void onContinue() {
+        AnAction action = ActionManager.getInstance().getAction("OpenSpec.Continue");
+        if (action != null && activeChangeName != null) {
+            launcher.accept(action, continueIconButton);
+        }
+    }
+
+    /** The Continue icon button; package-private for tests. */
+    JButton continueIconButtonForTest() {
+        return continueIconButton;
+    }
+
     /** The Revise header button; package-private for tests. */
     JButton reviseIconButtonForTest() {
         return reviseIconButton;
@@ -505,6 +530,8 @@ public class WorkflowActionPanel extends JPanel {
             String[] names = active.stream().map(Change::getName).toArray(String[]::new);
 
             if (active.isEmpty()) {
+                // The "No changes yet" card shows now, so its hint needs the profile too.
+                readProfileState();
                 updateChangeSelector(names);
                 updatePipelineAndButton(null, null, Set.of(), null, null);
                 return;
@@ -884,7 +911,19 @@ public class WorkflowActionPanel extends JPanel {
         // Done files that still look like templates: a hint on their chips only (the CLI's status stands).
         Set<String> hints = orchestration.templateLookingArtifacts(changeName, dag);
         String statusError = dag == null ? orchestration.statusError(changeName) : null;
+        readProfileState();
         updatePipelineAndButton(dag, ctx, hints, changeName, statusError);
+    }
+
+    /**
+     * Reads what the profile offers: Continue, and the workflows beyond core for the empty card's hint. The profile
+     * service may run the CLI on first use, so call it off the EDT; the EDT applies the values after its invokeLater.
+     */
+    private void readProfileState() {
+        com.johnnyblabs.openspec.services.WorkflowProfileService profile =
+                project.getService(com.johnnyblabs.openspec.services.WorkflowProfileService.class);
+        continueOffered = profile != null && profile.isWorkflowEnabled("continue");
+        workflowsBeyondCore = profile != null ? profile.workflowsBeyondCore() : Set.of();
     }
 
     /**
@@ -908,6 +947,7 @@ public class WorkflowActionPanel extends JPanel {
         ApplicationManager.getApplication().invokeLater(() -> {
             templateHintIds = hints;
             pipelinePanel.removeAll();
+            applyMoreWorkflowsHint(moreWorkflowsLabel, workflowsBeyondCore);
 
             // Mid-session API-config transition: populateToolSelector() runs only in the constructor,
             // so a key added (or removed) in Settings / the Setup Wizard after this panel was built
@@ -928,6 +968,7 @@ public class WorkflowActionPanel extends JPanel {
                 activeChangeName = statusError != null ? changeName : null;
                 allArtifactsComplete = false;
                 applyReady = false;
+                nextArtifactId = null;
                 hasTasksRemaining = false;
                 hasDeltaSpecs = false;
                 updateIconBarState();
@@ -988,6 +1029,8 @@ public class WorkflowActionPanel extends JPanel {
     private void updateIconBarState() {
         // Revise works on any active change: with no request, the agent reviews whatever artifacts exist.
         reviseIconButton.setEnabled(activeChangeName != null);
+        continueIconButton.setVisible(continueOffered);
+        continueIconButton.setEnabled(continueEnabled(activeChangeName, nextArtifactId));
         applyIconButton.setEnabled(applyReady);
         verifyIconButton.setEnabled(allArtifactsComplete);
         syncSpecsIconButton.setEnabled(hasDeltaSpecs);
@@ -998,6 +1041,7 @@ public class WorkflowActionPanel extends JPanel {
 
         // Contextual tooltips with change name and disabled reasons
         if (activeChangeName != null) {
+            continueIconButton.setToolTipText(continueTooltip(activeChangeName, nextArtifactId, allArtifactsComplete));
             applyIconButton.setToolTipText(applyReady
                     ? "Apply: " + activeChangeName
                     : "Apply (finish the artifacts it needs first)");
@@ -1749,7 +1793,7 @@ public class WorkflowActionPanel extends JPanel {
 
     // --- Fast-Forward (inline) ---
 
-    private JPanel buildNoChangesCard() {
+    private JPanel buildNoChangesCard(JBLabel moreWorkflowsHint) {
         JPanel card = new JPanel(new FlowLayout(FlowLayout.LEFT, JBUI.scale(6), JBUI.scale(4)));
         card.setOpaque(false);
 
@@ -1774,6 +1818,8 @@ public class WorkflowActionPanel extends JPanel {
             }
         });
         card.add(exploreLink);
+        applyMoreWorkflowsHint(moreWorkflowsHint, workflowsBeyondCore);
+        card.add(moreWorkflowsHint);
         // No Fast-Forward here: Propose already creates the change and generates its artifacts, and ff isn't in the
         // core profile. Fast-Forward stays reachable through its menu and toolbar action.
         return card;
@@ -1784,9 +1830,49 @@ public class WorkflowActionPanel extends JPanel {
         return verifyStatusLabel.getText();
     }
 
+    static final String MORE_WORKFLOWS_HINT = "More workflows are in the OpenSpec menu.";
+
+    private static JBLabel moreWorkflowsHintLabel() {
+        JBLabel label = new JBLabel(MORE_WORKFLOWS_HINT);
+        label.setForeground(JBColor.GRAY);
+        label.setVisible(false);
+        return label;
+    }
+
+    /** The installed "No changes yet" card's hint line, for tests. */
+    JBLabel moreWorkflowsLabelForTest() {
+        return moreWorkflowsLabel;
+    }
+
+    /** Shows the hint only for a custom profile's workflows beyond core, naming them in its tooltip. */
+    static void applyMoreWorkflowsHint(@Nullable JBLabel label, Set<String> beyondCore) {
+        if (label == null) return;
+        label.setVisible(!beyondCore.isEmpty());
+        label.setToolTipText(beyondCore.isEmpty() ? null : "Also in your profile: " + String.join(", ", beyondCore));
+    }
+
+    /** Continue is enabled for an active change with a ready artifact. */
+    static boolean continueEnabled(@Nullable String changeName, @Nullable String nextArtifactId) {
+        return changeName != null && nextArtifactId != null;
+    }
+
+    /** Continue's tooltip: what it continues, or why it can't. */
+    static String continueTooltip(String changeName, @Nullable String nextArtifactId, boolean allArtifactsComplete) {
+        if (nextArtifactId != null) return "Continue: " + changeName;
+        return allArtifactsComplete ? "Continue (all artifacts done)" : "Continue (no artifact is ready)";
+    }
+
+    @org.jetbrains.annotations.TestOnly
+    void setProfileStateForTest(boolean continueInProfile, Set<String> beyondCore) {
+        continueOffered = continueInProfile;
+        workflowsBeyondCore = beyondCore;
+        applyMoreWorkflowsHint(moreWorkflowsLabel, beyondCore);
+        updateIconBarState();
+    }
+
     /** A freshly built "no changes" card, for tests. */
     JPanel noChangesCardForTest() {
-        return buildNoChangesCard();
+        return buildNoChangesCard(moreWorkflowsHintLabel());
     }
 
     private final JBLabel statusErrorLabel = new JBLabel();

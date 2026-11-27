@@ -52,8 +52,22 @@ public class OpenSpecContinueAction extends OpenSpecBaseAction {
             return;
         }
 
-        ChangePicker.pick(activeChanges.stream().map(Change::getName).toList(), e.getDataContext(), TITLE,
-                name -> continueChange(project, name));
+        List<String> names = activeChanges.stream().map(Change::getName).toList();
+        String named = launchedFor(e.getData(OpenSpecDataKeys.CHANGE_NAME), names);
+        if (named != null) {
+            continueChange(project, named);
+            return;
+        }
+        ChangePicker.pick(names, e.getDataContext(), TITLE, name -> continueChange(project, name));
+    }
+
+    /**
+     * The change Continue was launched for (a change node's right-click menu, the workflow panel's button), when it is
+     * an active change; {@code null} means ask, as from the OpenSpec menu.
+     */
+    static @org.jetbrains.annotations.Nullable String launchedFor(@org.jetbrains.annotations.Nullable String named,
+                                                                  List<String> activeChanges) {
+        return named != null && activeChanges.contains(named) ? named : null;
     }
 
     /**

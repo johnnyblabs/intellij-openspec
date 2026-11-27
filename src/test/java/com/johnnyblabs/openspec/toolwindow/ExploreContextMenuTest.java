@@ -64,12 +64,14 @@ public class ExploreContextMenuTest extends OpenSpecIntegrationTestBase {
         assertEquals(List.of("OpenSpec.Explore", "OpenSpec.Propose"), menu);
     }
 
-    public void testAChangeOffersReviseRightAfterExploreThenApplyAfterASeparator() {
+    public void testAChangeOffersReviseThenContinueAfterExploreThenApplyAfterASeparator() {
         for (TreeNodeType type : List.of(TreeNodeType.CHANGE, TreeNodeType.CHANGE_DONE, TreeNodeType.CHANGE_ARCHIVE_READY)) {
             List<String> menu = ids(panel.contextMenuFor(new TreeNodeData("add-auth", type, null, "add-auth", null)));
 
-            assertEquals(type + ": " + menu, List.of("OpenSpec.ExploreChange", "OpenSpec.ReviseChange"), menu.subList(0, 2));
-            assertEquals(type + ": " + menu, "OpenSpec.Apply", menu.get(menu.indexOf("OpenSpec.ReviseChange") + 2));
+            assertEquals(type + ": " + menu,
+                    List.of("OpenSpec.ExploreChange", "OpenSpec.ReviseChange", "OpenSpec.Continue"), menu.subList(0, 3));
+            assertEquals(type + ": " + menu, "OpenSpec.Apply", menu.get(menu.indexOf("OpenSpec.Continue") + 2));
+            assertEquals(type + ": " + menu, "OpenSpec.Archive", menu.get(menu.indexOf("OpenSpec.Apply") + 1));
         }
     }
 
