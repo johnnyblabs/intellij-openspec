@@ -139,6 +139,9 @@ val cliFixtureTest by tasks.registering(Test::class) {
     val unit = tasks.test.get()
     testClassesDirs = unit.testClassesDirs
     classpath = files({ unit.classpath })
+    // What `test` needs first (instrumented classes, the test sandbox), declared here rather than reached through the
+    // coverage report: CI runs this task alone.
+    dependsOn(provider { unit.taskDependencies.getDependencies(unit) })
     // The platform's arguments (sandbox, IDE home, platform), resolved at execution so late additions count. Not
     // `test`'s JaCoCo agent: this task has its own, writing cliFixtureTest.exec; two agents abort the JVM.
     jvmArgumentProviders.add(CommandLineArgumentProvider {
@@ -202,8 +205,10 @@ val coverageData = files(
 ).filter { it.exists() }
 
 tasks.jacocoTestReport {
-    dependsOn(tasks.test)
-    mustRunAfter(cliFixtureTest)
+    // A finalizer of both suites, so it reports whichever ran; it must not pull in `test` when only cliFixtureTest runs.
+    mustRunAfter(tasks.test, cliFixtureTest)
+    // It reads the instrumented classes, which CI's coverage job builds without running either suite.
+    dependsOn("instrumentCode")
     executionData.setFrom(coverageData)
     // Use instrumented classes — IntelliJ Platform's instrumentCode task
     // modifies bytecode (null-checks, assertions), so JaCoCo must report
@@ -328,7 +333,7 @@ tasks.jacocoTestReport {
 // tested against six releases' captures, plus the platform store tests; the 2.x changes merged since the last raise
 // added theirs. Measured 0.7630/0.7466/0.6582; floors held ~0.01 below.
 tasks.jacocoTestCoverageVerification {
-    dependsOn(tasks.test, cliFixtureTest)
+    dependsOn(tasks.test, cliFixtureTest, "instrumentCode")
     // Match the report: instrumented classes + both suites' execution data.
     executionData.setFrom(coverageData)
     classDirectories.setFrom(

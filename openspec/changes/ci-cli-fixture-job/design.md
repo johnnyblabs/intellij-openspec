@@ -41,6 +41,8 @@ Measured on 2026-11-27, same tree: one suite covered 64,683 instructions, 6,967 
 
 **`cliFixtureTest` takes the platform's JVM argument providers but not `test`'s JaCoCo agent provider.** Copying all of them loaded two coverage agents, which aborts the test JVM.
 
+**Each CI command stands alone.** `cliFixtureTest` depends on `test`'s own dependencies (instrumented classes, the test sandbox) directly; the coverage report is ordered after both suites rather than depending on `test`; the report and the floor depend on `instrumentCode`. The first CI run failed because `cliFixtureTest` reached the sandbox only through the report, which that job skips. The three jobs were then simulated locally, each from a clean build directory without the build cache, handing the execution data over as the artifacts do: all passed, and the merged figures matched the single-suite baseline.
+
 ## Risks / Trade-offs
 
 - **A fixture test without the tag runs in `test` only**, which is the old behaviour, not a loss; the guard catches it.
