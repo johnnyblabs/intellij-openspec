@@ -140,7 +140,7 @@ The plugin SHALL detect every AI tool in the detected CLI's tool registry, from 
 - **THEN** the plugin SHALL still detect that tool, with the CLI ID the registry accepts for it (`windsurf` for Devin Desktop, which every supported CLI accepts), so existing projects don't regress; GitHub Copilot SHALL be detected only from its registry detection paths, not from any `.github` directory
 
 #### Scenario: The plugin's tools equal the CLI's registry
-- **WHEN** the plugin's tool records accepted by a captured release, from 1.3.0 to 2.1.1, are compared with that release's captured registry
+- **WHEN** the plugin's tool records accepted by a captured release, from 1.3.0 to 2.2.0, are compared with that release's captured registry
 - **THEN** they SHALL be the same ids in the same order, each with that release's display name, skills directory, home-directory skills folder and detection paths, and no record SHALL name an id the release lacks
 
 #### Scenario: A tool newer than the detected CLI is not offered
@@ -154,7 +154,7 @@ The plugin SHALL detect every AI tool in the detected CLI's tool registry, from 
 - **AND** a tool with a global skills directory SHALL be detected from the user's home directory
 
 #### Scenario: Upstream 2.x detection rule
-- **WHEN** a tool is detected under 2.0 or 2.1 rules
+- **WHEN** a tool is detected under 2.0 or 2.1 rules, which 2.2 also applies
 - **THEN** nothing under `.agents` SHALL count as a path of the tool's own when its skills folder is `.agents`
 - **AND** a tool listed in `.agents/skills/.openspec-target` SHALL be detected when the listed tool is still present by upstream's rule: listed without `own-files`, or listed with `own-files` and still holding a command, a skill or a link of its own
 - **AND** a skills folder of the tool's own SHALL count, when the list names other tools but not it, only if it holds an OpenSpec skill
@@ -605,7 +605,7 @@ The plugin SHALL build every OpenSpec CLI invocation against the detected CLI ve
 - **THEN** the plugin SHALL NOT start the CLI and SHALL report that the command needs another release
 
 #### Scenario: Every flag passed today reaches every release that accepts it
-- **WHEN** the detected release is any supported release from 1.3.0 to 2.1.1
+- **WHEN** the detected release is any supported release from 1.3.0 to 2.2.0
 - **THEN** each invocation SHALL pass the same arguments it passed before this requirement, for every release where the plugin already offered it
 
 #### Scenario: An unknown version is treated as the target release
@@ -904,3 +904,15 @@ The plugin SHALL count a tool as set up exactly when the CLI's `getConfiguredToo
 #### Scenario: Before 1.7
 - **WHEN** the detected CLI is below 1.7 and Kimi Code's skills exist in `.kimi/skills/`, or Devin Desktop's in `.windsurf/skills/`
 - **THEN** the tool SHALL show as set up, since that was its skills folder then
+
+### Requirement: The CLI 2.2 router skill is an OpenSpec skill
+
+The plugin SHALL count the `openspec` skill folder, which CLI 2.2.0 installs beside the workflow skills, as one of OpenSpec's own skills wherever it lists or recognizes them, as upstream's `OPENSPEC_SKILL_NAMES` does. It SHALL NOT treat the router as a workflow.
+
+#### Scenario: The router folder is OpenSpec's
+- **WHEN** a 2.2.0 project holds `.agents/skills/openspec/SKILL.md` beside the workflow skills
+- **THEN** the plugin SHALL count `openspec` among OpenSpec's skill folders
+
+#### Scenario: The router is not a workflow
+- **WHEN** the plugin lists the workflows a project's profile offers
+- **THEN** the router SHALL NOT appear among them, as upstream keeps it outside its workflow set

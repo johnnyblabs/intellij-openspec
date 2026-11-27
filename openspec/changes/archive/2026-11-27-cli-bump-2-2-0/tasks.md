@@ -28,7 +28,7 @@
   - an edited router reference is listed at risk, and an unedited router is not;
   - `openspec` is counted among the skill folders and is not a workflow;
   - all release-iterating contract tests pass with 2.2.0 included.
-- [ ] 3.3 The uiSmoke 2.x layout journey runs on CLI 2.2.0 from the cache (D6).
+- [x] 3.3 The uiSmoke 2.x layout journey runs on CLI 2.2.0 from the cache (D6).
 - [x] 3.4 Mutations, each turning a test red:
   - `openspec` dropped from `SKILL_NAMES`;
   - the link pattern reverted to `openspec-` only;
@@ -43,5 +43,5 @@
 
 - [x] 5.1 "OpenSpec CLI 1.3.0 through 2.2.x" on the README, `openspec-support.md`, the `cli-versions` notes, Marketplace page, feature reference and comparison matrix, and a CHANGELOG entry. The feature reference, `openspec-support.md` and the `cli-versions/2.x` note say the agent has an `openspec` skill for when the next step is unclear, and that under a custom profile missing a workflow skill it can still do that step through the CLI while the plugin hides the gated action.
 - [x] 5.2 Retake the affected screenshots (Manage AI Tools, migration preview) with the screenshot tour, if the router changes them. Not needed: no captured surface changes (Manage AI Tools has no per-skill list).
-- [ ] 5.3 `./gradlew build`, `./gradlew verifyPlugin`, the full `caffeinate -dimsu ./gradlew uiSmoke`, and `openspec validate --all --strict`.
+- [x] 5.3 `./gradlew build`, `./gradlew verifyPlugin`, the full `caffeinate -dimsu ./gradlew uiSmoke`, and `openspec validate --all --strict`.
 - [x] 5.4 Workflow ↔ UI parity audit for the bump (openspec-guru and plugin-ui-specialist), with the router decision recorded on its tracker entry (done: no router action; D2).

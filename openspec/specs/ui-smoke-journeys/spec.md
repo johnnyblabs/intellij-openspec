@@ -67,8 +67,8 @@ The project SHALL maintain a small suite of automated UI smoke journeys that dri
 - **THEN** it SHALL assert the missing-keyword inspection reports it in the Problems view, proving the IDE's highlighting rules don't skip a store spec; on a host CLI below 1.5 the journey SHALL be skipped, not failed
 
 #### Scenario: CLI 2.x layout journey
-- **WHEN** the smoke suite, on CLI 2.1.1 from the capture cache, initializes a project with project-scoped skills and opens Manage AI Tools
-- **THEN** it SHALL assert a tool reads as set up through the shared `.agents` folder, and that a project set up by CLI 1.17.0 shows the migration banner in the update preview; when CLI 2.1.1 isn't in the capture cache the journey SHALL fail with how to install it, not be skipped
+- **WHEN** the smoke suite, on CLI 2.2.0 from the capture cache, initializes a project with project-scoped skills and opens Manage AI Tools
+- **THEN** it SHALL assert a tool reads as set up through the shared `.agents` folder, and that a project set up by CLI 1.17.0 shows the migration banner in the update preview; when CLI 2.2.0 isn't in the capture cache the journey SHALL fail with how to install it, not be skipped
 
 ### Requirement: Smoke journeys never gate ordinary PRs
 
