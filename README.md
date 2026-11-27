@@ -19,7 +19,7 @@ An IDE-native client for the [OpenSpec](https://github.com/fission-ai/openspec) 
 
 Compatible with IntelliJ IDEA, PyCharm, GoLand, WebStorm, RubyMine, and the rest of the JetBrains IDE family, 2024.2 and later. Spec browsing and validation are fully language-agnostic.
 
-Works with OpenSpec CLI 1.3.0 through 2.1.x, targeting 2.1.1, or with no CLI installed.
+Works with OpenSpec CLI 1.3.0 through 2.2.x, targeting 2.2.0, or with no CLI installed.
 <!-- Plugin description end -->
 
 > **Maintenance: Living** — updated as part of every relevant change. See the [documentation index](docs/README.md) for the full doc map and each doc's maintenance class.
@@ -35,7 +35,7 @@ flowchart LR
     subgraph IDE["JetBrains IDE"]
         P["OpenSpec plugin<br/>tool window · inspections · actions"]
     end
-    P -- "runs" --> CLI["OpenSpec CLI<br/>1.3.0 – 2.1.x"]
+    P -- "runs" --> CLI["OpenSpec CLI<br/>1.3.0 – 2.2.x"]
     P -. "no CLI installed" .-> BI["Built-in fallback<br/>validator · spec sync"]
     CLI --> FS[("openspec/<br/>specs · changes")]
     BI --> FS
@@ -89,7 +89,7 @@ cd intellij-openspec
 
 ### The OpenSpec CLI (optional)
 
-The plugin works without the CLI: its built-in validator and spec sync follow OpenSpec 2.1.1's rules, and AI-tool detection is plugin-side. Install the CLI for everything else (the CLI's own validation verdicts, archive, update, stores and worksets) with any of OpenSpec's [install routes](https://openspec.dev/docs/installation):
+The plugin works without the CLI: its built-in validator and spec sync follow OpenSpec 2.2.0's rules, and AI-tool detection is plugin-side. Install the CLI for everything else (the CLI's own validation verdicts, archive, update, stores and worksets) with any of OpenSpec's [install routes](https://openspec.dev/docs/installation):
 
 ```bash
 # Standalone installer (no Node.js needed), macOS and Linux:
@@ -109,18 +109,18 @@ brew install openspec                        # macOS and Linux
 
 ## Supported OpenSpec CLI versions
 
-**Supported: 1.3.0 through 2.1.x, targeting 2.1.1.** Plugin X.Y supports CLI releases up to X.Y.x, and each new CLI minor gets its own plugin release. The full per-version contract is in [OpenSpec client coverage → Version support](docs/openspec-support.md#version-support).
+**Supported: 1.3.0 through 2.2.x, targeting 2.2.0.** Plugin X.Y supports CLI releases up to X.Y.x, and each new CLI minor gets its own plugin release. The full per-version contract is in [OpenSpec client coverage → Version support](docs/openspec-support.md#version-support).
 
 | CLI | What the plugin does |
 |-----|----------------------|
-| **2.0.x – 2.1.x** | OpenSpec 2's skills-only layout: skills in `.agents/skills`, linked from each tool's folder, for the project or the whole machine. Update previews the 1.x → 2.x migration. Validation and archive follow each release. [2.x note](docs/cli-versions/2.x.md) |
+| **2.0.x – 2.2.x** | OpenSpec 2's skills-only layout: skills in `.agents/skills`, linked from each tool's folder, for the project or the whole machine. Update previews the 1.x → 2.x migration. Validation and archive follow each release. [2.x note](docs/cli-versions/2.x.md) |
 | **1.15.x – 1.17.x** | Update shows what it will change before applying it. The standalone binary (no Node.js) is detected. |
 | **1.5.x – 1.14.x** | Stores and worksets in the Coordination tab, with health and write actions. The built-in validator follows each release's rules. |
 | **1.4.x** | The legacy coordination model: workspaces, context stores and initiatives. |
 | **1.3.x** | The minimum: the change lifecycle and validation, without coordination. |
-| **No CLI** | Spec browsing, the lifecycle tool window, and the built-in validator and spec sync, following 2.1.1. |
+| **No CLI** | Spec browsing, the lifecycle tool window, and the built-in validator and spec sync, following 2.2.0. |
 | **Below 1.3.0** | A one-time upgrade notice; CLI features are off and the built-in paths take over. |
-| **Newer than 2.1.x** | Keeps working, with no warning, until the plugin release for that CLI line. |
+| **Newer than 2.2.x** | Keeps working, with no warning, until the plugin release for that CLI line. |
 
 ---
 

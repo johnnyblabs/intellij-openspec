@@ -4,6 +4,14 @@
 
 ## Unreleased
 
+### Added
+
+- **OpenSpec CLI 2.2's `openspec` skill is recognized.** CLI 2.2 installs an `openspec` skill beside the workflow skills: ask your agent for it (`/openspec`) when you aren't sure which step comes next, and it says where your changes stand and hands off to the right workflow. The plugin counts it as one of OpenSpec's skills. The update preview shows its link in each tool folder as a link, and names an edited file of it, such as one of its `references/`, before the update overwrites it.
+
+### Changed
+
+- **The plugin supports OpenSpec CLI 1.3.0 through 2.2.x and targets 2.2.0.** With no CLI installed, Validate and Sync Specs follow 2.2.0, whose rules are 2.1.1's, so nothing changes for you.
+
 ## v2.1.0
 
 ### Added

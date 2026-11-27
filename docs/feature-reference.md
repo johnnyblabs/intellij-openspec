@@ -308,7 +308,7 @@ Copying for an agent and Direct API are separate: an agent like Claude Code (set
 
 ### AI Tool Detection
 
-The plugin knows every AI tool the OpenSpec CLI can set up and detects them the way the CLI does, using the same names as OpenSpec's tool picker. Which tools depends on your CLI: **87** on OpenSpec 2.1, **49** on 2.0 and **50** on 1.17. CLI 2.0 retired Amazon Q, and 2.1 added 38 tools. A representative subset is shown below:
+The plugin knows every AI tool the OpenSpec CLI can set up and detects them the way the CLI does, using the same names as OpenSpec's tool picker. Which tools depends on your CLI: **87** on OpenSpec 2.1 and 2.2, **49** on 2.0 and **50** on 1.17. CLI 2.0 retired Amazon Q, and 2.1 added 38 tools. A representative subset is shown below:
 
 | Detected from | Tool | Type |
 |---------------|------|------|
@@ -328,6 +328,7 @@ A few rules come straight from the CLI:
 - **The 2.1 tools need the CLI to set up.** They are detected only by OpenSpec skills of their own or the CLI's tool list, so adding one without the CLI says the CLI is needed.
 - **Set up means what your CLI counts as set up.** A tool shows as set up when the CLI you have would list it as configured, even if it isn't detected. A tool the CLI's tool list names counts, and where tools share `.agents/skills` on 1.x, only the folder's owner does. On 2.x a tool the list marks as having files of its own needs them. Kimi Code's `.kimi` and Devin Desktop's `.windsurf` folders count only on CLI 1.6 and earlier; later, they only show the tool is there, and Manage AI Tools offers to set it up again.
 - **Regional variants share a folder** (Trae and Trae CN, Qoder and Qoder CN, Zencoder and Zenflow). As on CLI 2.1, when the tool list names none of them, only the first counts as set up.
+- **The `openspec` router skill (CLI 2.2).** CLI 2.2 installs an `openspec` skill beside the workflow skills. The plugin counts it as one of OpenSpec's skills, but adds no action for it, because each plugin action hands off to its own workflow skill. Ask your agent for it (`/openspec`) when you aren't sure which step comes next: it says where your changes stand and names the next skill. Under a custom profile that lacks a workflow's skill, it can still do that step through the CLI, while the plugin hides the matching action.
 - **CLI or IDE badges** come from each tool's own documentation. A 2.1 tool whose documentation doesn't settle it has no badge, and gets the generic paste guidance.
 - **Each CLI line keeps its own rules.** OpenSpec 1.x and 2.x can reach different verdicts on the same files: a lone `.gsd/` folder means the shared-folder tool to 1.x but GSD to 2.x, and 2.1 never counts a machine-wide install as a project's tool. The plugin uses the rules of the CLI you have installed. With no CLI installed, it reads the files: a tool list naming several tools, an `own-files` mark, or a tool folder linking into `.agents/skills/` means 2.x rules, and anything else means 1.x rules.
 
@@ -616,7 +617,7 @@ With more than one copy, the plugin normally picks the one your terminal runs, b
 
 The **Update OpenSpec…** action runs `openspec update` (on CLI 1.15+, after showing you the [preview](#update-preview)). That refreshes your project's generated instruction files (skills and commands) to match the CLI you have; it doesn't upgrade the CLI itself.
 
-**Supported CLI versions.** The plugin supports OpenSpec CLI 1.3.0 through 2.1.x and targets 2.1.1; it also works with no CLI installed. Every command and option it runs is fitted to the CLI you have: when your CLI is too old for a feature, the plugin says which CLI version the feature needs instead of passing an option your CLI would reject. When you upgrade, downgrade, install or remove the CLI while the IDE is open, the enabled actions and the status-bar profile follow on the next detection.
+**Supported CLI versions.** The plugin supports OpenSpec CLI 1.3.0 through 2.2.x and targets 2.2.0; it also works with no CLI installed. Every command and option it runs is fitted to the CLI you have: when your CLI is too old for a feature, the plugin says which CLI version the feature needs instead of passing an option your CLI would reject. When you upgrade, downgrade, install or remove the CLI while the IDE is open, the enabled actions and the status-bar profile follow on the next detection.
 
 ### "Fast-Forward", "Continue", or other actions are grayed out
 

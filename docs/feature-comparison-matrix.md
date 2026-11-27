@@ -16,7 +16,7 @@ A comprehensive comparison of the OpenSpec IntelliJ plugin against known VS Code
 | **OpenSpec VSCode** | VS Code | AngDrew | 1.3.0 | 592 | Community |
 | **OpenSpec for VSCode** | VS Code | AvantMedia | 0.2.0 | 68 | Community |
 
-The IntelliJ plugin supports OpenSpec CLI 1.3.0 through 2.1.x, targeting 2.1.1, and works without the CLI.
+The IntelliJ plugin supports OpenSpec CLI 1.3.0 through 2.2.x, targeting 2.2.0, and works without the CLI.
 
 ---
 
