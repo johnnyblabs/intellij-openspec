@@ -22,7 +22,7 @@ import java.util.stream.Stream;
  */
 public class ConfiguredToolsContractTest extends BasePlatformTestCase {
 
-    static final List<String> RELEASES = List.of("1.6.0", "1.7.0", "1.17.0", "2.0.0", "2.1.0", "2.1.1");
+    static final List<String> RELEASES = List.of("1.6.0", "1.7.0", "1.17.0", "2.0.0", "2.1.0", "2.1.1", "2.2.0");
 
     /**
      * Cases where the plugin's set-up status differs from 2.1's, older than the 2.1 tool registry and out of its scope:

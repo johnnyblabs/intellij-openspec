@@ -36,7 +36,9 @@ class UpdateMigrationAtRiskContractTest {
                     ".cursor/skills/openspec-explore/notes.md"),
             "shared-folder", Set.of(".agents/skills/openspec-explore/SKILL.md"),
             "eve-edited", Set.of("agent/skills/openspec-explore/SKILL.md"),
-            "shared-own-skill", Set.of(".agents/skills/openspec-explore/SKILL.md"));
+            "shared-own-skill", Set.of(".agents/skills/openspec-explore/SKILL.md"),
+            "router-reference-edited", Set.of(".agents/skills/openspec/references/answers.md"),
+            "router-copy-edited", Set.of("agent/skills/openspec/references/answers.md"));
 
     /**
      * The known false warning (design Risks): 1.17 writes a narrow profile's skills in text the released-file set
@@ -141,6 +143,47 @@ class UpdateMigrationAtRiskContractTest {
         assertTrue(plan.changes().stream().anyMatch(ch -> ch.tool().equals("eve") && ch.action().equals("update")),
                 "sanity: the plan rewrites an Eve copy");
         assertEquals(Set.of(), atRisk(eve));
+    }
+
+    /** CLI 2.2's router: an edited reference, in the shared folder or a tool's own copy, is overwritten and named. */
+    @Test
+    void anEditedRouterReferenceIsAtRisk() throws IOException {
+        for (String name : List.of("router-reference-edited", "router-copy-edited")) {
+            Case c = cases().stream().filter(x -> x.id().equals("2.2.0/" + name)).findFirst().orElseThrow();
+            assertEquals(SEEDED.get(name), atRisk(c), c.id());
+        }
+    }
+
+    /** The router as 2.2.0 wrote it, or added to a 2.1.1 project, is never at risk. */
+    @Test
+    void anUneditedOrNewRouterIsNotAtRisk() throws IOException {
+        for (String name : List.of("router-unedited", "router-from-2.1.1")) {
+            Case c = cases().stream().filter(x -> x.id().equals("2.2.0/" + name)).findFirst().orElseThrow();
+            assertEquals(Set.of(), atRisk(c), c.id());
+        }
+    }
+
+    /**
+     * The shipped router-reference fingerprints hold every reference file 2.2.0 wrote, in the shared folder and in an
+     * Eve copy, and not an edited one. Without them an emptied profile, whose update deletes the router, would warn
+     * about its untouched references.
+     */
+    @Test
+    void everyRouterReferenceAReleaseWroteIsKnownAndAnEditedOneIsNot() throws IOException {
+        int checked = 0;
+        for (String name : List.of("router-unedited", "router-copy-edited")) {
+            Case c = cases().stream().filter(x -> x.id().equals("2.2.0/" + name)).findFirst().orElseThrow();
+            JsonObject before = json(c.dir().resolve("before.json")).getAsJsonObject("project");
+            JsonObject texts = json(c.dir().getParent().resolve("texts.json"));
+            for (String path : before.keySet()) {
+                if (!path.contains("/skills/openspec/references/")) continue;
+                String text = texts.get(before.get(path).getAsString().substring(1)).getAsString();
+                boolean edited = SEEDED.getOrDefault(name, Set.of()).contains(path);
+                assertEquals(!edited, ReleasedSkillFingerprints.isReleasedRouterReference(text), c.id() + " " + path);
+                checked++;
+            }
+        }
+        assertTrue(checked >= 6, "sanity: router references checked " + checked);
     }
 
     @Test

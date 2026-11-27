@@ -36,7 +36,7 @@ import java.util.stream.Stream;
 public class ValidatorVerdictReleaseParityTest extends OpenSpecIntegrationTestBase {
 
     static final List<String> RELEASES = List.of("1.14.0", "1.14.1", "1.14.3", "1.15.0", "1.16.0", "1.16.1", "1.17.0",
-            "2.0.0", "2.1.0", "2.1.1");
+            "2.0.0", "2.1.0", "2.1.1", "2.2.0");
     static final Path CORPUS = Path.of("src/test/resources/fixtures/cli/2.1.1/parity-corpus-2x");
     /** The CLI's "not carried into the main spec by archive" warnings (1.14.2+), which the plugin leaves to the CLI. */
     static final String NOT_CARRIED = "is not carried into the main spec by archive";

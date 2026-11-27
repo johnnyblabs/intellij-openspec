@@ -29,7 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 class ArtifactInstructionsVersionStabilityTest {
 
     static final String BASELINE = "1.17.0";
-    static final List<String> REQUIRED = List.of("1.17.0", "2.0.0", "2.1.0", "2.1.1");
+    static final List<String> REQUIRED = List.of("1.17.0", "2.0.0", "2.1.0", "2.1.1", "2.2.0");
 
     static JsonObject read(String version, String artifact) throws IOException {
         Path file = FixtureVersions.CLI.resolve(version).resolve("instructions/instructions-" + artifact + ".json");

@@ -165,7 +165,7 @@ class UpdatePreviewModelTest {
 
     @Test
     void aMigrationGroupsTheSharedSkillsCopiesAndCommandsAcrossTools() {
-        for (String v : List.of("2.0.0", "2.1.0", "2.1.1")) {
+        for (String v : List.of("2.0.0", "2.1.0", "2.1.1", "2.2.0")) {
             Plan plan = migrationPlan(v, "unedited");
             UpdatePreviewModel m = UpdatePreviewModel.of(plan, null, v);
             assertTrue(m.migration(), v);
@@ -194,7 +194,7 @@ class UpdatePreviewModelTest {
 
     @Test
     void plansThatAreNotAMigrationKeepTheirToolGroups() {
-        for (String v : List.of("2.0.0", "2.1.0", "2.1.1")) {
+        for (String v : List.of("2.0.0", "2.1.0", "2.1.1", "2.2.0")) {
             for (String name : List.of("up-to-date", "stale-skills", "legacy-unedited", "global-skills-removed")) {
                 if (UpdatePreviewModelTest.class.getResource("/fixtures/cli/" + v + "/update-dry-run/" + name + ".json") == null) {
                     continue;

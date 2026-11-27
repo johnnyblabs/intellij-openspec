@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The scope verdict over layouts the real CLI left: each captured init, recreated on disk with its home folder, reads
@@ -35,7 +36,7 @@ class ProjectSkillsScopeContractTest {
         CASES.put("2.1.1/detect/scope-project", ProjectSkillsScope.IN_PROJECT);
         CASES.put("2.1.0/detect/scope-default-global", ProjectSkillsScope.ON_MACHINE);
         CASES.put("2.1.1/detect/scope-default-global", ProjectSkillsScope.ON_MACHINE);
-        for (String v : new String[] {"2.1.0", "2.1.1"}) {
+        for (String v : new String[] {"2.1.0", "2.1.1", "2.2.0"}) {
             CASES.put(v + "/skills-scope/env-project", ProjectSkillsScope.IN_PROJECT);
             CASES.put(v + "/skills-scope/machine-only", ProjectSkillsScope.ON_MACHINE);
             CASES.put(v + "/skills-scope/machine-add-keep", ProjectSkillsScope.ON_MACHINE);
@@ -60,10 +61,35 @@ class ProjectSkillsScopeContractTest {
         }));
     }
 
+    /**
+     * CLI 2.2's router is one of OpenSpec's skills: a project whose only skill is the router 2.2.0 wrote (its workflow
+     * skills removed) still holds skills of its own.
+     */
+    @Test
+    void aProjectHoldingOnlyTheRouterHoldsItsOwnSkills() throws IOException {
+        Path dir = FixtureVersions.CLI.resolve("2.2.0/update-migration");
+        JsonObject after = JsonParser.parseString(Files.readString(dir.resolve("router-unedited/after.json"))).getAsJsonObject();
+        JsonObject texts = JsonParser.parseString(Files.readString(dir.resolve("texts.json"))).getAsJsonObject();
+        Path project = tmp.resolve("router-only/project");
+        FixtureLayout.materialize(after, project, tmp.resolve("router-only/home"), FixtureLayout.LinkMode.SYMLINK_OR_COPY,
+                texts);
+        assertTrue(Files.isRegularFile(project.resolve(".agents/skills/openspec/SKILL.md")), "sanity: 2.2.0 wrote the router");
+        for (String folder : new String[] {".agents/skills", ".claude/skills"}) {
+            try (Stream<Path> skills = Files.list(project.resolve(folder))) {
+                for (Path s : skills.filter(s -> s.getFileName().toString().startsWith("openspec-")).toList()) {
+                    try (Stream<Path> walk = Files.walk(s)) {
+                        for (Path f : walk.sorted(java.util.Comparator.reverseOrder()).toList()) Files.delete(f);
+                    }
+                }
+            }
+        }
+        assertEquals(ProjectSkillsScope.IN_PROJECT, ProjectSkillsScope.of(project, HomeSkills.NONE));
+    }
+
     /** A project that is the home folder holds the machine's skills as its own. */
     @TestFactory
     Stream<DynamicTest> theHomeFolderAsAProjectIsInTheProject() {
-        return Stream.of("2.1.0", "2.1.1").map(v -> DynamicTest.dynamicTest(v, () -> {
+        return Stream.of("2.1.0", "2.1.1", "2.2.0").map(v -> DynamicTest.dynamicTest(v, () -> {
             Path home = tmp.resolve(v).resolve("home");
             FixtureLayout.materialize(layout(v + "/skills-scope/home-project"), home, home,
                     FixtureLayout.LinkMode.SYMLINK_OR_COPY);

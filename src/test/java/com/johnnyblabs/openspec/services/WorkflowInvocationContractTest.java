@@ -41,7 +41,7 @@ class WorkflowInvocationContractTest {
     private static final String TARGET = AiToolRegistryContractTest.TARGET;
 
     /** Each release's row count: 2 workflows x tools with skills x deliveries (one delivery from 2.0). */
-    private static final Map<String, Integer> ROWS = Map.of("1.17.0", 588, "2.0.0", 192, "2.1.0", 348, "2.1.1", 348);
+    private static final Map<String, Integer> ROWS = Map.of("1.17.0", 588, "2.0.0", 192, "2.1.0", 348, "2.1.1", 348, "2.2.0", 348);
 
     @TempDir Path root;
 

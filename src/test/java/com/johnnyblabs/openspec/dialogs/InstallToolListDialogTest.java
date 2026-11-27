@@ -41,7 +41,7 @@ public class InstallToolListDialogTest extends BasePlatformTestCase {
 
     /** The install always names its tools: without --tools, a non-interactive 2.1 init can't choose (captured). */
     public void testTheInstallAlwaysPassesToolsBecauseTheCliCantChooseWithoutThem() throws Exception {
-        for (String v : new String[] {"2.1.0", "2.1.1"}) {
+        for (String v : new String[] {"2.1.0", "2.1.1", "2.2.0"}) {
             Path errors = com.johnnyblabs.openspec.util.FixtureVersions.CLI.resolve(v).resolve("errors");
             assertEquals(v, "1", Files.readString(errors.resolve("init-scope-project-no-tools.exit")).strip());
             assertTrue(v, Files.readString(errors.resolve("init-scope-project-no-tools.stderr"))

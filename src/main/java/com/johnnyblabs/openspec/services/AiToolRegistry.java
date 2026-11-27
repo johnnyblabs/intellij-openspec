@@ -50,11 +50,15 @@ public final class AiToolRegistry {
         }
     }
 
-    /** Upstream's {@code OPENSPEC_SKILL_NAMES}: the skill folders OpenSpec generates. */
+    /**
+     * Upstream's {@code OPENSPEC_SKILL_NAMES}: the skill folders OpenSpec generates, in its order. CLI 2.2 appends the
+     * router, {@code openspec}, which is a skill but not a workflow.
+     */
     static final List<String> SKILL_NAMES = List.of(
             "openspec-explore", "openspec-new-change", "openspec-continue-change", "openspec-apply-change",
             "openspec-update-change", "openspec-ff-change", "openspec-sync-specs", "openspec-archive-change",
-            "openspec-bulk-archive-change", "openspec-verify-change", "openspec-onboard", "openspec-propose");
+            "openspec-bulk-archive-change", "openspec-verify-change", "openspec-onboard", "openspec-propose",
+            "openspec");
 
     /** Upstream's universal target, the default owner of an unclaimed shared {@code .agents} root. */
     static final String UNIVERSAL_ID = "agents";

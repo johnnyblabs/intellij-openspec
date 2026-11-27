@@ -116,7 +116,7 @@ public class ConfigValidationInspectionTest extends OpenSpecIntegrationTestBase 
     }
 
     public void testAnInvalidSkillsScopeIsWarnedAboutWithTheCliText() throws Exception {
-        for (String v : new String[] {"2.1.0", "2.1.1"}) {
+        for (String v : new String[] {"2.1.0", "2.1.1", "2.2.0"}) {
             String warning = fixture(v + "/skills-scope/team-warning.stderr").strip();
             ProblemDescriptor[] problems = check(fixture(v + "/skills-scope/config-team.yaml"));
             assertEquals(v, 1, problems.length);
@@ -127,7 +127,7 @@ public class ConfigValidationInspectionTest extends OpenSpecIntegrationTestBase 
     }
 
     public void testAnEmptySkillsScopeIsWarnedAboutAsUpstreamDoes() throws Exception {
-        for (String v : new String[] {"2.1.0", "2.1.1"}) {
+        for (String v : new String[] {"2.1.0", "2.1.1", "2.2.0"}) {
             ProblemDescriptor[] problems = check(fixture(v + "/skills-scope/config-empty.yaml"));
             assertEquals(v, 1, problems.length);
             assertEquals(v, fixture(v + "/skills-scope/empty-warning.stderr").strip(), problems[0].getDescriptionTemplate());
@@ -135,7 +135,7 @@ public class ConfigValidationInspectionTest extends OpenSpecIntegrationTestBase 
     }
 
     public void testValidOrMissingSkillsScopeIsClean() throws Exception {
-        for (String v : new String[] {"2.1.0", "2.1.1"}) {
+        for (String v : new String[] {"2.1.0", "2.1.1", "2.2.0"}) {
             assertEquals(v, 0, check(fixture(v + "/skills-scope/remembered-config.yaml")).length);
         }
         assertEquals(0, check("schema: spec-driven\nskillsScope: global\n").length);

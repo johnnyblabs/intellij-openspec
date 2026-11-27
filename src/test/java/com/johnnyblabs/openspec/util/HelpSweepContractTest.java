@@ -28,7 +28,7 @@ class HelpSweepContractTest {
 
     /** One sweep per supported line: the newest patch of each 1.x minor from the floor, and each 2.x release. */
     static final Set<String> FLOOR = Set.of("1.3.1", "1.4.1", "1.5.0", "1.6.0", "1.7.0", "1.8.0", "1.9.0", "1.10.0",
-            "1.11.0", "1.12.0", "1.13.2", "1.14.3", "1.15.0", "1.16.1", "1.17.0", "2.0.0", "2.1.0", "2.1.1");
+            "1.11.0", "1.12.0", "1.13.2", "1.14.3", "1.15.0", "1.16.1", "1.17.0", "2.0.0", "2.1.0", "2.1.1", "2.2.0");
 
     /** Commands every release from the floor has, so their help must always be captured. */
     static final List<String> ALWAYS = List.of("openspec", "init", "update", "validate", "status", "instructions",

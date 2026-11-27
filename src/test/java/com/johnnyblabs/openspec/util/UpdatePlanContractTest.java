@@ -31,7 +31,7 @@ class UpdatePlanContractTest {
 
     /** Releases with a captured update-dry-run set, and how many cases each holds; each must be present. */
     static final java.util.Map<String, Integer> CASE_COUNT = java.util.Map.of("1.15.0", 9, "1.16.1", 9, "1.17.0", 13,
-            "2.0.0", 12, "2.1.0", 16, "2.1.1", 16);
+            "2.0.0", 12, "2.1.0", 16, "2.1.1", 16, "2.2.0", 16);
     static final java.util.Set<String> RELEASES = CASE_COUNT.keySet();
 
     /** A capture that must exist: a missing file fails rather than reading as empty output. */
@@ -206,7 +206,7 @@ class UpdatePlanContractTest {
 
     @TestFactory
     Stream<DynamicTest> machineWideRefreshIsANoteNotAProjectChange() {
-        return FixtureVersions.versionsWith("update-dry-run/global-skills-added.json", List.of("2.1.0", "2.1.1")).stream()
+        return FixtureVersions.versionsWith("update-dry-run/global-skills-added.json", List.of("2.1.0", "2.1.1", "2.2.0")).stream()
                 .map(v -> DynamicTest.dynamicTest(v, () -> {
                     Plan added = assertInstanceOf(Plan.class,
                             UpdatePlanParser.parse(captured(v + "/update-dry-run", "global-skills-added")));

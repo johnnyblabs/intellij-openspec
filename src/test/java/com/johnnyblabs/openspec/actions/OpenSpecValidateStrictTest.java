@@ -164,7 +164,7 @@ class OpenSpecValidateStrictTest {
                 "spec-scenario-steps", "step-missing-when",
                 "delta-modified-too-long", "grow-short");
         for (String v : java.util.List.of("1.14.0", "1.14.1", "1.14.3", "1.15.0", "1.16.0", "1.16.1", "1.17.0", "2.0.0",
-                "2.1.0", "2.1.1")) {
+                "2.1.0", "2.1.1", "2.2.0")) {
             com.google.gson.JsonObject strict = com.google.gson.JsonParser.parseString(java.nio.file.Files.readString(
                     java.nio.file.Path.of("src/test/resources/fixtures/cli", v, "validate-parity-corpus-2x-strict.json")))
                     .getAsJsonObject();

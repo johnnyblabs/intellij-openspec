@@ -310,7 +310,7 @@ public class UpdatePreviewServiceTest extends BasePlatformTestCase {
     /** 2.1 tags skill-folder deletes and the marker {@code openspec}; the update manages them, so none is offered. */
     public void testSkillFoldersAndTheMarkerAreNeverOfferedAsLegacyFiles() {
         int planned = 0;
-        for (String v : List.of("2.1.0", "2.1.1")) {
+        for (String v : List.of("2.1.0", "2.1.1", "2.2.0")) {
             for (String name : List.of("notes-beside-skill", "profile-shrink", "profile-empty", "unedited")) {
                 java.nio.file.Path json = com.johnnyblabs.openspec.util.FixtureVersions.CLI
                         .resolve(v + "/update-migration/" + name + "/plan-force.json");
@@ -326,7 +326,7 @@ public class UpdatePreviewServiceTest extends BasePlatformTestCase {
 
     /** The captured legacy cleanups still offer exactly OpenSpec's own legacy deletes. */
     public void testLegacyCapturesOfferWhatTheyOfferedBefore() {
-        for (String v : List.of("1.17.0", "2.0.0", "2.1.0", "2.1.1")) {
+        for (String v : List.of("1.17.0", "2.0.0", "2.1.0", "2.1.1", "2.2.0")) {
             for (String name : List.of("legacy-pending-force", "legacy-one-edited-force")) {
                 java.nio.file.Path json = com.johnnyblabs.openspec.util.FixtureVersions.CLI
                         .resolve(v + "/update-dry-run/" + name + ".json");

@@ -26,7 +26,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class CoreWorkflowsContractTest {
 
     /** Every release with a captured workflow set; a missing capture fails instead of shrinking the matrix. */
-    static final Set<String> FLOOR = Set.of("1.15.0", "1.16.0", "1.16.1", "1.17.0", "2.0.0", "2.1.0", "2.1.1");
+    static final Set<String> FLOOR = Set.of("1.15.0", "1.16.0", "1.16.1", "1.17.0", "2.0.0", "2.1.0", "2.1.1", "2.2.0");
 
     private static JsonObject fixture(String version) throws IOException {
         try (InputStream in = CoreWorkflowsContractTest.class.getResourceAsStream("/fixtures/cli/" + version + "/workflows.json")) {

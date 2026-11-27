@@ -44,7 +44,7 @@ public class WorkflowParityContractTest extends BasePlatformTestCase {
      * Every release with a captured upstream workflow set. The plugin serves each of them, so parity holds for each;
      * a missing capture fails rather than shrinking the check.
      */
-    static final Set<String> FLOOR = Set.of("1.15.0", "1.16.0", "1.16.1", "1.17.0", "2.0.0", "2.1.0", "2.1.1");
+    static final Set<String> FLOOR = Set.of("1.15.0", "1.16.0", "1.16.1", "1.17.0", "2.0.0", "2.1.0", "2.1.1", "2.2.0");
 
     static List<String> releases() {
         List<String> found = FixtureVersions.versionsWith("workflows.json", FLOOR);

@@ -51,6 +51,8 @@ Contract tests that iterate `FixtureVersions` pick 2.2.0 up automatically. A dif
 
 Workflow lists stay as they are. Upstream keeps the router outside `ALL_WORKFLOWS`, and `WorkflowParityContractTest` won't see it.
 
+**No router action.** The router routes free-text intent to the workflow skills, answers questions and reports where things stand. Every plugin handoff already names its target skill, and the tool window already shows each change's status and tasks, so the plugin adds no action for it. `WorkflowParityContractTest` can't record this, because the router isn't in the captured workflow set, so the decision is recorded here and on the linked tracker entry. A free-text handoff to the router is a separate, later item.
+
 ### D3. Update preview: the router's link and files
 
 `UpdateMigration`'s patterns match only `skills/openspec-<name>`.
@@ -58,6 +60,10 @@ Workflow lists stay as they are. Upstream keeps the router outside `ALL_WORKFLOW
 - **Files:** `IN_SKILL_FOLDER` widens the same way, so router files, including `references/*.md`, are checked for user edits. Because 2.2.0 repairs edited reference files, an edited one is overwritten, and the at-risk warning must name it.
 
 **Contract:** both are held to the 2.2.0 `update-dry-run` and `update-migration` captures.
+
+**Released router references are recognized.** Upstream's released-file set covers `SKILL.md` files only, so the plugin would otherwise list every router reference the plan rewrites or deletes as edited, including when an emptied profile removes the router. The plugin ships the fingerprints of the references each release generates (`router-reference-fingerprints.txt`, captured from the release's own `expectedSkillFiles` by `scripts/capture-router-references.py`), and a reference matching one is not at risk. The 2.2.0 `profile-empty` capture proves the negative, and the edited cases prove the positive.
+
+**SKILL_NAMES is not version-gated.** Like upstream 2.2.0, a user's own `skills/openspec/SKILL.md` now counts as an OpenSpec skill on any project. No captured layout has such a folder.
 
 ### D4. Target version and guards
 
@@ -91,4 +97,4 @@ None for users. Projects already on 2.x see the router after their own `openspec
 
 ## Open Questions
 
-- The `/openspec` action is decided in the separate parity issue.
+None.

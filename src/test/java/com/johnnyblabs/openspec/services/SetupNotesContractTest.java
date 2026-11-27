@@ -53,7 +53,7 @@ class SetupNotesContractTest {
     @Test
     void theNotePassedOnIsWhatInitPrinted() throws IOException {
         int cases = 0;
-        for (String v : List.of("1.17.0", "2.1.0", "2.1.1")) {
+        for (String v : List.of("1.17.0", "2.1.0", "2.1.1", "2.2.0")) {
             JsonObject printed = JsonParser.parseString(Files.readString(FixtureVersions.CLI.resolve(v).resolve("setup-notes.json")))
                     .getAsJsonObject();
             for (String key : printed.keySet()) {
@@ -70,7 +70,7 @@ class SetupNotesContractTest {
                 cases++;
             }
         }
-        assertEquals(9, cases, "sanity: 1.17's Hermes and 2.1.x's four cases each");
+        assertEquals(13, cases, "sanity: 1.17's Hermes and the four cases of each 2.1.0, 2.1.1 and 2.2.0");
     }
 
     @Test

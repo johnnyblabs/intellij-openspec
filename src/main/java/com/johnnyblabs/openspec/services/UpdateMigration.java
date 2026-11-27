@@ -33,10 +33,15 @@ public final class UpdateMigration {
     /** What one planned change is, in the migration's terms. */
     public enum Kind { SHARED, REPLACED_COPY, COMMAND_FILE, LINK, OTHER }
 
-    /** A path inside an OpenSpec skill folder: {@code <folder>/skills/openspec-<name>/<file>}. */
-    private static final Pattern IN_SKILL_FOLDER = Pattern.compile("^(?:.+/)?skills/openspec-[^/]+/.+$");
-    /** A skill folder itself: {@code <folder>/skills/openspec-<name>}, no extension. */
-    private static final Pattern SKILL_FOLDER = Pattern.compile("^(?:.+/)?skills/(openspec-[^/.]+)$");
+    /**
+     * A path inside an OpenSpec skill folder: {@code <folder>/skills/openspec-<name>/<file>}, or, from CLI 2.2, inside
+     * the router's {@code <folder>/skills/openspec/}, its {@code references/} included.
+     */
+    private static final Pattern IN_SKILL_FOLDER = Pattern.compile("^(?:.+/)?skills/openspec(?:-[^/]+)?/.+$");
+    /** A file in the router's folder other than its {@code SKILL.md}: {@code <folder>/skills/openspec/<file>}. */
+    private static final Pattern ROUTER_FILE = Pattern.compile("^(?:.+/)?skills/openspec/.+$");
+    /** A skill folder itself: {@code <folder>/skills/openspec-<name>} or the router's {@code openspec}, no extension. */
+    private static final Pattern SKILL_FOLDER = Pattern.compile("^(?:.+/)?skills/(openspec(?:-[^/.]+)?)$");
 
     /**
      * Upstream's {@code LEGACY_TOOL_ROOTS} ({@code dist/core/migration.js}): the folder a tool's files lived in before
@@ -114,7 +119,8 @@ public final class UpdateMigration {
      * own, read from the project at {@code projectRoot} before the update runs. Reads the disk: call off the UI thread.
      * <ul>
      *   <li>A file reached through a link is never at risk: the update removes the link, not the file.</li>
-     *   <li>A file other than {@code SKILL.md} is at risk unless it is operating-system junk.</li>
+     *   <li>A file other than {@code SKILL.md} is at risk unless it is operating-system junk or, in the router's folder,
+     *       a reference file a release generated ({@link ReleasedSkillFingerprints#isReleasedRouterReference}).</li>
      *   <li>A {@code SKILL.md} that is a released file ({@link ReleasedSkillFingerprints}) is never at risk.</li>
      *   <li>Any other {@code SKILL.md} in a tool folder is at risk unless it still equals the shared copy, apart from
      *       upstream's per-tool front-matter rewrite ({@code allowed-tools} dropped).</li>
@@ -138,7 +144,15 @@ public final class UpdateMigration {
 
     private static boolean atRisk(java.nio.file.Path root, String path, java.nio.file.Path file) {
         String name = file.getFileName().toString();
-        if (!name.equals("SKILL.md")) return !SkillSpot.isOsJunk(name);
+        if (!name.equals("SKILL.md")) {
+            if (SkillSpot.isOsJunk(name)) return false;
+            if (!ROUTER_FILE.matcher(path).matches()) return true;
+            try {
+                return !ReleasedSkillFingerprints.isReleasedRouterReference(java.nio.file.Files.readString(file));
+            } catch (java.io.IOException | RuntimeException e) {
+                return true;
+            }
+        }
         String content;
         try {
             content = java.nio.file.Files.readString(file);

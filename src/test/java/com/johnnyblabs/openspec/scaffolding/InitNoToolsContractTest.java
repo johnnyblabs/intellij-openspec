@@ -21,7 +21,7 @@ class InitNoToolsContractTest {
 
     @TestFactory
     Stream<DynamicTest> theWizardsNoToolsInitIsAcceptedAndWritesNoSkills() {
-        return Stream.of("2.1.0", "2.1.1").map(v -> DynamicTest.dynamicTest(v, () -> {
+        return Stream.of("2.1.0", "2.1.1", "2.2.0").map(v -> DynamicTest.dynamicTest(v, () -> {
             assertEquals(List.of("init", "--tools", "none", "--scope", "project"),
                     ScaffoldingService.initArgs(List.of()).resolve(v).argv(), "the command the capture ran");
             Path dir = FixtureVersions.CLI.resolve(v).resolve("skills-scope/tools-none");

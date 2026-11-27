@@ -110,7 +110,7 @@ class CliCommandsTest {
             assertEquals(List.of("init", "--tools", "claude"), r.argv(), older);
             assertEquals(List.of("--scope"), r.dropped(), older);
         }
-        for (String newer : List.of("2.1.0", "2.1.1")) {
+        for (String newer : List.of("2.1.0", "2.1.1", "2.2.0")) {
             assertEquals(List.of("init", "--tools", "claude", "--scope", "project"), args.resolve(newer).argv(), newer);
         }
 
@@ -125,7 +125,7 @@ class CliCommandsTest {
     void aScopeKeepingInitPassesNoScope() throws Exception {
         CliArgs args = CliCommands.initKeepingScope("claude");
         assertEquals(Map.of(), args.env());
-        for (String v : List.of("2.0.0", "2.1.0", "2.1.1")) {
+        for (String v : List.of("2.0.0", "2.1.0", "2.1.1", "2.2.0")) {
             assertEquals(List.of("init", "--tools", "claude"), args.resolve(v).argv(), v);
             assertEquals(List.of(), args.resolve(v).dropped(), v);
         }

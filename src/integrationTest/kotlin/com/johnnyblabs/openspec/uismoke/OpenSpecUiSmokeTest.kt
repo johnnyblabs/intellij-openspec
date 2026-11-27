@@ -278,7 +278,7 @@ class OpenSpecUiSmokeTest {
         fun isEnabled(): Boolean
     }
 
-    /** CLI 2.1.1 from the cliMatrix cache (scripts/install-cli-matrix.py); the host CLI matches the older target. */
+    /** CLI 2.1.1 from the cliMatrix cache (scripts/install-cli-matrix.py): a 2.1+ release with machine-scoped installs, pinned so the journey doesn't move with the host CLI. */
     private fun cli211(): Path {
         val cache = System.getenv("OSP_CAPTURE_CACHE")?.takeIf { it.isNotBlank() }?.let { Path.of(it) }
             ?: Path.of(System.getProperty("java.io.tmpdir"), "osp-capture-pkgs")
@@ -420,14 +420,14 @@ class OpenSpecUiSmokeTest {
     }
 
     /**
-     * The CLI 2.x layout, on CLI 2.1.1 from the capture cache: a project set up with project-scoped skills shows them
+     * The CLI 2.x layout, on CLI 2.2.0 (the target) from the capture cache: a project set up with project-scoped skills shows them
      * in the project, and GitHub Copilot (which has no folder of its own) as set up through the shared `.agents`
      * skills; a project set up by CLI 1.17.0 gets the OpenSpec 2 migration banner in the update preview, which is
      * cancelled. Throwaway home and XDG folders, so the machine's own skills are never touched.
      */
     @Test
     fun cli2xLayoutShowsSharedSkillsAndTheMigration() {
-        val cli = cachedCli("2.1.1")
+        val cli = cachedCli("2.2.0")
         val home = Files.createTempDirectory("openspec-ui-smoke-2x-home-")
 
         val shared = projectUsing(cli, "openspec-ui-smoke-2x-")

@@ -67,7 +67,7 @@ public class LegacyCleanupDialogTest extends BasePlatformTestCase {
     /** On CLI 2.1+ the terminal handoff warns that the CLI's interactive update can ask where to keep the skills. */
     public void testTheTerminalHintNamesTheQuestions21CanAsk() {
         UpdateOutputParser.LegacyCleanup block = capture("1.14.3");
-        for (String v : java.util.List.of("2.1.0", "2.1.1")) {
+        for (String v : java.util.List.of("2.1.0", "2.1.1", "2.2.0")) {
             LegacyCleanupDialog d = new LegacyCleanupDialog(getProject(), block, v);
             Disposer.register(getTestRootDisposable(), d.getDisposable());
             assertEquals(v, LegacyCleanupDialog.TERMINAL_QUESTIONS, d.terminalHintForTest());

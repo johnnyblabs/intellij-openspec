@@ -27,7 +27,7 @@ class ArchiveMergeContractTest {
     private static final Path CLI = Paths.get("src/test/resources/fixtures/cli");
 
     /** The captured releases (not the 1.4.1/1.5.0 delegation-floor captures, which have another shape). */
-    static final List<String> RELEASES = List.of("1.14.3", "2.1.0", "2.1.1");
+    static final List<String> RELEASES = List.of("1.14.3", "2.1.0", "2.1.1", "2.2.0");
 
     /** Cases each release must hold, so a partial re-capture can't quietly shrink the replay. */
     static final List<String> REQUIRED = List.of("new-cap", "new-cap-purpose", "new-cap-short-purpose",

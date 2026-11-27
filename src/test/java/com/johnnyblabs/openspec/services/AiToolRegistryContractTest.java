@@ -47,12 +47,12 @@ class AiToolRegistryContractTest {
     }
 
     /** Each release's tool count, so a reshaped or truncated dump can't pass as a registry. */
-    static final Map<String, Integer> TOOL_COUNT = Map.of("1.17.0", 50, "2.0.0", 49, "2.1.0", 87, "2.1.1", 87);
+    static final Map<String, Integer> TOOL_COUNT = Map.of("1.17.0", 50, "2.0.0", 49, "2.1.0", 87, "2.1.1", 87, "2.2.0", 87);
 
     /** The target and every later captured release: the releases the plugin's registry is held to. */
     static List<String> heldTo() {
         return FixtureVersions.atLeast(FixtureVersions.versionsWith("ai-tools.json",
-                List.of(TARGET, "2.0.0", "2.1.0", "2.1.1")), TARGET);
+                List.of(TARGET, "2.0.0", "2.1.0", "2.1.1", "2.2.0")), TARGET);
     }
 
     static Stream<DynamicTest> perRelease(String caseName, ThrowingCheck check) {
@@ -198,7 +198,7 @@ class AiToolRegistryContractTest {
     @Test
     void amazonQIsRefusedFrom200AsTheCliRefusesIt() throws IOException {
         AiTool amazonQ = AiToolRegistry.byId("amazon-q");
-        for (String v : List.of("2.0.0", "2.1.1")) {
+        for (String v : List.of("2.0.0", "2.1.1", "2.2.0")) {
             Path errors = FIXTURES.resolve(v).resolve("errors");
             assertEquals("1", Files.readString(errors.resolve("init-amazon-q.exit")).strip(), v);
             assertTrue(Files.readString(errors.resolve("init-amazon-q.stderr")).contains("Amazon Q Developer is no longer supported"), v);
@@ -211,7 +211,7 @@ class AiToolRegistryContractTest {
     /** The tools sharing a project folder on 2.1 are the groups upstream's installer forms ({@code agentsByProjectFolder}). */
     @TestFactory
     Stream<DynamicTest> theFolderGroupsAreUpstreams() {
-        return Stream.of("2.1.0", "2.1.1").map(v -> DynamicTest.dynamicTest(v, () -> {
+        return Stream.of("2.1.0", "2.1.1", "2.2.0").map(v -> DynamicTest.dynamicTest(v, () -> {
             JsonObject groups = dump(v).getAsJsonObject("agentsByProjectFolder");
             assertNotNull(groups, v + " dump has no agentsByProjectFolder");
             Map<String, List<String>> upstream = new TreeMap<>();
@@ -229,7 +229,7 @@ class AiToolRegistryContractTest {
     /** Upstream against itself: each release's init help lists exactly its registry's ids. */
     @TestFactory
     Stream<DynamicTest> theCliHelpListsTheSameIds() {
-        List<String> versions = FixtureVersions.versionsWith("init-help.txt", List.of(TARGET, "2.0.0", "2.1.0", "2.1.1"));
+        List<String> versions = FixtureVersions.versionsWith("init-help.txt", List.of(TARGET, "2.0.0", "2.1.0", "2.1.1", "2.2.0"));
         return versions.stream().map(v -> DynamicTest.dynamicTest(v, () -> helpListsRegistry(v)));
     }
 

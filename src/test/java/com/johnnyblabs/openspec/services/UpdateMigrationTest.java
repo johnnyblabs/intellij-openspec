@@ -29,7 +29,7 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class UpdateMigrationTest {
 
-    static final List<String> RELEASES_2X = List.of("2.0.0", "2.1.0", "2.1.1");
+    static final List<String> RELEASES_2X = List.of("2.0.0", "2.1.0", "2.1.1", "2.2.0");
 
     /** The captured cases that move a 1.x layout to 2.x, and so show the banner on a 2.x CLI. */
     static final Set<String> MIGRATIONS = Set.of("unedited", "edited", "notes-beside-skill", "shared-folder",
@@ -40,7 +40,8 @@ class UpdateMigrationTest {
      * migrated (no marker change), and Amazon Q alone (retired, so no shared skills are written).
      */
     static final Set<String> NOT_MIGRATIONS = Set.of("profile-shrink", "profile-empty", "eve-edited", "eve-from-2.1.0",
-            "after-2.0.0-kept", "retired-tool-edited");
+            "after-2.0.0-kept", "retired-tool-edited",
+            "router-from-2.1.1", "router-unedited", "router-reference-edited", "router-copy-edited");
 
     static Plan plan(Path json, Path exit) throws IOException {
         var run = new CliRunner.CliResult(Integer.parseInt(Files.readString(exit).strip()), Files.readString(json), "");
@@ -134,14 +135,28 @@ class UpdateMigrationTest {
         for (String v : RELEASES_2X) {
             List<Change> links = migrationPlans().get(v + "/unedited").changes().stream()
                     .filter(c -> UpdateMigration.kind(c) == Kind.LINK).toList();
-            assertEquals(6, links.size(), v);
+            // 2.2 adds the router's link beside the six core workflow skills'.
+            assertEquals(com.johnnyblabs.openspec.util.CliVersion.atLeast(v, "2.2.0") ? 7 : 6, links.size(), v);
             for (Change link : links) {
-                assertTrue(link.path().startsWith(".claude/skills/openspec-"), link.path());
+                assertTrue(link.path().startsWith(".claude/skills/openspec"), link.path());
                 String skill = link.path().substring(".claude/skills/".length());
                 assertEquals(".agents/skills/" + skill, UpdateMigration.linkTarget(link));
                 assertEquals(link.path() + " → .agents/skills/" + skill, UpdatePreviewModel.linkRow(link));
             }
         }
+    }
+
+    /** CLI 2.2's router: its tool-folder link, added to a 2.1.1 project, is a link to the shared router. */
+    @Test
+    void theRouterLinkIsALinkToTheSharedRouter() throws IOException {
+        List<Change> router = migrationPlans().get("2.2.0/router-from-2.1.1").changes().stream()
+                .filter(c -> c.path().equals(".claude/skills/openspec")).toList();
+        assertEquals(1, router.size(), "sanity: 2.2.0 adds the router's link");
+        assertEquals(Kind.LINK, UpdateMigration.kind(router.get(0)));
+        assertEquals(".agents/skills/openspec", UpdateMigration.linkTarget(router.get(0)));
+        assertTrue(UpdateMigration.inSkillFolder(".agents/skills/openspec/references/answers.md"));
+        assertFalse(UpdateMigration.inSkillFolder(".claude/skills/openspec.md"), "a file named like the router is not in it");
+        assertFalse(UpdateMigration.inSkillFolder(".claude/skills/openspecx/SKILL.md"));
     }
 
     @Test

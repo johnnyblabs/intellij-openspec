@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class SkillLinkDirsContractTest {
 
-    static final Set<String> REQUIRED = Set.of("2.0.0", "2.1.0", "2.1.1");
+    static final Set<String> REQUIRED = Set.of("2.0.0", "2.1.0", "2.1.1", "2.2.0");
 
     static SkillLinkDirs.Line line(String version) {
         return version.startsWith("2.0.") ? SkillLinkDirs.Line.V2_0 : SkillLinkDirs.Line.V2_1;

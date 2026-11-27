@@ -27,6 +27,11 @@ import java.util.regex.Pattern;
 public final class ReleasedSkillFingerprints {
 
     static final String RESOURCE = "/openspec/released-skill-fingerprints.txt";
+    /**
+     * The router skill's reference files ({@code references/*.md}, CLI 2.2+) as released, captured from each release's
+     * own {@code expectedSkillFiles}: upstream's released set covers {@code SKILL.md} files only.
+     */
+    static final String ROUTER_REFERENCES = "/openspec/router-reference-fingerprints.txt";
 
     /** Upstream's {@code GENERATED_VERSION}: a full semantic version. */
     private static final Pattern GENERATED_VERSION = Pattern.compile(
@@ -45,12 +50,18 @@ public final class ReleasedSkillFingerprints {
     }
 
     private static final class Holder {
-        static final Set<String> SET = load();
+        static final Set<String> SET = load(RESOURCE);
+        static final Set<String> ROUTER = load(ROUTER_REFERENCES);
     }
 
     /** Whether {@code content}, after normalization, is a file some released OpenSpec version generated. */
     public static boolean isReleased(String content) {
         return Holder.SET.contains(fingerprint(content));
+    }
+
+    /** Whether {@code content}, after normalization, is a router reference file some released OpenSpec version generated. */
+    public static boolean isReleasedRouterReference(String content) {
+        return Holder.ROUTER.contains(fingerprint(content));
     }
 
     /** The number of fingerprints shipped, for tests. */
@@ -104,10 +115,10 @@ public final class ReleasedSkillFingerprints {
         }
     }
 
-    private static Set<String> load() {
+    private static Set<String> load(String resource) {
         Set<String> set = new HashSet<>();
-        try (InputStream in = ReleasedSkillFingerprints.class.getResourceAsStream(RESOURCE)) {
-            if (in == null) throw new IllegalStateException("missing resource " + RESOURCE);
+        try (InputStream in = ReleasedSkillFingerprints.class.getResourceAsStream(resource)) {
+            if (in == null) throw new IllegalStateException("missing resource " + resource);
             BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8));
             for (String line; (line = reader.readLine()) != null; ) {
                 String s = line.strip();

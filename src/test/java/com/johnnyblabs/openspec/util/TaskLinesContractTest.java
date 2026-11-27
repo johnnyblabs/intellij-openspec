@@ -113,7 +113,7 @@ class TaskLinesContractTest {
      */
     @Test
     void wrappedTasksCountAsTheTwoXClientCountsThem() throws IOException {
-        for (String v : java.util.List.of("2.0.0", "2.1.0", "2.1.1")) {
+        for (String v : java.util.List.of("2.0.0", "2.1.0", "2.1.1", "2.2.0")) {
             String tasks = read("/fixtures/cli/" + v + "/instructions/apply-wrapped-tasks.md");
             com.google.gson.JsonObject captured = com.google.gson.JsonParser.parseString(
                     read("/fixtures/cli/" + v + "/instructions/instructions-apply-wrapped.json")).getAsJsonObject();

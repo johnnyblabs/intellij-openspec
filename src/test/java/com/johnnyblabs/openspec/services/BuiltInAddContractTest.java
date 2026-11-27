@@ -32,7 +32,7 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class BuiltInAddContractTest {
 
-    static final Set<String> REQUIRED = Set.of("1.14.3", "1.16.1", "1.17.0", "2.0.0", "2.1.0", "2.1.1");
+    static final Set<String> REQUIRED = Set.of("1.14.3", "1.16.1", "1.17.0", "2.0.0", "2.1.0", "2.1.1", "2.2.0");
 
     @TempDir
     Path tmp;
@@ -125,7 +125,7 @@ class BuiltInAddContractTest {
     @TestFactory
     Stream<DynamicTest> theCapturedOutcomesMatchTheDecision() throws IOException {
         List<DynamicTest> tests = new ArrayList<>();
-        for (String v : FixtureVersions.versionsWith("detect/builtin-add-cursor-beside-claude", Set.of("1.17.0", "2.0.0", "2.1.0", "2.1.1"))) {
+        for (String v : FixtureVersions.versionsWith("detect/builtin-add-cursor-beside-claude", Set.of("1.17.0", "2.0.0", "2.1.0", "2.1.1", "2.2.0"))) {
             Path detect = FixtureVersions.CLI.resolve(v).resolve("detect");
             tests.add(DynamicTest.dynamicTest(v + "/cursor-beside-claude", () -> {
                 assertEquals(BuiltInAdd.CREATE_DIR, decide(v, detect.resolve("claude"), "cursor"));

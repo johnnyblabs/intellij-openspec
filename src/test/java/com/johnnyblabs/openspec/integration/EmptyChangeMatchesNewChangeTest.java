@@ -35,7 +35,7 @@ public class EmptyChangeMatchesNewChangeTest extends OpenSpecIntegrationTestBase
         Set<String> created = Arrays.stream(change.getChildren()).map(VirtualFile::getName)
                 .collect(Collectors.toCollection(TreeSet::new));
         String yaml = new String(change.findChild(".openspec.yaml").contentsToByteArray());
-        for (String version : List.of("1.17.0", "2.1.1")) {
+        for (String version : List.of("1.17.0", "2.1.1", "2.2.0")) {
             assertEquals("the files CLI " + version + " left", new TreeSet<>(captured(version, "change-files.txt")), created);
             assertEquals("the .openspec.yaml keys CLI " + version + " wrote",
                     new TreeSet<>(captured(version, "openspec-yaml-keys.txt")), keys(yaml));

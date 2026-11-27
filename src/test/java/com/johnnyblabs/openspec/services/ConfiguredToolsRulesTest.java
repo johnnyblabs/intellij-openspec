@@ -76,7 +76,7 @@ public class ConfiguredToolsRulesTest extends BasePlatformTestCase {
     }
 
     public void testATheListNamesIsSetUpWithoutASkillOfItsOwn() throws Exception {
-        for (String v : List.of("1.17.0", "2.0.0", "2.1.0", "2.1.1")) {
+        for (String v : List.of("1.17.0", "2.0.0", "2.1.0", "2.1.1", "2.2.0")) {
             layOut(v, "builtin-add-codex-list-on-empty");
             assertEquals(v, ToolStatus.CONFIGURED, status("codex"));
         }
@@ -93,7 +93,7 @@ public class ConfiguredToolsRulesTest extends BasePlatformTestCase {
     }
 
     public void testAOneSixEraFolderIsDetectedNotSetUpFromOneSeven() throws Exception {
-        for (String v : List.of("1.7.0", "1.17.0", "2.0.0", "2.1.1")) {
+        for (String v : List.of("1.7.0", "1.17.0", "2.0.0", "2.1.1", "2.2.0")) {
             layOut(v, "kimi-dir-from-1.6");
             assertEquals(v, ToolStatus.DETECTED, status("kimi"));
             layOut(v, "windsurf-dir-from-1.6");
@@ -138,7 +138,7 @@ public class ConfiguredToolsRulesTest extends BasePlatformTestCase {
 
     /** 2.x: listed own-files, with its links gone and nothing else of its own; the shared copy isn't its own. */
     public void testAToolListedOwnFilesWithNothingOfItsOwnIsNotSetUp() throws Exception {
-        for (String v : List.of("2.0.0", "2.1.0", "2.1.1")) {
+        for (String v : List.of("2.0.0", "2.1.0", "2.1.1", "2.2.0")) {
             layOut(v, "own-files-links-removed");
             assertEquals(v, ToolStatus.DETECTED, status("claude"));
         }

@@ -52,7 +52,7 @@ class StoreRootContractTest {
     @Test
     void everyReleaseTheResolverGatesOnIsCaptured() {
         List<String> captured = versions();
-        for (String required : List.of("1.5.0", "1.7.0", "2.1.1")) {
+        for (String required : List.of("1.5.0", "1.7.0", "2.1.1", "2.2.0")) {
             assertTrue(captured.contains(required), "missing store-root capture for " + required + ": " + captured);
         }
     }

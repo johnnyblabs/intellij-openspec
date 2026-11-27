@@ -46,6 +46,8 @@ class OpenSpecRootLiteralHygieneTest {
                     "skillsScope is read from the project's own config, as upstream's init does"),
             entry("com/johnnyblabs/openspec/services/ReleasedSkillFingerprints.java:"
                     + "\"/openspec/released-skill-fingerprints.txt\"", "a bundled resource"),
+            entry("com/johnnyblabs/openspec/services/ReleasedSkillFingerprints.java:"
+                    + "\"/openspec/router-reference-fingerprints.txt\"", "a bundled resource"),
             entry("com/johnnyblabs/openspec/services/MachineToolMarkers.java:\"/openspec/machine-tool-markers.txt\"",
                     "a bundled resource"),
             entry("com/johnnyblabs/openspec/filetype/OpenSpecIconProvider.java:\"/openspec/changes/\"",
@@ -64,6 +66,8 @@ class OpenSpecRootLiteralHygieneTest {
                     "a root-relative display path"),
             entry("com/johnnyblabs/openspec/services/SpecMerge.java:\"openspec/specs/\"",
                     "a root-relative display path, as the CLI prints it"),
+            entry("com/johnnyblabs/openspec/services/AiToolRegistry.java:\"openspec\"",
+                    "CLI 2.2's router skill folder name, not a root path"),
             entry("com/johnnyblabs/openspec/validation/ConfigValidationInspection.java:\"openspec\"",
                     "the config's parent directory name, true for a store's config too"));
 

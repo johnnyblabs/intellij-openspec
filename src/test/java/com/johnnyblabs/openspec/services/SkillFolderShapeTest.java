@@ -26,7 +26,7 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class SkillFolderShapeTest {
 
-    static final Set<String> REQUIRED = Set.of("2.0.0", "2.1.1");
+    static final Set<String> REQUIRED = Set.of("2.0.0", "2.1.1", "2.2.0");
     static final String SPOT = ".claude/skills/openspec-explore";
     static final String SHARED = ".agents/skills/openspec-explore";
 
@@ -77,7 +77,7 @@ class SkillFolderShapeTest {
     @Test
     void everyCapturedShapeIsReplayed() throws IOException {
         List<Case> all = cases();
-        assertEquals(34, all.size(), "17 shapes per captured release");
+        assertEquals(17 * REQUIRED.size(), all.size(), "17 shapes per captured release");
         assertTrue(all.stream().anyMatch(Case::hasLinks));
         assertTrue(all.stream().anyMatch(c -> !c.hasLinks()));
     }

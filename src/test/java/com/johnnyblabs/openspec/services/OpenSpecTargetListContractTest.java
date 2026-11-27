@@ -25,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class OpenSpecTargetListContractTest {
 
-    static final Set<String> REQUIRED = Set.of("1.14.3", "1.16.1", "1.17.0", "2.0.0", "2.1.0", "2.1.1");
+    static final Set<String> REQUIRED = Set.of("1.14.3", "1.16.1", "1.17.0", "2.0.0", "2.1.0", "2.1.1", "2.2.0");
 
     @TempDir
     Path tmp;

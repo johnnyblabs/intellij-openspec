@@ -24,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class SkillsScopeConfigContractTest {
 
-    static final List<String> RELEASES = List.of("2.1.0", "2.1.1");
+    static final List<String> RELEASES = List.of("2.1.0", "2.1.1", "2.2.0");
 
     private static ConfigService.LoadResult load(String text) {
         return ConfigService.load(() -> new ByteArrayInputStream(text.getBytes(StandardCharsets.UTF_8)));

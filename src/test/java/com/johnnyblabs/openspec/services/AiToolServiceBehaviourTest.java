@@ -105,7 +105,7 @@ public class AiToolServiceBehaviourTest extends BasePlatformTestCase {
     /** CLI 2.0 retired Amazon Q: not listed on 2.x, even for a project 1.17 set it up in; listed as before on 1.17. */
     public void testAmazonQIsListedOnlyBelow200() throws Exception {
         layOut("1.17.0", "amazon-q-from-1.17");
-        for (String v : List.of("2.0.0", "2.1.1")) {
+        for (String v : List.of("2.0.0", "2.1.1", "2.2.0")) {
             service().setCliVersionForTest(() -> v);
             service().detect();
             assertNull(v + ": not listed, as 2.x doesn't report it", info("Amazon Q Developer"));

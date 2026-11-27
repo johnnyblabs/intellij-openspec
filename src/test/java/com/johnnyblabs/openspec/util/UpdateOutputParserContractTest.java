@@ -280,7 +280,7 @@ class UpdateOutputParserContractTest {
                     + "/applied.txt"));
         }
 
-        private static final List<String> RELEASES = List.of("2.0.0", "2.1.0", "2.1.1");
+        private static final List<String> RELEASES = List.of("2.0.0", "2.1.0", "2.1.1", "2.2.0");
         private static final String MOVE = "Move anything worth keeping into the skill, then delete by hand.";
 
         @Test
@@ -302,7 +302,7 @@ class UpdateOutputParserContractTest {
             assertEquals(1, folders.size());
             assertEquals(List.of(".claude/skills/openspec-explore", ".cursor/skills/openspec-explore"), folders.get(0).paths());
             assertTrue(folders.get(0).guidance().startsWith("Nothing was overwritten."));
-            for (String v : List.of("2.1.0", "2.1.1")) {
+            for (String v : List.of("2.1.0", "2.1.1", "2.2.0")) {
                 assertTrue(UpdateOutputParser.parseKept(applied(v, "edited")).stream()
                         .noneMatch(r -> r.header().contains("skill folder")), v + ": 2.1 reports nothing about the copies");
             }

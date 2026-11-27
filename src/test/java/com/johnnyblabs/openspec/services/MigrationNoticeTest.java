@@ -29,7 +29,8 @@ class MigrationNoticeTest {
 
     /** The cases with nothing a 1.x release wrote in a tool folder to migrate. */
     static final Set<String> NOT_SET_UP_BY_1X = Set.of("after-2.0.0-kept", "eve-edited", "eve-from-2.1.0",
-            "profile-shrink", "profile-empty");
+            "profile-shrink", "profile-empty",
+            "router-from-2.1.1", "router-unedited", "router-reference-edited", "router-copy-edited");
 
     @TempDir
     Path tmp;

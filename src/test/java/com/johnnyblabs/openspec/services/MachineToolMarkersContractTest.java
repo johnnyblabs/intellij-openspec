@@ -24,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class MachineToolMarkersContractTest {
 
-    static final String NEWEST = "2.1.1";
+    static final String NEWEST = "2.2.0";
 
     @TempDir
     Path tmp;
