@@ -2,7 +2,7 @@
 
 ### Requirement: The retirement marker can be added from a refusal that asks for it
 
-When a sync or archive is refused with a fix that names `retire_capabilities: true`, and any "cannot be honored" reason concerns the marker's own value, the plugin SHALL offer to add the marker. After the user confirms the deletion of each named spec, it SHALL write `retire_capabilities: true` into the change's `.openspec.yaml` as one undoable edit, keeping all other content, and then show the Sync preview. It SHALL NOT delete any spec itself.
+When a sync or archive refusal's fix names `retire_capabilities: true`, any "cannot be honored" reason concerns the marker's own value, and the metadata with the marker added would be honored, the plugin SHALL offer to add it. After the user confirms every spec the marker would make deletable, it SHALL write `retire_capabilities: true` into the change's `.openspec.yaml` as one undoable edit, keeping all other content, then show the Sync preview. It SHALL NOT delete any spec itself.
 
 #### Scenario: The marker is missing
 - **WHEN** Sync Specs is refused because a change removes the last requirement of `foo` and has no marker
@@ -17,6 +17,14 @@ When a sync or archive is refused with a fix that names `retire_capabilities: tr
 #### Scenario: Adding the marker would not fix the refusal
 - **WHEN** the refusal names content the deletion would take, or its reason is that the file is not valid YAML, a required `schema:` is missing, `created:` is malformed, or the schema is unknown or invalid
 - **THEN** no action is offered and the refusal is shown as before
+
+#### Scenario: The plugin's refusal gives no reason, but the marker would still not count
+- **WHEN** the plugin refuses without a reason and the metadata, with the marker added, would still not be honored (for example, a project schema override the CLI does not validate)
+- **THEN** no action is offered
+
+#### Scenario: The change retires more than one capability
+- **WHEN** a change removes the last requirement of both `foo` and `bar`, and the archive's refusal names only `foo`
+- **THEN** the confirmation names both `specs/foo/spec.md` and `specs/bar/spec.md`
 
 #### Scenario: The user cancels
 - **WHEN** the user declines the confirmation
