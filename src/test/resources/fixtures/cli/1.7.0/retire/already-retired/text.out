@@ -1,0 +1,9 @@
+Task status: ✓ Complete
+
+Specs to update:
+  foo: create
+⚠️  Warning: foo - 1 REMOVED requirement(s) ignored for new spec (nothing to remove).
+
+Validation errors in rebuilt spec for foo (will not write changes):
+  ✗ Spec must have at least one requirement
+Aborted. No files were changed.

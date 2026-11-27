@@ -1,0 +1,15 @@
+{
+  "archive": null,
+  "root": {
+    "path": "/fixture",
+    "source": "nearest"
+  },
+  "status": [
+    {
+      "severity": "error",
+      "code": "archive_spec_validation_failed",
+      "message": "Rebuilt spec for 'foo' failed validation. No files were changed.",
+      "fix": "This change removes the last requirement 'foo' has. To retire the capability and delete its spec, add `retire_capabilities: true` to the change's .openspec.yaml (alongside its `schema:`, which that file requires), then rerun. The marker present now cannot be honored (retire_capabilities: Invalid input: expected boolean, received null)."
+    }
+  ]
+}

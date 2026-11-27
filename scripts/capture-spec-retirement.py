@@ -55,14 +55,28 @@ CASES = {
     "indented-continuation": dict(spec=spec(scenario="- **WHEN** x\n  and more of x\n- **THEN** y"), metadata=MARKED),
     "fenced-heading": dict(spec=spec(statement="The system SHALL foo.\n\n```\n## Not a heading\n```"), metadata=MARKED),
     "unhonorable-marker": dict(spec=spec(), metadata="schema: spec-driven\nretire_capabilities: [true\n"),
+    "marker-not-boolean": dict(spec=spec(), metadata="schema: spec-driven\nretire_capabilities: \"yes\"\n"),
+    "marker-unknown-schema": dict(spec=spec(), metadata="schema: no-such-schema\nretire_capabilities: true\n"),
+    "marker-true-no-schema": dict(spec=spec(), metadata="created: 2026-11-27\nretire_capabilities: true\n"),
+    "marker-true-bad-created": dict(spec=spec(), metadata="schema: spec-driven\ncreated: bad\nretire_capabilities: true\n"),
+    "marker-number": dict(spec=spec(), metadata="schema: spec-driven\nretire_capabilities: 1\n"),
+    "marker-null": dict(spec=spec(), metadata="schema: spec-driven\nretire_capabilities: null\n"),
+    "marker-yes": dict(spec=spec(), metadata="schema: spec-driven\nretire_capabilities: yes\n"),
+    "marker-duplicate-key": dict(spec=spec(), metadata="schema: spec-driven\nretire_capabilities: true\nretire_capabilities: true\n"),
+    "marker-invalid-project-schema": dict(spec=spec(), metadata=MARKED,
+                                          extra={"openspec/schemas/spec-driven/schema.yaml": "name: spec-driven\n"}),
+    "already-retired": dict(spec=None, metadata=MARKED),
+    "already-retired-without-marker": dict(spec=None, metadata=UNMARKED),
 }
 DATE = re.compile(r"\b20\d\d-\d\d-\d\d-c\b")
 
 
 def layout(project, case):
-    (project / "openspec/specs/foo").mkdir(parents=True)
+    (project / "openspec/specs").mkdir(parents=True)
     (project / "openspec/config.yaml").write_text("schema: spec-driven\n")
-    (project / "openspec/specs/foo/spec.md").write_text(case["spec"])
+    if case["spec"] is not None:
+        (project / "openspec/specs/foo").mkdir()
+        (project / "openspec/specs/foo/spec.md").write_text(case["spec"])
     change = project / "openspec/changes/c"
     (change / "specs/foo").mkdir(parents=True)
     (change / ".openspec.yaml").write_text(case["metadata"])
@@ -71,6 +85,7 @@ def layout(project, case):
     (change / "tasks.md").write_text("## 1. Do\n- [x] 1.1 remove\n")
     (change / "specs/foo/spec.md").write_text(DELTA)
     for rel, text in case.get("extra", {}).items():
+        (project / rel).parent.mkdir(parents=True, exist_ok=True)
         (project / rel).write_text(text)
 
 

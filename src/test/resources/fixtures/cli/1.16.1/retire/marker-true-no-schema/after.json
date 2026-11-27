@@ -1,0 +1,3 @@
+{
+  "openspec/specs/foo/spec.md": "# foo Specification\n\n## Purpose\nFoo does things.\n\n## Requirements\n\n### Requirement: Foo works\nThe system SHALL foo.\n\n#### Scenario: foo\n- **WHEN** x\n- **THEN** y\n"
+}

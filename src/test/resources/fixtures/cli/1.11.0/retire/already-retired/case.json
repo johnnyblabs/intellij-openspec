@@ -1,0 +1,6 @@
+{
+  "spec": null,
+  "delta": "## REMOVED Requirements\n\n### Requirement: Foo works\n**Reason**: gone\n**Migration**: none\n",
+  "metadata": "schema: spec-driven\ncreated: 2026-11-27\nretire_capabilities: true\n",
+  "extra": {}
+}

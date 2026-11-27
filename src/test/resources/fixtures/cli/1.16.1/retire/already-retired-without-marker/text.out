@@ -1,0 +1,10 @@
+Task status: ✓ Complete
+
+Specs to update:
+  foo: create
+⚠️  Warning: foo - 1 REMOVED requirement(s) ignored for new spec (nothing to remove).
+
+Validation errors in rebuilt spec for foo (will not write changes):
+  ✗ Spec must have at least one requirement
+  ⚠ Purpose section is still a placeholder rather than a Purpose anyone wrote (the sentence `openspec archive` writes for a new capability, or a `TBD`/`TODO` marker left in its place). Replace it with what this capability is for, editing the main spec directly: a `## Purpose` in a delta is read only when the capability is created, so it cannot replace this one.
+Aborted. No files were changed.

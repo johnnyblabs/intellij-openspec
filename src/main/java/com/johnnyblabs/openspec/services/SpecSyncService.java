@@ -98,10 +98,11 @@ public final class SpecSyncService {
         for (Map.Entry<String, String> entry : readDeltaSpecs(changeName).entrySet()) {
             String capability = entry.getKey();
             String original = readMainSpec(capability);
-            SpecMerge.Result merged = SpecMerge.merge(capability, changeName, entry.getValue(), original, getMainSpecPath(capability), release);
+            SpecMerge.Result merged = SpecMerge.merge(capability, changeName, entry.getValue(), original,
+                    getMainSpecPath(capability), release, retirementMarker(changeName));
             results.add(new SpecSyncResult(capability, getMainSpecPath(capability), original,
                     merged.refused() ? original : merged.projected(), merged.operations(), merged.warnings(),
-                    merged.refused() ? List.of(merged.refusal()) : List.of()));
+                    merged.refused() ? List.of(merged.refusal()) : List.of(), merged.retired()));
         }
         return results;
     }
@@ -121,6 +122,10 @@ public final class SpecSyncService {
 
         for (SpecSyncResult result : results) {
             if (!result.hasChanges()) continue;
+            if (result.retired()) {
+                retire(Path.of(result.mainSpecPath()));
+                continue;
+            }
 
             Path path = Path.of(result.mainSpecPath());
             Files.createDirectories(path.getParent());
@@ -145,6 +150,67 @@ public final class SpecSyncService {
                         com.johnnyblabs.openspec.util.OpenSpecFileUtil.openspecPath(project) + "/specs"));
 
         return postMergeWarnings;
+    }
+
+    /**
+     * The CLI's retirement warning (1.8.0 on, the same through 2.2), for a capability the plugin's archive retired, so
+     * both paths report a retirement alike: the spec's path from the project root, and the sections deleted with it.
+     */
+    static String retiredWarning(SpecSyncResult r, @org.jetbrains.annotations.Nullable String projectRoot) {
+        String path = r.mainSpecPath().replace('\\', '/');
+        if (projectRoot != null) {
+            String root = projectRoot.replace('\\', '/');
+            if (path.startsWith(root + "/")) path = path.substring(root.length() + 1);
+        }
+        java.util.List<String> sections = new java.util.ArrayList<>();
+        for (String line : r.originalContent().split("\\R")) {
+            java.util.regex.Matcher m = java.util.regex.Pattern.compile("^##\\s+(.+?)\\s*$").matcher(line);
+            if (m.find() && !m.group(1).equalsIgnoreCase("Requirements")) sections.add(m.group(1));
+        }
+        return r.capabilityName() + " - capability retired; deleted the main spec (all requirements removed, declared by "
+                + "retire_capabilities) at " + path + "."
+                + (sections.isEmpty() ? "" : " Its section(s) went with it: " + String.join(", ", sections) + ".")
+                + " If it was committed, restore it with: git checkout HEAD -- \":(top)" + path + "\"";
+    }
+
+    /** The specs folder a retirement prunes up to, never past: {@code <root>/specs}. */
+    private Path specsRoot() {
+        return Path.of(com.johnnyblabs.openspec.util.OpenSpecFileUtil.openspecPath(project), "specs");
+    }
+
+    /**
+     * Retires a capability as upstream's {@code retireSpec} does: deletes {@code spec.md}, then each parent folder left
+     * empty, stopping before the specs folder, so a folder holding anything else is kept.
+     */
+    void retire(Path spec) throws IOException {
+        retire(spec, specsRoot());
+    }
+
+    static void retire(Path spec, Path specsRoot) throws IOException {
+        Files.deleteIfExists(spec);
+        Path root = specsRoot.toAbsolutePath().normalize();
+        for (Path dir = spec.toAbsolutePath().normalize().getParent();
+             dir != null && dir.startsWith(root) && !dir.equals(root); dir = dir.getParent()) {
+            try (java.util.stream.Stream<Path> entries = Files.list(dir)) {
+                if (entries.findAny().isPresent()) break;
+            }
+            Files.delete(dir);
+        }
+        ApplicationManager.getApplication().invokeAndWait(() -> WriteAction.run(() -> {
+            VirtualFile vf = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(root);
+            if (vf != null) vf.refresh(false, true);
+        }), ModalityState.defaultModalityState());
+    }
+
+    /** The change's {@code retire_capabilities} marker, read as upstream reads it. */
+    SpecMerge.RetirementMarker retirementMarker(String changeName) {
+        Path changeDir = Path.of(com.johnnyblabs.openspec.util.OpenSpecFileUtil.openspecPath(project), "changes", changeName);
+        return RetirementMarkers.read(changeDir, this::knownSchema);
+    }
+
+    /** Whether {@code schema} is one the CLI lists; with no CLI, a built-in schema. Set after the schema-source check. */
+    boolean knownSchema(String schema) {
+        return "spec-driven".equals(schema);
     }
 
     private List<String> validatePostMerge(SpecSyncResult result) {

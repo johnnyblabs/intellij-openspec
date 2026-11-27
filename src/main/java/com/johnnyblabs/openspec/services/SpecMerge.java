@@ -59,7 +59,13 @@ public final class SpecMerge {
                          @Nullable String projected,
                          List<DeltaSpecOperation> operations,
                          List<String> warnings,
-                         @Nullable String refusal) {
+                         @Nullable String refusal,
+                         boolean retired) {
+        public Result(String capability, @Nullable String projected, List<DeltaSpecOperation> operations,
+                      List<String> warnings, @Nullable String refusal) {
+            this(capability, projected, operations, warnings, refusal, false);
+        }
+
         public boolean refused() {
             return refusal != null;
         }
@@ -333,6 +339,16 @@ public final class SpecMerge {
      */
     public static Result merge(String capability, String changeName, String delta, @Nullable String main, String mainSpecPath,
                                @Nullable String release) {
+        return merge(capability, changeName, delta, main, mainSpecPath, release, RetirementMarker.NONE);
+    }
+
+    /**
+     * {@link #merge(String, String, String, String, String, String)} with the change's {@code retire_capabilities}
+     * marker: a run that removes the last requirement of an existing spec retires the capability (deletes its spec) or
+     * refuses, as {@code release}'s {@code openspec archive} does, and never writes a spec with no requirements.
+     */
+    public static Result merge(String capability, String changeName, String delta, @Nullable String main, String mainSpecPath,
+                               @Nullable String release, RetirementMarker marker) {
         boolean layout211 = ValidationRelease.has(release, ValidationRelease.NEW_SPEC_LAYOUT);
         List<String> warnings = new ArrayList<>();
         if (layout211) {
@@ -351,10 +367,58 @@ public final class SpecMerge {
         }
         try {
             String projected = apply(capability, changeName, delta, main, mainSpecPath, plan, warnings, layout211);
+            if (main != null && !plan.removed().isEmpty() && requirementsSection(projected).blocks().isEmpty()) {
+                return retirement(capability, main, release, marker, ops, List.copyOf(warnings));
+            }
             return new Result(capability, projected, ops, List.copyOf(warnings), null);
         } catch (Refusal r) {
             return new Result(capability, null, ops, List.copyOf(warnings), r.getMessage());
         }
+    }
+
+    /**
+     * A change's {@code retire_capabilities} marker as upstream's {@code readRetireCapabilitiesMarker} reads it:
+     * declared, or not, with the reason when a marker is present but can't be honored.
+     */
+    public record RetirementMarker(boolean declared, @Nullable String invalidReason) {
+        public static final RetirementMarker NONE = new RetirementMarker(false, null);
+    }
+
+    /**
+     * The outcome when the run removed an existing spec's last requirement: retired, or refused with
+     * {@code release}'s archive message and fix ({@code archive_spec_validation_failed}).
+     */
+    private static Result retirement(String capability, String main, @Nullable String release, RetirementMarker marker,
+                                     List<DeltaSpecOperation> ops, List<String> warnings) {
+        String message = "Rebuilt spec for '" + capability + "' failed validation. No files were changed.";
+        String generic = "Run openspec validate " + capability + " after fixing the change deltas.";
+        RetirementAudit.Variant variant = RetirementAudit.variantFor(release);
+        if (variant == null) return new Result(capability, null, ops, warnings, message + " " + generic);
+        List<String> leftovers = RetirementAudit.leftovers(requirementsSection(main), variant);
+        String invalid = marker.invalidReason() != null
+                ? " The marker present now cannot be honored (" + marker.invalidReason() + ")." : "";
+        if (marker.declared()) {
+            if (leftovers.isEmpty()) return new Result(capability, "", ops, warnings, null, true);
+            return new Result(capability, null, ops, warnings, message + " '" + capability + "' declares "
+                    + "retire_capabilities, but the spec holds content the merge cannot safely account for and deleting "
+                    + "the file would take with it: " + RetirementAudit.describe(leftovers, release) + ". Move it into "
+                    + "`## Purpose` or a canonical requirement, or delete the spec by hand.");
+        }
+        if (leftovers.isEmpty()) {
+            return new Result(capability, null, ops, warnings, message + " This change removes the last requirement '"
+                    + capability + "' has. To retire the capability and delete its spec, add `retire_capabilities: true` "
+                    + "to the change's .openspec.yaml (alongside its `schema:`, which that file requires), then rerun."
+                    + invalid);
+        }
+        if (release == null || com.johnnyblabs.openspec.util.CliVersion.atLeast(release, "1.11.0")) {
+            return new Result(capability, null, ops, warnings, message + " This change removes the last requirement '"
+                    + capability + "' has, so the rebuilt spec has none left and cannot be written. Retiring the "
+                    + "capability is what archive does instead, and it is refused while the spec holds content the merge "
+                    + "cannot safely account for and deleting the file would take with it: "
+                    + RetirementAudit.describe(leftovers, release) + ". Move it into `## Purpose` or a canonical "
+                    + "requirement, or delete the spec by hand, then rerun." + invalid);
+        }
+        return new Result(capability, null, ops, warnings, message + " " + generic);
     }
 
     /** A MODIFIED requirement whose text grew past the limit; {@code line} is its header's 1-based line in the delta. */

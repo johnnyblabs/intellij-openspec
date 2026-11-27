@@ -60,6 +60,7 @@ public final class ArchiveDispatch {
     public static String summary(String changeName, ArchiveJson.Outcome outcome) {
         StringBuilder s = new StringBuilder(changeName).append(" archived as ").append(outcome.archivedAs())
                 .append(outcome.specsUpdated() ? "; main specs updated." : ".");
+        if (!outcome.retired().isEmpty()) s.append(" Retired: ").append(String.join(", ", outcome.retired())).append(".");
         for (String w : outcome.warnings()) s.append(" ").append(w);
         return s.toString();
     }

@@ -1,0 +1,10 @@
+Task status: ✓ Complete
+
+Specs to update:
+  foo: update
+
+Validation errors in rebuilt spec for foo (will not write changes):
+  ✗ Spec must have at least one requirement
+  ⚠ Purpose section is too brief (less than 50 characters)
+  → This change removes the last requirement 'foo' has. To retire the capability and delete its spec, add `retire_capabilities: true` to the change's .openspec.yaml (alongside its `schema:`, which that file requires), then rerun. The marker present now cannot be honored (schema: unknown schema 'no-such-schema').
+Aborted. No files were changed.

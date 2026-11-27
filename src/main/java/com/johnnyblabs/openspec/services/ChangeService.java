@@ -158,6 +158,7 @@ public final class ChangeService {
             for (com.johnnyblabs.openspec.model.SpecSyncResult r : results) {
                 if (r.refused()) throw new ArchiveRefusedException(r.refusals().get(0), null);
                 warnings.addAll(r.warnings());
+                if (r.retired()) warnings.add(SpecSyncService.retiredWarning(r, project.getBasePath()));
             }
             if (results.stream().anyMatch(com.johnnyblabs.openspec.model.SpecSyncResult::hasChanges)) {
                 sync.applySync(results);

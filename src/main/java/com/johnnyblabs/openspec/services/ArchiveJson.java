@@ -21,6 +21,19 @@ public final class ArchiveJson {
 
     /** A successful archive: the folder it went to, whether main specs changed, and any warnings. */
     public record Outcome(String archivedAs, boolean specsUpdated, List<String> warnings) {
+        /** The CLI's retirement warning (1.8.0 on): {@code <id> - capability retired; deleted the main spec …}. */
+        private static final java.util.regex.Pattern RETIRED =
+                java.util.regex.Pattern.compile("^(\\S+) - capability retired; deleted the main spec\\b");
+
+        /** The capabilities this archive retired, read from its warnings, in order. */
+        public List<String> retired() {
+            List<String> ids = new ArrayList<>();
+            for (String w : warnings) {
+                java.util.regex.Matcher m = RETIRED.matcher(w);
+                if (m.find()) ids.add(m.group(1));
+            }
+            return List.copyOf(ids);
+        }
     }
 
     /**
