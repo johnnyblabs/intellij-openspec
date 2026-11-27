@@ -618,6 +618,17 @@ Real `openspec update` stdout from CLI **1.13.2** (run through `npx @fission-ai/
 
 The two captures differ only in the block's guidance line and the version on the "up to date" line. 1.13.2 prints `No user content to preserve:`; from 1.14.0 the CLI prints `These files will be deleted entirely. Back up any custom content before proceeding:`. Unlike the Junie-based 1.6.0 and 1.7.0 captures, these use Cursor, whose old command files current CLIs still report as legacy. Consumed by `UpdateOutputParserContractTest`, `UpdateLegacyCleanupFlowTest` and the cleanup dialog test.
 
+## `<version>/retire/` — capability retirement, the oracle for the plugin's merge
+
+From `scripts/capture-spec-retirement.py`, on 1.7.0, 1.8.0, 1.11.0, 1.16.1 and 2.2.0 (captured 2026-11-27). Each case is one project: a main spec `openspec/specs/foo/spec.md` (none for `already-retired*`), sometimes with other files, and a change `c` removing its only requirement, with or without `retire_capabilities: true`. Each holds `case.json` (the inputs), `text.out`/`text.exit` and `json.out`/`json.exit` (`archive c --yes`, then a fresh copy with `--json`; the archive date is `<DATE>`), and `after.json` (the `openspec/specs` tree after the text run). `RetirementContractTest` runs the plugin's merge on each case's own inputs and expects that release's outcome: retired where it deleted the spec, otherwise its `archive_spec_validation_failed` message and fix, word for word. One reason is left out: `marker-invalid-project-schema`, whose wording quotes the CLI's schema validator.
+
+What they show:
+- 1.7.0 never retires. From 1.8.0 a marked change retires when the spec holds nothing the merge can't account for; three check versions differ: `plus-bullets` and `indented-continuation` are refused on 1.8/1.11 and retire on 1.16.1 and 2.2.0; `args-prose` (`<args> are passed on.`) retires only on 2.2.0; `html-block`, `table-row`, `extra-section` and `prose-after-scenario` are refused everywhere.
+- Only `spec.md` is deleted, then empty folders: `folder-with-other-file` keeps the folder and `notes.txt`.
+- Without the marker: the hint naming the marker (from 1.8), or, with leftovers, the hint naming them (from 1.11; 1.8 gives the generic fix).
+- A marker that can't be honored counts as not declared, with the CLI's reason: invalid YAML (including a duplicate key), `yes` and other non-booleans (YAML 1.2: `yes` is a string), a missing `schema:` or malformed `created:` even when the marker is `true`, an unknown schema.
+- `already-retired`: removing from a capability whose spec is gone archives without writing one, with "REMOVED requirement(s) ignored for new spec", when marked; it's refused unmarked.
+
 ## `archive-1.14.3/` — real `openspec archive` runs, the oracle for the plugin's spec merge
 
 Captured by `scripts/capture-archive-fixtures.py` (re-run it after a CLI upgrade; it writes `archive-<version>/`). Each case is a one-change project archived three ways in isolated `HOME`/`XDG_*` directories: `archive c1 --yes` (`archive-human.txt`), `archive c1 --yes --json` (`archive.json`, `exit.txt`), and `validate c1 --json` (`validate.json`). When validation refuses the change, `archive --yes --no-validate --json` is captured too (`archive-novalidate.json`): its message is the wording the merge itself uses, which the plugin's refusal must match, since the plugin has no separate validation pass in front of its merge.

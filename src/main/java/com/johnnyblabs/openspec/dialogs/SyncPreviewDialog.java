@@ -49,6 +49,33 @@ public class SyncPreviewDialog extends DialogWrapper {
     }
 
     @TestOnly
+    /** The banner lines naming each spec a retirement deletes; for tests. */
+    List<String> retirementLinesForTest() {
+        return retirementLines(results);
+    }
+
+    /** One line per retired capability: which spec the sync deletes. */
+    static List<String> retirementLines(List<SpecSyncResult> results) {
+        List<String> lines = new ArrayList<>();
+        for (SpecSyncResult r : results) {
+            if (r.retired()) {
+                lines.add("Retires capability " + r.capabilityName() + ": specs/" + r.capabilityName()
+                        + "/spec.md will be deleted.");
+            }
+        }
+        return lines;
+    }
+
+    /** A capability's tab title: {@code <id> (retire)} when the sync deletes its spec. */
+    static String tabTitle(SpecSyncResult r) {
+        return r.retired() ? r.capabilityName() + " (retire)" : r.capabilityName();
+    }
+
+    /** The right-hand diff side's title: what the spec becomes, or that it is deleted. */
+    static String afterTitle(SpecSyncResult r) {
+        return r.retired() ? "After sync: file deleted" : "After sync";
+    }
+
     List<String> refusalsShownForTest() {
         return refusals();
     }
@@ -91,7 +118,24 @@ public class SyncPreviewDialog extends DialogWrapper {
             return mainPanel;
         }
 
-        // Warnings panel at top
+        // Above the diff: the retirements (a spec deleted), then the warnings.
+        JPanel north = new JPanel();
+        north.setLayout(new BoxLayout(north, BoxLayout.Y_AXIS));
+        List<String> retirements = retirementLines(results);
+        if (!retirements.isEmpty()) {
+            JPanel retirePanel = new JPanel();
+            retirePanel.setLayout(new BoxLayout(retirePanel, BoxLayout.Y_AXIS));
+            retirePanel.setBorder(JBUI.Borders.compound(
+                    JBUI.Borders.customLine(JBColor.ORANGE, 0, 0, 1, 0),
+                    JBUI.Borders.empty(8)));
+            retirePanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+            for (String line : retirements) {
+                JBLabel label = new JBLabel(line, com.intellij.icons.AllIcons.General.Warning, SwingConstants.LEFT);
+                label.setAlignmentX(Component.LEFT_ALIGNMENT);
+                retirePanel.add(label);
+            }
+            north.add(retirePanel);
+        }
         if (!allWarnings.isEmpty()) {
             JPanel warningsPanel = new JPanel();
             warningsPanel.setLayout(new BoxLayout(warningsPanel, BoxLayout.Y_AXIS));
@@ -108,8 +152,10 @@ public class SyncPreviewDialog extends DialogWrapper {
                 label.setAlignmentX(Component.LEFT_ALIGNMENT);
                 warningsPanel.add(label);
             }
-            mainPanel.add(warningsPanel, BorderLayout.NORTH);
+            warningsPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+            north.add(warningsPanel);
         }
+        if (north.getComponentCount() > 0) mainPanel.add(north, BorderLayout.NORTH);
 
         // Filter to only results with actual changes
         List<SpecSyncResult> changed = results.stream()
@@ -131,7 +177,7 @@ public class SyncPreviewDialog extends DialogWrapper {
             JBTabbedPane tabs = new JBTabbedPane();
             for (SpecSyncResult r : changed) {
                 DiffRequestPanel panel = createDiffPanel(r);
-                tabs.addTab(r.capabilityName(), panel.getComponent());
+                tabs.addTab(tabTitle(r), panel.getComponent());
             }
             mainPanel.add(tabs, BorderLayout.CENTER);
         }
@@ -149,7 +195,7 @@ public class SyncPreviewDialog extends DialogWrapper {
                 factory.create(project, original, PlainTextFileType.INSTANCE),
                 factory.create(project, projected, PlainTextFileType.INSTANCE),
                 "Current: specs/" + result.capabilityName() + "/spec.md",
-                "After sync"
+                afterTitle(result)
         );
 
         DiffRequestPanel panel = DiffManager.getInstance().createRequestPanel(project, getDisposable(), null);

@@ -370,6 +370,9 @@ public final class SpecMerge {
             if (main != null && !plan.removed().isEmpty() && requirementsSection(projected).blocks().isEmpty()) {
                 return retirement(capability, main, release, marker, ops, List.copyOf(warnings));
             }
+            if (main == null && requirementsSection(projected).blocks().isEmpty()) {
+                return alreadyRetired(capability, release, marker, ops, List.copyOf(warnings));
+            }
             return new Result(capability, projected, ops, List.copyOf(warnings), null);
         } catch (Refusal r) {
             return new Result(capability, null, ops, List.copyOf(warnings), r.getMessage());
@@ -382,6 +385,21 @@ public final class SpecMerge {
      */
     public record RetirementMarker(boolean declared, @Nullable String invalidReason) {
         public static final RetirementMarker NONE = new RetirementMarker(false, null);
+    }
+
+    /**
+     * A new spec the change would leave with no requirements (a removal from a capability whose spec is gone): the
+     * release never writes it. From 1.8 a marked change archives without it, keeping the "ignored for new spec"
+     * warning; otherwise it is refused.
+     */
+    private static Result alreadyRetired(String capability, @Nullable String release, RetirementMarker marker,
+                                         List<DeltaSpecOperation> ops, List<String> warnings) {
+        if (RetirementAudit.variantFor(release) != null && marker.declared()) {
+            return new Result(capability, null, ops, warnings, null);
+        }
+        return new Result(capability, null, ops, warnings, "Rebuilt spec for '" + capability
+                + "' failed validation. No files were changed. Run openspec validate " + capability
+                + " after fixing the change deltas.");
     }
 
     /**

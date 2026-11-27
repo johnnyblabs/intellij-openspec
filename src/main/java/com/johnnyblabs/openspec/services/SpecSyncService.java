@@ -95,11 +95,14 @@ public final class SpecSyncService {
         List<SpecSyncResult> results = new ArrayList<>();
         // The release whose archive the merge follows: the detected CLI, or the plugin's target with none.
         String release = com.johnnyblabs.openspec.validation.ValidationRelease.followed(project);
-        for (Map.Entry<String, String> entry : readDeltaSpecs(changeName).entrySet()) {
+        Map<String, String> deltas = readDeltaSpecs(changeName);
+        // Read once per sync, and only when there is a delta: a schema override may cost a CLI call.
+        SpecMerge.RetirementMarker marker = deltas.isEmpty() ? SpecMerge.RetirementMarker.NONE : retirementMarker(changeName);
+        for (Map.Entry<String, String> entry : deltas.entrySet()) {
             String capability = entry.getKey();
             String original = readMainSpec(capability);
             SpecMerge.Result merged = SpecMerge.merge(capability, changeName, entry.getValue(), original,
-                    getMainSpecPath(capability), release, retirementMarker(changeName));
+                    getMainSpecPath(capability), release, marker);
             results.add(new SpecSyncResult(capability, getMainSpecPath(capability), original,
                     merged.refused() ? original : merged.projected(), merged.operations(), merged.warnings(),
                     merged.refused() ? List.of(merged.refusal()) : List.of(), merged.retired()));
@@ -173,6 +176,11 @@ public final class SpecSyncService {
                 + " If it was committed, restore it with: git checkout HEAD -- \":(top)" + path + "\"";
     }
 
+    /** The capabilities a sync of {@code changeName} would retire (delete the spec of). Reads the disk: off the EDT. */
+    public List<String> retiringCapabilities(String changeName) {
+        return computeSync(changeName).stream().filter(SpecSyncResult::retired).map(SpecSyncResult::capabilityName).toList();
+    }
+
     /** The specs folder a retirement prunes up to, never past: {@code <root>/specs}. */
     private Path specsRoot() {
         return Path.of(com.johnnyblabs.openspec.util.OpenSpecFileUtil.openspecPath(project), "specs");
@@ -187,6 +195,15 @@ public final class SpecSyncService {
     }
 
     static void retire(Path spec, Path specsRoot) throws IOException {
+        Path root = deleteAndPrune(spec, specsRoot);
+        ApplicationManager.getApplication().invokeAndWait(() -> WriteAction.run(() -> {
+            VirtualFile vf = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(root);
+            if (vf != null) vf.refresh(false, true);
+        }), ModalityState.defaultModalityState());
+    }
+
+    /** Deletes {@code spec}, then each parent left empty below {@code specsRoot}; returns the normalized root. */
+    static Path deleteAndPrune(Path spec, Path specsRoot) throws IOException {
         Files.deleteIfExists(spec);
         Path root = specsRoot.toAbsolutePath().normalize();
         for (Path dir = spec.toAbsolutePath().normalize().getParent();
@@ -196,21 +213,45 @@ public final class SpecSyncService {
             }
             Files.delete(dir);
         }
-        ApplicationManager.getApplication().invokeAndWait(() -> WriteAction.run(() -> {
-            VirtualFile vf = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(root);
-            if (vf != null) vf.refresh(false, true);
-        }), ModalityState.defaultModalityState());
+        return root;
     }
 
     /** The change's {@code retire_capabilities} marker, read as upstream reads it. */
     SpecMerge.RetirementMarker retirementMarker(String changeName) {
-        Path changeDir = Path.of(com.johnnyblabs.openspec.util.OpenSpecFileUtil.openspecPath(project), "changes", changeName);
-        return RetirementMarkers.read(changeDir, this::knownSchema);
+        Path openspec = Path.of(com.johnnyblabs.openspec.util.OpenSpecFileUtil.openspecPath(project));
+        return RetirementMarkers.read(openspec.resolve("changes").resolve(changeName),
+                name -> schemaVerdict(name, openspec,
+                        com.johnnyblabs.openspec.coordination.CoordinationPaths.resolve().globalDataDir().resolve("schemas"),
+                        this::cliValidatesSchema));
     }
 
-    /** Whether {@code schema} is one the CLI lists; with no CLI, a built-in schema. Set after the schema-source check. */
-    boolean knownSchema(String schema) {
-        return "spec-driven".equals(schema);
+    /** The only schema built into every release that retires (1.8.0 through 2.2.0). */
+    static final java.util.Set<String> BUILT_IN_SCHEMAS = java.util.Set.of("spec-driven");
+
+    /**
+     * Upstream's {@code resolveSchema} order: a project copy ({@code openspec/schemas/<name>/schema.yaml}), then a user
+     * copy, then a built-in. An override counts only when the CLI validates it ({@code cliValidates}: {@code null} with
+     * no CLI, which fails closed); a built-in always loads.
+     */
+    static RetirementMarkers.SchemaVerdict schemaVerdict(String name, Path openspecDir, Path userSchemasDir,
+                                                         java.util.function.Function<String, Boolean> cliValidates) {
+        boolean override = Files.isRegularFile(openspecDir.resolve("schemas").resolve(name).resolve("schema.yaml"))
+                || Files.isRegularFile(userSchemasDir.resolve(name).resolve("schema.yaml"));
+        if (override) {
+            return Boolean.TRUE.equals(cliValidates.apply(name))
+                    ? RetirementMarkers.SchemaVerdict.LOADS : RetirementMarkers.SchemaVerdict.CANNOT_LOAD;
+        }
+        return BUILT_IN_SCHEMAS.contains(name)
+                ? RetirementMarkers.SchemaVerdict.LOADS : RetirementMarkers.SchemaVerdict.UNKNOWN;
+    }
+
+    /** Whether the installed CLI validates {@code name}; {@code null} when there is no CLI to ask. */
+    private @org.jetbrains.annotations.Nullable Boolean cliValidatesSchema(String name) {
+        CliDetectionService detection = project.getService(CliDetectionService.class);
+        if (detection == null || !detection.isAvailable()) return null;
+        com.johnnyblabs.openspec.model.SchemaValidationReport report =
+                project.getService(SchemaService.class).validateSchema(name);
+        return report.isCliFailure() ? null : report.valid();
     }
 
     private List<String> validatePostMerge(SpecSyncResult result) {

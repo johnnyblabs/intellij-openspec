@@ -25,6 +25,14 @@ Following upstream's `decideSpecOutcome`, a capability is retired when all of th
 - the main spec exists;
 - the release's check finds nothing the merge can't account for.
 
+### D1a. Reading the marker
+
+As upstream's `readBooleanMarker` (unchanged 1.8.0 through 2.2): YAML read with YAML 1.2's core schema (so `yes` is a string and a duplicate key is invalid YAML); every `ChangeMetadataSchema` field checked in its order, so a `true` marker in metadata failing another field is not honored; then the schema resolved as `resolveSchema` does (project `openspec/schemas/<name>/`, then the user's, then built-in `spec-driven`). An override counts only when the installed CLI validates it; with no CLI it isn't honored, so the plugin never deletes on a schema it can't check. A marker present but not honorable counts as not declared, with the CLI's reason where a captured run pins its wording, and without a reason otherwise. (`openspec schemas --json` is not the source: it lists a built-in under an invalid override that archive then rejects.)
+
+### D1b. A capability already retired
+
+A removal from a capability whose main spec is gone: from 1.8 a marked change archives writing no spec (the "ignored for new spec" warning stays); otherwise it's refused. The plugin never writes a spec with no requirements.
+
 ### D2. The check, per release
 
 Three variants of upstream's `contentTheMergeCannotName`, chosen by the followed release:

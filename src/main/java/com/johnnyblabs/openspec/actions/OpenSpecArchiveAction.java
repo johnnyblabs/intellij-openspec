@@ -72,20 +72,23 @@ public class OpenSpecArchiveAction extends OpenSpecBaseAction {
                 ArchiveReadinessService readinessService = project.getService(ArchiveReadinessService.class);
                 ArchiveReadinessResult result = readinessService.verify(target.getName());
                 boolean hasDeltaSpecs = project.getService(SpecSyncService.class).hasDeltaSpecs(target.getName());
+                java.util.List<String> retiring = hasDeltaSpecs
+                        ? project.getService(SpecSyncService.class).retiringCapabilities(target.getName()) : java.util.List.of();
 
                 ApplicationManager.getApplication().invokeLater(() -> {
                     VerifyDialog dialog = new VerifyDialog(project, result);
                     if (dialog.showAndGet()) {
-                        archiveChange(project, changeService, target, hasDeltaSpecs);
+                        archiveChange(project, changeService, target, hasDeltaSpecs, retiring);
                     }
                 });
             }
         });
     }
 
-    private void archiveChange(Project project, ChangeService changeService, Change target, boolean hasDeltaSpecs) {
+    private void archiveChange(Project project, ChangeService changeService, Change target, boolean hasDeltaSpecs,
+                               java.util.List<String> retiring) {
         String changeName = target.getName();
-        Boolean sync = ArchiveSyncPrompt.choose(project, changeName, hasDeltaSpecs);
+        Boolean sync = ArchiveSyncPrompt.choose(project, changeName, hasDeltaSpecs, retiring);
         if (sync == null) {
             return;
         }

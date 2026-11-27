@@ -2288,7 +2288,12 @@ public class WorkflowActionPanel extends JPanel {
         }
         String changeName = activeChangeName;
 
-        Boolean sync = ArchiveSyncPrompt.choose(project, changeName, hasDeltaSpecs);
+        // What a sync would delete, read for this change now (it reads the disk, perhaps the CLI): never a stale value.
+        List<String> retiring = !hasDeltaSpecs ? List.of()
+                : com.intellij.openapi.progress.ProgressManager.getInstance().runProcessWithProgressSynchronously(
+                        () -> project.getService(com.johnnyblabs.openspec.services.SpecSyncService.class).retiringCapabilities(changeName),
+                        "Checking Delta Specs", true, project);
+        Boolean sync = ArchiveSyncPrompt.choose(project, changeName, hasDeltaSpecs, retiring);
         if (sync == null) {
             return;
         }

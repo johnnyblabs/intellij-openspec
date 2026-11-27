@@ -61,6 +61,8 @@ public class OpenSpecVerifyAction extends OpenSpecBaseAction {
                 ArchiveReadinessService readinessService = project.getService(ArchiveReadinessService.class);
                 ArchiveReadinessResult result = readinessService.verify(changeName);
                 boolean hasDeltaSpecs = project.getService(SpecSyncService.class).hasDeltaSpecs(changeName);
+                java.util.List<String> retiring = hasDeltaSpecs
+                        ? project.getService(SpecSyncService.class).retiringCapabilities(changeName) : java.util.List.of();
                 boolean archiveOffered = VerifyDialog.archiveOffered(project);
                 VerifyHandoff.Target agent = VerifyHandoff.resolve(project);
 
@@ -68,7 +70,7 @@ public class OpenSpecVerifyAction extends OpenSpecBaseAction {
                     VerifyDialog dialog = VerifyDialog.report(project, result, archiveOffered, agent.label());
                     dialog.show();
                     if (VerifyDialog.archiveRequested(dialog.getExitCode())) {
-                        archiveChange(project, changeService, target, hasDeltaSpecs);
+                        archiveChange(project, changeService, target, hasDeltaSpecs, retiring);
                     } else if (VerifyDialog.handoffRequested(dialog.getExitCode())) {
                         VerifyHandoff.deliver(project, changeName, agent);
                     }
@@ -77,9 +79,10 @@ public class OpenSpecVerifyAction extends OpenSpecBaseAction {
         });
     }
 
-    private void archiveChange(Project project, ChangeService changeService, Change target, boolean hasDeltaSpecs) {
+    private void archiveChange(Project project, ChangeService changeService, Change target, boolean hasDeltaSpecs,
+                               java.util.List<String> retiring) {
         String changeName = target.getName();
-        Boolean sync = ArchiveSyncPrompt.choose(project, changeName, hasDeltaSpecs);
+        Boolean sync = ArchiveSyncPrompt.choose(project, changeName, hasDeltaSpecs, retiring);
         if (sync == null) {
             return;
         }
