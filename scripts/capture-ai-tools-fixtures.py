@@ -160,6 +160,15 @@ CASES = {
     "amp-dir-only": [("file", ".amp/.keep", "")],
     "aider-desk-skills": [("file", ".aider-desk/skills/.keep", "")],
     # A generic OpenSpec skill under .agents/skills, written by hand: the `agents` target exists only from 1.8.0.
+    # Set-up verdict boundaries the fidelity audit inferred: commands alone before 1.7; Antigravity's old-folder
+    # workflows alone; Antigravity's old-folder skill beside an .agents folder another tool owns.
+    "claude-commands-only": [("file", ".claude/commands/opsx/propose.md", "")],
+    "antigravity-legacy-workflows-only": [("file", ".agent/workflows/opsx-propose.md", "")],
+    "antigravity-legacy-skill-beside-agents-owner": [("file", ".agent/skills/openspec-propose/SKILL.md", "Run /openspec-propose.\n"),
+                                                     ("file", ".agents/skills/.openspec-target", "agents\n"),
+                                                     ("file", ".agents/skills/openspec-explore/SKILL.md", "Run /openspec-explore.\n")],
+    # Amp's files as 1.14.3 writes them, read by a release that has no Amp.
+    "amp-files-from-1.14": [("init", "1.14.3", "amp")],
     "agents-generic-skill-by-hand": [("file", ".agents/skills/openspec-explore/SKILL.md", "Run /openspec-explore.\n")],
     "several": [("init", None, "claude,cursor,github-copilot,gemini")],
     # 2.x: a project mixing a 1.17 layout with a 2.x one, the 2.1 scope modes, and 2.1's machine-wide install read

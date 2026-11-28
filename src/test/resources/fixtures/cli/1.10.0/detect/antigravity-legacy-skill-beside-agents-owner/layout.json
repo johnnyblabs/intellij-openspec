@@ -1,0 +1,8 @@
+{
+  "project": {
+    ".agent/skills/openspec-propose/SKILL.md": "Run /openspec-propose.\n",
+    ".agents/skills/.openspec-target": "agents\n",
+    ".agents/skills/openspec-explore/SKILL.md": "Run /openspec-explore.\n"
+  },
+  "home": {}
+}

@@ -674,6 +674,32 @@ Captured by `scripts/capture-ai-tools-fixtures.py`. No CLI command lists the too
 
 Each `detect/<case>/` is a project built by real `openspec init --tools …` runs (the `*-from-1.6` cases with CLI 1.6.0, for the directories tools used before) or by hand for edge cases (`bare-github`, `hermes-file`, the unmarked `.agents` roots). `detected.json` is what upstream's own `getAvailableTools` (`dist/core/available-tools.js`) returned for it. `layout.json` lists every file under the project and the isolated `HOME`, except the `openspec/` tree and the CLI's XDG state. Content is kept for `.openspec-target` ownership markers and, in generated `SKILL.md` files, only for the lines naming a skill (`$openspec-…` or `/openspec-…`), which is what upstream reads to infer an unmarked shared root's owner; other files are empty. All runs use an isolated `HOME`/`XDG_*`.
 
+
+**1.x release boundaries** (captured 2026-11-27, `CAPTURE_VERSIONS=<v> CAPTURE_CASES=<cases>`): layouts on the releases either side of each change in 1.x detection, which `AiToolDetectionContractTest` replays with the release passed. In each, the first release is before the change and the second is from it:
+
+| Layout | Releases | Verdicts |
+|---|---|---|
+| `kimi-dir-only` (`.kimi/` alone) | 1.3.1 / 1.4.0 (also 1.6.0, 1.7.0) | none / `kimi` |
+| `devin-dir-only` | 1.6.0 / 1.7.0 | none / `devin` |
+| `kimi-code-dir-only` | 1.6.0 / 1.7.0 | none / `kimi` |
+| `codex-config-only` (a bare `.codex/`) | 1.7.0 / 1.8.0 (also 1.17.0) | `codex` / none |
+| `builtin-add-codex-list-on-empty` (a marker alone) | 1.7.0 / 1.8.0 | none / `codex` |
+| `agents-generic-skill-by-hand` | 1.7.0 / 1.8.0 | none / `agents` |
+| `agents-workflows-only` | 1.10.0 / 1.11.0 | none / `antigravity` |
+| `zed-dir-beside-codex` | 1.10.0 / 1.11.0 | `codex` / `codex`, `zed` |
+| `amp-dir-only`, `gsd-dir-only` | 1.13.2 / 1.14.0 | none / `amp`, `gsd` |
+
+Other cases:
+- `amp-files-from-1.14`: Amp's files as 1.14.3 writes them, read by 1.13.2, which has no Amp. The verdict is `agents`, for detection and set-up alike.
+- `aider-desk-skills`: a 2.1 tool. 1.7.0, 1.8.0 and 1.17.0 detect nothing.
+- **Set-up boundaries** (`configured.json`, replayed by `ConfiguredToolsContractTest` on every release with captures):
+  - `claude-commands-only`: commands with no skills are set up on 1.7.0, not on 1.6.0.
+  - `antigravity-legacy-workflows-only`: Antigravity's old `.agent/workflows` are set up on 1.17.0, not on 1.11.0 or 1.14.3.
+  - `antigravity-legacy-skill-beside-agents-owner` (1.10.0, 1.11.0): an old-folder skill beside an `.agents` folder that `agents` owns. Set up both times, so not a boundary.
+- `agents-empty-dir`, `agents-unmarked-generic` and `minimax-global` were also captured on 1.7.0 or 1.8.0. Two cases exist only from 1.8.0, because `init --tools agents` and `minimax-code` arrived then.
+
+The 1.x registry dumps from 1.3.0 to 1.17.0 are compared tool by tool against `AiToolRegistry.asOf1x` (`AiToolRegistryContractTest`), reading 1.6's `windsurf` id as `devin`. Only five tools changed shape within 1.x: kimi and devin (1.7.0), codex and agents (1.8.0), and antigravity (1.11.0).
+
 ## `1.14.3/errors/` — failure output the CLI response reader is tested against
 
 Captured by `scripts/capture-error-fixtures.py` from the installed CLI 1.14.3. Each case is `<case>.stdout`, `<case>.stderr` and `<case>.exit`. Every run uses an isolated `HOME`/`XDG_*` under one temp dir and the environment the plugin gives the CLI (`OPENSPEC_TELEMETRY=0`, `NO_COLOR=1`, `FORCE_COLOR=0`, `OPENSPEC_NO_UPDATE_CHECK=1`), except the coloured `update` case. Temp paths are `/fixture`, and `config list`'s anonymous id is a zero UUID. Most `--json` failures exit 1 with a `status: [{severity, code, message, target?, fix?}]` envelope on stdout and empty stderr.
