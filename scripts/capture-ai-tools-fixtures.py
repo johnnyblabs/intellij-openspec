@@ -150,6 +150,15 @@ CASES = {
     "roocode": [("init", None, "roocode")],
     "bob": [("init", None, "bob")],
     "minimax-global": [("home-init", "minimax-code")],
+    # 1.x release boundaries (detection-1x-release-rules): a folder alone, on the releases either side of a change.
+    "codex-config-only": [("file", ".codex/config.toml", "")],
+    "devin-dir-only": [("file", ".devin/.keep", "")],
+    "kimi-dir-only": [("file", ".kimi/.keep", "")],
+    "kimi-code-dir-only": [("file", ".kimi-code/.keep", "")],
+    "zed-dir-beside-codex": [("init", None, "codex"), ("file", ".zed/.keep", "")],
+    "agents-workflows-only": [("file", ".agents/workflows/.keep", "")],
+    "amp-dir-only": [("file", ".amp/.keep", "")],
+    "aider-desk-skills": [("file", ".aider-desk/skills/.keep", "")],
     "several": [("init", None, "claude,cursor,github-copilot,gemini")],
     # 2.x: a project mixing a 1.17 layout with a 2.x one, the 2.1 scope modes, and 2.1's machine-wide install read
     # by 2.0 (the "skills are machine-wide" state a user downgrading meets).
@@ -184,6 +193,9 @@ APPLIES = {
     "builtin-add-cursor-beside-claude": ("1.17.0", None),
     # From 1.7.0: before 1.8.0 the CLI's verdict doesn't read the marker, which proves where that rule starts.
     "builtin-add-codex-list-on-empty": ("1.7.0", None),
+    # `init --tools agents` exists from 1.8.0, when the shared `.agents` target arrived.
+    "agents-unmarked-generic": ("1.8.0", None),
+    "minimax-global": ("1.8.0", None),
     "codex-skills-only-from-1.6": ("1.7.0", "1.17.999"),
     "antigravity-skills-only-from-1.6": ("1.7.0", "1.17.999"),
     "builtin-add-codex-folder-beside-claude": ("2.0.0", None),
