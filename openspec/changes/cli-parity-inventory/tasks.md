@@ -11,8 +11,8 @@
 
 ## 3. First sweep
 
-- [ ] 3.1 Run the sweep over every row and fill in the table. File each finding as its own tracker entry. None is fixed in this change.
+- [x] 3.1 Run the sweep over every row and fill in the table. File each finding as its own tracker entry. None is fixed in this change.
 
 ## 4. Verification
 
-- [ ] 4.1 `./gradlew test` (the inventory test), `DocumentationHygieneTest`, leak check, and `openspec validate --all --strict`.
+- [x] 4.1 `./gradlew test` (the inventory test), `DocumentationHygieneTest`, leak check, and `openspec validate --all --strict`.
