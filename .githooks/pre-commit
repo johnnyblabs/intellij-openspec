@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# pre-commit — block homelab-internal references in the files being committed.
+#
+# The pre-push leak guard only runs on pushes to the GitHub mirror, after the commit
+# already exists on main. This hook catches the same references at commit time, on
+# the staged content of the files this commit adds or changes.
+# Activate per clone with: git config core.hooksPath .githooks
+# Emergency bypass: git commit --no-verify
+set -euo pipefail
+
+# Keep PATTERN and ALLOW in sync with .githooks/pre-push (Guard 2) and PATTERN with
+# .githooks/commit-msg. \b is not used: git grep ignores it.
+PATTERN='\.geek|git@geek|geek:222|johnb([^a-z]|$)|mcp__homelab|(^|[^[:alnum:]])(OSPEC|OSP|OS)-[0-9]|Forgejo #'
+ALLOW=(':!CLAUDE.md' ':!.githooks' ':!.github/workflows/release.yml'
+       ':!src/test/java/com/johnnyblabs/openspec/docs/MarketplaceListingHygieneTest.java'
+       ':!scripts/marketplace-preview.sh')
+
+files=()
+while IFS= read -r -d '' f; do files+=("$f"); done < <(git diff --cached --name-only -z --diff-filter=ACMR)
+[ "${#files[@]}" -eq 0 ] && exit 0
+
+# --cached: the staged content, which is what the commit records (not the working tree).
+hits=$(git grep --cached -nIE "$PATTERN" -- "${files[@]}" "${ALLOW[@]}" 2>/dev/null) || true
+
+if [ -n "$hits" ]; then
+  echo "" >&2
+  echo "✖ pre-commit BLOCKED: homelab-internal references in staged files." >&2
+  echo "$hits" | sed 's/^/    /' >&2
+  echo "" >&2
+  echo "Tracked files reach the public GitHub mirror. Use vendor-neutral wording (\"the linked issue\"," >&2
+  echo "\"tracker entry\"); tracker IDs belong in the gitignored .tracking.yaml sidecar." >&2
+  exit 1
+fi

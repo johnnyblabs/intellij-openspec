@@ -67,12 +67,18 @@ We wrap upstream OpenSpec, so both its contract and the plugin's own are load-be
 ## Branches, pull requests and CI
 
 - **Develop on `origin`; GitHub is a read-only mirror of `main`.** Non-trivial work: branch from `main` → push to `origin` → open a PR there → CI → self-merge. Trivial doc/tracker/comment tweaks may go direct to `main` on `origin`. **The user mirrors `main` to GitHub; the agent never pushes to the `github` remote** (a user-level hook refuses it). GitHub blocks force-push and deletion of public `main`.
+- **A PR that changes UI waits for the user's uiSmoke run.** If it touches `dialogs/`, `toolwindow/`, notifications or an action's presentation, green CI is not enough. Tell the user it's ready and wait for them to report uiSmoke green before merging. Other PRs merge on green CI.
 - **Merge PRs with rebase** on `origin`, not a merge commit or squash, so internal PR numbers stay out of the public log. After merging, check that the tip of `main` has one parent (`git log -1 --format=%P main`); a merge commit there must be fixed before the user mirrors. Then delete the branch locally and on `origin`.
 - **Never `git reset --hard` with a dirty tree.** The working tree usually carries the user's uncommitted `.idea/vcs.xml`. Use `git merge --ff-only` or `git reset --keep`.
 - **Bring a branch up to date by merging or rebasing `main`; never rebuild it from a diff.** A net diff against a stale base silently reverts work merged since. Merge `main` in before merging when an earlier PR touched the same file (usually `CHANGELOG.md`).
 - **A PR whose head predates a workflow change can't merge**: its required check never ran on the new workflow. Merge `main` in and push. An empty commit doesn't start CI.
 - **"Build & Verify" always reports, but skips its heavy steps for bypass-only PRs** (`openspec/**`, `CLAUDE.md`, `.claude/**`, `.githooks/**`, `.gitignore`, `LICENSE`, `ui-smoke.yaml`), so those go green in seconds. Docs aren't bypassed: `DocumentationHygieneTest` validates them.
-- **Hooks** (`git config core.hooksPath .githooks`): `pre-push` vets pushes to the GitHub mirror for leaks; `commit-msg` blocks the same patterns in messages (`pre-push` never scans `git log`). Keep the two `PATTERN`s in sync and never weaken them back to `\b` — git grep ignores it.
+- **Hooks** (`git config core.hooksPath .githooks`):
+  - `pre-commit` blocks leaks in the staged content of the files a commit adds or changes. This makes a hand-run leak grep before each commit unnecessary.
+  - `pre-push` vets pushes to the GitHub mirror for leaks.
+  - `commit-msg` blocks the same patterns in messages (`pre-push` never scans `git log`).
+
+  Keep the three `PATTERN`s, and the `ALLOW` lists in `pre-commit` and `pre-push`, in sync. Never weaken them back to `\b`: git grep ignores it.
 - **Waiting on CI:** use one self-terminating wait command (a clone-local helper, when present) run in the background, not a hand-written polling loop. Treat "no run yet" as pending. Stop any wait when its PR merges, and check for leftovers with `ps` at session end.
 
 ## Testing — required, and tests must verify *real* behavior
@@ -97,6 +103,15 @@ Project subagents live in `.claude/agents/`. Their descriptions state when to in
 
 - **test-engineer** — PLAN mode at the *start* of implementing every OpenSpec change (fixture strategy, what only verifyPlugin/uiSmoke can catch); AUDIT mode alongside code review whenever a diff touches parsers of external output or adds tests with inline expected-shape literals.
 - **openspec-guru** — before any design decision that turns on what upstream OpenSpec models or emits (CLI shapes, config schemas, lifecycle procedure). Rule of thumb: if the proposal would introduce a concept, verify upstream has it first.
+- **CLI-fidelity audit (openspec-guru), unprompted, twice per change.** Run it on any change whose behavior mirrors, wraps or acts on CLI output or state.
+  - **When:** once after the proposal is written, and once on the finished code before the PR.
+  - **How:** give it the artifacts or the code, not your conclusions. Ask it to report:
+    - made-up requirements, meaning concepts or rules the CLI lacks;
+    - behavior stricter or laxer than the CLI's;
+    - consent or consequence gaps in what the UI tells the user;
+    - wording that contradicts upstream terms.
+  - **Act on findings:** confirm an inferred finding with a capture before acting on it. Fix the findings, or record why one isn't fixed.
+  - **Why it exists:** the user asked for this check by hand three times in one session, and each time it found a real gap.
 - **jetbrains-platform-guru** — before implementing anything that touches new IntelliJ Platform APIs or extension points (feasibility on 2024.2+, threading/dumb-mode implications).
 - **plugin-ui-specialist** — when a feature needs a UI home ("which surface tells the story") or a demo/walkthrough is being planned.
 - **intellij-code-reviewer** — after the generic review, for any diff touching PSI/VFS/EDT/services/actions/inspections.
