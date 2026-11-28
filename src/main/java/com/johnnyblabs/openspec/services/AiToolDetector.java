@@ -57,12 +57,13 @@ public final class AiToolDetector {
             if (known && !AiToolRegistry.acceptedBy(tool, release)) continue;
             tools.add(AiToolRegistry.asOf1x(tool, release));
         }
+        List<String> names = AiToolRegistry.skillNames(known ? release : null);
         List<AiTool> candidates = new ArrayList<>();
         for (AiTool tool : tools) {
-            if (isCandidate(project, home, tool)) candidates.add(tool);
+            if (isCandidate(project, home, tool, names)) candidates.add(tool);
         }
         Set<String> owners = new HashSet<>();
-        for (AiTool tool : reconcile(project, candidates)) owners.add(tool.id());
+        for (AiTool tool : reconcile(project, candidates, names)) owners.add(tool.id());
         boolean independentPaths = !known || !CliVersion.below(release, "1.11.0");
         List<AiTool> detected = new ArrayList<>();
         for (AiTool tool : candidates) {
@@ -74,11 +75,11 @@ public final class AiToolDetector {
         return detected;
     }
 
-    private static boolean isCandidate(Path project, @Nullable Path home, AiTool tool) {
+    private static boolean isCandidate(Path project, @Nullable Path home, AiTool tool, List<String> names) {
         if (tool.globalSkillsDir() != null) {
             if (home == null) return false;
             Path skills = home.resolve(tool.globalSkillsDir()).resolve("skills");
-            return AiToolRegistry.SKILL_NAMES.stream().anyMatch(n -> Files.exists(skills.resolve(n).resolve("SKILL.md")));
+            return names.stream().anyMatch(n -> Files.exists(skills.resolve(n).resolve("SKILL.md")));
         }
         if (tool.skillsDir() == null) return false;
         if (!tool.detectionPaths().isEmpty()) {
@@ -111,11 +112,12 @@ public final class AiToolDetector {
                 .filter(t -> !known || AiToolRegistry.acceptedBy(t, release))
                 .map(t -> AiToolRegistry.asOf1x(t, release))
                 .filter(t -> shaped.skillsDir().equals(t.skillsDir())).toList();
-        return sharing.size() < 2 ? null : AiToolRegistry.byId(reconcile(project, sharing).getFirst().id());
+        return sharing.size() < 2 ? null
+                : AiToolRegistry.byId(reconcile(project, sharing, AiToolRegistry.skillNames(known ? release : null)).getFirst().id());
     }
 
     /** One owner per skills root that several detected tools share; a tool alone on its root owns it. */
-    private static List<AiTool> reconcile(Path project, List<AiTool> tools) {
+    private static List<AiTool> reconcile(Path project, List<AiTool> tools, List<String> names) {
         Map<String, List<AiTool>> byRoot = new LinkedHashMap<>();
         for (AiTool tool : tools) {
             if (tool.skillsDir() == null) continue;
@@ -134,9 +136,9 @@ public final class AiToolDetector {
                 reconciled.add(marked);
                 continue;
             }
-            String inferred = inferOwner(project, root);
+            String inferred = inferOwner(project, root, names);
             AiTool legacyCodex = group.stream()
-                    .filter(t -> t.id().equals("codex") && hasLegacySkills(project, t)).findFirst().orElse(null);
+                    .filter(t -> t.id().equals("codex") && hasLegacySkills(project, t, names)).findFirst().orElse(null);
             if (AiToolRegistry.UNIVERSAL_ID.equals(inferred) && legacyCodex != null) {
                 // Before markers, selecting both produced a generic tree plus a Codex-only legacy tree.
                 reconciled.add(legacyCodex);
@@ -147,11 +149,11 @@ public final class AiToolDetector {
                 reconciled.add(inferredTool);
                 continue;
             }
-            if (hasCurrentSkills(project, root)) {
+            if (hasCurrentSkills(project, root, names)) {
                 reconciled.add(universalOrFirst(group));
                 continue;
             }
-            AiTool legacy = group.stream().filter(t -> hasLegacySkills(project, t)).findFirst().orElse(null);
+            AiTool legacy = group.stream().filter(t -> hasLegacySkills(project, t, names)).findFirst().orElse(null);
             reconciled.add(legacy != null ? legacy : universalOrFirst(group));
         }
         return reconciled;
@@ -179,9 +181,9 @@ public final class AiToolDetector {
     }
 
     /** The owner implied by generated skills: Codex syntax names Codex, generic syntax the universal target. */
-    private static @Nullable String inferOwner(Path project, String root) {
+    private static @Nullable String inferOwner(Path project, String root, List<String> names) {
         boolean generic = false;
-        for (String skill : AiToolRegistry.SKILL_NAMES) {
+        for (String skill : names) {
             try {
                 String content = Files.readString(skillFile(project, root, skill), StandardCharsets.UTF_8);
                 if (content.contains("$openspec-")) return "codex";
@@ -193,13 +195,13 @@ public final class AiToolDetector {
         return generic ? AiToolRegistry.UNIVERSAL_ID : null;
     }
 
-    private static boolean hasCurrentSkills(Path project, String root) {
-        return AiToolRegistry.SKILL_NAMES.stream().anyMatch(s -> Files.exists(skillFile(project, root, s)));
+    private static boolean hasCurrentSkills(Path project, String root, List<String> names) {
+        return names.stream().anyMatch(s -> Files.exists(skillFile(project, root, s)));
     }
 
-    private static boolean hasLegacySkills(Path project, AiTool tool) {
+    private static boolean hasLegacySkills(Path project, AiTool tool, List<String> names) {
         return tool.legacySkillsDirs().stream().anyMatch(root ->
-                AiToolRegistry.SKILL_NAMES.stream().anyMatch(s -> Files.exists(skillFile(project, root, s))));
+                names.stream().anyMatch(s -> Files.exists(skillFile(project, root, s))));
     }
 
     private static Path skillFile(Path project, String root, String skill) {

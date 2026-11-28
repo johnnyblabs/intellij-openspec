@@ -1,0 +1,17 @@
+{
+  "version": "1.14.2",
+  "skillNames": [
+    "openspec-explore",
+    "openspec-new-change",
+    "openspec-continue-change",
+    "openspec-apply-change",
+    "openspec-update-change",
+    "openspec-ff-change",
+    "openspec-sync-specs",
+    "openspec-archive-change",
+    "openspec-bulk-archive-change",
+    "openspec-verify-change",
+    "openspec-onboard",
+    "openspec-propose"
+  ]
+}

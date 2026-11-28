@@ -219,6 +219,8 @@ public final class AiToolDetectionService {
     private final class Verdict {
         final Path base;
         final DetectionRules rules;
+        /** The skill names the detected release recognizes (all, with no CLI). */
+        final List<String> skillNames;
         /** Commands count from 1.7.0; before it, upstream's verdict reads skills only. */
         final boolean countsCommands;
         /** A tool's commands in an older folder (Antigravity's .agent/workflows) count from 1.17.0. */
@@ -249,6 +251,7 @@ public final class AiToolDetectionService {
             this.rules = rules(base);
             String version = cliVersion();
             boolean known = version != null && !version.isBlank();
+            this.skillNames = AiToolRegistry.skillNames(known ? version : null);
             // 2.x, and no CLI, keep 1.17's rules: both count.
             this.countsCommands = rules.is2x() || !known || CliVersion.atLeast(version, "1.7.0");
             this.countsLegacyCommands = rules.is2x() || !known || CliVersion.atLeast(version, "1.17.0");
@@ -294,24 +297,24 @@ public final class AiToolDetectionService {
             // In a folder tools share, a command counts only at the tool's own command paths, as upstream checks it.
             boolean commands = v.countsCommands
                     && (isSharedFolder(skillsDir) ? Detector2x.hasAnyCommand(base, tool) : hasOpenSpecCommands(own));
-            if (commands || (!sharedSkillsNotItsOwn && hasOpenSpecSkills(own))) return true;
+            if (commands || (!sharedSkillsNotItsOwn && hasOpenSpecSkills(own, v.skillNames))) return true;
         }
         for (String d : shaped.legacySkillsDirs()) {
             File legacy = base.resolve(d).toFile();
             // 1.x reads older folders only for the shared folder's owner; 2.x reads them for every tool.
             if ((v.countsLegacyCommands && hasOpenSpecCommands(legacy))
-                    || ((v.listing != null || !sharedSkillsNotItsOwn) && hasOpenSpecSkills(legacy))) {
+                    || ((v.listing != null || !sharedSkillsNotItsOwn) && hasOpenSpecSkills(legacy, v.skillNames))) {
                 return true;
             }
         }
         Path home = home();
         String global = v.rules.globalSkillsDir(tool);
-        if (home != null && global != null && hasOpenSpecFiles(home.resolve(global).toFile())) return true;
+        if (home != null && global != null && hasOpenSpecFiles(home.resolve(global).toFile(), v.skillNames)) return true;
         if (!detected) return false;
         // The shared .agents/skills copy counted above when it is the tool's; SkillLocator finds it for any tool.
         Path shared = base.resolve(".agents").resolve("skills");
         boolean skipShared = v.listing != null || sharedSkillsNotItsOwn;
-        return hasLocatedSkill(base, v.listed, tool, located -> !(skipShared && located.startsWith(shared)));
+        return hasLocatedSkill(base, v.listed, tool, v.skillNames, located -> !(skipShared && located.startsWith(shared)));
     }
 
     /**
@@ -355,12 +358,12 @@ public final class AiToolDetectionService {
      * Whether {@link SkillLocator} finds an OpenSpec skill for {@code tool} in the project or the home directory that
      * {@code counts}.
      */
-    private boolean hasLocatedSkill(Path base, List<String> listed, AiToolRegistry.AiTool tool,
+    private boolean hasLocatedSkill(Path base, List<String> listed, AiToolRegistry.AiTool tool, List<String> skillNames,
                                     java.util.function.Predicate<Path> counts) {
         GlobalSkillsCache cache = project.getService(GlobalSkillsCache.class);
         HomeSkills homeSkills = cache != null ? cache.snapshot() : HomeSkills.NONE;
         boolean preferred = tool.equals(WorkflowInvocation.preferredTool(project));
-        return AiToolRegistry.SKILL_NAMES.stream().anyMatch(skill -> {
+        return skillNames.stream().anyMatch(skill -> {
             Path found = SkillLocator.find(base, listed, homeSkills, tool, skill, preferred);
             return found != null && counts.test(found);
         });
@@ -383,13 +386,18 @@ public final class AiToolDetectionService {
         return Set.copyOf(shared);
     }
 
-    private static boolean hasOpenSpecFiles(File toolDir) {
-        return hasOpenSpecSkills(toolDir) || hasOpenSpecCommands(toolDir);
+    private static boolean hasOpenSpecFiles(File toolDir, List<String> skillNames) {
+        return hasOpenSpecSkills(toolDir, skillNames) || hasOpenSpecCommands(toolDir);
     }
 
-    private static boolean hasOpenSpecSkills(File toolDir) {
-        File[] skillFolders = new File(toolDir, "skills").listFiles(f -> f.isDirectory() && f.getName().startsWith("openspec-"));
-        return skillFolders != null && skillFolders.length > 0;
+    /**
+     * Whether {@code toolDir/skills/<name>/SKILL.md} exists for one of the release's skill names, upstream's only test
+     * for an OpenSpec skill (an existence check, as its {@code existsSync}): a folder without the file, or a name the
+     * release doesn't have, doesn't count.
+     */
+    static boolean hasOpenSpecSkills(File toolDir, List<String> skillNames) {
+        File skills = new File(toolDir, "skills");
+        return skillNames.stream().anyMatch(n -> new File(new File(skills, n), "SKILL.md").exists());
     }
 
     /** Command files, where each tool keeps them. */

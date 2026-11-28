@@ -60,6 +60,17 @@ public final class AiToolRegistry {
             "openspec-bulk-archive-change", "openspec-verify-change", "openspec-onboard", "openspec-propose",
             "openspec");
 
+    /**
+     * The skill names a release recognizes ({@code SKILL_NAMES} in {@code dist/core/shared/tool-detection.js}): 11 before
+     * 1.6.0, which adds {@code openspec-update-change}; 12 before 2.2.0, which adds the {@code openspec} router; all 13
+     * from 2.2.0 and when no release is known. Contract-tested against every captured {@code <v>/skill-names.json}.
+     */
+    public static List<String> skillNames(@Nullable String release) {
+        if (release == null || release.isBlank() || !CliVersion.below(release, "2.2.0")) return SKILL_NAMES;
+        List<String> names = SKILL_NAMES.stream().filter(n -> !n.equals("openspec")).toList();
+        return CliVersion.below(release, "1.6.0") ? names.stream().filter(n -> !n.equals("openspec-update-change")).toList() : names;
+    }
+
     /** Upstream's universal target, the default owner of an unclaimed shared {@code .agents} root. */
     static final String UNIVERSAL_ID = "agents";
 
