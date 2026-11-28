@@ -888,7 +888,7 @@ On CLI 2.1 and later, when tools share a project folder (Trae and Trae CN on `.t
 
 ### Requirement: Set-up status follows the CLI's tool list, folder ownership and folders
 
-The plugin SHALL count a tool as set up exactly when the CLI's `getConfiguredTools` does, including a tool it doesn't detect. A tool the tool list names counts by the CLI's rule. From CLI 1.8, where tools share a skills folder on 1.x, only its owner counts. From CLI 1.7, a folder that is only a detection path SHALL NOT make a tool set up. Before the release that introduced a rule, it SHALL NOT apply.
+The plugin SHALL count a tool as set up exactly when the CLI's `getConfiguredTools` does, including a tool it doesn't detect. A tool the tool list names counts by the CLI's rule. From CLI 1.8, where tools share a skills folder on 1.x, only its owner counts. From CLI 1.7, a folder that is only a detection path SHALL NOT make a tool set up. Before the release that introduced a rule, it SHALL NOT apply. A skill SHALL count only as `<name>/SKILL.md` for a name the release uses.
 
 #### Scenario: A tool the list names
 - **WHEN** `.agents/skills/.openspec-target` names `codex` with no skill file yet, on CLI 1.17 or 2.x
@@ -913,6 +913,23 @@ The plugin SHALL count a tool as set up exactly when the CLI's `getConfiguredToo
 #### Scenario: Before 1.7
 - **WHEN** the detected CLI is below 1.7 and Kimi Code's skills exist in `.kimi/skills/`, or Devin Desktop's in `.windsurf/skills/`
 - **THEN** the tool SHALL show as set up, since that was its skills folder then
+
+#### Scenario: A skill folder without its skill file
+- **WHEN** a tool's skills folder holds `openspec-explore/` with no `SKILL.md`, or a `SKILL.md` under a name no release uses (such as `openspec-custom`)
+- **THEN** the tool SHALL NOT show as set up from it, on any release, as the CLI's captured verdicts show
+
+#### Scenario: A skill name the release doesn't have
+- **WHEN** a tool's only skill is `openspec-update-change` and the CLI is 1.5, or its only skill is the `openspec` router and the CLI is older than 2.2
+- **THEN** the tool SHALL NOT show as set up; from 1.6 (`openspec-update-change`) and from 2.2 (`openspec`) it SHALL
+
+#### Scenario: Skills installed only for this machine
+- **WHEN** the detected CLI is 2.1 or later and a tool's OpenSpec skills exist only for this machine, not in the project
+- **THEN** the tool SHALL show as detected, not set up, as the CLI's verdict says
+- **AND** when `openspec init` would install it for this machine (the project has no set-up tool, no saved scope says project, and the tool supports global skills), Manage AI Tools SHALL say so, and Configure SHALL say it installs or refreshes the tool's skills for every project on this machine
+
+#### Scenario: An adapter-backed tool's older folder
+- **WHEN** the detected CLI is 1.11 or later and Antigravity's skills are in its older `.agent/skills/` while another tool owns `.agents`
+- **THEN** Antigravity SHALL show as set up, as the CLI counts an adapter-backed tool's older-folder skills whoever owns the shared folder
 
 ### Requirement: The CLI 2.2 router skill is an OpenSpec skill
 
