@@ -1,6 +1,7 @@
 package com.johnnyblabs.openspec.services;
 
 import com.johnnyblabs.openspec.services.AiToolRegistry.AiTool;
+import com.johnnyblabs.openspec.util.CliVersion;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
@@ -29,21 +30,45 @@ public final class AiToolDetector {
 
     /** The tools detected in {@code project} by {@code rules}' release line, in registry order. */
     public static List<AiTool> detect(Path project, @Nullable Path home, DetectionRules rules) {
-        return rules.is2x() ? Detector2x.detect(project, home, rules) : detect1x(project, home);
+        return detect(project, home, rules, null);
     }
 
-    private static List<AiTool> detect1x(Path project, @Nullable Path home) {
-        List<AiTool> candidates = new ArrayList<>();
+    /**
+     * {@link #detect(Path, Path, DetectionRules)}, under 1.x rules as the 1.x {@code release} applies them. A
+     * {@code null} release keeps 1.17's shapes and rules with no release filter.
+     */
+    public static List<AiTool> detect(Path project, @Nullable Path home, DetectionRules rules, @Nullable String release) {
+        return rules.is2x() ? Detector2x.detect(project, home, rules) : detect1x(project, home, release);
+    }
+
+    /**
+     * Upstream's {@code getAvailableTools} as the release had it ({@code dist/core/available-tools.js}): unchanged
+     * 1.3.0-1.7.x; home-directory tools and shared-root reconciliation from 1.8.0; a tool's own detection path beside
+     * a shared root it doesn't own from 1.11.0, unchanged since (1.15.0's file-view seam behaves the same).
+     * <p>
+     * The 1.8.0 rules need no gate of their own. Before 1.8.0 no two tools share a skills folder and none has a home
+     * folder (every captured registry from 1.3.0 to 1.7.0), so with that release's tools and shapes, reconciliation
+     * leaves each candidate its own folder's owner, which is exactly upstream's "every candidate is detected".
+     */
+    private static List<AiTool> detect1x(Path project, @Nullable Path home, @Nullable String release) {
+        boolean known = release != null && !release.isBlank();
+        List<AiTool> tools = new ArrayList<>();
         for (AiTool tool : AiToolRegistry.all()) {
+            if (known && !AiToolRegistry.acceptedBy(tool, release)) continue;
+            tools.add(AiToolRegistry.asOf1x(tool, release));
+        }
+        List<AiTool> candidates = new ArrayList<>();
+        for (AiTool tool : tools) {
             if (isCandidate(project, home, tool)) candidates.add(tool);
         }
         Set<String> owners = new HashSet<>();
         for (AiTool tool : reconcile(project, candidates)) owners.add(tool.id());
-
+        boolean independentPaths = !known || !CliVersion.below(release, "1.11.0");
         List<AiTool> detected = new ArrayList<>();
         for (AiTool tool : candidates) {
-            if (tool.globalSkillsDir() != null || hasIndependentDetectionPath(project, tool) || owners.contains(tool.id())) {
-                detected.add(tool);
+            if (tool.globalSkillsDir() != null || (independentPaths && hasIndependentDetectionPath(project, tool))
+                    || owners.contains(tool.id())) {
+                detected.add(AiToolRegistry.byId(tool.id()));
             }
         }
         return detected;
@@ -74,9 +99,19 @@ public final class AiToolDetector {
      * upstream 1.x's {@code isSharedSkillTargetActive}, which reconciles every tool on that folder.
      */
     static @Nullable AiTool sharedRootOwner(Path project, AiTool tool) {
-        if (tool.skillsDir() == null) return null;
-        List<AiTool> sharing = AiToolRegistry.all().stream().filter(t -> tool.skillsDir().equals(t.skillsDir())).toList();
-        return sharing.size() < 2 ? null : reconcile(project, sharing).getFirst();
+        return sharedRootOwner(project, tool, null);
+    }
+
+    /** {@link #sharedRootOwner(Path, AiTool)} among the tools a 1.x {@code release} has, as it shaped them. */
+    static @Nullable AiTool sharedRootOwner(Path project, AiTool tool, @Nullable String release) {
+        AiTool shaped = AiToolRegistry.asOf1x(tool, release);
+        if (shaped.skillsDir() == null) return null;
+        boolean known = release != null && !release.isBlank();
+        List<AiTool> sharing = AiToolRegistry.all().stream()
+                .filter(t -> !known || AiToolRegistry.acceptedBy(t, release))
+                .map(t -> AiToolRegistry.asOf1x(t, release))
+                .filter(t -> shaped.skillsDir().equals(t.skillsDir())).toList();
+        return sharing.size() < 2 ? null : AiToolRegistry.byId(reconcile(project, sharing).getFirst().id());
     }
 
     /** One owner per skills root that several detected tools share; a tool alone on its root owns it. */

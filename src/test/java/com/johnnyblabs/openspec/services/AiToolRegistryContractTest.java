@@ -145,6 +145,51 @@ class AiToolRegistryContractTest {
         }
     }
 
+    /** Every captured 1.x registry below the target, and each one's tool count. */
+    static final Map<String, Integer> TOOL_COUNT_1X = Map.ofEntries(Map.entry("1.3.0", 29), Map.entry("1.4.0", 31),
+            Map.entry("1.6.0", 32), Map.entry("1.7.0", 35), Map.entry("1.8.0", 37), Map.entry("1.9.0", 38),
+            Map.entry("1.10.0", 39), Map.entry("1.11.0", 39), Map.entry("1.12.0", 40), Map.entry("1.13.1", 40),
+            Map.entry("1.14.0", 50), Map.entry("1.14.3", 50), Map.entry("1.15.0", 50), Map.entry("1.16.0", 50),
+            Map.entry("1.16.1", 50), Map.entry("1.17.0", 50));
+
+    /**
+     * Below the target, each tool the release had, as {@link AiToolRegistry#asOf1x} shapes it, has that release's
+     * folders, detection paths and older directories, and from 1.17.0 the same order. Before 1.7.0
+     * the CLI calls Devin Desktop {@code windsurf} and lists it near the end, and a few earlier display names aren't
+     * the plugin's aliases.
+     */
+    @TestFactory
+    Stream<DynamicTest> eachToolsShapeOnAn1xReleaseIsThatRegistrys() {
+        List<String> below = FixtureVersions.versionsWith("ai-tools.json").stream()
+                .filter(v -> v.startsWith("1.") && com.johnnyblabs.openspec.util.CliVersion.below(v, TARGET)).toList();
+        assertEquals(new java.util.TreeSet<>(TOOL_COUNT_1X.keySet()), new java.util.TreeSet<>(below),
+                "sanity: every captured 1.x registry below the target is compared");
+        return below.stream().map(v -> DynamicTest.dynamicTest(v, () -> {
+            com.google.gson.JsonArray tools = dump(v).getAsJsonArray("tools");
+            assertEquals(TOOL_COUNT_1X.get(v), tools.size(), "sanity: CLI " + v + "'s tool count");
+            int compared = 0;
+            for (JsonElement e : tools) {
+                JsonObject t = e.getAsJsonObject();
+                String id = SkillToolList.ALIASES.getOrDefault(t.get("value").getAsString(), t.get("value").getAsString());
+                AiTool record = AiToolRegistry.byId(id);
+                assertNotNull(record, v + " " + id);
+                assertTrue(AiToolRegistry.acceptedBy(record, v), v + " " + id + ": the release has it, so the plugin accepts it");
+                AiTool tool = AiToolRegistry.asOf1x(record, v);
+                assertEquals(stringOrNull(t, "skillsDir"), tool.skillsDir(), v + " " + id + " skillsDir");
+                assertEquals(stringOrNull(t, "globalSkillsDir"), tool.globalSkillsDir(), v + " " + id + " globalSkillsDir");
+                assertEquals(strings(t, "detectionPaths"), tool.detectionPaths(), v + " " + id + " detectionPaths");
+                assertEquals(strings(t, "legacySkillsDirs"), tool.legacySkillsDirs(), v + " " + id + " legacySkillsDirs");
+                compared++;
+            }
+            assertEquals(tools.size(), compared);
+            assertEquals(tools.size(), AiToolRegistry.all().stream().filter(x -> AiToolRegistry.acceptedBy(x, v)).count(),
+                    v + ": the plugin accepts exactly the release's tools");
+            if (!com.johnnyblabs.openspec.util.CliVersion.below(v, "1.17.0")) {
+                assertEquals(new ArrayList<>(ids(dump(v))), accepted(v).stream().map(AiTool::id).toList(), v + ": the same order from 1.17.0");
+            }
+        }));
+    }
+
     @TestFactory
     Stream<DynamicTest> anIdOtherThanTheToolsIsOneTheCliAliasesToIt() {
         return perRelease("aliases", v -> {

@@ -67,7 +67,8 @@ public final class AiToolDetectionService {
         String basePath = project.getBasePath();
         if (basePath == null) return List.of();
         Path base = Path.of(basePath);
-        return AiToolDetector.detect(base, home(), rules(base));
+        // The detected CLI's release decides 1.x rules within the line; with none, 1.17's apply as before.
+        return AiToolDetector.detect(base, home(), rules(base), cliVersion());
     }
 
     /** The detected CLI's release-line rules, or, with no CLI detected, the line the project's files show. */
@@ -218,8 +219,10 @@ public final class AiToolDetectionService {
     private final class Verdict {
         final Path base;
         final DetectionRules rules;
-        /** From 1.7 a 1.6-era folder (.kimi, .windsurf) is only a detection path, not a skills folder. */
-        final boolean detectionPathsAreSkillsFolders;
+        /** Commands count from 1.7.0; before it, upstream's verdict reads skills only. */
+        final boolean countsCommands;
+        /** A tool's commands in an older folder (Antigravity's .agent/workflows) count from 1.17.0. */
+        final boolean countsLegacyCommands;
         /** From 1.8 a shared skills folder's skills count only for its owner, and the marker's tool counts. */
         final boolean sharedFolderOwnership;
         final Detector2x.@Nullable Context listing;
@@ -228,9 +231,17 @@ public final class AiToolDetectionService {
         /** Each shared skills folder's owner under 1.x rules, reconciled once per folder. */
         private final Map<String, Optional<AiToolRegistry.AiTool>> owners = new HashMap<>();
 
+        /** The detected 1.x release, or {@code null}: 2.x rules, or no CLI (1.17's shapes with no release filter). */
+        final @Nullable String release1x;
+
         AiToolRegistry.@Nullable AiTool sharedRootOwner(AiToolRegistry.AiTool tool) {
-            return owners.computeIfAbsent(tool.skillsDir(),
-                    d -> Optional.ofNullable(AiToolDetector.sharedRootOwner(base, tool))).orElse(null);
+            return owners.computeIfAbsent(shape(tool).skillsDir(),
+                    d -> Optional.ofNullable(AiToolDetector.sharedRootOwner(base, tool, release1x))).orElse(null);
+        }
+
+        /** The tool as the detected 1.x release shaped it (its folders then); the record itself otherwise. */
+        AiToolRegistry.AiTool shape(AiToolRegistry.AiTool tool) {
+            return AiToolRegistry.asOf1x(tool, release1x);
         }
 
         Verdict(Path base) {
@@ -238,9 +249,12 @@ public final class AiToolDetectionService {
             this.rules = rules(base);
             String version = cliVersion();
             boolean known = version != null && !version.isBlank();
-            this.detectionPathsAreSkillsFolders = known && !CliVersion.atLeast(version, "1.7.0");
+            // 2.x, and no CLI, keep 1.17's rules: both count.
+            this.countsCommands = rules.is2x() || !known || CliVersion.atLeast(version, "1.7.0");
+            this.countsLegacyCommands = rules.is2x() || !known || CliVersion.atLeast(version, "1.17.0");
             this.sharedFolderOwnership = !known || CliVersion.atLeast(version, "1.8.0");
             this.listing = rules.is2x() ? new Detector2x.Context(base, rules) : null;
+            this.release1x = known && !rules.is2x() ? version : null;
             this.listed = SkillToolList.ids(SkillToolList.read(base));
         }
     }
@@ -258,38 +272,36 @@ public final class AiToolDetectionService {
     private boolean isSetUp(Verdict v, AiToolRegistry.AiTool tool, boolean detected) {
         Path base = v.base;
         if (!v.rules.knows(tool) || !countsInItsFolderGroup(v.rules, v.listed, tool)) return false;
+        // A 1.x release counts only the tools it has, in the folders it gave them.
+        if (v.release1x != null && !AiToolRegistry.acceptedBy(tool, v.release1x)) return false;
+        AiToolRegistry.AiTool shaped = v.shape(tool);
         // Whether the skills in the tool's own skills folder are someone else's: on 2.x every project tool's skills
         // sit in the shared .agents/skills, which counts only through the list; on 1.x a shared folder's owner.
         boolean sharedSkillsNotItsOwn;
         if (v.listing != null) {
             if (Detector2x.isListedToolPresent(v.listing, tool) || Detector2x.hasSkillLinks(v.listing, tool)) return true;
             sharedSkillsNotItsOwn = ".agents".equals(v.rules.skillsDir(tool));
-        } else if (v.sharedFolderOwnership && tool.skillsDir() != null) {
-            if (tool.id().equals(AiToolDetector.readMarker(base, tool.skillsDir()))) return true;
+        } else if (v.sharedFolderOwnership && shaped.skillsDir() != null) {
+            if (tool.id().equals(AiToolDetector.readMarker(base, shaped.skillsDir()))) return true;
             AiToolRegistry.AiTool owner = v.sharedRootOwner(tool);
             sharedSkillsNotItsOwn = owner != null && !owner.equals(tool);
         } else {
             sharedSkillsNotItsOwn = false;
         }
-        String skillsDir = v.rules.skillsDir(tool);
+        String skillsDir = v.listing != null ? v.rules.skillsDir(tool) : shaped.skillsDir();
         if (skillsDir != null) {
             File own = base.resolve(skillsDir).toFile();
             // In a folder tools share, a command counts only at the tool's own command paths, as upstream checks it.
-            boolean commands = isSharedFolder(skillsDir) ? Detector2x.hasAnyCommand(base, tool) : hasOpenSpecCommands(own);
+            boolean commands = v.countsCommands
+                    && (isSharedFolder(skillsDir) ? Detector2x.hasAnyCommand(base, tool) : hasOpenSpecCommands(own));
             if (commands || (!sharedSkillsNotItsOwn && hasOpenSpecSkills(own))) return true;
         }
-        for (String d : tool.legacySkillsDirs()) {
+        for (String d : shaped.legacySkillsDirs()) {
             File legacy = base.resolve(d).toFile();
             // 1.x reads older folders only for the shared folder's owner; 2.x reads them for every tool.
-            if (hasOpenSpecCommands(legacy) || ((v.listing != null || !sharedSkillsNotItsOwn) && hasOpenSpecSkills(legacy))) {
+            if ((v.countsLegacyCommands && hasOpenSpecCommands(legacy))
+                    || ((v.listing != null || !sharedSkillsNotItsOwn) && hasOpenSpecSkills(legacy))) {
                 return true;
-            }
-        }
-        if (v.detectionPathsAreSkillsFolders) {
-            // Before 1.7, .windsurf and .kimi were Devin Desktop's (then Windsurf's) and Kimi Code's skills folders.
-            for (String p : tool.detectionPaths()) {
-                File root = base.resolve(p.endsWith("/skills") ? p.substring(0, p.length() - "/skills".length()) : p).toFile();
-                if (root.isDirectory() && hasOpenSpecFiles(root)) return true;
             }
         }
         Path home = home();

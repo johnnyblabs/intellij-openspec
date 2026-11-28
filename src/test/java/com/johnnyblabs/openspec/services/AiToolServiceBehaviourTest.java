@@ -128,13 +128,18 @@ public class AiToolServiceBehaviourTest extends BasePlatformTestCase {
         service().setCliVersionForTest(() -> "1.13.2");
         service().detect();
 
-        assertTrue("sanity: Amp is detected", service().getDetectedTools().contains("Amp"));
-        assertEquals(List.of("claude"), service().getDetectedCliToolIds());
-        ToolInfo amp = info("Amp");
-        assertNotNull("a tool the project already has is still listed", amp);
-        assertNull("but not offered for init", amp.cliId());
+        // 1.13.2 has no Amp (added in 1.14.0): Amp's marker names no tool it knows, so the shared skills fall to the
+        // universal `agents`, as that CLI reports (fixtures/cli/1.13.2/detect/amp-files-from-1.14). Amp is neither
+        // listed nor offered.
+        assertFalse("1.13.2 doesn't detect a tool it lacks", service().getDetectedTools().contains("Amp"));
+        assertEquals(List.of("claude", "agents"), service().getDetectedCliToolIds());
+        assertNull("so it isn't offered for init", info("Amp"));
         assertNull("an undetected newer tool is not listed", info("Warp"));
         assertEquals("claude", info("Claude Code").cliId());
+        // The same files on 1.14.3, which has Amp: listed and offered.
+        service().setCliVersionForTest(() -> "1.14.3");
+        service().detect();
+        assertEquals("amp", info("Amp").cliId());
     }
 
     public void testTheTargetCliIsPassedEveryDetectedTool() throws Exception {

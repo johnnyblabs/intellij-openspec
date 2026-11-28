@@ -441,6 +441,32 @@ public final class AiToolRegistry {
     }
 
     /**
+     * The tool as a 1.x {@code release} shaped it: its skills directory, detection paths and older directories as that
+     * release's registry had them ({@code fixtures/cli/<v>/ai-tools.json}). The record itself is 1.17's shape; only five
+     * tools changed within 1.x. {@code null} (no release known) returns the record unchanged.
+     */
+    public static AiTool asOf1x(AiTool tool, @Nullable String release) {
+        if (release == null || release.isBlank()) return tool;
+        return switch (tool.id()) {
+            // 1.7.0: Kimi moved to .kimi-code and Windsurf became Devin Desktop, both keeping the old folder as a path.
+            case "kimi" -> CliVersion.below(release, "1.7.0") ? shaped(tool, ".kimi", List.of(), List.of()) : tool;
+            case "devin" -> CliVersion.below(release, "1.7.0") ? shaped(tool, ".windsurf", List.of(), List.of()) : tool;
+            // 1.8.0: the shared .agents target arrived; Codex moved into it and `agents` gained it as its folder.
+            case "codex" -> CliVersion.below(release, "1.8.0") ? shaped(tool, ".codex", List.of(), List.of()) : tool;
+            case "agents" -> CliVersion.below(release, "1.8.0") ? shaped(tool, null, List.of(), List.of()) : tool;
+            // 1.11.0: Antigravity moved into .agents, keeping .agent as a detection path and older directory.
+            case "antigravity" -> CliVersion.below(release, "1.11.0") ? shaped(tool, ".agent", List.of(), List.of()) : tool;
+            default -> tool;
+        };
+    }
+
+    private static AiTool shaped(AiTool tool, @Nullable String skillsDir, List<String> detectionPaths,
+                                 List<String> legacySkillsDirs) {
+        return new AiTool(tool.id(), tool.cliId(), tool.name(), tool.aliases(), skillsDir, tool.globalSkillsDir(),
+                detectionPaths, legacySkillsDirs, tool.type(), tool.sinceCli(), tool.untilCli());
+    }
+
+    /**
      * Whether a CLI of this version accepts the tool's id: from its {@code sinceCli}, and before its {@code untilCli}
      * when it has one. With no detected CLI nothing is passed, so all are.
      */
