@@ -167,6 +167,15 @@ CASES = {
     "antigravity-legacy-skill-beside-agents-owner": [("file", ".agent/skills/openspec-propose/SKILL.md", "Run /openspec-propose.\n"),
                                                      ("file", ".agents/skills/.openspec-target", "agents\n"),
                                                      ("file", ".agents/skills/openspec-explore/SKILL.md", "Run /openspec-explore.\n")],
+    # What counts as an OpenSpec skill (setup-check-cli-parity): a release's own names, each as <name>/SKILL.md.
+    "skill-dir-without-skill-file": [("file", ".claude/skills/openspec-explore/notes.md", "")],
+    "skill-name-not-openspecs": [("file", ".claude/skills/openspec-custom/SKILL.md", "Run /openspec-custom.\n")],
+    "update-change-skill-only": [("file", ".claude/skills/openspec-update-change/SKILL.md", "Run /openspec-update-change.\n")],
+    "router-skill-only": [("file", ".claude/skills/openspec/SKILL.md", "Run /openspec.\n")],
+    "router-skill-shared-only": [("file", ".agents/skills/openspec/SKILL.md", "Run /openspec.\n")],
+    "router-skill-minimax-home": [("home-file", ".minimax/skills/openspec/SKILL.md", "Run /openspec.\n")],
+    "claude-folder-with-home-skills": [("file", ".claude/settings.json", "{}\n"),
+                                       ("home-file", ".claude/skills/openspec-explore/SKILL.md", "Run /openspec-explore.\n")],
     # Amp's files as 1.14.3 writes them, read by a release that has no Amp.
     "amp-files-from-1.14": [("init", "1.14.3", "amp")],
     "agents-generic-skill-by-hand": [("file", ".agents/skills/openspec-explore/SKILL.md", "Run /openspec-explore.\n")],
@@ -289,6 +298,10 @@ def capture_detection(newest, out_dir, only=None):
                     shutil.rmtree(project / step[1])
                 elif step[0] == "home-rmtree":
                     shutil.rmtree(home / step[1])
+                elif step[0] == "home-file":
+                    f = home / step[1]
+                    f.parent.mkdir(parents=True, exist_ok=True)
+                    f.write_text(step[2])
             detected = json.loads(subprocess.run(
                 ["node", "--input-type=module", "-e", DETECT, "--", detect_js, str(project)],
                 env=isolated_env(home), check=True, capture_output=True, text=True).stdout)

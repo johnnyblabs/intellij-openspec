@@ -22,7 +22,7 @@ import java.util.stream.Stream;
  */
 public class ConfiguredToolsContractTest extends BasePlatformTestCase {
 
-    static final List<String> RELEASES = List.of("1.3.1", "1.4.0", "1.6.0", "1.7.0", "1.8.0", "1.10.0", "1.11.0", "1.13.2",
+    static final List<String> RELEASES = List.of("1.3.1", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.8.0", "1.10.0", "1.11.0", "1.13.2",
             "1.14.0", "1.14.3", "1.16.1", "1.17.0", "2.0.0", "2.1.0", "2.1.1", "2.2.0");
 
     /**
