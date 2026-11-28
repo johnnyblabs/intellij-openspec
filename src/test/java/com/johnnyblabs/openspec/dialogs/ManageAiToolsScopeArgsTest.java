@@ -74,8 +74,11 @@ public class ManageAiToolsScopeArgsTest extends HeavyPlatformTestCase {
     /** Both buttons build their command through the decision, on the background thread. */
     public void testAddAndConfigureUseTheDecision() throws Exception {
         String source = Files.readString(Path.of("src/main/java/com/johnnyblabs/openspec/dialogs/ManageAiToolsDialog.java"));
-        assertEquals(2, source.split("runCliAction\\(\\(\\) -> addArgs\\(project, tool\\.cliId\\(\\)\\),", -1).length - 1);
-        assertEquals("init is built only by addArgs (two scopes) and installArgs", 3,
+        // Add uses the decision directly; Configure through configureArgs, which uses it unless init goes to the machine.
+        assertEquals(1, source.split("runCliAction\\(\\(\\) -> addArgs\\(project, tool\\.cliId\\(\\)\\),", -1).length - 1);
+        assertEquals(1, source.split("runCliAction\\(\\(\\) -> configureArgs\\(project, tool\\),", -1).length - 1);
+        assertTrue("configureArgs falls back to the decision", source.contains(": addArgs(project, tool.cliId());"));
+        assertEquals("init is built only by addArgs (two scopes), configureArgs (plain init) and installArgs", 4,
                 source.split("CliCommands\\.init", -1).length - 1);
     }
 }

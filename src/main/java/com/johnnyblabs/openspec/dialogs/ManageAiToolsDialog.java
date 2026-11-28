@@ -257,9 +257,17 @@ public class ManageAiToolsDialog extends DialogWrapper {
             addSectionHeader("CONFIGURED");
             configured.forEach(this::addToolRow);
         }
-        if (!detected.isEmpty()) {
+        // Tools openspec init installs for this machine first, under their own caption: Configure doesn't touch the project.
+        List<ToolInfo> covered = detected.stream().filter(ToolInfo::installsForMachine).toList();
+        List<ToolInfo> needing = detected.stream().filter(t -> !t.installsForMachine()).toList();
+        if (!covered.isEmpty()) {
+            addSectionHeader(COVERED_HEADER);
+            addCaption(COVERED_CAPTION);
+            covered.forEach(this::addToolRow);
+        }
+        if (!needing.isEmpty()) {
             addSectionHeader("DETECTED — needs OpenSpec skills");
-            detected.forEach(this::addToolRow);
+            needing.forEach(this::addToolRow);
         }
         if (!available.isEmpty()) {
             addSectionHeader("AVAILABLE");
@@ -308,6 +316,13 @@ public class ManageAiToolsDialog extends DialogWrapper {
         JBLabel nameLabel = new JBLabel(tool.name());
         nameLabel.setFont(nameLabel.getFont().deriveFont(Font.PLAIN, 13f));
         namePanel.add(nameLabel);
+        String rowNote = rowNote(tool);
+        if (rowNote != null && !tool.viaShared()) {
+            JBLabel note = new JBLabel(rowNote);
+            note.setForeground(JBColor.GRAY);
+            note.setFont(note.getFont().deriveFont(Font.PLAIN, 11f));
+            namePanel.add(note);
+        }
         if (tool.viaShared()) {
             // Upstream's own label for the folder the tool's skills come from.
             JBLabel via = new JBLabel(VIA_SHARED);
@@ -354,6 +369,45 @@ public class ManageAiToolsDialog extends DialogWrapper {
         toolListPanel.add(row);
     }
 
+    /** The section heading for detected tools that {@code openspec init} installs for this machine. */
+    static final String COVERED_HEADER = "DETECTED — skills for this machine";
+    /** What Configure does for them, in upstream's words: it installs for every project on this machine, not this one. */
+    static final String COVERED_CAPTION = "Not set up for this project. Configure installs or refreshes these tools' skills "
+            + "for every project on this machine, as openspec init does here. To give one skills of its own, use Install "
+            + "into this project above.";
+    /** The row note for such a tool. */
+    static final String COVERED_NOTE = "skills for this machine";
+
+    /** A row's grey note, or {@code null}. */
+    static @Nullable String rowNote(ToolInfo tool) {
+        return tool.installsForMachine() ? COVERED_NOTE : null;
+    }
+
+    /**
+     * What Configure runs. For a tool {@code init} installs for this machine, plain {@code init --tools <id>}: the CLI then
+     * decides as it always does, which is what the row and the tooltip say. Otherwise as Add does.
+     */
+    static com.johnnyblabs.openspec.util.CliArgs configureArgs(Project project, ToolInfo tool) {
+        return tool.installsForMachine() ? com.johnnyblabs.openspec.util.CliCommands.initKeepingScope(tool.cliId())
+                : addArgs(project, tool.cliId());
+    }
+
+    /** Configure's tooltip: what {@code openspec init} will do for the tool. */
+    static String configureTooltip(ToolInfo tool) {
+        return tool.installsForMachine()
+                ? "Install or refresh " + tool.name() + "'s OpenSpec skills for every project on this machine (openspec init)"
+                : "Generate OpenSpec skills and commands for " + tool.name();
+    }
+
+    private void addCaption(String text) {
+        JBLabel caption = new JBLabel("<html>" + com.intellij.openapi.util.text.StringUtil.escapeXmlEntities(text) + "</html>");
+        caption.setForeground(JBColor.GRAY);
+        caption.setFont(caption.getFont().deriveFont(Font.PLAIN, 11f));
+        caption.setBorder(JBUI.Borders.empty(0, 8, 4, 8));
+        caption.setAlignmentX(Component.LEFT_ALIGNMENT);
+        toolListPanel.add(caption);
+    }
+
     private @Nullable JButton createActionButton(ToolInfo tool) {
         CliDetectionService cliService = project.getService(CliDetectionService.class);
         boolean cliAvailable = cliService != null && cliService.isAvailable();
@@ -369,8 +423,8 @@ public class ManageAiToolsDialog extends DialogWrapper {
             case DETECTED -> {
                 JButton btn = new JButton("Configure");
                 if (cliAvailable && tool.cliId() != null) {
-                    btn.setToolTipText("Generate OpenSpec skills and commands for " + tool.name());
-                    btn.addActionListener(e -> runCliAction(() -> addArgs(project, tool.cliId()),
+                    btn.setToolTipText(configureTooltip(tool));
+                    btn.addActionListener(e -> runCliAction(() -> configureArgs(project, tool),
                             "Configuring " + tool.name(), tool.name(), btn));
                 } else {
                     btn.setToolTipText("Set as preferred tool (install CLI for full skill generation)");

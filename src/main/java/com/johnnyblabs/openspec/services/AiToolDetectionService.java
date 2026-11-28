@@ -78,6 +78,13 @@ public final class AiToolDetectionService {
     }
 
     private static @Nullable Path homeForTest;
+    private static java.util.function.@Nullable Supplier<String> savedScopeForTest;
+
+    /** The saved skills scope tests see, in place of the process environment and the CLI's global config. */
+    @org.jetbrains.annotations.TestOnly
+    static void setSavedScopeForTest(java.util.function.@Nullable Supplier<String> scope) {
+        savedScopeForTest = scope;
+    }
 
     /** Test seam for where global tools are looked for; {@code null} restores the user's home. */
     static void setHomeForTest(@Nullable Path home) {
@@ -185,10 +192,41 @@ public final class AiToolDetectionService {
      * @param viaShared set up on a 2.x project only through the shared {@code .agents/skills} copy, with nothing of
      *                  its own in a folder that isn't {@code .agents}
      */
-    public record ToolInfo(String name, ToolStatus status, ToolType type, @Nullable String cliId, boolean viaShared) {
-        public ToolInfo(String name, ToolStatus status, ToolType type, @Nullable String cliId) {
-            this(name, status, type, cliId, false);
+    /**
+     * One row of Manage AI Tools. {@code installsForMachine}: detected, not set up for the project, and
+     * {@code openspec init} for it installs into this machine (CLI 2.1+), not the project; see
+     * {@link #installsForMachine(String, boolean, String, ToolStatus, AiToolRegistry.AiTool)}.
+     */
+    public record ToolInfo(String name, ToolStatus status, ToolType type, @Nullable String cliId, boolean viaShared,
+                           boolean installsForMachine) {
+        public ToolInfo(String name, ToolStatus status, ToolType type, @Nullable String cliId, boolean viaShared) {
+            this(name, status, type, cliId, viaShared, false);
         }
+
+        public ToolInfo(String name, ToolStatus status, ToolType type, @Nullable String cliId) {
+            this(name, status, type, cliId, false, false);
+        }
+    }
+
+    /**
+     * Whether {@code openspec init --tools <tool>} installs into this machine rather than the project, as upstream's
+     * {@code resolveSkillScope} decides it ({@code dist/core/init.js}): CLI 2.1+, the tool is detected but not set up, the
+     * project has no skills of its own (no tool set up in it: {@code projectHasOwnSkills}), no saved scope says
+     * {@code project}, and the tool supports global skills. Configure then installs or refreshes the tool's skills for
+     * every project on the machine, and the tool stays not set up for the project, as the CLI says. Pure, for tests.
+     */
+    static boolean installsForMachine(@Nullable String cliVersion, boolean projectHasOwnSkills, @Nullable String savedScope,
+                                      ToolStatus status, AiToolRegistry.AiTool tool) {
+        return cliVersion != null && CliVersion.atLeast(cliVersion, "2.1.0") && status == ToolStatus.DETECTED
+                && !projectHasOwnSkills && savesMachineOrNothing(savedScope) && AiToolRegistry.supportsGlobalSkills(tool);
+    }
+
+    /**
+     * Whether a saved scope leaves {@code init} on the machine: none saved, or {@code global}. Any other saved value sends
+     * upstream to the project (a config value is returned as it is), or makes it refuse (an invalid environment value).
+     */
+    private static boolean savesMachineOrNothing(@Nullable String savedScope) {
+        return savedScope == null || savedScope.isBlank() || savedScope.trim().equals("global");
     }
 
     /**
@@ -303,18 +341,17 @@ public final class AiToolDetectionService {
             File legacy = base.resolve(d).toFile();
             // 1.x reads older folders only for the shared folder's owner; 2.x reads them for every tool.
             if ((v.countsLegacyCommands && hasOpenSpecCommands(legacy))
-                    || ((v.listing != null || !sharedSkillsNotItsOwn) && hasOpenSpecSkills(legacy, v.skillNames))) {
+                    || ((v.listing != null || !sharedSkillsNotItsOwn || AiToolRegistry.countsLegacySkillsRegardlessOfOwner(tool))
+                        && hasOpenSpecSkills(legacy, v.skillNames))) {
                 return true;
             }
         }
         Path home = home();
         String global = v.rules.globalSkillsDir(tool);
         if (home != null && global != null && hasOpenSpecFiles(home.resolve(global).toFile(), v.skillNames)) return true;
-        if (!detected) return false;
-        // The shared .agents/skills copy counted above when it is the tool's; SkillLocator finds it for any tool.
-        Path shared = base.resolve(".agents").resolve("skills");
-        boolean skipShared = v.listing != null || sharedSkillsNotItsOwn;
-        return hasLocatedSkill(base, v.listed, tool, v.skillNames, located -> !(skipShared && located.startsWith(shared)));
+        // No release counts a tool as set up for its skills found elsewhere (a machine-wide install, another tool's
+        // folder): upstream's getConfiguredTools reads the project. What init does for the machine is ToolInfo.installsForMachine.
+        return false;
     }
 
     /**
@@ -352,21 +389,6 @@ public final class AiToolDetectionService {
             }
         }
         return true;
-    }
-
-    /**
-     * Whether {@link SkillLocator} finds an OpenSpec skill for {@code tool} in the project or the home directory that
-     * {@code counts}.
-     */
-    private boolean hasLocatedSkill(Path base, List<String> listed, AiToolRegistry.AiTool tool, List<String> skillNames,
-                                    java.util.function.Predicate<Path> counts) {
-        GlobalSkillsCache cache = project.getService(GlobalSkillsCache.class);
-        HomeSkills homeSkills = cache != null ? cache.snapshot() : HomeSkills.NONE;
-        boolean preferred = tool.equals(WorkflowInvocation.preferredTool(project));
-        return skillNames.stream().anyMatch(skill -> {
-            Path found = SkillLocator.find(base, listed, homeSkills, tool, skill, preferred);
-            return found != null && counts.test(found);
-        });
     }
 
     /** Whether more than one registry tool writes to {@code skillsDir} ({@code .agents}, or a regional pair's folder). */
@@ -418,19 +440,27 @@ public final class AiToolDetectionService {
         String version = cliVersion();
         String basePath = project.getBasePath();
         Verdict verdict = basePath != null ? new Verdict(Path.of(basePath)) : null;
+        String savedScope = savedScopeForTest != null ? savedScopeForTest.get() : SavedSkillsScope.current();
+        Map<AiToolRegistry.AiTool, ToolStatus> statuses = new LinkedHashMap<>();
+        for (AiToolRegistry.AiTool tool : AiToolRegistry.all()) {
+            boolean isDetected = detected.contains(tool);
+            statuses.put(tool, verdict != null ? status(verdict, tool, isDetected)
+                    : isDetected ? ToolStatus.DETECTED : ToolStatus.AVAILABLE);
+        }
+        // Upstream's projectHasOwnSkills: a tool set up in the project (the home folder never has its own; #751).
+        boolean ownSkills = statuses.containsValue(ToolStatus.CONFIGURED);
         List<ToolInfo> configured = new ArrayList<>();
         List<ToolInfo> found = new ArrayList<>();
         List<ToolInfo> available = new ArrayList<>();
 
         for (AiToolRegistry.AiTool tool : AiToolRegistry.all()) {
             boolean accepted = AiToolRegistry.acceptedBy(tool, version);
-            boolean isDetected = detected.contains(tool);
-            ToolStatus status = verdict != null ? status(verdict, tool, isDetected)
-                    : isDetected ? ToolStatus.DETECTED : ToolStatus.AVAILABLE;
+            ToolStatus status = statuses.get(tool);
             if (!accepted && status == ToolStatus.AVAILABLE) continue;
             boolean viaShared = status == ToolStatus.CONFIGURED && project.getBasePath() != null
                     && viaSharedFolder(Path.of(project.getBasePath()), tool);
-            ToolInfo info = new ToolInfo(tool.name(), status, tool.type(), accepted ? tool.cliId() : null, viaShared);
+            ToolInfo info = new ToolInfo(tool.name(), status, tool.type(), accepted ? tool.cliId() : null, viaShared,
+                    installsForMachine(version, ownSkills, savedScope, status, tool));
             switch (status) {
                 case CONFIGURED -> configured.add(info);
                 case DETECTED -> found.add(info);

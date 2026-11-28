@@ -7,6 +7,7 @@ import com.intellij.testFramework.fixtures.BasePlatformTestCase;
 import com.johnnyblabs.openspec.services.AiToolDetectionService.ToolStatus;
 import com.johnnyblabs.openspec.util.FixtureLayout;
 import com.johnnyblabs.openspec.util.FixtureVersions;
+import com.johnnyblabs.openspec.util.KnownGaps;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -46,6 +47,7 @@ public class ConfiguredToolsContractTest extends BasePlatformTestCase {
     protected void tearDown() throws Exception {
         try {
             AiToolDetectionService.setHomeForTest(null);
+            AiToolDetectionService.setSavedScopeForTest(null);
             service().setCliVersionForTest(null);
             GlobalSkillsCache.getInstance(getProject()).setHomeForTest(null);
             FileUtil.delete(home.toFile());
@@ -73,6 +75,71 @@ public class ConfiguredToolsContractTest extends BasePlatformTestCase {
             if (info.status() == ToolStatus.CONFIGURED) ids.add(AiToolRegistry.byName(info.name()).id());
         }
         return ids;
+    }
+
+    private List<AiToolDetectionService.ToolInfo> toolsFor(String version, Path caseDir) throws Exception {
+        Path base = Path.of(getProject().getBasePath());
+        for (File f : base.toFile().listFiles() == null ? new File[0] : base.toFile().listFiles()) FileUtil.delete(f);
+        FileUtil.delete(home.toFile());
+        Files.createDirectories(home);
+        FixtureLayout.materialize(JsonParser.parseString(Files.readString(caseDir.resolve("layout.json"))).getAsJsonObject(),
+                base, home, FixtureLayout.LinkMode.SYMLINK_OR_COPY);
+        GlobalSkillsCache.getInstance(getProject()).setHomeForTest(() -> home);
+        service().setCliVersionForTest(() -> version);
+        service().detect();
+        // Off the UI thread, as the dialog reads it: there the home cache is read, not just scheduled.
+        return com.intellij.openapi.application.ApplicationManager.getApplication()
+                .executeOnPooledThread(() -> service().getAllToolsWithStatus()).get(30, java.util.concurrent.TimeUnit.SECONDS);
+    }
+
+    private static TreeSet<String> strings(com.google.gson.JsonObject o, String key) {
+        TreeSet<String> out = new TreeSet<>();
+        o.getAsJsonArray(key).forEach(e -> out.add(e.getAsString()));
+        return out;
+    }
+
+    /**
+     * Machine-wide installs (CLI 2.1+): set-up status is the CLI's own, and a detected tool is flagged as one that
+     * {@code openspec init} installs for this machine exactly when the CLI's own {@code init --tools <tool>} left it not
+     * set up for the project. The home-folder-as-project case is #751's.
+     */
+    public void testMachineWideInstallsFollowTheCli() throws Throwable {
+        int checked = 0, flagged = 0, notFlagged = 0;
+        for (String v : List.of("2.1.0", "2.1.1", "2.2.0")) {
+            Path dir = FixtureVersions.CLI.resolve(v).resolve("machine-wide");
+            assertEquals(v + " no-global-support list", strings(JsonParser.parseString(
+                    Files.readString(dir.resolve("global-support.json"))).getAsJsonObject(), "noGlobalSupport"),
+                    new TreeSet<>(AiToolRegistry.NO_GLOBAL_SKILLS));
+            for (String name : List.of("agents-global", "home-copies-only", "links-only", "uncovered-tool",
+                    "project-and-global", "project-commands-only", "saved-scope-project")) {
+                Path c = dir.resolve(name);
+                var before = JsonParser.parseString(Files.readString(c.resolve("probe.json"))).getAsJsonObject();
+                var after = JsonParser.parseString(Files.readString(c.resolve("after.json"))).getAsJsonObject();
+                AiToolDetectionService.setSavedScopeForTest(() -> name.equals("saved-scope-project") ? "project" : null);
+                TreeSet<String> configured = new TreeSet<>(), forMachine = new TreeSet<>(), expected = new TreeSet<>();
+                for (AiToolDetectionService.ToolInfo info : toolsFor(v, c)) {
+                    String id = AiToolRegistry.byName(info.name()).id();
+                    if (info.status() == ToolStatus.CONFIGURED) configured.add(id);
+                    if (info.installsForMachine()) forMachine.add(id);
+                    if (info.status() == ToolStatus.DETECTED && !strings(after, "configured").contains(id)
+                            && strings(before, "available").contains(id)) {
+                        expected.add(id);
+                    }
+                }
+                String key = v + "/" + name;
+                KnownGaps.check(v, "machine-wide", name, () -> {
+                    // JUnit 5's assertion: KnownGaps counts only its AssertionFailedError as the gap.
+                    org.junit.jupiter.api.Assertions.assertEquals(strings(before, "configured"), configured, key + " set up");
+                    org.junit.jupiter.api.Assertions.assertEquals(expected, forMachine, key + " init installs for the machine");
+                });
+                flagged += forMachine.size();
+                if (forMachine.isEmpty()) notFlagged++;
+                checked++;
+            }
+        }
+        AiToolDetectionService.setSavedScopeForTest(null);
+        assertEquals(21, checked);
+        assertTrue("sanity: some cases flag a tool and some don't: " + flagged + "/" + notFlagged, flagged >= 9 && notFlagged >= 9);
     }
 
     public void testSetUpToolsAreWhatUpstreamCountsAsConfigured() throws Exception {

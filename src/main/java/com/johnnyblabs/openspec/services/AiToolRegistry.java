@@ -61,6 +61,26 @@ public final class AiToolRegistry {
             "openspec");
 
     /**
+     * The tools whose command surface is "adapter-backed" and that have older skills folders: from 1.11.0 upstream's
+     * {@code getConfiguredTools} counts their older-folder skills whoever owns the shared folder. Captured per release
+     * ({@code adapterBackedWithLegacy} in {@code <v>/skill-names.json}).
+     */
+    static final java.util.Set<String> ADAPTER_BACKED_WITH_LEGACY = java.util.Set.of("antigravity");
+
+    /** Whether the tool's older-folder skills count for it even when another tool owns its shared folder. */
+    public static boolean countsLegacySkillsRegardlessOfOwner(AiTool tool) {
+        return ADAPTER_BACKED_WITH_LEGACY.contains(tool.id());
+    }
+
+    /** The tools upstream's {@code supportsGlobalSkills} rejects on 2.1+ (no machine-wide folder); captured per release. */
+    static final java.util.Set<String> NO_GLOBAL_SKILLS = java.util.Set.of("eve", "promptscript");
+
+    /** Whether the tool can use skills installed for this machine (upstream's {@code supportsGlobalSkills}, 2.1+). */
+    public static boolean supportsGlobalSkills(AiTool tool) {
+        return !NO_GLOBAL_SKILLS.contains(tool.id());
+    }
+
+    /**
      * The skill names a release recognizes ({@code SKILL_NAMES} in {@code dist/core/shared/tool-detection.js}): 11 before
      * 1.6.0, which adds {@code openspec-update-change}; 12 before 2.2.0, which adds the {@code openspec} router; all 13
      * from 2.2.0 and when no release is known. Contract-tested against every captured {@code <v>/skill-names.json}.

@@ -73,8 +73,8 @@ public class ManageAiToolsSetUpNoticeTest extends BasePlatformTestCase {
     public void testAddAndConfigurePassTheToolSoTheyGetTheSetUpNotice() throws Exception {
         String source = java.nio.file.Files.readString(ModalityCallScanner.mainSource("dialogs/ManageAiToolsDialog.java"));
 
-        assertEquals("Adding and Configuring both set up the tool", 2, count(source,
-                "runCliAction(() -> addArgs(project, tool.cliId()),"));
+        assertEquals("Adding sets up the tool", 1, count(source, "runCliAction(() -> addArgs(project, tool.cliId()),"));
+        assertEquals("Configuring sets up the tool", 1, count(source, "runCliAction(() -> configureArgs(project, tool),"));
         assertEquals(2, count(source, " + tool.name(), tool.name(), btn));"));
         assertTrue(source.contains("runCliAction(com.johnnyblabs.openspec.util.CliCommands.update(), \"Updating \" + tool.name(), null, sourceButton);"));
     }

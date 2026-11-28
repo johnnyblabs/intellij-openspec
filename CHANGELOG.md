@@ -19,6 +19,7 @@
 
 ### Fixed
 
+- **Set-up status matches your CLI's, including for machine-wide installs.** A tool now counts as set up only when OpenSpec itself would say so. A skill counts only as its `SKILL.md`, for a skill name your CLI release has. With OpenSpec CLI 2.1+, a tool whose skills are installed only for this machine shows as detected, not set up. Where `openspec init` would install it for this machine rather than the project, Manage AI Tools lists it under "DETECTED — skills for this machine", and Configure says it installs or refreshes the tool's skills for every project on this machine. Use **Install into this project** to give a tool skills of its own.
 - **AI tool detection follows your 1.x CLI's own release.** With an older OpenSpec 1.x CLI installed, the plugin applied 1.17's rules and tool list. So it could list tools that release doesn't have (Amp or GSD on 1.13, Kimi on 1.3, AiderDesk on any 1.x), miss ones it does (Codex from a `.codex` folder on 1.7), and count tools as set up that the CLI doesn't. Detection and the set-up status now follow the detected 1.x release, as `openspec init` and `update` see the project. With no CLI, or on 2.x, nothing changes.
 
 ## v2.1.0

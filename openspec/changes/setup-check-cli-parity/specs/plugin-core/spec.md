@@ -35,3 +35,13 @@ The plugin SHALL count a tool as set up exactly when the CLI's `getConfiguredToo
 #### Scenario: A skill name the release doesn't have
 - **WHEN** a tool's only skill is `openspec-update-change` and the CLI is 1.5, or its only skill is the `openspec` router and the CLI is older than 2.2
 - **THEN** the tool SHALL NOT show as set up; from 1.6 (`openspec-update-change`) and from 2.2 (`openspec`) it SHALL
+
+#### Scenario: Skills installed only for this machine
+- **WHEN** the detected CLI is 2.1 or later and a tool's OpenSpec skills exist only for this machine, not in the project
+- **THEN** the tool SHALL show as detected, not set up, as the CLI's verdict says
+- **AND** when `openspec init` would install it for this machine (the project has no set-up tool, no saved scope says project, and the tool supports global skills), Manage AI Tools SHALL say so, and Configure SHALL say it installs or refreshes the tool's skills for every project on this machine
+
+#### Scenario: An adapter-backed tool's older folder
+- **WHEN** the detected CLI is 1.11 or later and Antigravity's skills are in its older `.agent/skills/` while another tool owns `.agents`
+- **THEN** Antigravity SHALL show as set up, as the CLI counts an adapter-backed tool's older-folder skills whoever owns the shared folder
+

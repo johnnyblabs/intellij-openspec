@@ -27,7 +27,7 @@ class KnownGapsTest {
             "invocation", Set.of("every-row", "registry-paths"));
 
     static final Set<String> CLOSERS = Set.of("skills-layout-2x", "openspec-target-2x",
-            "init-skills-scope", "update-migration-2x", "detection-1x-release-rules");
+            "init-skills-scope", "update-migration-2x", "detection-1x-release-rules", "skills-scope-parity");
 
     @Test
     void everyKeyNamesACaseThatRuns() {
@@ -41,6 +41,7 @@ class KnownGapsTest {
             Path release = FixtureVersions.CLI.resolve(parts[0]);
             boolean real = switch (parts[1]) {
                 case "detect" -> Files.isRegularFile(release.resolve("detect").resolve(parts[2]).resolve("layout.json"));
+                case "machine-wide" -> Files.isRegularFile(release.resolve("machine-wide").resolve(parts[2]).resolve("probe.json"));
                 case "update-dry-run" -> Files.isRegularFile(release.resolve("update-dry-run").resolve(parts[2] + ".exit"));
                 case "registry" -> Files.isRegularFile(release.resolve("ai-tools.json"))
                         && FIXED_CASES.get("registry").contains(parts[2]);
