@@ -618,6 +618,38 @@ Real `openspec update` stdout from CLI **1.13.2** (run through `npx @fission-ai/
 
 The two captures differ only in the block's guidance line and the version on the "up to date" line. 1.13.2 prints `No user content to preserve:`; from 1.14.0 the CLI prints `These files will be deleted entirely. Back up any custom content before proceeding:`. Unlike the Junie-based 1.6.0 and 1.7.0 captures, these use Cursor, whose old command files current CLIs still report as legacy. Consumed by `UpdateOutputParserContractTest`, `UpdateLegacyCleanupFlowTest` and the cleanup dialog test.
 
+## `<version>/skill-names.json` and `<version>/machine-wide/` — what each release counts as an OpenSpec skill, and machine-wide installs
+
+**`skill-names.json`** comes from `scripts/capture-skill-names.py`, captured for every cached release from 1.3.0 to 2.2.0 on 2026-11-27. Each file holds two lists:
+- `skillNames`: the release's own `SKILL_NAMES` from `dist/core/shared/tool-detection.js`. That's 11 names on 1.3–1.5, 12 from 1.6.0 (adds `openspec-update-change`), and 13 on 2.2.0 (adds the `openspec` router).
+- `adapterBackedWithLegacy` (from 1.10.0): the adapter-backed tools with older skills folders. From 1.11.0 that's only `antigravity`.
+
+`SkillNamesContractTest` holds `AiToolRegistry.skillNames(v)` and `ADAPTER_BACKED_WITH_LEGACY` to them.
+
+**`machine-wide/<case>/`** comes from `scripts/capture-machine-wide.py`, on 2.1.0, 2.1.1 and 2.2.0. Each case holds:
+- `layout.json`;
+- `probe.json`: upstream's `readGlobalSkills`, `projectHasOwnSkills`, `getConfiguredTools` and `getAvailableTools`;
+- `init.out`/`.exit`: `init --tools <tool>` at the default scope;
+- `after.json`: the probe again;
+- `update.out`/`.exit`.
+
+Plus `global-support.json`, with two parts:
+- `noGlobalSupport`: the tools `supportsGlobalSkills` rejects (`eve`, `promptscript`);
+- `machineFolders`: each other tool's machine folder relative to HOME, from upstream's `globalDirectories`. It is for the skills-scope follow-up.
+
+| Case | What the CLI does |
+|---|---|
+| `agents-global` | Claude's skills only for the machine: not set up before or after `init`, which refreshes the machine-wide copy; `update`: "The N skills for this machine are up to date" |
+| `home-copies-only` | real copies only in `~/.claude/skills`: not set up; `init` installs for the machine |
+| `links-only` | links with `~/.agents/skills` removed: no machine-wide skills, so `init` creates them |
+| `project-is-home` | `init` refuses ("This is your home folder…"); for the follow-up |
+| `uncovered-tool` | `eve` has no global support: `init` installs it into the project, and it is set up |
+| `project-and-global` | project skills beside machine-wide ones: set up as usual |
+| `project-commands-only` | the project's only set-up tool is a command file: it has skills of its own, so `init --tools cursor` installs into the project |
+| `saved-scope-project` | `OPENSPEC_SKILLS_SCOPE=project`: `init` installs into the project |
+
+`ConfiguredToolsContractTest.testMachineWideInstallsFollowTheCli` holds the plugin to them. It checks the set-up verdict, and that a detected tool is flagged as installed for the machine exactly when the CLI's own `init` left it not set up for the project.
+
 ## `<version>/retire/` — capability retirement, the oracle for the plugin's merge
 
 From `scripts/capture-spec-retirement.py`, on 1.7.0, 1.8.0, 1.11.0, 1.16.1 and 2.2.0 (captured 2026-11-27). Each case is one project: a main spec `openspec/specs/foo/spec.md` (none for `already-retired*`), sometimes with other files, and a change `c` removing its only requirement, with or without `retire_capabilities: true`. Each holds `case.json` (the inputs), `text.out`/`text.exit` and `json.out`/`json.exit` (`archive c --yes`, then a fresh copy with `--json`; the archive date is `<DATE>`), and `after.json` (the `openspec/specs` tree after the text run). `RetirementContractTest` runs the plugin's merge on each case's own inputs and expects that release's outcome: retired where it deleted the spec, otherwise its `archive_spec_validation_failed` message and fix, word for word. One reason is left out: `marker-invalid-project-schema`, whose wording quotes the CLI's schema validator.

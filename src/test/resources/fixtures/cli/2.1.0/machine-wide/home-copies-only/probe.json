@@ -1,0 +1,15 @@
+{
+  "global": {
+    "skills": [
+      "openspec-explore"
+    ],
+    "agents": [
+      "claude-code"
+    ]
+  },
+  "own": false,
+  "configured": [],
+  "available": [
+    "claude"
+  ]
+}

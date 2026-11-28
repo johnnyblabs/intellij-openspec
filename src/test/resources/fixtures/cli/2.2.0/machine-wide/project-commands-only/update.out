@@ -1,0 +1,7 @@
+✓ All 2 tool(s) up to date (v2.2.0)
+  Tools: claude, cursor
+
+Use --force to refresh files anyway.
+Note: 6 more workflows are available (new, continue, ff, bulk-archive, verify, onboard).
+Add them with `openspec config profile`.
+✓ The 7 skills for this machine are up to date (v2.2.0)

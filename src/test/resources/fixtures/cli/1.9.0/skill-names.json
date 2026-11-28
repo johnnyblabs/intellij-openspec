@@ -13,5 +13,6 @@
     "openspec-verify-change",
     "openspec-onboard",
     "openspec-propose"
-  ]
+  ],
+  "adapterBackedWithLegacy": []
 }

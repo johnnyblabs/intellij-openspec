@@ -1,0 +1,27 @@
+- Creating OpenSpec structure...
+▌ OpenSpec structure created
+
+OpenSpec Setup Complete
+
+Created: Cursor
+7 skills in .agents/skills/
+Kept 1 command file that does not match what OpenSpec generated (likely edited):
+  .claude/commands/opsx/propose.md
+Move anything worth keeping into the skill, then delete by hand.
+Config: openspec/config.yaml (schema: spec-driven)
+
+Getting started:
+  Start your first change: /openspec-propose "your idea"
+
+Note: 6 more workflows are available (new, continue, ff, bulk-archive, verify, onboard).
+Add them with `openspec config profile`.
+
+Learn more: https://github.com/Fission-AI/OpenSpec
+Feedback:   https://github.com/Fission-AI/OpenSpec/issues
+
+Restart your IDE to refresh skills.
+
+
+--- stderr ---
+- Setting up Cursor...
+✔ Setup complete for Cursor

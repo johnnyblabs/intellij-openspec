@@ -1,0 +1,11 @@
+{
+  "global": {
+    "skills": [],
+    "agents": []
+  },
+  "own": false,
+  "configured": [],
+  "available": [
+    "claude"
+  ]
+}

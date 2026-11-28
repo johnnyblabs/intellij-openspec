@@ -1,0 +1,19 @@
+{
+  "global": {
+    "skills": [
+      "openspec-explore",
+      "openspec-apply-change",
+      "openspec-update-change",
+      "openspec-sync-specs",
+      "openspec-archive-change",
+      "openspec-propose"
+    ],
+    "agents": [
+      "universal",
+      "claude-code"
+    ]
+  },
+  "own": false,
+  "configured": [],
+  "available": []
+}

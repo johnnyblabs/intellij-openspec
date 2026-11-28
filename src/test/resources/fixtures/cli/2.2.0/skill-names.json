@@ -14,5 +14,8 @@
     "openspec-onboard",
     "openspec-propose",
     "openspec"
+  ],
+  "adapterBackedWithLegacy": [
+    "antigravity"
   ]
 }

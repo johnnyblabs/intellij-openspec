@@ -1,0 +1,22 @@
+- Creating OpenSpec structure...
+▌ OpenSpec structure created
+
+OpenSpec Setup Complete
+
+Created: Eve
+6 skills in .agents/skills/ (also in agent/skills/)
+Config: openspec/config.yaml (schema: spec-driven)
+
+Getting started:
+  Start your first change: /openspec-propose "your idea"
+
+Note: 6 more workflows are available (new, continue, ff, bulk-archive, verify, onboard).
+Add them with `openspec config profile`.
+
+Learn more: https://github.com/Fission-AI/OpenSpec
+Feedback:   https://github.com/Fission-AI/OpenSpec/issues
+
+
+--- stderr ---
+- Setting up Eve...
+✔ Setup complete for Eve

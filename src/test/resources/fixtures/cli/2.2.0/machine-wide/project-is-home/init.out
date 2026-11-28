@@ -1,0 +1,3 @@
+
+--- stderr ---
+✖ Error: This is your home folder, where the global skills live. Run openspec init inside a project.
