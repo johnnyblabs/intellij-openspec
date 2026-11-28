@@ -49,7 +49,8 @@ Given a diff (default `git diff @{upstream}...HEAD`, or `git diff HEAD` for unco
 2. Vacuous tests: assertions that can't fail (asserting on the mock's own stub, tautologies, tests with no assertion on the changed behavior), tests that re-implement the logic on local data instead of calling production code, or tests that pass with the production change reverted. Prove it with a **mutation check**: break the production code in the specific way the test exists to catch (Bash: back up, edit, run the one test, restore), and report which mutations fail it. A mutation that survives is a finding.
 3. New production code with no test at any tier, or tested only incidentally.
 4. Missing re-capture: a parser change without a corresponding fixture update (or vice versa).
-5. Coverage-floor implications.
+5. Missing boundary coverage. For each release check the diff adds or changes (`CliVersion.atLeast`/`below`, a release-keyed table), name the captured case on each side of that release. A boundary with no capture on one side is a finding, even when the tests pass. A port with no row in `docs/cli-parity.md`, or a row the diff makes stale, is a finding too.
+6. Coverage-floor implications.
 
 # Output
 

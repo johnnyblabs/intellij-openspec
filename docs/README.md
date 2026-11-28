@@ -25,7 +25,7 @@ The [**Version support**](openspec-support.md#version-support) block in `openspe
 
 ## The two "matrix" docs — which is which
 
-- **Version / coverage matrix** → [`openspec-support.md`](openspec-support.md). How the plugin maps to the OpenSpec **client**, by CLI version — what's supported, partial, or planned. This is the parity north-star and the version source of truth.
+- **Version / coverage matrix** → [`openspec-support.md`](openspec-support.md). How the plugin maps to the OpenSpec **client**, by CLI version — what's supported, partial, or planned. This is the parity north-star and the version source of truth. The layer beneath it, one row per re-implemented upstream function, is [`cli-parity.md`](cli-parity.md).
 - **Competitive comparison matrix** → [`feature-comparison-matrix.md`](feature-comparison-matrix.md). How this plugin compares to third-party VS Code **extensions**. A point-in-time competitive survey (Snapshot).
 
 ## Docs under `docs/`
@@ -34,6 +34,7 @@ The [**Version support**](openspec-support.md#version-support) block in `openspe
 |-----|---------|------------------|-------------|
 | [README.md](README.md) | This documentation index / map | Everyone | Living |
 | [openspec-support.md](openspec-support.md) | Plugin ↔ OpenSpec client coverage by CLI version; canonical version-support block | Users, contributors | Living |
+| [cli-parity.md](cli-parity.md) | Each upstream function the plugin re-implements: its release changes, the captures on each side, its contract test | Contributors | Living |
 | [feature-reference.md](feature-reference.md) | Complete reference for every plugin feature, setting, and troubleshooting note | Users | Living |
 | [direct-api-workflow.md](direct-api-workflow.md) | Direct API delivery: setup, a worked generation example, and workflow diagrams | Users | Reference |
 | [feature-comparison-matrix.md](feature-comparison-matrix.md) | Competitive comparison vs. VS Code OpenSpec extensions | Evaluators, maintainers | Snapshot |

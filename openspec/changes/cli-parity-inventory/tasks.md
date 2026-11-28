@@ -1,13 +1,13 @@
 ## 1. Inventory
 
-- [ ] 1.1 `docs/cli-parity.md` (Maintenance: Living), with rows for every port the merged changes touched (D1), linked from `docs/openspec-support.md` and `docs/README.md`.
-- [ ] 1.2 The inventory test (D2), with the "not a port" list.
+- [x] 1.1 `docs/cli-parity.md` (Maintenance: Living), with rows for every port the merged changes touched (D1), linked from `docs/openspec-support.md` and `docs/README.md`.
+- [x] 1.2 The inventory test (D2), with the "not a port" list.
 
 ## 2. Rules and triggers
 
-- [ ] 2.1 openspec-guru and test-engineer definitions (D4).
-- [ ] 2.2 `CLAUDE.md`: the sweep as an agent-routing trigger point, and in the release gates.
-- [ ] 2.3 The clone-local `release-prep` skill lists the sweep with its BLOCKER gates.
+- [x] 2.1 openspec-guru and test-engineer definitions (D4).
+- [x] 2.2 `CLAUDE.md`: the sweep as an agent-routing trigger point, and in the release gates.
+- [x] 2.3 The clone-local `release-prep` skill lists the sweep with its BLOCKER gates.
 
 ## 3. First sweep
 

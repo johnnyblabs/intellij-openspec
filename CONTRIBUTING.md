@@ -112,6 +112,17 @@ Therefore, parallel to documentation fidelity: **any change that touches CLI-ver
 - The contract lives in the `coordination-surfaces` spec (*CLI-version behavior contract* requirement) and is mirrored, user-facing, in `docs/openspec-support.md` (the single source of truth for per-version behavior).
 - The enforcing tests are the per-version matrix in `CoordinationServiceWindowTest` — assert, for each supported line (1.3.x / 1.4.x / 1.5.x), exactly which read surface, tier, and write path is enabled, so that adding, removing, or re-gating a version-gated capability fails the build. No vacuous asserts: each row must fail if that version's behavior regresses.
 
+### CLI parity
+
+The plugin defers to the OpenSpec CLI. Code that re-implements upstream logic, such as tool detection, set-up status or the archive merge, follows each detected release. It has to meet three requirements:
+- it cites the upstream file it mirrors;
+- it has a captured run on both sides of every release where that file's behavior changes;
+- it has a row in [`docs/cli-parity.md`](docs/cli-parity.md), added or updated in the same pull request.
+
+Plugin behavior with no upstream counterpart is removed, or recorded on that page as a deliberate difference. `InventoryContractTest` fails when the page names a missing test or fixture, or misses a contract test.
+
+At each CLI bump and before each release, a full parity sweep diffs every row's upstream file across the cached releases. Any behavior change the page doesn't record, and any port with no row, becomes a tracked issue.
+
 ### CLI version targeting & local development
 
 The plugin supports a **range** of OpenSpec CLI versions, but your machine has **one** installed. Keep these two axes straight — they are bridged by captured fixtures, which is what lets the build stay version-agnostic:

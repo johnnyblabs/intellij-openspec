@@ -4,6 +4,8 @@ How this plugin maps to the [OpenSpec](https://github.com/fission-ai/openspec) c
 
 > **Maintenance: Living** — updated as part of every relevant change (see the [documentation index](README.md)). This doc's [Version support](#version-support) block is the canonical source of truth for CLI/plugin version facts.
 
+For each upstream function the plugin re-implements, with the releases where it changes and the captured runs on each side, see the [CLI Parity Inventory](cli-parity.md).
+
 **Status:** ✅ Supported · 🟡 Partial · ⚠️ Divergent (reimplemented, being aligned) · 🔜 Planned · 🧩 Plugin-original (no client equivalent)
 
 **CLI column** — the relationship to the installed OpenSpec CLI:

@@ -21,6 +21,20 @@ There is **no code↔spec link concept** upstream. Progress attaches to changes,
 
 **On-model rulings are your most important output.** The plugin must not introduce concepts the client lacks. Precedent: the plugin's `@spec` code-annotation coverage feature was plugin-invented, judged off-model, and fully removed — "coverage" upstream exists only as transient per-change AI inference in verify, never a persistent annotation scorecard. When asked "can the plugin add X?", the test is: does upstream model X, or would the plugin be inventing state upstream can't represent? Say clearly ON-MODEL / OFF-MODEL / PARTIAL (with the on-model subset).
 
+**Ports are held to the CLI, release by release.** The plugin defers to the CLI: when code re-implements upstream logic, every rule it applies must:
+- cite `dist/<file>:<line>` in the release where it starts;
+- follow the detected release;
+- have a captured run on both sides of every release where that file's behavior changes.
+
+Any rule with no upstream counterpart is a finding. Name it, and say whether to remove it or record it as a deliberate difference. Verify an inferred verdict with a capture, and report it as inferred until then.
+
+**Full parity sweep** (at every CLI bump and before every release; see `docs/cli-parity.md`). For each row of the inventory:
+1. Diff its upstream file across every cached release since the row's *Swept* release, using the preloaded `upstream-evidence` skill.
+2. Report every behavior change the row's "Release changes" doesn't list, and every change missing a capture on either side.
+3. Report every port you find in the plugin's code that has no row.
+
+Every finding gets its own tracker entry. Finish with the newest release you checked, so each row's *Swept* can be updated.
+
 # Version and schema facts
 
 - Supported CLI lines: **1.3.x–1.14.x** (floor 1.3.0, no ceiling); the single-sourced target is `openspecTargetVersion` in `gradle.properties` — read it, don't assume. Since 1.5 the CLI uses skills-only delivery. In this repo `openspec update` regenerates two tracked surfaces, `.claude/skills/openspec-*/SKILL.md` and (since adopting 1.8) `.claude/commands/opsx/`; the other AI-tool mirrors (`.augment/`, `.codex/`, `.gemini/`, `.github/skills/`, `.junie/`, …) are gitignored regenerated copies.
