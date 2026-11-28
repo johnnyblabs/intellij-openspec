@@ -30,7 +30,8 @@ public class OpenSpecAskAgentAction extends OpenSpecBaseAction implements DumbAw
     /** The router is an agent skill; a model call in the IDE can't run it. */
     static final String DIRECT_API_NOTE = "The OpenSpec router runs in your AI agent, so it was copied for you to paste.";
     static final String NOT_INSTALLED_NOTICE = "Ask the Agent needs OpenSpec's router skill for your AI tool, which this "
-            + "project doesn't have. Run openspec update (Update OpenSpec…), or set a tool up in Manage AI Tools.";
+            + "project doesn't have. Run openspec update (Update OpenSpec…), or set a tool up in Manage AI Tools. A profile "
+            + "with no workflows gets no router: choose one with openspec config profile.";
 
     private static @Nullable Function<Project, String> requestForTest;
 

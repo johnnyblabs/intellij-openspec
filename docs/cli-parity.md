@@ -79,6 +79,7 @@ Plugin behavior with no upstream counterpart, kept on purpose. Each names its re
 |---|---|---|
 | With no CLI detected, 1.x detection keeps 1.17's rules and tool list, with no release filter | Upstream has no no-CLI mode; this keeps the plugin's behavior unchanged where nothing can be checked | detection-1x-release-rules |
 | With no CLI detected, the core workflow set falls back to six workflows (`WorkflowProfileService.coreWorkflows`) | No CLI answers; the plugin needs a working set | parity sweep |
+| Ask the Agent is shown with no CLI detected | Upstream has no mode without a CLI; the click-time lookup of the router skill decides | ask-the-agent |
 | The `sync` workflow has no action of its own | Sync Specs covers it in the plugin's UI | parity sweep |
 | Adding a tool with no CLI (`AiToolRegistry.builtInAdd`) | Upstream needs the CLI to add a tool; the plugin offers a built-in add that approximates `writeSharedSkillTarget`, held by `BuiltInAddContractTest` to leave a layout the CLI then reads as intended | parity sweep |
 | The preferred tool is ticked in the install dialog (`InstallToolTicks`) | A plugin preference; upstream preselects from detection only | parity sweep |

@@ -31,7 +31,7 @@ public final class WorkflowInvocation {
     public static final String APPLY_SKILL = "openspec-apply-change";
     public static final String CONTINUE = "continue";
     public static final String CONTINUE_SKILL = "openspec-continue-change";
-    /** CLI 2.2's skill router: the `openspec` skill, reached as `/opsx:router` by upstream's references. */
+    /** CLI 2.2's skill router: the `openspec` skill (upstream's references map the {@code router} id to it). */
     public static final String ROUTER = "router";
     public static final String ROUTER_SKILL = "openspec";
     public static final String PROPOSE = "propose";

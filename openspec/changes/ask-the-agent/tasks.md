@@ -16,4 +16,4 @@
 ## 3. Docs and verification
 
 - [x] 3.1 Feature reference, Marketplace page, CHANGELOG, and the parity inventory's invocation row.
-- [ ] 3.2 `./gradlew build`, `openspec validate --all --strict`, and the maintainer's uiSmoke run.
+- [x] 3.2 `./gradlew build`, `openspec validate --all --strict`, and the maintainer's uiSmoke run.

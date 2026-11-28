@@ -41,8 +41,8 @@ public class AskAgentDialog extends DialogWrapper {
     protected @Nullable JComponent createCenterPanel() {
         return FormBuilder.createFormBuilder()
                 .addLabeledComponent("Request:", requestField)
-                .addComponent(new JLabel("<html><small>OpenSpec's router skill works out what you mean and runs the right "
-                        + "OpenSpec skill.</small></html>"))
+                .addComponent(new JLabel("<html><small>OpenSpec's router skill works out what you mean: it answers, or runs "
+                        + "the right OpenSpec skill (or several in order), and asks when it isn't sure.</small></html>"))
                 .getPanel();
     }
 

@@ -147,7 +147,7 @@
             <action id="OpenSpec.AskAgent"
                     class="com.johnnyblabs.openspec.actions.OpenSpecAskAgentAction"
                     text="Ask the Agent (OpenSpec Router)..."
-                    description="Ask your AI agent in plain words; OpenSpec's router skill runs the right OpenSpec skill"
+                    description="Ask your AI agent in plain words; OpenSpec's router skill answers, or runs the right OpenSpec skill (or several in order)"
                     icon="AllIcons.Actions.IntentionBulb"/>
             <action id="OpenSpec.Propose"
                     class="com.johnnyblabs.openspec.actions.OpenSpecProposeAction"
