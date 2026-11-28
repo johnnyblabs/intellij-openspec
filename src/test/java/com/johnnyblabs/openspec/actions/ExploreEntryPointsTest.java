@@ -52,6 +52,17 @@ public class ExploreEntryPointsTest extends BasePlatformTestCase {
         assertEquals(toolbar.toString(), "OpenSpec.Explore", toolbar.get(propose - 1));
     }
 
+    /** Ask the Agent sits right after Explore in the menu, and in the toolbar after Fast-Forward, with an icon. */
+    public void testAskTheAgentIsOfferedBesideExplore() {
+        List<String> menu = childIds("OpenSpec.MainMenu");
+        assertEquals("OpenSpec.AskAgent", menu.get(menu.indexOf("OpenSpec.Explore") + 1));
+        List<String> toolbar = childIds("OpenSpec.ToolWindowToolbar");
+        assertEquals("OpenSpec.AskAgent", toolbar.get(toolbar.indexOf("OpenSpec.Ff") + 1));
+        AnAction ask = ActionManager.getInstance().getAction("OpenSpec.AskAgent");
+        assertNotNull(ask.getTemplatePresentation().getIcon());
+        assertTrue("it reads no index", ask instanceof com.intellij.openapi.project.DumbAware);
+    }
+
     public void testExploreHasAnIconAndSaysNothingIsCreated() {
         AnAction explore = ActionManager.getInstance().getAction("OpenSpec.Explore");
 

@@ -18,7 +18,7 @@ On CLI 2.2.0 and later, the plugin SHALL offer Ask the Agent, which hands the us
 
 #### Scenario: The router isn't installed
 - **WHEN** the CLI is 2.2.0 or later but no AI tool has the `openspec` skill installed
-- **THEN** Ask the Agent SHALL be disabled, with a tooltip saying to run `openspec update` or set up an AI tool
+- **THEN** using Ask the Agent SHALL hand nothing off, and SHALL say to run `openspec update` or set up an AI tool
 
 #### Scenario: Direct API
 - **WHEN** the delivery mode is Direct API

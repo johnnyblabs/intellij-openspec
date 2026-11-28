@@ -36,6 +36,7 @@ class OpenSpecRootLiteralHygieneTest {
             entry("com/johnnyblabs/openspec/util/CliRunner.java:\"openspec\"", "the CLI binary name"),
             entry("com/johnnyblabs/openspec/services/CliDetectionService.java:\"openspec\"", "the CLI binary name"),
             entry("com/johnnyblabs/openspec/services/UpdatePreviewService.java:\"openspec\"", "a tool id"),
+            entry("com/johnnyblabs/openspec/services/WorkflowInvocation.java:\"openspec\"", "the CLI 2.2 router skill's name"),
             entry("com/johnnyblabs/openspec/services/AiToolDetectionService.java:\"openspec\"",
                     "part of a skill file name"),
             entry("com/johnnyblabs/openspec/scaffolding/ScaffoldingService.java:\"/openspec\"",

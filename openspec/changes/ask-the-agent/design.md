@@ -23,11 +23,11 @@ Per tool, `command-references.js` maps `router` to `openspec`, with a prefix of 
 
 | State | When | How shown |
 |---|---|---|
-| Hidden | the project isn't an OpenSpec project, or the detected CLI is older than 2.2.0 | not in the menu or toolbar |
-| Disabled | CLI 2.2.0+, but `WorkflowInvocation.find(project, "router", "openspec")` finds no tool with the skill | tooltip: "The OpenSpec router skill isn't installed for your AI tool. Run openspec update, or set a tool up in Manage AI Tools." |
-| Enabled | otherwise | |
+| Hidden | the project isn't an OpenSpec project, or the detected CLI is older than 2.2.0 (`shown(version)`) | not in the menu or toolbar |
+| No router | on click, `WorkflowInvocation.find(project, "router", "openspec")` finds no tool with the skill | a warning: "…Run openspec update (Update OpenSpec…), or set a tool up in Manage AI Tools.", with an Update OpenSpec action |
+| Handed off | otherwise | |
 
-A pure `availability(cliVersion, routerFound)` decides it. `update()` reads only the cached CLI version and a cached `find` result, refreshed off the UI thread, so it never touches the disk. With no CLI detected, a found skill means the router exists, so the action is enabled.
+`update()` reads only the cached CLI version (`CliDetectionService`), never the disk or the CLI. The skill lookup runs when the action is clicked, as Continue's does, so no availability cache has to be kept fresh. With no CLI detected the action is shown, and the lookup decides.
 
 ### D3. The input
 

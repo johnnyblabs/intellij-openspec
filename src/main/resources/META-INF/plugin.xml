@@ -143,6 +143,12 @@
                     text="Explore..."
                     description="Think through an idea before proposing; nothing is created"
                     icon="AllIcons.Actions.Find"/>
+            <!-- CLI 2.2's router: a request in plain words, handed to the openspec skill, which picks what to run. -->
+            <action id="OpenSpec.AskAgent"
+                    class="com.johnnyblabs.openspec.actions.OpenSpecAskAgentAction"
+                    text="Ask the Agent (OpenSpec Router)..."
+                    description="Ask your AI agent in plain words; OpenSpec's router skill runs the right OpenSpec skill"
+                    icon="AllIcons.Actions.IntentionBulb"/>
             <action id="OpenSpec.Propose"
                     class="com.johnnyblabs.openspec.actions.OpenSpecProposeAction"
                     text="Propose..."
@@ -258,6 +264,7 @@
             <reference ref="OpenSpec.Explore"/>
             <reference ref="OpenSpec.Propose"/>
             <reference ref="OpenSpec.Ff"/>
+            <reference ref="OpenSpec.AskAgent"/>
             <separator/>
             <reference ref="OpenSpec.Verify"/>
             <reference ref="OpenSpec.SyncSpecs"/>
