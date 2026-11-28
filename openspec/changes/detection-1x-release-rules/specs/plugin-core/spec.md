@@ -43,7 +43,7 @@ The plugin SHALL detect every AI tool in the detected CLI's tool registry, from 
 
 #### Scenario: The plugin's tools equal the CLI's registry
 - **WHEN** the plugin's tool records accepted by a captured release, from 1.3.0 to 2.2.0, are compared with that release's captured registry
-- **THEN** they SHALL be the same ids in the same order, each with that release's display name, skills directory, home-directory skills folder, detection paths and older directories, and no record SHALL name an id the release lacks
+- **THEN** they SHALL be the same ids (a release before 1.7.0 names Devin Desktop `windsurf`), in the same order from 1.17.0, each with that release's skills directory, home-directory skills folder, detection paths and older directories, and from 1.17.0 its display name; no record SHALL name an id the release lacks
 
 #### Scenario: A tool newer than the detected CLI is not offered
 - **WHEN** the detected CLI is older than the first version that accepts a tool's id (for example 1.3.0 and a tool added in 1.14.0, or 2.0.0 and a tool added in 2.1.0), or is at or past the release that retired it (Amazon Q from 2.0.0)
@@ -56,7 +56,7 @@ The plugin SHALL detect every AI tool in the detected CLI's tool registry, from 
 
 #### Scenario: A rule applies from the 1.x release that introduced it
 - **WHEN** the detected CLI is a 1.x release older than the release that introduced a detection rule or tool
-- **THEN** that rule or tool SHALL NOT apply: no marker or skill-syntax attribution and no home-directory tools below 1.8.0, no own detection path counting beside a shared root it doesn't own below 1.11.0, and no tool before the release that added it (Kimi before 1.4.0, Amp and GSD before 1.14.0, a 2.1 tool on any 1.x release)
+- **THEN** that rule or tool SHALL NOT apply: no marker or skill-syntax attribution below 1.8.0, no own detection path counting beside a shared root it doesn't own below 1.11.0, and no tool before the release that added it (Kimi before 1.4.0, Amp and GSD before 1.14.0, MiniMax Code, the only home-directory tool, before 1.8.0, a 2.1 tool on any 1.x release)
 
 #### Scenario: A marker alone, before and after 1.8.0
 - **WHEN** a project holds only `.agents/skills/.openspec-target` naming `codex`
@@ -69,8 +69,8 @@ The plugin SHALL detect every AI tool in the detected CLI's tool registry, from 
 - **AND** a skills folder of the tool's own SHALL count, when the list names other tools but not it, only if it holds an OpenSpec skill
 
 #### Scenario: Same layout, different release lines
-- **WHEN** a project holds only a `.gsd` folder
-- **THEN** detection under 1.x rules SHALL report the shared-folder tool `agents`, and under 2.x rules SHALL report `gsd`, as each line's CLI does
+- **WHEN** a project's `.agents/skills` holds OpenSpec skills and a marker naming `gsd`, and the project has no `.gsd` folder
+- **THEN** detection under 1.17 rules SHALL report the shared-folder tool `agents`, and under 2.x rules SHALL report `gsd`, as each line's CLI does; a lone `.gsd` folder SHALL be `gsd` from 1.14.0, which added the tool, and no tool before
 
 #### Scenario: Machine-wide install on 2.1
 - **WHEN** the only skills are in the home directory and the detected CLI is 2.1 or later
@@ -79,3 +79,4 @@ The plugin SHALL detect every AI tool in the detected CLI's tool registry, from 
 #### Scenario: No CLI detected
 - **WHEN** no CLI is detected
 - **THEN** the plugin SHALL use 2.1 rules if the project holds a tool list with more than one line, an `own-files` token, or a link from a tool folder into `.agents/skills`, and 1.x rules otherwise
+- **AND** 1.x rules with no release known SHALL be 1.17's shapes and rules with no release filter, as before

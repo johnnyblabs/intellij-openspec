@@ -2,7 +2,7 @@
 
 ## Why
 
-The plugin's 1.x tool detection applies 1.17's rules and tool table to every 1.x release. Upstream's `getAvailableTools` and its tool registry changed within 1.x, so on older 1.x CLIs the plugin reports tools the CLI doesn't, and misses ones it does. Captured runs show 12 such cases. Among them:
+The plugin's 1.x tool detection applies 1.17's rules and tool table to every 1.x release. Upstream's `getAvailableTools` and its tool registry changed within 1.x, so on older 1.x CLIs the plugin reports tools the CLI doesn't, and misses ones it does. Captured runs show 12 such cases, on 9 new layouts and 5 existing ones captured on more releases. Among them:
 - a bare `.codex/` is Codex to 1.7.0 and nothing to 1.8.0;
 - a `.agents/workflows` folder is Antigravity only from 1.11.0;
 - `.amp/` and `.gsd/` count only from 1.14.0;
@@ -37,6 +37,6 @@ None.
 ## Impact
 
 - **Code:** `AiToolDetector` (the 1.x path takes the release), `AiToolRegistry` (each tool's shape as of a 1.x release), `AiToolDetectionService` (passes the detected CLI's version).
-- **Fixtures:** 12 new detection captures across 1.3.1, 1.4.0, 1.6.0, 1.7.0, 1.8.0, 1.10.0, 1.11.0, 1.13.2, 1.14.0 and 1.17.0. The registry check now covers every captured 1.x registry, from 1.3.0.
+- **Fixtures:** 9 new detection layouts, plus 5 existing ones, captured across 1.3.1, 1.4.0, 1.6.0, 1.7.0, 1.8.0, 1.10.0, 1.11.0, 1.13.2, 1.14.0 and 1.17.0. The registry check now covers every captured 1.x registry, from 1.3.0.
 - **Tests:** `AiToolDetectionContractTest` passes on every captured release, and the known-gap entry for this change is removed.
 - **Platform:** no new platform APIs; IntelliJ 2024.2+ support is unaffected.

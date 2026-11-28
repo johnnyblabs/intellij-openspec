@@ -159,6 +159,8 @@ CASES = {
     "agents-workflows-only": [("file", ".agents/workflows/.keep", "")],
     "amp-dir-only": [("file", ".amp/.keep", "")],
     "aider-desk-skills": [("file", ".aider-desk/skills/.keep", "")],
+    # A generic OpenSpec skill under .agents/skills, written by hand: the `agents` target exists only from 1.8.0.
+    "agents-generic-skill-by-hand": [("file", ".agents/skills/openspec-explore/SKILL.md", "Run /openspec-explore.\n")],
     "several": [("init", None, "claude,cursor,github-copilot,gemini")],
     # 2.x: a project mixing a 1.17 layout with a 2.x one, the 2.1 scope modes, and 2.1's machine-wide install read
     # by 2.0 (the "skills are machine-wide" state a user downgrading meets).

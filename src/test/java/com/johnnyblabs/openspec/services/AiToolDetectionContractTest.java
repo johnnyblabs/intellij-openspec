@@ -39,7 +39,7 @@ class AiToolDetectionContractTest {
 
     /** Each release's case count, so a lost case can't shrink the replay unnoticed. */
     static final Map<String, Integer> CASE_COUNT = Map.ofEntries(Map.entry("1.3.1", 1), Map.entry("1.4.0", 1),
-            Map.entry("1.6.0", 11), Map.entry("1.7.0", 17), Map.entry("1.8.0", 6), Map.entry("1.10.0", 2),
+            Map.entry("1.6.0", 11), Map.entry("1.7.0", 18), Map.entry("1.8.0", 7), Map.entry("1.10.0", 2),
             Map.entry("1.11.0", 2), Map.entry("1.13.2", 2), Map.entry("1.14.0", 2), Map.entry("1.14.3", 30),
             Map.entry("1.16.1", 30), Map.entry("1.17.0", 37), Map.entry("2.0.0", 40), Map.entry("2.1.0", 53),
             Map.entry("2.1.1", 53), Map.entry("2.2.0", 53));
