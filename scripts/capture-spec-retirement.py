@@ -41,6 +41,14 @@ def spec(statement="The system SHALL foo.", scenario="- **WHEN** x\n- **THEN** y
             f"### Requirement: Foo works\n{statement}\n\n#### Scenario: foo\n{scenario}\n{after}")
 
 
+# A second capability, zoo, whose only requirement the same change removes.
+TWO = {
+    "openspec/specs/zoo/spec.md": ("# zoo Specification\n\n## Purpose\nZoo does things.\n\n## Requirements\n\n"
+                                   "### Requirement: Zoo works\nThe system SHALL zoo.\n\n#### Scenario: zoo\n"
+                                   "- **WHEN** x\n- **THEN** y\n"),
+    "openspec/changes/c/specs/zoo/spec.md": DELTA.replace("Foo works", "Zoo works"),
+}
+
 CASES = {
     "clean": dict(spec=spec(), metadata=MARKED),
     "folder-with-other-file": dict(spec=spec(), metadata=MARKED, extra={"openspec/specs/foo/notes.txt": "keep me\n"}),
@@ -61,10 +69,13 @@ CASES = {
     "marker-true-bad-created": dict(spec=spec(), metadata="schema: spec-driven\ncreated: bad\nretire_capabilities: true\n"),
     "marker-number": dict(spec=spec(), metadata="schema: spec-driven\nretire_capabilities: 1\n"),
     "marker-null": dict(spec=spec(), metadata="schema: spec-driven\nretire_capabilities: null\n"),
+    "marker-false": dict(spec=spec(), metadata="schema: spec-driven\nretire_capabilities: false  # not yet\n"),
     "marker-yes": dict(spec=spec(), metadata="schema: spec-driven\nretire_capabilities: yes\n"),
     "marker-duplicate-key": dict(spec=spec(), metadata="schema: spec-driven\nretire_capabilities: true\nretire_capabilities: true\n"),
     "marker-invalid-project-schema": dict(spec=spec(), metadata=MARKED,
                                           extra={"openspec/schemas/spec-driven/schema.yaml": "name: spec-driven\n"}),
+    "two-capabilities": dict(spec=spec(), metadata=MARKED, extra=TWO),
+    "two-capabilities-without-marker": dict(spec=spec(), metadata=UNMARKED, extra=TWO),
     "already-retired": dict(spec=None, metadata=MARKED),
     "already-retired-without-marker": dict(spec=None, metadata=UNMARKED),
 }

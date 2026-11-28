@@ -1,0 +1,9 @@
+{
+  "spec": "# foo Specification\n\n## Purpose\nFoo does things.\n\n## Requirements\n\n### Requirement: Foo works\nThe system SHALL foo.\n\n#### Scenario: foo\n- **WHEN** x\n- **THEN** y\n",
+  "delta": "## REMOVED Requirements\n\n### Requirement: Foo works\n**Reason**: gone\n**Migration**: none\n",
+  "metadata": "schema: spec-driven\ncreated: 2026-11-27\nretire_capabilities: true\n",
+  "extra": {
+    "openspec/specs/zoo/spec.md": "# zoo Specification\n\n## Purpose\nZoo does things.\n\n## Requirements\n\n### Requirement: Zoo works\nThe system SHALL zoo.\n\n#### Scenario: zoo\n- **WHEN** x\n- **THEN** y\n",
+    "openspec/changes/c/specs/zoo/spec.md": "## REMOVED Requirements\n\n### Requirement: Zoo works\n**Reason**: gone\n**Migration**: none\n"
+  }
+}

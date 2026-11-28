@@ -627,6 +627,8 @@ What they show:
 - Only `spec.md` is deleted, then empty folders: `folder-with-other-file` keeps the folder and `notes.txt`.
 - Without the marker: the hint naming the marker (from 1.8), or, with leftovers, the hint naming them (from 1.11; 1.8 gives the generic fix).
 - A marker that can't be honored counts as not declared, with the CLI's reason: invalid YAML (including a duplicate key), `yes` and other non-booleans (YAML 1.2: `yes` is a string), a missing `schema:` or malformed `created:` even when the marker is `true`, an unknown schema.
+- `marker-false` (`retire_capabilities: false  # not yet`): refused with the plain "add `retire_capabilities: true`" hint, as for a missing marker. The plugin's marker action names the `false` it would replace.
+- `two-capabilities` (marked) and `two-capabilities-without-marker`: a change emptying `foo` and `zoo`. Marked, both specs are deleted; unmarked, the refusal names only `foo` (the CLI stops at the first). `RetireMarkerFixContractTest` uses them to show the marker offer names both.
 - `already-retired`: removing from a capability whose spec is gone archives without writing one, with "REMOVED requirement(s) ignored for new spec", when marked; it's refused unmarked.
 
 ## `archive-1.14.3/` — real `openspec archive` runs, the oracle for the plugin's spec merge
