@@ -13,6 +13,17 @@ public final class ArchiveRefusedException extends IOException {
         this.fix = fix;
     }
 
+    private transient volatile @Nullable RetireMarkerFix.Offer markerOffer;
+
+    /** The offer to add the retirement marker, decided off the UI thread after the refusal; {@code null} for none. */
+    public @Nullable RetireMarkerFix.Offer markerOffer() {
+        return markerOffer;
+    }
+
+    void markerOffer(@Nullable RetireMarkerFix.Offer offer) {
+        this.markerOffer = offer;
+    }
+
     public @Nullable String fix() {
         return fix;
     }

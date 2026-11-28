@@ -37,7 +37,14 @@ The result is then read with `RetirementMarkers.parse`, so the CLI's rules apply
 
 Just before writing, D2 runs again on the file's current text. If the check no longer passes, nothing is written, and the plugin says why.
 
-The confirmation is a `Messages` yes/no dialog with a warning icon: "Retire capability 'foo'? Adding retire_capabilities: true to <change>/.openspec.yaml lets Sync and Archive delete specs/foo/spec.md. You'll see a preview first. Restore a committed spec with git checkout." The buttons are "Add Marker" and "Cancel", and the dialog lists every id.
+The confirmation is a `Messages` yes/no dialog with a warning icon, with "Add Marker" and "Cancel" buttons. OpenSpec leaves the deletion to the author, since it is "recoverable only from git", so the dialog states everything the marker does:
+- each spec it makes deletable, by Sync Specs, archive and OpenSpec's agent skills;
+- that it replaces an explicit `retire_capabilities: false` (OpenSpec prints the same hint then; captured as `marker-false`);
+- that it covers the whole change and stays, so a later edit that empties another capability retires that one too;
+- that it is written now, Apply does the deleting, and cancelling the preview leaves it in place;
+- that a deleted spec can be restored from git only if it was committed.
+
+A trailing comment on a replaced line is kept.
 
 The write is a `WriteCommandAction` on the file's `Document`, so Undo covers it and an open editor stays in sync. The file is saved afterwards, because the CLI reads disk.
 
@@ -55,3 +62,5 @@ The preview is then recomputed in a background task, and a fresh `SyncPreviewDia
 - **Upstream rewords the hint.** The gate then stops matching, and the action is no longer offered, which is the safe failure. The contract test over captured refusals fails on re-capture, which flags it.
 - **Flow-style or anchored YAML, or a quoted key.** D2 matches `retire_capabilities:`, `'retire_capabilities':` and `"retire_capabilities":` at column 0. Any other spelling isn't honored after the rewrite, so the action is not offered.
 - **Several capabilities in one change.** D1a names each one, so the user never confirms one deletion and gets two.
+- **The fix differs from upstream's "then rerun".** The plugin opens the Sync preview, and its own merge deletes the spec. A later `openspec archive` of the change then takes the already-retired path and succeeds from 1.8 (captured as `already-retired`). If the marker is removed in between, that archive refuses, as it would for any REMOVED-only delta with no main spec.
+- **Upstream's hint can name a marker that wouldn't help.** With `retire_capabilities: true` and an unknown schema, the CLI still says "add `retire_capabilities: true`", with the schema as the reason it can't be honored (`marker-unknown-schema`). The text gate requires a reason about the marker's own value, so the plugin doesn't offer the action there.

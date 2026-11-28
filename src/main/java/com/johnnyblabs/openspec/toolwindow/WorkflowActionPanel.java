@@ -1778,6 +1778,9 @@ public class WorkflowActionPanel extends JPanel {
                         project.getService(com.johnnyblabs.openspec.services.SpecSyncService.class);
                 java.util.List<com.johnnyblabs.openspec.model.SpecSyncResult> results =
                         syncService.computeSync(changeName);
+                com.johnnyblabs.openspec.services.RetireMarkerFix.Offer offer =
+                        com.johnnyblabs.openspec.services.RetireMarkerFix.offer(project, changeName,
+                                com.johnnyblabs.openspec.services.RetireMarkerFix.refusals(results));
 
                 ApplicationManager.getApplication().invokeLater(() -> {
                     if (results.isEmpty()) {
@@ -1787,7 +1790,9 @@ public class WorkflowActionPanel extends JPanel {
                     }
 
                     com.johnnyblabs.openspec.dialogs.SyncPreviewDialog dialog =
-                            new com.johnnyblabs.openspec.dialogs.SyncPreviewDialog(project, results);
+                            new com.johnnyblabs.openspec.dialogs.SyncPreviewDialog(project, results, offer,
+                                    () -> com.johnnyblabs.openspec.services.RetireMarkerFix.apply(project, offer,
+                                            () -> com.johnnyblabs.openspec.actions.OpenSpecSyncAction.syncChange(project, changeName)));
                     // OK on a preview with nothing to apply just closes it: no write, no "synced" notice.
                     if (dialog.showAndGet() && results.stream().anyMatch(com.johnnyblabs.openspec.model.SpecSyncResult::hasChanges)) {
                         ProgressManager.getInstance().run(new Task.Backgroundable(project, "Applying spec sync...", false) {
@@ -2326,8 +2331,7 @@ public class WorkflowActionPanel extends JPanel {
                 },
                 error -> {
                     archiveIconButton.setEnabled(true);
-                    OpenSpecNotifier.error(project, "Archive",
-                            "Archive failed: " + com.johnnyblabs.openspec.services.ArchiveDispatch.reason(error));
+                    com.johnnyblabs.openspec.services.ArchiveDispatch.notifyFailure(project, "Archive", "Archive failed: ", error);
                 });
     }
 

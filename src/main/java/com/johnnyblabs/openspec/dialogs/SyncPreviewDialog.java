@@ -27,10 +27,25 @@ public class SyncPreviewDialog extends DialogWrapper {
     private final List<SpecSyncResult> results;
     private final List<DiffRequestPanel> diffPanels = new ArrayList<>();
 
+    private final @Nullable com.johnnyblabs.openspec.services.RetireMarkerFix.Offer markerOffer;
+    private final @Nullable Runnable onAddMarker;
+
     public SyncPreviewDialog(Project project, List<SpecSyncResult> results) {
+        this(project, results, null, null);
+    }
+
+    /**
+     * With {@code markerOffer}, the refused panel offers to add the retirement marker; {@code onAddMarker} runs after
+     * this dialog closes (it confirms, writes, and opens a fresh preview).
+     */
+    public SyncPreviewDialog(Project project, List<SpecSyncResult> results,
+                             @Nullable com.johnnyblabs.openspec.services.RetireMarkerFix.Offer markerOffer,
+                             @Nullable Runnable onAddMarker) {
         super(project, true);
         this.project = project;
         this.results = results;
+        this.markerOffer = markerOffer;
+        this.onAddMarker = onAddMarker;
         setTitle("Sync Specs Preview");
         setOKButtonText("Apply");
         setCancelButtonText("Cancel");
@@ -76,6 +91,17 @@ public class SyncPreviewDialog extends DialogWrapper {
         return r.retired() ? "After sync: file deleted" : "After sync";
     }
 
+    /** The refused panel's link text, or {@code null} when there is no offer to add the marker. */
+    static @Nullable String markerLinkText(@Nullable com.johnnyblabs.openspec.services.RetireMarkerFix.Offer offer,
+                                           List<String> refusals) {
+        return offer == null || refusals.isEmpty() ? null : "Add retire_capabilities: true…";
+    }
+
+    @TestOnly
+    @Nullable String markerLinkTextForTest() {
+        return markerLinkText(markerOffer, refusals());
+    }
+
     List<String> refusalsShownForTest() {
         return refusals();
     }
@@ -113,6 +139,16 @@ public class SyncPreviewDialog extends DialogWrapper {
                 label.setForeground(JBColor.ORANGE);
                 label.setAlignmentX(Component.LEFT_ALIGNMENT);
                 refusedPanel.add(label);
+            }
+            String linkText = markerLinkText(markerOffer, refusals);
+            if (linkText != null && onAddMarker != null) {
+                com.intellij.ui.components.ActionLink link = new com.intellij.ui.components.ActionLink(linkText, e -> {
+                    close(CANCEL_EXIT_CODE);
+                    onAddMarker.run();
+                });
+                link.setAlignmentX(Component.LEFT_ALIGNMENT);
+                link.setBorder(JBUI.Borders.emptyTop(8));
+                refusedPanel.add(link);
             }
             mainPanel.add(refusedPanel, BorderLayout.CENTER);
             return mainPanel;

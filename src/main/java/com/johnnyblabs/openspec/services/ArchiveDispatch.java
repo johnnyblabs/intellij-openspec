@@ -47,6 +47,18 @@ public final class ArchiveDispatch {
             ArchiveJson.Outcome outcome = project.getService(ChangeService.class).archiveChange(change, syncSpecs);
             ApplicationManager.getApplication().invokeLater(() -> onDone.accept(outcome), project.getDisposed());
         } catch (Exception e) {
+            // Whether the refusal asks for the marker, decided here: the check reads the disk and may run the CLI.
+            // Never at the cost of the failure report: an offer that can't be decided is simply not made.
+            if (e instanceof ArchiveRefusedException refused) {
+                try {
+                    refused.markerOffer(RetireMarkerFix.offer(project, change.getName(), java.util.List.of(refused.describe())));
+                } catch (com.intellij.openapi.progress.ProcessCanceledException pce) {
+                    throw pce;
+                } catch (RuntimeException offerFailed) {
+                    com.intellij.openapi.diagnostic.Logger.getInstance(ArchiveDispatch.class)
+                            .warn("Could not decide the retirement-marker offer", offerFailed);
+                }
+            }
             ApplicationManager.getApplication().invokeLater(() -> onError.accept(e), project.getDisposed());
         }
     }
@@ -55,6 +67,32 @@ public final class ArchiveDispatch {
     public static String reason(Exception e) {
         return e instanceof ArchiveRefusedException refused ? refused.describe() : String.valueOf(e.getMessage());
     }
+
+    /**
+     * Reports a failed archive. A refusal that asks for the retirement marker gets an action that adds it and opens
+     * the Sync preview; the archive is not run again. Call on the UI thread.
+     */
+    public static void notifyFailure(Project project, String title, String prefix, Exception error) {
+        RetireMarkerFix.Offer offer = error instanceof ArchiveRefusedException refused ? refused.markerOffer() : null;
+        if (offer == null) {
+            com.johnnyblabs.openspec.util.OpenSpecNotifier.error(project, title, prefix + reason(error));
+            return;
+        }
+        com.johnnyblabs.openspec.util.OpenSpecNotifier.notify(project, com.johnnyblabs.openspec.util.OpenSpecNotifier.GROUP_WORKFLOW,
+                title, prefix + reason(error), com.intellij.notification.NotificationType.ERROR,
+                new com.intellij.notification.NotificationAction(MARKER_ACTION) {
+                    @Override
+                    public void actionPerformed(@NotNull com.intellij.openapi.actionSystem.AnActionEvent e,
+                                                @NotNull com.intellij.notification.Notification notification) {
+                        notification.expire();
+                        RetireMarkerFix.apply(project, offer,
+                                () -> com.johnnyblabs.openspec.actions.OpenSpecSyncAction.syncChange(project, offer.changeName()));
+                    }
+                });
+    }
+
+    /** The archive-failure notification's action text. */
+    static final String MARKER_ACTION = "Add retirement marker…";
 
     /** A one-line summary of a successful archive. */
     public static String summary(String changeName, ArchiveJson.Outcome outcome) {

@@ -11,6 +11,7 @@ import com.johnnyblabs.openspec.dialogs.SyncPreviewDialog;
 import com.johnnyblabs.openspec.model.Change;
 import com.johnnyblabs.openspec.model.SpecSyncResult;
 import com.johnnyblabs.openspec.services.ChangeService;
+import com.johnnyblabs.openspec.services.RetireMarkerFix;
 import com.johnnyblabs.openspec.services.SpecSyncService;
 import com.johnnyblabs.openspec.util.OpenSpecNotifier;
 import org.jetbrains.annotations.NotNull;
@@ -50,12 +51,14 @@ public class OpenSpecSyncAction extends OpenSpecBaseAction {
         }
     }
 
-    private void syncChange(Project project, String changeName) {
+    /** Computes the sync in the background, then shows the preview; applies on OK. Call on the UI thread. */
+    public static void syncChange(Project project, String changeName) {
         ProgressManager.getInstance().run(new Task.Backgroundable(project, "Computing spec sync...", false) {
             @Override
             public void run(@NotNull ProgressIndicator indicator) {
                 SpecSyncService syncService = project.getService(SpecSyncService.class);
                 List<SpecSyncResult> results = syncService.computeSync(changeName);
+                RetireMarkerFix.Offer offer = RetireMarkerFix.offer(project, changeName, RetireMarkerFix.refusals(results));
 
                 if (results.isEmpty()) {
                     OpenSpecNotifier.info(project, "Sync Specs", "No delta specs found for \"" + changeName + "\"");
@@ -63,7 +66,8 @@ public class OpenSpecSyncAction extends OpenSpecBaseAction {
                 }
 
                 ApplicationManager.getApplication().invokeLater(() -> {
-                    SyncPreviewDialog dialog = new SyncPreviewDialog(project, results);
+                    SyncPreviewDialog dialog = new SyncPreviewDialog(project, results, offer,
+                            () -> RetireMarkerFix.apply(project, offer, () -> syncChange(project, changeName)));
                     // OK on a preview with nothing to apply just closes it: no write, no "synced" notice.
                     if (dialog.showAndGet() && results.stream().anyMatch(SpecSyncResult::hasChanges)) {
                         ProgressManager.getInstance().run(new Task.Backgroundable(project, "Applying spec sync...", false) {

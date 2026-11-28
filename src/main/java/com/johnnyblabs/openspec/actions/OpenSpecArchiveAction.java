@@ -98,7 +98,6 @@ public class OpenSpecArchiveAction extends OpenSpecBaseAction {
                     OpenSpecNotifier.info(project, "Archive", ArchiveDispatch.summary(changeName, outcome));
                     refreshToolWindow(project);
                 },
-                error -> OpenSpecNotifier.error(project, "Archive",
-                        "Failed to archive change: " + ArchiveDispatch.reason(error)));
+                error -> ArchiveDispatch.notifyFailure(project, "Archive", "Failed to archive change: ", error));
     }
 }

@@ -92,12 +92,18 @@ public final class SpecSyncService {
      * refusal; one refusal makes the whole change unappliable ({@link #applySync}).
      */
     public List<SpecSyncResult> computeSync(String changeName) {
+        return computeSync(changeName, null);
+    }
+
+    /** {@link #computeSync(String)} with {@code marker} in place of the change's own, when not {@code null}. */
+    public List<SpecSyncResult> computeSync(String changeName, @org.jetbrains.annotations.Nullable SpecMerge.RetirementMarker override) {
         List<SpecSyncResult> results = new ArrayList<>();
         // The release whose archive the merge follows: the detected CLI, or the plugin's target with none.
         String release = com.johnnyblabs.openspec.validation.ValidationRelease.followed(project);
         Map<String, String> deltas = readDeltaSpecs(changeName);
         // Read once per sync, and only when there is a delta: a schema override may cost a CLI call.
-        SpecMerge.RetirementMarker marker = deltas.isEmpty() ? SpecMerge.RetirementMarker.NONE : retirementMarker(changeName);
+        SpecMerge.RetirementMarker marker = override != null ? override
+                : deltas.isEmpty() ? SpecMerge.RetirementMarker.NONE : retirementMarker(changeName);
         for (Map.Entry<String, String> entry : deltas.entrySet()) {
             String capability = entry.getKey();
             String original = readMainSpec(capability);
@@ -218,11 +224,20 @@ public final class SpecSyncService {
 
     /** The change's {@code retire_capabilities} marker, read as upstream reads it. */
     SpecMerge.RetirementMarker retirementMarker(String changeName) {
+        return RetirementMarkers.read(changeDir(changeName), schemaCheck());
+    }
+
+    /** The change's folder, {@code openspec/changes/<name>}. */
+    public Path changeDir(String changeName) {
+        return Path.of(com.johnnyblabs.openspec.util.OpenSpecFileUtil.openspecPath(project)).resolve("changes").resolve(changeName);
+    }
+
+    /** The schema lookup the CLI does for a marker (project, user, built-in). May run the CLI: off the UI thread. */
+    public RetirementMarkers.SchemaCheck schemaCheck() {
         Path openspec = Path.of(com.johnnyblabs.openspec.util.OpenSpecFileUtil.openspecPath(project));
-        return RetirementMarkers.read(openspec.resolve("changes").resolve(changeName),
-                name -> schemaVerdict(name, openspec,
-                        com.johnnyblabs.openspec.coordination.CoordinationPaths.resolve().globalDataDir().resolve("schemas"),
-                        this::cliValidatesSchema));
+        return name -> schemaVerdict(name, openspec,
+                com.johnnyblabs.openspec.coordination.CoordinationPaths.resolve().globalDataDir().resolve("schemas"),
+                this::cliValidatesSchema);
     }
 
     /** The only schema built into every release that retires (1.8.0 through 2.2.0). */

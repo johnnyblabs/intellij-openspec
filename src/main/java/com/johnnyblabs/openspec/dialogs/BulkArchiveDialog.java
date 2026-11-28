@@ -334,9 +334,16 @@ public class BulkArchiveDialog extends DialogWrapper {
     static List<String> blockers(List<SpecSyncResult> results) {
         List<String> problems = new ArrayList<>();
         for (SpecSyncResult result : results) {
-            problems.addAll(result.refusals());
+            for (String refusal : result.refusals()) problems.add(problemText(refusal));
         }
         return problems;
+    }
+
+    /** A row's refusal; one that asks for the retirement marker points to Sync Specs, where it can be added. */
+    @VisibleForTesting
+    static String problemText(String refusal) {
+        return com.johnnyblabs.openspec.services.RetireMarkerFix.asksForMarker(refusal)
+                ? refusal + " Use Sync Specs on this change to add the marker." : refusal;
     }
 
     /** A change whose spec sync reports a blocking problem; it is neither synced nor archived. */
