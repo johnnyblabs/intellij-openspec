@@ -44,7 +44,7 @@ class WorkflowInvocationContractTest {
     private static final String TARGET = AiToolRegistryContractTest.TARGET;
 
     /** Each release's row count: 2 workflows x tools with skills x deliveries (one delivery from 2.0). */
-    private static final Map<String, Integer> ROWS = Map.of("1.17.0", 735, "2.0.0", 240, "2.1.0", 435, "2.1.1", 435, "2.2.0", 435);
+    private static final Map<String, Integer> ROWS = Map.of("1.17.0", 735, "2.0.0", 240, "2.1.0", 435, "2.1.1", 435, "2.2.0", 522);
 
     @TempDir Path root;
 
@@ -104,6 +104,24 @@ class WorkflowInvocationContractTest {
         return FixtureVersions.compare(version, "2.0.0") >= 0 ? List.of(Layout.values()) : List.of(Layout.COPY);
     }
 
+    /** The router as upstream spells it for each tool on 2.2.0, and the request handed to it unquoted. */
+    @Test
+    void theRoutersSpellingIsUpstreamsForEveryTool() throws IOException {
+        java.util.Map<String, Integer> spellings = new java.util.TreeMap<>();
+        java.util.Set<String> plainWords = new java.util.TreeSet<>();
+        for (JsonObject row : rows("2.2.0")) {
+            if (!"router".equals(row.get("workflow").getAsString())) continue;
+            String inv = row.get("invocation").getAsString();
+            spellings.merge(inv, 1, Integer::sum);
+            if (inv.equals("the openspec skill")) plainWords.add(row.get("tool").getAsString());
+        }
+        assertEquals(java.util.Map.of("/openspec", 82, "$openspec", 1, "/skill:openspec", 1, "the openspec skill", 3), spellings);
+        assertEquals(java.util.Set.of("gsd", "rovodev", "codeassistant"), plainWords);
+        assertTrue(rows("2.1.1").stream().noneMatch(r -> "router".equals(r.get("workflow").getAsString())), "2.1.1 has no router");
+        assertEquals("/openspec verify add-auth, then archive it",
+                WorkflowInvocation.handoff("/openspec", "openspec", "verify add-auth, then archive it"));
+    }
+
     @TestFactory
     Stream<DynamicTest> everyWorkflowToolAndDeliveryGetsUpstreamsInvocation() {
         List<DynamicTest> tests = new ArrayList<>();
@@ -149,7 +167,10 @@ class WorkflowInvocationContractTest {
             }
             checked++;
         }
-        assertEquals(List.of("explore", "update", "propose", "ff", "verify"), workflows);
+        // 2.2.0 adds the router (its skill is `openspec`); no earlier release has it.
+        List<String> expected = new ArrayList<>(List.of("explore", "update", "propose", "ff", "verify"));
+        if (FixtureVersions.compare(version, "2.2.0") >= 0) expected.add("router");
+        assertEquals(expected, workflows);
         assertEquals(java.util.Set.of(), unknown, "every tool in CLI " + version + "'s matrix is in the registry");
         assertEquals(ROWS.get(version), checked, "every row of CLI " + version + "'s matrix is checked");
         assertTrue(wrong.isEmpty(), "invocations that differ from upstream's:\n" + String.join("\n", wrong));
@@ -259,7 +280,9 @@ class WorkflowInvocationContractTest {
                 compared++;
             }
         }
-        assertEquals(ROWS.get(version) / 5, compared, "every update row of CLI " + version + " is compared (one workflow of five)");
+        assertEquals(rows(version).stream().filter(r -> "update".equals(r.get("workflow").getAsString())).count(), compared,
+                "every update row of CLI " + version + " is compared");
+        assertTrue(compared >= 87, "sanity: " + compared + " update rows");
         assertTrue(drift.isEmpty(), "update paths that differ from what init wrote:\n" + String.join("\n", drift));
     }
 

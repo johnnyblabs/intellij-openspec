@@ -8,10 +8,10 @@ OpenSpec CLI 2.2's headline is the `/openspec` skill router. You type a request 
 
 - **Ask the Agent (OpenSpec router)…** sits in the OpenSpec menu after Explore, and in the tool window's toolbar beside Explore.
   - It opens a one-line request field, with upstream's own examples as its placeholder.
-  - It hands the text, unchanged, to the router skill through the existing workflow handoff, spelled for the user's AI tool: `/openspec`, `$openspec` for Codex, `/skill:openspec` for Kimi, or "the openspec skill" for tools with no slash commands. Every spelling comes from upstream, captured per tool.
+  - It hands the text, unchanged and unquoted, to the router skill through the existing workflow handoff, spelled for the user's AI tool: `/openspec`, `$openspec` for Codex, `/skill:openspec` for Kimi, or "the openspec skill" for tools with no slash commands. Every spelling comes from upstream, captured per tool.
 - **Only where the router exists.**
   - The action is hidden on a CLI older than 2.2.0, which has no router.
-  - On 2.2.0+ it's disabled when no AI tool has the `openspec` skill installed, with a tooltip saying how to install it: update OpenSpec, or set up a tool.
+  - On 2.2.0+ it's disabled when no AI tool has the `openspec` skill installed, with a tooltip saying how to install it: run `openspec update`, or set up a tool.
 - **The plugin doesn't interpret the request.** It picks no skill, runs no command for it and stores nothing: the router decides. Direct API can't run an agent skill, so in that mode the handoff is copied with a note, as other handoffs do.
 
 ## Capabilities

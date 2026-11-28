@@ -10,7 +10,7 @@ Installation:
 
 Per tool, `command-references.js` maps `router` to `openspec`, with a prefix of `/`, `$` for Codex or `/skill:` for Kimi, and plain words for gsd, rovodev and codeassistant. The plugin already has:
 - `WorkflowInvocation.find` and `of` (the per-tool spelling from what's installed);
-- `handoff(invocation, skill, text)` (upstream's `<invocation> "text"` pattern, and the plain-words form);
+- `handoff(invocation, skill, text)`, which writes the invocation then the request, unquoted. Upstream's quotes appear only around the `"your idea"` placeholder in its `init` hint (`init.js:1117`); the router has no argument syntax: "type `/openspec`, say what you want". The plain-words form, "Use the openspec skill: …", differs from upstream's `ask <tool> to use the … skill with "…"`. That difference is shared by every handoff, and tracked with the invocation-wording parity entry, not here;
 - `WorkflowHandoffDelivery` (editor tab, clipboard).
 
 ## Decisions
@@ -24,7 +24,7 @@ Per tool, `command-references.js` maps `router` to `openspec`, with a prefix of 
 | State | When | How shown |
 |---|---|---|
 | Hidden | the project isn't an OpenSpec project, or the detected CLI is older than 2.2.0 | not in the menu or toolbar |
-| Disabled | CLI 2.2.0+, but `WorkflowInvocation.find(project, "router", "openspec")` finds no tool with the skill | tooltip: "The OpenSpec router skill isn't installed for your AI tool. Update OpenSpec, or set one up in Manage AI Tools." |
+| Disabled | CLI 2.2.0+, but `WorkflowInvocation.find(project, "router", "openspec")` finds no tool with the skill | tooltip: "The OpenSpec router skill isn't installed for your AI tool. Run openspec update, or set a tool up in Manage AI Tools." |
 | Enabled | otherwise | |
 
 A pure `availability(cliVersion, routerFound)` decides it. `update()` reads only the cached CLI version and a cached `find` result, refreshed off the UI thread, so it never touches the disk. With no CLI detected, a found skill means the router exists, so the action is enabled.
@@ -33,7 +33,7 @@ A pure `availability(cliVersion, routerFound)` decides it. `update()` reads only
 
 `AskAgentDialog` follows `ExploreTopicDialog`:
 - a `JBTextField` with the placeholder "e.g. where does add-auth stand?  ·  verify add-auth, then archive it";
-- prefilled with the selected change's name when the tool window has an active change;
+- empty: not prefilled with the selected change's name, which would be plugin-invented, and a bare name is a request the router can only ask about;
 - OK disabled while the field is blank;
 - the text is trimmed, and otherwise sent as typed.
 
@@ -52,5 +52,7 @@ The handoff is `WorkflowInvocation.handoff(found.invocation(), "openspec", text)
 - No shortcut.
 
 ## Risks
+
+- **The skill check proves `SKILL.md`, not the router's `references/` folder.** That is acceptable: `openspec update` repairs reference files. The check doesn't claim the router is complete.
 
 - **Upstream renames the router or changes its spelling.** The re-capture at the next CLI bump fails `WorkflowInvocationContractTest`, and the parity inventory's invocation row gets updated.
